@@ -52,10 +52,21 @@ export default function RegistrationPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+
+    if (name === 'contactNumber') {
+      const numericValue = value.replace(/\D/g, '');
+      if (numericValue.length <= 11) {
+        setFormData((prev) => ({
+          ...prev,
+          [name]: numericValue,
+        }));
+      }
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const handleSectorChange = (sector) => {
@@ -79,6 +90,12 @@ export default function RegistrationPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (formData.contactNumber && formData.contactNumber.length !== 11) {
+      alert('Contact number must be exactly 11 digits.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -180,6 +197,7 @@ export default function RegistrationPage() {
                 value={formData.contactNumber}
                 onChange={handleChange}
                 placeholder="09XX XXX XXXX"
+                maxLength={11}
               />
             </div>
 
