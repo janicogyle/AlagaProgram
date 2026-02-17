@@ -79,11 +79,11 @@ const icons = {
   ),
 };
 
-export default function Sidebar({ user, onLogout }) {
+export default function Sidebar({ user, onLogout, minimized }) {
   const pathname = usePathname();
 
   return (
-    <aside className={styles.sidebar}>
+    <aside className={minimized ? `${styles.sidebar} ${styles.minimized}` : styles.sidebar}>
       <div className={styles.logo}>
         <div className={styles.logoIcon}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
@@ -91,25 +91,28 @@ export default function Sidebar({ user, onLogout }) {
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
           </svg>
         </div>
-        <div className={styles.logoText}>
-          <span className={styles.logoTitle}>Barangay Sta. Rita</span>
-          <span className={styles.logoSubtitle}>Digital ID System</span>
-        </div>
+        {!minimized && (
+          <div className={styles.logoText}>
+            <span className={styles.logoTitle}>Barangay Sta. Rita</span>
+            <span className={styles.logoSubtitle}>Digital ID System</span>
+          </div>
+        )}
       </div>
 
       <nav className={styles.nav}>
         {menuItems.map((section) => (
           <div key={section.section} className={styles.section}>
-            <span className={styles.sectionTitle}>{section.section}</span>
+            {!minimized && <span className={styles.sectionTitle}>{section.section}</span>}
             <ul className={styles.menuList}>
               {section.items.map((item) => (
                 <li key={item.href}>
                   <Link
                     href={item.href}
                     className={`${styles.menuItem} ${pathname === item.href ? styles.active : ''}`}
+                    title={item.name}
                   >
                     <span className={styles.menuIcon}>{icons[item.icon]}</span>
-                    <span>{item.name}</span>
+                    {!minimized && <span>{item.name}</span>}
                   </Link>
                 </li>
               ))}
@@ -123,19 +126,23 @@ export default function Sidebar({ user, onLogout }) {
           <div className={styles.userAvatar}>
             {user?.name?.charAt(0) || 'AU'}
           </div>
-          <div className={styles.userDetails}>
-            <span className={styles.userName}>{user?.name || 'Admin User'}</span>
-            <span className={styles.userRole}>{user?.role || 'Administrator'}</span>
-          </div>
+          {!minimized && (
+            <div className={styles.userDetails}>
+              <span className={styles.userName}>{user?.name || 'Admin User'}</span>
+              <span className={styles.userRole}>{user?.role || 'Administrator'}</span>
+            </div>
+          )}
         </div>
-        <button onClick={onLogout} className={styles.logoutButton}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-          <span>Logout</span>
-        </button>
+        {!minimized && (
+          <button onClick={onLogout} className={styles.logoutButton}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            <span>Logout</span>
+          </button>
+        )}
       </div>
     </aside>
   );

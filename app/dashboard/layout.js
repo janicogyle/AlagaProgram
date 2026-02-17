@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import styles from './layout.module.css';
 // import { authHelpers } from '@/lib/supabaseClient';
 
+
 export default function DashboardLayout({ children }) {
   const router = useRouter();
   const [user] = useState({
@@ -14,6 +15,7 @@ export default function DashboardLayout({ children }) {
     role: 'Administrator',
     email: 'admin@barangaystarita.gov.ph'
   });
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const handleLogout = async () => {
     try {
@@ -29,9 +31,9 @@ export default function DashboardLayout({ children }) {
 
   return (
     <div className={styles.layout}>
-      <Sidebar user={user} onLogout={handleLogout} />
-      <div className={styles.mainContent}>
-        <Navbar />
+      <Sidebar user={user} onLogout={handleLogout} minimized={!sidebarOpen} />
+      <div className={`${styles.mainContent} ${!sidebarOpen ? styles.sidebarMinimized : ''}`}>
+        <Navbar onMenuClick={() => setSidebarOpen((open) => !open)} />
         <main className={styles.pageContent}>
           {children}
         </main>

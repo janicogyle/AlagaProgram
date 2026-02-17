@@ -9,6 +9,11 @@
   display: flex;
   flex-direction: column;
   background-color: #f8fafc;
+  transition: margin-left 0.2s ease;
+}
+
+.mainContent.sidebarMinimized {
+  margin-left: 64px;
 }
 
 .pageContent {
@@ -18,6 +23,10 @@
 
 @media (max-width: 768px) {
   .mainContent {
+    margin-left: 0;
+  }
+
+  .mainContent.sidebarMinimized {
     margin-left: 0;
   }
 }
