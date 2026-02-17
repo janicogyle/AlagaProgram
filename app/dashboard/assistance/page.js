@@ -18,7 +18,7 @@ import styles from './page.module.css';
 // Sample data - Replace with actual data from Supabase
 const sampleAssistance = [
   { id: 1, resident: 'Maria Santos Cruz', type: 'Cash', date: '2024-01-20', notes: 'Monthly senior citizen allowance', amount: '₱500' },
-  { id: 2, resident: 'Juan Dela Cruz', type: 'Medical', date: '2024-01-25', notes: 'Medicine assistance for maintenance medi...', amount: '-' },
+  { id: 2, resident: 'Juan Dela Cruz', type: 'Medical', date: '2024-01-25', notes: 'Medicine assistance for maintenance medi...', amount: '₱800' },
   { id: 3, resident: 'Ana Reyes Garcia', type: 'Relief Goods', date: '2024-02-01', notes: 'Food pack distribution', amount: '-' },
   { id: 4, resident: 'Rosa Mendoza Tan', type: 'Cash', date: '2024-02-05', notes: 'PWD monthly allowance', amount: '₱1,000' },
   { id: 5, resident: 'Pedro Lim Torres', type: 'Educational', date: '2024-02-10', notes: 'School supplies assistance', amount: '-' },
