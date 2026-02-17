@@ -14,7 +14,8 @@ export default function Input({
   disabled = false,
   error = '',
   icon = null,
-  className = ''
+  className = '',
+  ...props
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = type === 'password';
@@ -40,6 +41,7 @@ export default function Input({
           required={required}
           disabled={disabled}
           className={`${styles.input} ${icon ? styles.withIcon : ''} ${error ? styles.inputError : ''}`}
+          {...props}
         />
         {isPassword && (
           <button
