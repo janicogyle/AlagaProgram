@@ -1,0 +1,11 @@
+.assistancePage {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.placeholder {
+  text-align: center;
+  color: #6b7280;
+  padding: 40px 20px;
+}

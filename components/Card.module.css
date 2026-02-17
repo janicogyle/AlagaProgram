@@ -1,0 +1,31 @@
+.card {
+  background-color: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.withPadding {
+  padding: 20px;
+}
+
+.cardHeader {
+  margin-bottom: 16px;
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.cardSubtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 4px 0 0 0;
+}
+
+.cardContent {
+  width: 100%;
+}

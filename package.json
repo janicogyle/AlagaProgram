@@ -1,0 +1,21 @@
+{
+  "name": "alaga-program",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "preinstall": "npx only-allow pnpm",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.95.3",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  }
+}

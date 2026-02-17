@@ -1,0 +1,25 @@
+.residentsPage {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .filterGroup {
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+}
