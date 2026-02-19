@@ -10,8 +10,8 @@ const menuItems = [
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
       { name: 'Analytics', href: '/dashboard/analytics', icon: 'analytics' },
-      { name: 'Resident Registration', href: '/dashboard/registration', icon: 'registration' },
-      { name: 'Resident List', href: '/dashboard/residents', icon: 'list' },
+      { name: 'Registration', href: '/dashboard/registration', icon: 'registration' },
+      { name: 'Alaga List', href: '/dashboard/residents', icon: 'list' },
       { name: 'Assistance Tracking', href: '/dashboard/assistance', icon: 'assistance' },
       { name: 'Assistance Guidelines', href: '/dashboard/assistance/guidelines', icon: 'guidelines' },
       { name: 'Reports', href: '/dashboard/reports', icon: 'reports' },
