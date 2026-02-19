@@ -41,29 +41,18 @@ export default function LoginPage() {
           {/* Barangay Logo Placeholder */}
           <div className={styles.logoContainer}>
             <div className={styles.logoCircle}>
-              <div className={styles.logoPlaceholder}>
-                <span className={styles.logoText}>Barangay</span>
-                <span className={styles.logoText}>Sta. Rita</span>
-              </div>
+              <img src="/Brand.png" alt="Barangay Sta. Rita Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '50%' }} />
             </div>
-          </div>
-
-          {/* System Icon */}
-          <div className={styles.systemIcon}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-            </svg>
           </div>
 
           {/* System Title */}
           <h1 className={styles.title}>Barangay Sta. Rita</h1>
-          <h2 className={styles.subtitle}>Digital Identification System</h2>
+          <h2 className={styles.subtitle}>ALAGA PROGRAM  - Digital Identification System</h2>
 
           {/* System Description */}
           <p className={styles.description}>
-            Efficiently manage resident information, track assistance programs, 
-            and generate reports for PWD, Senior Citizens, Out-of-School Youth, 
+            Manage resident information, track assistance programs, 
+            and generate reports for PWD, Senior Citizens, 
             and Solo Parents in our barangay.
           </p>
         </div>

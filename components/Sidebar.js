@@ -13,6 +13,7 @@ const menuItems = [
       { name: 'Resident Registration', href: '/dashboard/registration', icon: 'registration' },
       { name: 'Resident List', href: '/dashboard/residents', icon: 'list' },
       { name: 'Assistance Tracking', href: '/dashboard/assistance', icon: 'assistance' },
+      { name: 'Assistance Guidelines', href: '/dashboard/assistance/guidelines', icon: 'guidelines' },
       { name: 'Reports', href: '/dashboard/reports', icon: 'reports' },
     ]
   },
@@ -57,6 +58,15 @@ const icons = {
       <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
     </svg>
   ),
+  guidelines: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <line x1="10" y1="9" x2="8" y2="9" />
+    </svg>
+  ),
   reports: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -85,11 +95,8 @@ export default function Sidebar({ user, onLogout, minimized }) {
   return (
     <aside className={minimized ? `${styles.sidebar} ${styles.minimized}` : styles.sidebar}>
       <div className={styles.logo}>
-        <div className={styles.logoIcon}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-          </svg>
+        <div className={styles.logoCircle}>
+          <img src="/Brand.png" alt="Barangay Sta. Rita Logo" className={styles.logoImg} />
         </div>
         {!minimized && (
           <div className={styles.logoText}>

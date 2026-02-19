@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Card from '@/components/Card';
 import Input from '@/components/Input';
 import Select from '@/components/Select';
@@ -12,30 +12,58 @@ const sexOptions = [
   { value: 'female', label: 'Female' },
 ];
 
-const purokOptions = [
-  { value: 'purok1', label: 'Purok 1' },
-  { value: 'purok2', label: 'Purok 2' },
-  { value: 'purok3', label: 'Purok 3' },
-  { value: 'purok4', label: 'Purok 4' },
-  { value: 'purok5', label: 'Purok 5' },
+const civilStatusOptions = [
+  { value: 'single', label: 'Single' },
+  { value: 'married', label: 'Married' },
+  { value: 'widowed', label: 'Widowed' },
+  { value: 'separated', label: 'Separated' },
+  { value: 'divorced', label: 'Divorced' },
 ];
 
+const barangayOptions = [
+  { value: 'sta-rita', label: 'Sta. Rita' },
+];
+
+const generateControlNumber = () => {
+  const year = new Date().getFullYear();
+  const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
+  return `ALAGA-${year}-${random}`;
+};
+
 export default function RegistrationPage() {
+  const [controlNumber, setControlNumber] = useState('');
   const [formData, setFormData] = useState({
-    fullName: '',
-    dateOfBirth: '',
+    // Personal Information
+    lastName: '',
+    firstName: '',
+    middleName: '',
+    houseNo: '',
+    street: '',
+    barangay: 'sta-rita',
+    city: 'Olongapo',
+    birthday: '',
+    birthplace: '',
     sex: '',
+    citizenship: 'Filipino',
+    civilStatus: '',
     contactNumber: '',
-    address: '',
-    purok: '',
+    // Sector Classification
     sectors: {
       pwd: false,
       seniorCitizen: false,
       soloParent: false,
     },
+    // Representative Information
+    representativeName: '',
+    representativeContact: '',
   });
   const [documents, setDocuments] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Generate control number on mount
+  useEffect(() => {
+    setControlNumber(generateControlNumber());
+  }, []);
 
   // Calculate age from date of birth
   const calculateAge = (dob) => {
@@ -53,7 +81,7 @@ export default function RegistrationPage() {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    if (name === 'contactNumber') {
+    if (name === 'contactNumber' || name === 'representativeContact') {
       const numericValue = value.replace(/\D/g, '');
       if (numericValue.length <= 11) {
         setFormData((prev) => ({
@@ -84,6 +112,16 @@ export default function RegistrationPage() {
     setDocuments((prev) => [...prev, ...files]);
   };
 
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files);
+    setDocuments((prev) => [...prev, ...files]);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
   const removeDocument = (index) => {
     setDocuments((prev) => prev.filter((_, i) => i !== index));
   };
@@ -100,7 +138,12 @@ export default function RegistrationPage() {
 
     try {
       // TODO: Implement Supabase submission
-      console.log('Form Data:', formData);
+      const submissionData = {
+        controlNumber,
+        ...formData,
+        age: calculateAge(formData.birthday),
+      };
+      console.log('Form Data:', submissionData);
       console.log('Documents:', documents);
 
       // Simulate API call
@@ -108,19 +151,29 @@ export default function RegistrationPage() {
 
       // Reset form after successful submission
       setFormData({
-        fullName: '',
-        dateOfBirth: '',
+        lastName: '',
+        firstName: '',
+        middleName: '',
+        houseNo: '',
+        street: '',
+        barangay: 'sta-rita',
+        city: 'Olongapo',
+        birthday: '',
+        birthplace: '',
         sex: '',
+        citizenship: 'Filipino',
+        civilStatus: '',
         contactNumber: '',
-        address: '',
-        purok: '',
         sectors: {
           pwd: false,
           seniorCitizen: false,
           soloParent: false,
         },
+        representativeName: '',
+        representativeContact: '',
       });
       setDocuments([]);
+      setControlNumber(generateControlNumber());
 
       alert('Registration saved successfully!');
     } catch (error) {
@@ -133,51 +186,127 @@ export default function RegistrationPage() {
 
   const handleCancel = () => {
     setFormData({
-      fullName: '',
-      dateOfBirth: '',
+      lastName: '',
+      firstName: '',
+      middleName: '',
+      houseNo: '',
+      street: '',
+      barangay: 'sta-rita',
+      city: 'Olongapo',
+      birthday: '',
+      birthplace: '',
       sex: '',
+      citizenship: 'Filipino',
+      civilStatus: '',
       contactNumber: '',
-      address: '',
-      purok: '',
       sectors: {
         pwd: false,
         seniorCitizen: false,
         soloParent: false,
       },
+      representativeName: '',
+      representativeContact: '',
     });
     setDocuments([]);
+    setControlNumber(generateControlNumber());
   };
 
   return (
     <div className={styles.registrationPage}>
       <form onSubmit={handleSubmit} className={styles.formGrid}>
+        {/* Control Number */}
+        <div className={styles.controlNumberBar}>
+          <div className={styles.controlNumberLabel}>Control Number</div>
+          <div className={styles.controlNumberValue}>{controlNumber}</div>
+        </div>
+
         {/* Personal Information */}
         <Card title="Personal Information" subtitle="Enter the basic information of the resident" className={styles.mainCard}>
           <div className={styles.formFields}>
-            <Input
-              label="Full Name"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              placeholder="Enter full name"
-              required
-            />
+            <div className={styles.row3}>
+              <Input
+                label="Last Name"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                placeholder="Enter last name"
+                required
+              />
+              <Input
+                label="First Name"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                placeholder="Enter first name"
+                required
+              />
+              <Input
+                label="Middle Name"
+                name="middleName"
+                value={formData.middleName}
+                onChange={handleChange}
+                placeholder="Enter middle name"
+              />
+            </div>
 
             <div className={styles.row}>
               <Input
-                label="Date of Birth"
+                label="House No."
+                name="houseNo"
+                value={formData.houseNo}
+                onChange={handleChange}
+                placeholder="House number"
+              />
+              <Input
+                label="Street"
+                name="street"
+                value={formData.street}
+                onChange={handleChange}
+                placeholder="Street name"
+              />
+            </div>
+
+            <div className={styles.row}>
+              <Select
+                label="Barangay"
+                name="barangay"
+                value={formData.barangay}
+                onChange={handleChange}
+                options={barangayOptions}
+                placeholder="Select barangay"
+                required
+              />
+              <Input
+                label="City/Municipality"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                placeholder="Enter city"
+              />
+            </div>
+
+            <div className={styles.row3}>
+              <Input
+                label="Birthday"
                 type="date"
-                name="dateOfBirth"
-                value={formData.dateOfBirth}
+                name="birthday"
+                value={formData.birthday}
                 onChange={handleChange}
                 required
               />
               <div className={styles.ageField}>
-                <label className={styles.label}>Age (Auto-calculated)</label>
+                <label className={styles.label}>Age</label>
                 <div className={styles.ageDisplay}>
-                  {calculateAge(formData.dateOfBirth) || 'Auto-calculated'}
+                  {calculateAge(formData.birthday) || 'Auto'}
                 </div>
               </div>
+              <Input
+                label="Birthplace"
+                name="birthplace"
+                value={formData.birthplace}
+                onChange={handleChange}
+                placeholder="Place of birth"
+              />
             </div>
 
             <div className={styles.row}>
@@ -191,6 +320,25 @@ export default function RegistrationPage() {
                 required
               />
               <Input
+                label="Citizenship"
+                name="citizenship"
+                value={formData.citizenship}
+                onChange={handleChange}
+                placeholder="Enter citizenship"
+              />
+            </div>
+
+            <div className={styles.row}>
+              <Select
+                label="Civil Status"
+                name="civilStatus"
+                value={formData.civilStatus}
+                onChange={handleChange}
+                options={civilStatusOptions}
+                placeholder="Select civil status"
+                required
+              />
+              <Input
                 label="Contact Number"
                 type="tel"
                 name="contactNumber"
@@ -200,30 +348,12 @@ export default function RegistrationPage() {
                 maxLength={11}
               />
             </div>
-
-            <div className={styles.row}>
-              <Input
-                label="Address"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                placeholder="Street address"
-              />
-              <Select
-                label="Purok"
-                name="purok"
-                value={formData.purok}
-                onChange={handleChange}
-                options={purokOptions}
-                placeholder="Select purok"
-                required
-              />
-            </div>
           </div>
         </Card>
 
-        {/* Sector Classification */}
+        {/* Side Cards */}
         <div className={styles.sideCards}>
+          {/* Sector Classification */}
           <Card title="Sector Classification" subtitle="Select applicable sector(s)">
             <div className={styles.sectorList}>
               <label className={styles.checkbox}>
@@ -233,7 +363,7 @@ export default function RegistrationPage() {
                   onChange={() => handleSectorChange('pwd')}
                 />
                 <span className={styles.checkmark}></span>
-                <span>PWD</span>
+                <span>PWD (Person with Disability)</span>
               </label>
               <label className={styles.checkbox}>
                 <input
@@ -242,7 +372,7 @@ export default function RegistrationPage() {
                   onChange={() => handleSectorChange('seniorCitizen')}
                 />
                 <span className={styles.checkmark}></span>
-                <span>Senior Citizen</span>
+                <span>Senior Citizen (60 years old and above)</span>
               </label>
               <label className={styles.checkbox}>
                 <input
@@ -256,9 +386,35 @@ export default function RegistrationPage() {
             </div>
           </Card>
 
+          {/* Representative Information */}
+          <Card title="Representative Information" subtitle="Fill only if applicable">
+            <div className={styles.formFields}>
+              <Input
+                label="Representative Name"
+                name="representativeName"
+                value={formData.representativeName}
+                onChange={handleChange}
+                placeholder="Enter representative's full name"
+              />
+              <Input
+                label="Contact Number"
+                type="tel"
+                name="representativeContact"
+                value={formData.representativeContact}
+                onChange={handleChange}
+                placeholder="09XX XXX XXXX"
+                maxLength={11}
+              />
+            </div>
+          </Card>
+
           {/* Document Upload */}
           <Card title="Document Upload" subtitle="Upload ID or supporting documents">
-            <div className={styles.uploadArea}>
+            <div 
+              className={styles.uploadArea}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+            >
               <input
                 type="file"
                 id="fileUpload"
@@ -281,7 +437,13 @@ export default function RegistrationPage() {
               <div className={styles.fileList}>
                 {documents.map((file, index) => (
                   <div key={index} className={styles.fileItem}>
-                    <span>{file.name}</span>
+                    <div className={styles.fileInfo}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                      </svg>
+                      <span>{file.name}</span>
+                    </div>
                     <button type="button" onClick={() => removeDocument(index)} className={styles.removeBtn}>
                       ×
                     </button>

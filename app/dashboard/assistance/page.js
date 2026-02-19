@@ -1,65 +1,204 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   Card,
   Select,
   Table,
   Badge,
   Button,
+  Input,
   PageHeader,
   SearchInput,
   FilterBar,
   DataTableFooter,
   Modal,
+  FileUpload,
 } from '@/components';
 import styles from './page.module.css';
 
 // Sample data - Replace with actual data from Supabase
 const sampleAssistance = [
-  { id: 1, resident: 'Maria Santos Cruz', type: 'Cash', date: '2024-01-20', notes: 'Monthly senior citizen allowance', amount: '₱500' },
-  { id: 2, resident: 'Juan Dela Cruz', type: 'Medical', date: '2024-01-25', notes: 'Medicine assistance for maintenance medi...', amount: '₱800' },
-  { id: 3, resident: 'Ana Reyes Garcia', type: 'Relief Goods', date: '2024-02-01', notes: 'Food pack distribution', amount: '-' },
-  { id: 4, resident: 'Rosa Mendoza Tan', type: 'Cash', date: '2024-02-05', notes: 'PWD monthly allowance', amount: '₱1,000' },
-  { id: 5, resident: 'Pedro Lim Torres', type: 'Educational', date: '2024-02-10', notes: 'School supplies assistance', amount: '-' },
+  { id: 1, controlNo: 'AST-2024-00001', requester: 'Maria Santos Cruz', beneficiary: 'Maria Santos Cruz', type: 'Medicine Assistance', date: '2024-01-20', amount: '₱500', status: 'Released' },
+  { id: 2, controlNo: 'AST-2024-00002', requester: 'Juan Dela Cruz', beneficiary: 'Elena Dela Cruz', type: 'Confinement Assistance', date: '2024-01-25', amount: '₱1,000', status: 'Approved' },
+  { id: 3, controlNo: 'AST-2024-00003', requester: 'Ana Reyes Garcia', beneficiary: 'Pedro Garcia Sr.', type: 'Burial Assistance', date: '2024-02-01', amount: '₱1,000', status: 'Pending' },
+  { id: 4, controlNo: 'AST-2024-00004', requester: 'Rosa Mendoza Tan', beneficiary: 'Rosa Mendoza Tan', type: 'Medicine Assistance', date: '2024-02-05', amount: '₱500', status: 'Released' },
+  { id: 5, controlNo: 'AST-2024-00005', requester: 'Pedro Lim Torres', beneficiary: 'Pedro Lim Torres', type: 'Others', date: '2024-02-10', amount: '₱300', status: 'Rejected' },
 ];
 
 const typeOptions = [
   { value: '', label: 'All Types' },
-  { value: 'Cash', label: 'Cash' },
-  { value: 'Medical', label: 'Medical' },
-  { value: 'Relief Goods', label: 'Relief Goods' },
-  { value: 'Educational', label: 'Educational' },
+  { value: 'Medicine Assistance', label: 'Medicine Assistance' },
+  { value: 'Confinement Assistance', label: 'Confinement Assistance' },
+  { value: 'Burial Assistance', label: 'Burial Assistance' },
+  { value: 'Others', label: 'Others' },
 ];
+
+const statusOptions = [
+  { value: '', label: 'All Status' },
+  { value: 'Pending', label: 'Pending' },
+  { value: 'Approved', label: 'Approved' },
+  { value: 'Released', label: 'Released' },
+  { value: 'Rejected', label: 'Rejected' },
+];
+
+const serviceTypes = [
+  { value: 'medicine', label: 'Medicine Assistance', ceiling: '₱500' },
+  { value: 'confinement', label: 'Confinement Assistance', ceiling: '₱1,000' },
+  { value: 'burial', label: 'Burial Assistance', ceiling: '₱1,000' },
+  { value: 'others', label: 'Others', ceiling: 'Variable' },
+];
+
+const generateControlNumber = () => {
+  const year = new Date().getFullYear();
+  const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
+  return `AST-${year}-${random}`;
+};
 
 export default function AssistancePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    requesterName: '',
+    requesterContact: '',
+    requesterAddress: '',
+    serviceType: '',
+    otherService: '',
+    beneficiaryName: '',
+    beneficiaryAddress: '',
+    beneficiaryContact: '',
+    amount: '',
+    date: new Date().toISOString().split('T')[0],
+  });
+
+  // Document uploads
+  const [documents, setDocuments] = useState({
+    prescription: [],
+    officialReceipt: [],
+    validId: [],
+    confinementCert: [],
+    deathCert: [],
+    other: [],
+  });
 
   // Filter assistance records
   const filteredAssistance = sampleAssistance.filter((record) => {
-    const matchesSearch = record.resident.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = 
+      record.requester.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.beneficiary.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.controlNo.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = !typeFilter || record.type === typeFilter;
-    return matchesSearch && matchesType;
+    const matchesStatus = !statusFilter || record.status === statusFilter;
+    return matchesSearch && matchesType && matchesStatus;
   });
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'requesterContact' || name === 'beneficiaryContact') {
+      const numericValue = value.replace(/\D/g, '');
+      if (numericValue.length <= 11) {
+        setFormData(prev => ({ ...prev, [name]: numericValue }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleServiceTypeChange = (type) => {
+    setFormData(prev => ({ ...prev, serviceType: type }));
+  };
+
+  const handleDocumentChange = (type, files) => {
+    setDocuments(prev => ({ ...prev, [type]: files }));
+  };
+
+  const resetForm = () => {
+    setFormData({
+      requesterName: '',
+      requesterContact: '',
+      requesterAddress: '',
+      serviceType: '',
+      otherService: '',
+      beneficiaryName: '',
+      beneficiaryAddress: '',
+      beneficiaryContact: '',
+      amount: '',
+      date: new Date().toISOString().split('T')[0],
+    });
+    setDocuments({
+      prescription: [],
+      officialReceipt: [],
+      validId: [],
+      confinementCert: [],
+      deathCert: [],
+      other: [],
+    });
+  };
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      const submission = {
+        controlNumber: generateControlNumber(),
+        ...formData,
+        documents,
+        status: 'Pending',
+      };
+      console.log('Assistance Request:', submission);
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      resetForm();
+      setShowModal(false);
+      alert('Assistance request submitted successfully!');
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to submit request');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const variants = {
+      'Pending': 'warning',
+      'Approved': 'primary',
+      'Released': 'success',
+      'Rejected': 'danger',
+    };
+    return <Badge variant={variants[status]}>{status}</Badge>;
+  };
+
   const columns = [
-    { key: 'resident', label: 'Resident' },
+    { key: 'controlNo', label: 'Control No.' },
+    { key: 'requester', label: 'Requester' },
+    { key: 'beneficiary', label: 'Beneficiary' },
     {
       key: 'type',
       label: 'Type',
       render: (type) => <Badge>{type}</Badge>,
     },
     { key: 'date', label: 'Date' },
-    { key: 'notes', label: 'Notes' },
     { key: 'amount', label: 'Amount' },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (status) => getStatusBadge(status),
+    },
   ];
 
   const modalFooter = (
     <>
       <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
-      <Button>Save Assistance</Button>
+      <Button onClick={handleSubmit} disabled={isSubmitting}>
+        {isSubmitting ? 'Submitting...' : 'Submit Request'}
+      </Button>
     </>
   );
 
@@ -68,14 +207,24 @@ export default function AssistancePage() {
       <Card padding={false}>
         <PageHeader
           title="Assistance Records"
-          subtitle="Track and manage assistance provided to residents"
+          subtitle="Track and manage ALAGA Program assistance requests"
         >
+          <Link href="/dashboard/assistance/guidelines" className={styles.guidelinesLink}>
+            <Button variant="secondary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              Guidelines
+            </Button>
+          </Link>
           <Button onClick={() => setShowModal(true)}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            Add Assistance
+            New Request
           </Button>
         </PageHeader>
 
@@ -83,7 +232,7 @@ export default function AssistancePage() {
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
-            placeholder="Search by resident name..."
+            placeholder="Search by name or control number..."
           />
           <Select
             name="type"
@@ -91,6 +240,13 @@ export default function AssistancePage() {
             onChange={(e) => setTypeFilter(e.target.value)}
             options={typeOptions}
             placeholder="All Types"
+          />
+          <Select
+            name="status"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            options={statusOptions}
+            placeholder="All Status"
           />
         </FilterBar>
 
@@ -106,12 +262,215 @@ export default function AssistancePage() {
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title="Add New Assistance"
+        title="ALAGA Assistance Request Form"
         footer={modalFooter}
+        size="large"
       >
-        <p className={styles.placeholder}>
-          Form fields will be added here for creating new assistance records.
-        </p>
+        <div className={styles.assistanceForm}>
+          {/* Requester Information */}
+          <section className={styles.formSection}>
+            <h4 className={styles.sectionTitle}>Requester Information</h4>
+            <div className={styles.formGrid}>
+              <Input
+                label="Requester Name"
+                name="requesterName"
+                value={formData.requesterName}
+                onChange={handleChange}
+                placeholder="Enter full name"
+                required
+              />
+              <Input
+                label="Contact Number"
+                name="requesterContact"
+                value={formData.requesterContact}
+                onChange={handleChange}
+                placeholder="09XX XXX XXXX"
+                maxLength={11}
+              />
+              <div className={styles.fullWidth}>
+                <Input
+                  label="Address"
+                  name="requesterAddress"
+                  value={formData.requesterAddress}
+                  onChange={handleChange}
+                  placeholder="Complete address"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Type of Social Service */}
+          <section className={styles.formSection}>
+            <h4 className={styles.sectionTitle}>Type of Social Service</h4>
+            <div className={styles.serviceTypeGrid}>
+              {serviceTypes.map((service) => (
+                <label key={service.value} className={styles.radioCard}>
+                  <input
+                    type="radio"
+                    name="serviceType"
+                    value={service.value}
+                    checked={formData.serviceType === service.value}
+                    onChange={() => handleServiceTypeChange(service.value)}
+                  />
+                  <span className={styles.radioCardContent}>
+                    <span className={styles.radioMark}></span>
+                    <span className={styles.radioLabel}>{service.label}</span>
+                    <span className={styles.radioCeiling}>Budget: {service.ceiling}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {formData.serviceType === 'others' && (
+              <div className={styles.otherInput}>
+                <Input
+                  label="Please specify"
+                  name="otherService"
+                  value={formData.otherService}
+                  onChange={handleChange}
+                  placeholder="Describe the type of assistance needed"
+                />
+              </div>
+            )}
+          </section>
+
+          {/* Beneficiary Information */}
+          <section className={styles.formSection}>
+            <h4 className={styles.sectionTitle}>Beneficiary Information</h4>
+            <div className={styles.formGrid}>
+              <Input
+                label="Beneficiary Name"
+                name="beneficiaryName"
+                value={formData.beneficiaryName}
+                onChange={handleChange}
+                placeholder="Enter full name"
+                required
+              />
+              <Input
+                label="Contact Number"
+                name="beneficiaryContact"
+                value={formData.beneficiaryContact}
+                onChange={handleChange}
+                placeholder="09XX XXX XXXX"
+                maxLength={11}
+              />
+              <div className={styles.fullWidth}>
+                <Input
+                  label="Address"
+                  name="beneficiaryAddress"
+                  value={formData.beneficiaryAddress}
+                  onChange={handleChange}
+                  placeholder="Complete address"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Document Requirements */}
+          <section className={styles.formSection}>
+            <h4 className={styles.sectionTitle}>Document Requirements</h4>
+            <p className={styles.sectionHint}>Upload required documents based on assistance type</p>
+            
+            <div className={styles.documentsGrid}>
+              {formData.serviceType === 'medicine' && (
+                <>
+                  <FileUpload
+                    label="Prescription"
+                    files={documents.prescription}
+                    onChange={(files) => handleDocumentChange('prescription', files)}
+                    documentType="prescription"
+                  />
+                  <FileUpload
+                    label="Official Receipt"
+                    files={documents.officialReceipt}
+                    onChange={(files) => handleDocumentChange('officialReceipt', files)}
+                    documentType="officialReceipt"
+                  />
+                </>
+              )}
+              
+              {formData.serviceType === 'confinement' && (
+                <>
+                  <FileUpload
+                    label="Certificate of Confinement"
+                    files={documents.confinementCert}
+                    onChange={(files) => handleDocumentChange('confinementCert', files)}
+                    documentType="confinementCert"
+                  />
+                  <FileUpload
+                    label="Official Receipt / Statement of Account"
+                    files={documents.officialReceipt}
+                    onChange={(files) => handleDocumentChange('officialReceipt', files)}
+                    documentType="officialReceipt"
+                  />
+                </>
+              )}
+              
+              {formData.serviceType === 'burial' && (
+                <>
+                  <FileUpload
+                    label="Death Certificate"
+                    files={documents.deathCert}
+                    onChange={(files) => handleDocumentChange('deathCert', files)}
+                    documentType="deathCert"
+                  />
+                  <FileUpload
+                    label="Official Receipt / Funeral Contract"
+                    files={documents.officialReceipt}
+                    onChange={(files) => handleDocumentChange('officialReceipt', files)}
+                    documentType="officialReceipt"
+                  />
+                </>
+              )}
+              
+              <FileUpload
+                label="Valid ID"
+                files={documents.validId}
+                onChange={(files) => handleDocumentChange('validId', files)}
+                documentType="validId"
+              />
+              
+              <FileUpload
+                label="Other Documents"
+                files={documents.other}
+                onChange={(files) => handleDocumentChange('other', files)}
+                documentType="other"
+              />
+            </div>
+          </section>
+
+          {/* Acknowledgement Section */}
+          <section className={styles.formSection}>
+            <h4 className={styles.sectionTitle}>Acknowledgement</h4>
+            <div className={styles.acknowledgementBox}>
+              <div className={styles.ackRow}>
+                <div className={styles.ackLabel}>Type of Assistance:</div>
+                <div className={styles.ackValue}>
+                  {serviceTypes.find(s => s.value === formData.serviceType)?.label || '—'}
+                </div>
+              </div>
+              <div className={styles.ackRow}>
+                <div className={styles.ackLabel}>Amount:</div>
+                <div className={styles.ackValue}>
+                  <Input
+                    name="amount"
+                    value={formData.amount}
+                    onChange={handleChange}
+                    placeholder="₱0.00"
+                    className={styles.amountInput}
+                  />
+                </div>
+              </div>
+              <div className={styles.ackRow}>
+                <div className={styles.ackLabel}>Date:</div>
+                <div className={styles.ackValue}>{formData.date}</div>
+              </div>
+              <div className={styles.signatureArea}>
+                <div className={styles.signatureLine}></div>
+                <span className={styles.signatureLabel}>Signature over Printed Name</span>
+              </div>
+            </div>
+          </section>
+        </div>
       </Modal>
     </div>
   );

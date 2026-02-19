@@ -12,6 +12,16 @@ const variants = {
   'Medical': 'red',
   'Relief Goods': 'orange',
   'Educational': 'blue',
+  // Assistance types
+  'Medicine Assistance': 'green',
+  'Confinement Assistance': 'blue',
+  'Burial Assistance': 'purple',
+  'Others': 'secondary',
+  // Status types
+  'Pending': 'warning',
+  'Approved': 'primary',
+  'Released': 'success',
+  'Rejected': 'danger',
 };
 
 export default function Badge({ children, variant }) {

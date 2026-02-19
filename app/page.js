@@ -10,10 +10,7 @@ export default function HomePage() {
           {/* Barangay Logo Placeholder */}
           <div className={styles.logoContainer}>
             <div className={styles.logoCircle}>
-              <div className={styles.logoPlaceholder}>
-                <span className={styles.logoText}>Barangay</span>
-                <span className={styles.logoText}>Sta. Rita</span>
-              </div>
+              <img src="/Brand.png" alt="Barangay Sta. Rita Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '50%' }} />
             </div>
           </div>
 
@@ -32,8 +29,7 @@ export default function HomePage() {
           {/* System Description */}
           <p className={styles.description}>
             Efficiently manage resident information, track assistance programs, 
-            and generate reports for PWD, Senior Citizens, Out-of-School Youth, 
-            and Solo Parents in our barangay.
+            and generate reports for PWD, Senior Citizens, and Solo Parents in our barangay.
           </p>
         </div>
       </section>
@@ -54,26 +50,6 @@ export default function HomePage() {
               </svg>
               Sign In to Continue
             </Link>
-          </div>
-
-          {/* Features List */}
-          <div className={styles.features}>
-            <div className={styles.featureItem}>
-              <span className={styles.featureIcon}>📋</span>
-              <span>Resident Registration</span>
-            </div>
-            <div className={styles.featureItem}>
-              <span className={styles.featureIcon}>📊</span>
-              <span>Assistance Tracking</span>
-            </div>
-            <div className={styles.featureItem}>
-              <span className={styles.featureIcon}>📄</span>
-              <span>Report Generation</span>
-            </div>
-            <div className={styles.featureItem}>
-              <span className={styles.featureIcon}>👥</span>
-              <span>User Management</span>
-            </div>
           </div>
         </div>
       </section>
