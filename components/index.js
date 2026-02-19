@@ -9,6 +9,7 @@ export { default as StatCard } from './StatCard';
 export { default as Navbar } from './Navbar';
 export { default as Sidebar } from './Sidebar';
 export { default as LoginForm } from './LoginForm';
+export { default as FileUpload } from './FileUpload';
 
 // Layout Components
 export { default as PageHeader } from './PageHeader';
@@ -18,3 +19,4 @@ export { default as DataTableFooter } from './DataTableFooter';
 export { default as Modal } from './Modal';
 export { default as ActionMenu } from './ActionMenu';
 export { default as EmptyState } from './EmptyState';
+

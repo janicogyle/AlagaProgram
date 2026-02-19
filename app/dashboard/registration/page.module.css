@@ -4,6 +4,30 @@
   gap: 24px;
 }
 
+.controlNumberBar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  padding: 16px 24px;
+  border-radius: 12px;
+  color: white;
+}
+
+.controlNumberLabel {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.controlNumberValue {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-family: 'Courier New', monospace;
+}
+
 .formGrid {
   display: grid;
   grid-template-columns: 1.5fr 1fr;
@@ -33,6 +57,12 @@
   gap: 16px;
 }
 
+.row3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+
 .label {
   font-size: 14px;
   font-weight: 500;
@@ -53,6 +83,7 @@
   border-radius: 8px;
   font-size: 14px;
   color: #6b7280;
+  text-align: center;
 }
 
 /* Sector Checkboxes */
@@ -171,6 +202,24 @@
   color: #374151;
 }
 
+.fileInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.fileInfo span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileInfo svg {
+  flex-shrink: 0;
+  color: #6b7280;
+}
+
 .removeBtn {
   background: none;
   border: none;
@@ -178,6 +227,7 @@
   color: #9ca3af;
   cursor: pointer;
   padding: 0 4px;
+  flex-shrink: 0;
 }
 
 .removeBtn:hover {
@@ -197,7 +247,14 @@
     grid-template-columns: 1fr;
   }
 
-  .row {
+  .row,
+  .row3 {
     grid-template-columns: 1fr;
+  }
+
+  .controlNumberBar {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
   }
 }

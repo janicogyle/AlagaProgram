@@ -33,6 +33,11 @@
   color: #dc2626;
 }
 
+.warning {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
 .blue {
   background-color: #dbeafe;
   color: #1e40af;
@@ -56,4 +61,9 @@
 .red {
   background-color: #fee2e2;
   color: #dc2626;
+}
+
+.yellow {
+  background-color: #fef3c7;
+  color: #d97706;
 }
