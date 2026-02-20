@@ -195,33 +195,6 @@ export default function AnalyticsPage() {
           ))}
         </div>
       </Card>
-
-      {/* Summary Insights */}
-      <Card title="Key Insights" className={styles.insightsCard}>
-        <div className={styles.insights}>
-          <div className={styles.insight}>
-            <div className={styles.insightIcon}>📈</div>
-            <div className={styles.insightContent}>
-              <h4>Growing Registration</h4>
-              <p>100% increase in new registrations this month compared to last month.</p>
-            </div>
-          </div>
-          <div className={styles.insight}>
-            <div className={styles.insightIcon}>👥</div>
-            <div className={styles.insightContent}>
-              <h4>Balanced Demographics</h4>
-              <p>Equal distribution between PWD and Senior Citizens at 37% each.</p>
-            </div>
-          </div>
-          <div className={styles.insight}>
-            <div className={styles.insightIcon}>🏘️</div>
-            <div className={styles.insightContent}>
-              <h4>Concentrated Areas</h4>
-              <p>Purok 2 has the highest resident concentration with 37.5% of total residents.</p>
-            </div>
-          </div>
-        </div>
-      </Card>
     </div>
   );
 }

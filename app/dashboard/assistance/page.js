@@ -14,7 +14,6 @@ import {
   FilterBar,
   DataTableFooter,
   Modal,
-  FileUpload,
 } from '@/components';
 import styles from './page.module.css';
 
@@ -74,17 +73,8 @@ export default function AssistancePage() {
     beneficiaryAddress: '',
     beneficiaryContact: '',
     amount: '',
+    approverName: '',
     date: new Date().toISOString().split('T')[0],
-  });
-
-  // Document uploads
-  const [documents, setDocuments] = useState({
-    prescription: [],
-    officialReceipt: [],
-    validId: [],
-    confinementCert: [],
-    deathCert: [],
-    other: [],
   });
 
   // Filter assistance records
@@ -114,10 +104,6 @@ export default function AssistancePage() {
     setFormData(prev => ({ ...prev, serviceType: type }));
   };
 
-  const handleDocumentChange = (type, files) => {
-    setDocuments(prev => ({ ...prev, [type]: files }));
-  };
-
   const resetForm = () => {
     setFormData({
       requesterName: '',
@@ -129,15 +115,8 @@ export default function AssistancePage() {
       beneficiaryAddress: '',
       beneficiaryContact: '',
       amount: '',
+      approverName: '',
       date: new Date().toISOString().split('T')[0],
-    });
-    setDocuments({
-      prescription: [],
-      officialReceipt: [],
-      validId: [],
-      confinementCert: [],
-      deathCert: [],
-      other: [],
     });
   };
 
@@ -147,7 +126,6 @@ export default function AssistancePage() {
       const submission = {
         controlNumber: generateControlNumber(),
         ...formData,
-        documents,
         status: 'Pending',
       };
       console.log('Assistance Request:', submission);
@@ -217,6 +195,17 @@ export default function AssistancePage() {
                 <line x1="12" y1="8" x2="12.01" y2="8" />
               </svg>
               Guidelines
+            </Button>
+          </Link>
+          <Link href="/dashboard/assistance/requests" className={styles.guidelinesLink}>
+            <Button variant="secondary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+              </svg>
+              Manage Requests
             </Button>
           </Link>
           <Button onClick={() => setShowModal(true)}>
@@ -368,73 +357,126 @@ export default function AssistancePage() {
           {/* Document Requirements */}
           <section className={styles.formSection}>
             <h4 className={styles.sectionTitle}>Document Requirements</h4>
-            <p className={styles.sectionHint}>Upload required documents based on assistance type</p>
+            <p className={styles.sectionHint}>Please ensure the applicant has the following documents</p>
             
-            <div className={styles.documentsGrid}>
+            <div className={styles.documentsList}>
+              <div className={styles.documentsCategory}>
+                <h5 className={styles.categoryTitle}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  General Requirements
+                </h5>
+                <ul className={styles.docList}>
+                  <li>
+                    <span className={styles.docCheck}>✓</span>
+                    Valid ID (Government-issued)
+                  </li>
+                  <li>
+                    <span className={styles.docCheck}>✓</span>
+                    Barangay Certificate of Residency
+                  </li>
+                </ul>
+              </div>
+
               {formData.serviceType === 'medicine' && (
-                <>
-                  <FileUpload
-                    label="Prescription"
-                    files={documents.prescription}
-                    onChange={(files) => handleDocumentChange('prescription', files)}
-                    documentType="prescription"
-                  />
-                  <FileUpload
-                    label="Official Receipt"
-                    files={documents.officialReceipt}
-                    onChange={(files) => handleDocumentChange('officialReceipt', files)}
-                    documentType="officialReceipt"
-                  />
-                </>
+                <div className={styles.documentsCategory}>
+                  <h5 className={styles.categoryTitle}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                    </svg>
+                    Medicine Assistance Requirements
+                  </h5>
+                  <ul className={styles.docList}>
+                    <li>
+                      <span className={styles.docCheck}>✓</span>
+                      Doctor's Prescription
+                    </li>
+                    <li>
+                      <span className={styles.docCheck}>✓</span>
+                      Official Receipt from Pharmacy
+                    </li>
+                  </ul>
+                </div>
               )}
-              
+
               {formData.serviceType === 'confinement' && (
-                <>
-                  <FileUpload
-                    label="Certificate of Confinement"
-                    files={documents.confinementCert}
-                    onChange={(files) => handleDocumentChange('confinementCert', files)}
-                    documentType="confinementCert"
-                  />
-                  <FileUpload
-                    label="Official Receipt / Statement of Account"
-                    files={documents.officialReceipt}
-                    onChange={(files) => handleDocumentChange('officialReceipt', files)}
-                    documentType="officialReceipt"
-                  />
-                </>
+                <div className={styles.documentsCategory}>
+                  <h5 className={styles.categoryTitle}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                    </svg>
+                    Confinement Assistance Requirements
+                  </h5>
+                  <ul className={styles.docList}>
+                    <li>
+                      <span className={styles.docCheck}>✓</span>
+                      Certificate of Confinement / Medical Abstract
+                    </li>
+                    <li>
+                      <span className={styles.docCheck}>✓</span>
+                      Hospital Statement of Account / Official Receipt
+                    </li>
+                  </ul>
+                </div>
               )}
-              
+
               {formData.serviceType === 'burial' && (
-                <>
-                  <FileUpload
-                    label="Death Certificate"
-                    files={documents.deathCert}
-                    onChange={(files) => handleDocumentChange('deathCert', files)}
-                    documentType="deathCert"
-                  />
-                  <FileUpload
-                    label="Official Receipt / Funeral Contract"
-                    files={documents.officialReceipt}
-                    onChange={(files) => handleDocumentChange('officialReceipt', files)}
-                    documentType="officialReceipt"
-                  />
-                </>
+                <div className={styles.documentsCategory}>
+                  <h5 className={styles.categoryTitle}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                    </svg>
+                    Burial Assistance Requirements
+                  </h5>
+                  <ul className={styles.docList}>
+                    <li>
+                      <span className={styles.docCheck}>✓</span>
+                      Death Certificate
+                    </li>
+                    <li>
+                      <span className={styles.docCheck}>✓</span>
+                      Funeral Contract / Official Receipt
+                    </li>
+                  </ul>
+                </div>
               )}
-              
-              <FileUpload
-                label="Valid ID"
-                files={documents.validId}
-                onChange={(files) => handleDocumentChange('validId', files)}
-                documentType="validId"
-              />
-              
-              <FileUpload
-                label="Other Documents"
-                files={documents.other}
-                onChange={(files) => handleDocumentChange('other', files)}
-                documentType="other"
-              />
+
+              {formData.serviceType === 'others' && (
+                <div className={styles.documentsCategory}>
+                  <h5 className={styles.categoryTitle}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="16" x2="12" y2="12" />
+                      <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                    Other Assistance Requirements
+                  </h5>
+                  <ul className={styles.docList}>
+                    <li>
+                      <span className={styles.docCheck}>✓</span>
+                      Supporting documents related to the request
+                    </li>
+                    <li>
+                      <span className={styles.docCheck}>✓</span>
+                      Official Receipt (if applicable)
+                    </li>
+                  </ul>
+                </div>
+              )}
+
+              {!formData.serviceType && (
+                <div className={styles.selectServiceHint}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                  Select a service type above to see specific document requirements
+                </div>
+              )}
             </div>
           </section>
 
@@ -464,9 +506,17 @@ export default function AssistancePage() {
                 <div className={styles.ackLabel}>Date:</div>
                 <div className={styles.ackValue}>{formData.date}</div>
               </div>
-              <div className={styles.signatureArea}>
-                <div className={styles.signatureLine}></div>
-                <span className={styles.signatureLabel}>Signature over Printed Name</span>
+              <div className={styles.ackRow}>
+                <div className={styles.ackLabel}>Processed by:</div>
+                <div className={styles.ackValue}>
+                  <Input
+                    name="approverName"
+                    value={formData.approverName}
+                    onChange={handleChange}
+                    placeholder="Enter approver/encoder name"
+                    className={styles.approverInput}
+                  />
+                </div>
               </div>
             </div>
           </section>
