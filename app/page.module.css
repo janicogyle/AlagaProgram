@@ -1,57 +1,468 @@
-.main {
-  display: flex;
+/* Page Container */
+.page {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Brand Section - Left Side */
-.brandSection {
-  flex: 1;
+/* ======================= */
+/* HEADER / NAVIGATION     */
+/* ======================= */
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.headerContainer {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logoImage {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
   background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
 }
 
-.brandContent {
-  text-align: center;
-  max-width: 400px;
-}
-
-.logoContainer {
-  margin-bottom: 32px;
-}
-
-.logoCircle {
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  background: linear-gradient(145deg, #2563eb, #1e40af);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  border: 4px solid rgba(255, 255, 255, 0.2);
-}
-
-.logoPlaceholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.logoImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .logoText {
-  color: white;
   font-size: 18px;
   font-weight: 700;
+  color: #1e40af;
 }
 
-.systemIcon {
-  width: 60px;
-  height: 60px;
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navLink {
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #4b5563;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.navLink:hover {
+  color: #1e40af;
+  background: rgba(30, 64, 175, 0.05);
+}
+
+.navLoginBtn {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  background: #1e40af;
+  border-radius: 8px;
+  margin-left: 8px;
+  transition: all 0.2s ease;
+}
+
+.navLoginBtn:hover {
+  background: #1e3a8a;
+  transform: translateY(-1px);
+}
+
+.mobileMenuBtn {
+  display: none;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #4b5563;
+  border-radius: 8px;
+}
+
+.mobileMenuBtn:hover {
+  background: #f3f4f6;
+}
+
+/* ======================= */
+/* HERO SECTION            */
+/* ======================= */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 50%, #172554 100%);
+  padding-top: 72px;
+  overflow: hidden;
+}
+
+.heroContainer {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 80px 24px 120px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+  min-height: calc(100vh - 72px);
+}
+
+.heroContent {
+  color: white;
+}
+
+.heroBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
   background: rgba(255, 255, 255, 0.15);
+  border-radius: 50px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 24px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.heroTitle {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1.15;
+  margin-bottom: 24px;
+}
+
+.heroTitleHighlight {
+  display: block;
+  background: linear-gradient(90deg, #60a5fa 0%, #93c5fd 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.heroDescription {
+  font-size: 18px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 40px;
+  max-width: 540px;
+}
+
+.heroActions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.heroBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e40af;
+  background: white;
   border-radius: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+.heroBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.heroBtnOutline {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.heroBtnOutline:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: translateY(-2px);
+}
+
+.heroVisual {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.heroIllustration {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+}
+
+.illustrationCard {
+  background: white;
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  transform: rotate(3deg);
+}
+
+.illustrationHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.illustrationLogo {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+}
+
+.illustrationLogo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.illustrationTitle {
+  display: flex;
+  flex-direction: column;
+}
+
+.illustrationTitle span {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.illustrationTitle small {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.illustrationQR {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+  background: #f9fafb;
+  border-radius: 16px;
+  margin-bottom: 20px;
+  color: #1e40af;
+}
+
+.illustrationInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.illustrationLine {
+  height: 12px;
+  background: #e5e7eb;
+  border-radius: 6px;
+  width: 100%;
+}
+
+.illustrationLineShort {
+  height: 12px;
+  background: #e5e7eb;
+  border-radius: 6px;
+  width: 60%;
+}
+
+.floatingBadge1,
+.floatingBadge2 {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: white;
+  border-radius: 50px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+}
+
+.floatingBadge1 {
+  top: -20px;
+  left: -40px;
+  color: #16a34a;
+  animation: float 4s ease-in-out infinite;
+}
+
+.floatingBadge2 {
+  bottom: 40px;
+  right: -30px;
+  color: #1e40af;
+  animation: float 4s ease-in-out infinite 2s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.heroWave {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  line-height: 0;
+}
+
+.heroWave svg {
+  width: 100%;
+  height: auto;
+}
+
+/* ======================= */
+/* SECTION COMMON STYLES   */
+/* ======================= */
+.sectionContainer {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.sectionHeader {
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto 60px;
+}
+
+.sectionTag {
+  display: inline-block;
+  padding: 6px 16px;
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+  color: #1e40af;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 50px;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sectionTagLight {
+  display: inline-block;
+  padding: 6px 16px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 50px;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sectionTitle {
+  font-size: 36px;
+  font-weight: 800;
+  color: #1f2937;
+  margin-bottom: 16px;
+}
+
+.sectionTitleLight {
+  font-size: 36px;
+  font-weight: 800;
+  color: white;
+  margin-bottom: 16px;
+}
+
+.sectionDescription {
+  font-size: 17px;
+  color: #6b7280;
+  line-height: 1.7;
+}
+
+.sectionDescriptionLight {
+  font-size: 17px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.7;
+}
+
+/* ======================= */
+/* ABOUT SECTION           */
+/* ======================= */
+.about {
+  padding: 100px 0;
+  background: white;
+}
+
+.aboutGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+.aboutCard {
+  padding: 32px;
+  background: #f9fafb;
+  border-radius: 16px;
+  text-align: center;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.aboutCard:hover {
+  background: white;
+  border-color: #e5e7eb;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  transform: translateY(-4px);
+}
+
+.aboutIcon {
+  width: 72px;
+  height: 72px;
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -59,112 +470,605 @@
   color: white;
 }
 
-.title {
-  font-size: 28px;
+.aboutTitle {
+  font-size: 18px;
   font-weight: 700;
-  color: white;
-  margin-bottom: 8px;
+  color: #1f2937;
+  margin-bottom: 12px;
 }
 
-.subtitle {
-  font-size: 16px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 24px;
-}
-
-.description {
+.aboutDescription {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.75);
-  line-height: 1.7;
+  color: #6b7280;
+  line-height: 1.6;
 }
 
-/* CTA Section - Right Side */
-.ctaSection {
-  flex: 1;
+/* ======================= */
+/* SERVICES SECTION        */
+/* ======================= */
+.services {
+  padding: 100px 0;
+  background: #f9fafb;
+}
+
+.servicesGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.serviceCard {
+  padding: 32px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
+  transition: all 0.3s ease;
+}
+
+.serviceCard:hover {
+  border-color: #1e40af;
+  box-shadow: 0 10px 40px rgba(30, 64, 175, 0.1);
+  transform: translateY(-4px);
+}
+
+.serviceIcon {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
-  background: #f8fafc;
+  margin-bottom: 20px;
+  color: #1e40af;
 }
 
-.ctaContent {
-  max-width: 400px;
-  width: 100%;
+.serviceTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 10px;
 }
 
-.ctaCard {
+.serviceDescription {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+/* ======================= */
+/* PROCESS SECTION         */
+/* ======================= */
+.process {
+  padding: 100px 0;
   background: white;
-  padding: 40px;
-  border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-  margin-bottom: 32px;
 }
 
-.ctaTitle {
-  font-size: 24px;
+.processGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+.processCard {
+  position: relative;
+  padding: 32px 24px;
+  background: #f9fafb;
+  border-radius: 16px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.processCard:hover {
+  background: white;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  transform: translateY(-4px);
+}
+
+.processStep {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
+}
+
+.processIcon {
+  width: 56px;
+  height: 56px;
+  background: rgba(30, 64, 175, 0.1);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px auto 16px;
+  color: #1e40af;
+}
+
+.processTitle {
+  font-size: 16px;
   font-weight: 700;
   color: #1f2937;
   margin-bottom: 8px;
 }
 
-.ctaDescription {
-  font-size: 14px;
+.processDescription {
+  font-size: 13px;
   color: #6b7280;
-  margin-bottom: 24px;
+  line-height: 1.6;
 }
 
-.loginButton {
+.processArrow {
+  position: absolute;
+  right: -24px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #d1d5db;
+  z-index: 10;
+}
+
+/* ======================= */
+/* STATISTICS SECTION      */
+/* ======================= */
+.statistics {
+  padding: 100px 0;
+  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+.statCard {
+  padding: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.3s ease;
+}
+
+.statCard:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-4px);
+}
+
+.statIcon {
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: white;
+}
+
+.statValue {
+  display: block;
+  font-size: 42px;
+  font-weight: 800;
+  color: white;
+  margin-bottom: 8px;
+}
+
+.statLabel {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+}
+
+/* ======================= */
+/* CONTACT SECTION         */
+/* ======================= */
+.contact {
+  padding: 100px 0;
+  background: white;
+}
+
+.contactContent {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 60px;
+  align-items: start;
+}
+
+.contactInfo {
+  padding-right: 40px;
+}
+
+.contactDescription {
+  font-size: 17px;
+  color: #6b7280;
+  line-height: 1.7;
+  margin: 16px 0 32px;
+}
+
+.contactDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.contactItem {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.contactIcon {
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1e40af;
+  flex-shrink: 0;
+}
+
+.contactItem strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.contactItem p {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.contactCTA {
+  position: sticky;
+  top: 100px;
+}
+
+.ctaBox {
+  padding: 40px;
+  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+  border-radius: 24px;
+  color: white;
+  text-align: center;
+}
+
+.ctaBox h3 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.ctaBox p {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 28px;
+}
+
+.ctaButton {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   width: 100%;
-  padding: 14px 24px;
-  background: #1e40af;
+  padding: 16px 32px;
+  background: white;
+  color: #1e40af;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.ctaButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* ======================= */
+/* FOOTER                  */
+/* ======================= */
+.footer {
+  background: #0f172a;
+  padding: 48px 0 24px;
+}
+
+.footerContainer {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.footerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 24px;
+}
+
+.footerBrand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.footerLogo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+}
+
+.footerLogo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.footerBrandText {
+  display: flex;
+  flex-direction: column;
+}
+
+.footerBrandText strong {
+  font-size: 16px;
+  font-weight: 700;
   color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-decoration: none;
 }
 
-.loginButton:hover {
-  background: #1e3a8a;
-  transform: translateY(-1px);
+.footerBrandText span {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
 }
 
+.footerLinks {
+  display: flex;
+  gap: 32px;
+}
 
-/* Responsive */
-@media (max-width: 900px) {
-  .main {
+.footerLinks a {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  transition: color 0.2s;
+}
+
+.footerLinks a:hover {
+  color: white;
+}
+
+.footerBottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footerBottom p {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+
+/* ======================= */
+/* RESPONSIVE STYLES       */
+/* ======================= */
+@media (max-width: 1024px) {
+  .heroContainer {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 48px;
+    padding: 60px 24px 100px;
+  }
+
+  .heroContent {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .heroDescription {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .heroActions {
+    justify-content: center;
+  }
+
+  .heroVisual {
+    order: -1;
+  }
+
+  .heroIllustration {
+    max-width: 320px;
+  }
+
+  .illustrationCard {
+    transform: rotate(0deg);
+  }
+
+  .aboutGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .servicesGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .processGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 48px 24px;
+  }
+
+  .processArrow {
+    display: none;
+  }
+
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .contactContent {
+    grid-template-columns: 1fr;
+  }
+
+  .contactInfo {
+    padding-right: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .nav {
+    position: fixed;
+    top: 72px;
+    left: 0;
+    right: 0;
+    background: white;
     flex-direction: column;
+    padding: 24px;
+    gap: 0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    transform: translateY(-150%);
+    opacity: 0;
+    transition: all 0.3s ease;
   }
 
-  .brandSection {
-    padding: 60px 24px;
+  .navOpen {
+    transform: translateY(0);
+    opacity: 1;
   }
 
-  .ctaSection {
-    padding: 40px 24px;
+  .navLink {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 8px;
   }
 
-  .logoCircle {
-    width: 140px;
-    height: 140px;
+  .navLoginBtn {
+    width: 100%;
+    margin: 16px 0 0;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .mobileMenuBtn {
+    display: flex;
   }
 
   .logoText {
-    font-size: 14px;
+    font-size: 16px;
+  }
+
+  .heroTitle {
+    font-size: 32px;
+  }
+
+  .heroDescription {
+    font-size: 16px;
+  }
+
+  .heroActions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .heroBtn,
+  .heroBtnOutline {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .floatingBadge1,
+  .floatingBadge2 {
+    display: none;
+  }
+
+  .sectionTitle,
+  .sectionTitleLight {
+    font-size: 28px;
+  }
+
+  .aboutGrid,
+  .servicesGrid,
+  .processGrid,
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .footerTop {
+    flex-direction: column;
+    gap: 24px;
+    text-align: center;
+  }
+
+  .footerLinks {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px 24px;
+  }
+
+  .footerBottom {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
   }
 }
 
 @media (max-width: 480px) {
-  .ctaCard {
+  .headerContainer {
+    padding: 0 16px;
+  }
+
+  .sectionContainer {
+    padding: 0 16px;
+  }
+
+  .about,
+  .services,
+  .process,
+  .statistics,
+  .contact {
+    padding: 60px 0;
+  }
+
+  .heroContainer {
+    padding: 40px 16px 80px;
+  }
+
+  .heroTitle {
+    font-size: 28px;
+  }
+
+  .aboutCard,
+  .serviceCard,
+  .processCard,
+  .statCard {
     padding: 24px;
+  }
+
+  .ctaBox {
+    padding: 32px 24px;
+  }
+
+  .statValue {
+    font-size: 36px;
   }
 }
