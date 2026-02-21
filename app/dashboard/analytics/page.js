@@ -151,7 +151,10 @@ export default function AnalyticsPage() {
         <Card title="Residents by Purok" className={styles.chartCard}>
           <div className={styles.horizontalChart}>
             {purokDistribution.map((item, index) => (
-              <div key={index} className={styles.hBarItem}>
+              <div 
+                key={index} 
+                className={styles.hBarItem}
+              >
                 <div className={styles.hBarLabel}>
                   <span>{item.purok}</span>
                   <span className={styles.hBarCount}>{item.count}</span>
@@ -160,7 +163,13 @@ export default function AnalyticsPage() {
                   <div 
                     className={styles.hBar}
                     style={{ width: `${item.percentage}%` }}
-                  />
+                  >
+                    <span className={styles.hBarTooltip}>
+                      <strong>{item.purok}</strong>
+                      <span>{item.count} resident{item.count !== 1 ? 's' : ''}</span>
+                      <span>{item.percentage}% of total</span>
+                    </span>
+                  </div>
                 </div>
                 <span className={styles.hBarPercentage}>{item.percentage}%</span>
               </div>
