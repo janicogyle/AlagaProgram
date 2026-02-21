@@ -26,20 +26,33 @@ export default function ActionMenu({
   useEffect(() => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      const menuHeight = 200; // estimate, or you can measure after render
+      const menuWidth = 160;
+      const menuHeight = 200;
+      const padding = 12;
+      
       let top = rect.bottom + 4;
-      let left = rect.left;
-      let dropUp = false;
-      if (window.innerHeight - rect.bottom < menuHeight && rect.top > menuHeight) {
-        // Not enough space below, open upward
-        top = rect.top - menuHeight - 4;
-        dropUp = true;
+      let left = rect.right - menuWidth; // Align to right edge of trigger
+      
+      // Ensure dropdown doesn't overflow right edge
+      if (left + menuWidth > window.innerWidth - padding) {
+        left = window.innerWidth - menuWidth - padding;
       }
+      
+      // Ensure dropdown doesn't overflow left edge
+      if (left < padding) {
+        left = padding;
+      }
+      
+      // Check if dropdown should open upward
+      if (window.innerHeight - rect.bottom < menuHeight && rect.top > menuHeight) {
+        top = rect.top - menuHeight - 4;
+      }
+      
       setDropdownStyle({
         position: 'fixed',
         top: `${top}px`,
         left: `${left}px`,
-        minWidth: rect.width,
+        minWidth: menuWidth,
         zIndex: 9999,
       });
     }

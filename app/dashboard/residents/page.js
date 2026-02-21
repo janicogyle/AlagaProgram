@@ -122,7 +122,7 @@ export default function ResidentsPage() {
   return (
     <div className={styles.residentsPage}>
       <Card padding={false}>
-        <PageHeader title="All Residents">
+        <PageHeader title=" Alaga Program List">
           <Link href="/dashboard/registration">
             <Button>Add New Resident</Button>
           </Link>
@@ -152,7 +152,46 @@ export default function ResidentsPage() {
           </div>
         </FilterBar>
 
-        <Table columns={columns} data={filteredResidents} />
+        {/* Desktop Table View */}
+        <div className={styles.tableView}>
+          <Table columns={columns} data={filteredResidents} />
+        </div>
+
+        {/* Mobile Card View */}
+        <div className={styles.mobileCardView}>
+          {filteredResidents.length === 0 ? (
+            <div className={styles.emptyCard}>No residents found</div>
+          ) : (
+            filteredResidents.map((resident) => (
+              <div key={resident.id} className={styles.residentCard}>
+                <div className={styles.cardHeader}>
+                  <div className={styles.cardNameSection}>
+                    <span className={styles.cardName}>{resident.name}</span>
+                    <Badge variant={resident.status === 'Active' ? 'success' : 'danger'}>{resident.status}</Badge>
+                  </div>
+                  <ActionMenu actions={getResidentActions(resident)} />
+                </div>
+                <div className={styles.cardBody}>
+                  <div className={styles.cardBadges}>
+                    {resident.sector.map((s, i) => (
+                      <Badge key={i}>{s}</Badge>
+                    ))}
+                  </div>
+                  <div className={styles.cardDetails}>
+                    <div className={styles.cardDetail}>
+                      <span className={styles.detailLabel}>Purok</span>
+                      <span className={styles.detailValue}>{resident.purok}</span>
+                    </div>
+                    <div className={styles.cardDetail}>
+                      <span className={styles.detailLabel}>Age</span>
+                      <span className={styles.detailValue}>{resident.age}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
 
         <DataTableFooter
           showing={filteredResidents.length}

@@ -82,10 +82,199 @@
   margin: 0;
 }
 
+/* Table/Card View Toggle */
+.tableView {
+  display: block;
+}
+
+.mobileCardView {
+  display: none;
+}
+
+.residentCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.residentCard:last-child {
+  margin-bottom: 0;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.cardNameSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardName {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cardBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cardDetails {
+  display: flex;
+  gap: 24px;
+}
+
+.cardDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detailLabel {
+  font-size: 11px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detailValue {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.emptyCard {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .filterGroup {
-    justify-content: space-between;
     flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .residentName {
+    font-size: 16px;
+  }
+
+  .controlNumber {
+    font-size: 13px;
+  }
+
+  .qrPlaceholder {
+    width: 160px;
+    height: 160px;
+  }
+}
+
+@media (max-width: 768px) {
+  .residentsPage {
+    gap: 20px;
+  }
+
+  /* Switch to card view on mobile */
+  .tableView {
+    display: none;
+  }
+
+  .mobileCardView {
+    display: block;
+    padding: 0 16px 16px;
+  }
+
+  .residentCard {
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .cardName {
+    font-size: 14px;
+  }
+
+  .cardBadges {
+    gap: 4px;
+  }
+
+  .cardDetails {
+    gap: 20px;
+  }
+
+  .detailLabel {
+    font-size: 10px;
+  }
+
+  .detailValue {
+    font-size: 13px;
+  }
+
+  .filterGroup {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .badges {
+    gap: 4px;
+  }
+
+  .qrModalContent {
+    gap: 20px;
+    padding: 12px 0;
+  }
+
+  .residentName {
+    font-size: 16px;
+  }
+
+  .qrPlaceholder {
+    width: 150px;
+    height: 150px;
+  }
+}
+
+@media (max-width: 576px) {
+  .residentsPage {
+    gap: 16px;
+  }
+
+  .filterGroup {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .residentBadges {
+    flex-wrap: wrap;
+  }
+
+  .qrPlaceholder {
+    width: 140px;
+    height: 140px;
+  }
+
+  .qrPlaceholderText {
+    font-size: 11px;
+  }
+
+  .qrHint {
+    font-size: 11px;
   }
 }

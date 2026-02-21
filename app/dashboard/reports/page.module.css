@@ -107,13 +107,186 @@
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 900px) {
+  .reportCard {
+    padding: 16px;
+  }
+
+  .reportIcon {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 14px;
+  }
+
+  .reportTitle {
+    font-size: 15px;
+  }
+
+  .reportDesc {
+    font-size: 12px;
+  }
+
+  .summaryCard {
+    padding: 20px 14px;
+  }
+
+  .summaryValue {
+    font-size: 24px;
+  }
+
+  .summaryLabel {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .reportsPage {
+    gap: 20px;
+  }
+
   .reportGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .reportCard {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .reportIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+  }
+
+  .reportTitle {
+    font-size: 14px;
+    margin-bottom: 2px;
+  }
+
+  .reportDesc {
+    font-size: 11px;
+    line-height: 1.3;
+  }
+
+  .reportCount {
+    margin-top: 10px;
+    font-size: 11px;
   }
 
   .summaryGrid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .summaryCard {
+    padding: 16px 12px;
+    border-radius: 10px;
+  }
+
+  .summaryIcon {
+    font-size: 20px;
+    margin-bottom: 6px;
+  }
+
+  .summaryValue {
+    font-size: 22px;
+  }
+
+  .summaryLabel {
+    font-size: 11px;
+  }
+
+  .formatOptions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .formatBtn {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 576px) {
+  .reportsPage {
+    gap: 16px;
+  }
+
+  .reportGrid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .reportCard {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .reportIcon {
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .reportInfo {
+    text-align: left;
+  }
+
+  .reportCount {
+    margin-top: 6px;
+  }
+
+  .summaryGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .summaryCard {
+    padding: 14px 10px;
+  }
+
+  .summaryValue {
+    font-size: 20px;
+  }
+
+  .confirmDetails {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .confirmDetail {
+    font-size: 13px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+}
+
+@media (max-width: 375px) {
+  .reportCard {
+    padding: 12px;
+  }
+
+  .reportIcon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+  }
+
+  .reportTitle {
+    font-size: 13px;
+  }
+
+  .summaryValue {
+    font-size: 18px;
+  }
+
+  .summaryLabel {
+    font-size: 10px;
   }
 }
 

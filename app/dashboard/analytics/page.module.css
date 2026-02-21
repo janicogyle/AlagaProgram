@@ -401,15 +401,109 @@
   }
 }
 
+@media (max-width: 900px) {
+  .header h2 {
+    font-size: 24px;
+  }
+
+  .header p {
+    font-size: 14px;
+  }
+
+  .kpiCard {
+    padding: 20px;
+  }
+
+  .kpiValue {
+    font-size: 28px;
+  }
+
+  .kpiTitle {
+    font-size: 12px;
+  }
+
+  .kpiIcon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .chartCard {
+    min-height: 280px;
+  }
+
+  .lineChart,
+  .barChart {
+    height: 180px;
+  }
+
+  .assistanceItem {
+    padding: 16px;
+  }
+
+  .assistanceHeader h4 {
+    font-size: 14px;
+  }
+
+  .count {
+    font-size: 20px;
+  }
+
+  .insight {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .insightContent h4 {
+    font-size: 15px;
+  }
+
+  .insightContent p {
+    font-size: 13px;
+  }
+}
+
 @media (max-width: 768px) {
+  .analyticsPage {
+    gap: 20px;
+  }
+
   .header {
     flex-direction: column;
     align-items: stretch;
     gap: 16px;
   }
+
+  .header h2 {
+    font-size: 22px;
+  }
   
   .kpiGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .kpiCard {
+    padding: 16px;
+  }
+
+  .kpiValue {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+
+  .kpiTitle {
+    font-size: 11px;
+  }
+
+  .kpiIcon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .kpiGrowth {
+    font-size: 12px;
+    flex-wrap: wrap;
+    gap: 4px;
   }
   
   .assistanceGrid {
@@ -418,5 +512,157 @@
   
   .periodSelect {
     min-width: auto;
+  }
+
+  .lineChart,
+  .barChart {
+    height: 160px;
+    gap: 12px;
+  }
+
+  .lineBar {
+    width: 20px;
+  }
+
+  .lineLabel,
+  .barLabel {
+    font-size: 10px;
+  }
+
+  .barValue {
+    font-size: 12px;
+  }
+
+  .bar {
+    max-width: 32px;
+  }
+
+  .pieContainer {
+    width: 120px;
+    height: 120px;
+  }
+
+  .pieContainer::after {
+    width: 50px;
+    height: 50px;
+  }
+
+  .legendItem {
+    font-size: 12px;
+  }
+
+  .hBarItem {
+    grid-template-columns: 60px 1fr 40px;
+    gap: 8px;
+  }
+
+  .hBarLabel span:first-child {
+    font-size: 12px;
+  }
+
+  .hBarCount {
+    font-size: 10px;
+  }
+
+  .hBarContainer {
+    height: 20px;
+  }
+}
+
+@media (max-width: 576px) {
+  .analyticsPage {
+    gap: 16px;
+  }
+
+  .header h2 {
+    font-size: 20px;
+  }
+
+  .header p {
+    font-size: 13px;
+  }
+
+  .kpiGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .kpiCard {
+    padding: 16px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .kpiHeader {
+    flex-direction: row-reverse;
+    margin-bottom: 0;
+    gap: 12px;
+    flex: 1;
+  }
+
+  .kpiValue {
+    font-size: 22px;
+    margin-bottom: 2px;
+  }
+
+  .chartsGrid {
+    gap: 16px;
+  }
+
+  .chartCard {
+    min-height: 240px;
+  }
+
+  .lineChart,
+  .barChart {
+    height: 140px;
+  }
+
+  .insight {
+    flex-direction: column;
+    text-align: center;
+    padding: 16px;
+  }
+
+  .insightIcon {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 375px) {
+  .kpiCard {
+    padding: 14px;
+  }
+
+  .kpiValue {
+    font-size: 20px;
+  }
+
+  .kpiIcon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .assistanceItem {
+    padding: 14px;
+  }
+
+  .assistanceHeader h4 {
+    font-size: 13px;
+  }
+
+  .assistanceAmount {
+    font-size: 12px;
+    padding: 3px 6px;
+  }
+
+  .count {
+    font-size: 18px;
+  }
+
+  .countLabel {
+    font-size: 11px;
   }
 }

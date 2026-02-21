@@ -239,7 +239,48 @@ export default function AssistancePage() {
           />
         </FilterBar>
 
-        <Table columns={columns} data={filteredAssistance} />
+        {/* Desktop Table View */}
+        <div className={styles.tableView}>
+          <Table columns={columns} data={filteredAssistance} />
+        </div>
+
+        {/* Mobile Card View */}
+        <div className={styles.mobileCardView}>
+          {filteredAssistance.length === 0 ? (
+            <div className={styles.emptyCard}>No records found</div>
+          ) : (
+            filteredAssistance.map((record) => (
+              <div key={record.id} className={styles.recordCard}>
+                <div className={styles.cardHeader}>
+                  <span className={styles.controlNo}>{record.controlNo}</span>
+                  {getStatusBadge(record.status)}
+                </div>
+                <div className={styles.cardBody}>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Requester</span>
+                    <span className={styles.cardValue}>{record.requester}</span>
+                  </div>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Beneficiary</span>
+                    <span className={styles.cardValue}>{record.beneficiary}</span>
+                  </div>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Type</span>
+                    <Badge>{record.type}</Badge>
+                  </div>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Amount</span>
+                    <span className={styles.cardValue}>{record.amount}</span>
+                  </div>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Date</span>
+                    <span className={styles.cardValue}>{record.date}</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
 
         <DataTableFooter
           showing={filteredAssistance.length}

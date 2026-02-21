@@ -1,6 +1,10 @@
+'use client';
+
 import Card from '@/components/Card';
 import Table from '@/components/Table';
 import Badge from '@/components/Badge';
+import BarChart from '@/components/BarChart';
+import PieChart from '@/components/PieChart';
 import styles from './page.module.css';
 
 // Sample data - Replace with actual data from Supabase
@@ -11,11 +15,27 @@ const kpiData = [
   { title: 'Solo Parents', current: 2, previous: 1, growth: 100, icon: 'parent', color: 'orange' },
 ];
 
+// Chart data - Ready for backend integration
 const monthlyRegistrations = [
+  { month: 'Apr', registrations: 1 },
+  { month: 'May', registrations: 2 },
+  { month: 'Jun', registrations: 3 },
+  { month: 'Jul', registrations: 2 },
+  { month: 'Aug', registrations: 4 },
+  { month: 'Sep', registrations: 3 },
   { month: 'Oct', registrations: 2 },
   { month: 'Nov', registrations: 3 },
   { month: 'Dec', registrations: 1 },
   { month: 'Jan', registrations: 2 },
+  { month: 'Feb', registrations: 3 },
+  { month: 'Mar', registrations: 2 },
+];
+
+// Sector distribution data - Ready for backend calculation
+const sectorDistribution = [
+  { label: 'PWD', value: 3, color: '#7c3aed' },
+  { label: 'Senior Citizens', value: 3, color: '#1e40af' },
+  { label: 'Solo Parents', value: 2, color: '#16a34a' },
 ];
 
 const recentRegistrations = [
@@ -80,42 +100,24 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts Section */}
-      <div className={styles.chartsSection}>
+      <div className={styles.chartsGrid}>
         {/* Registration Trends */}
-        <Card title="Registration Trends" subtitle="Monthly registration activity">
-          <div className={styles.lineChart}>
-            {monthlyRegistrations.map((item, index) => (
-              <div key={index} className={styles.linePoint}>
-                <div 
-                  className={styles.lineBar}
-                  style={{ height: `${(item.registrations / 3) * 100}%` }}
-                />
-                <span className={styles.lineLabel}>{item.month}</span>
-                <span className={styles.lineValue}>{item.registrations}</span>
-              </div>
-            ))}
-          </div>
+        <Card title="Registration Trends" className={styles.chartCard}>
+          <BarChart 
+            data={monthlyRegistrations}
+            labelKey="month"
+            valueKey="registrations"
+            height={200}
+          />
         </Card>
 
         {/* Sector Distribution */}
-        <Card title="Sector Distribution" subtitle="Breakdown of residents by sector">
-          <div className={styles.pieChart}>
-            <div className={styles.pieContainer}></div>
-            <div className={styles.pieLegend}>
-              <div className={styles.legendItem}>
-                <div className={styles.legendColor} style={{ backgroundColor: '#7c3aed' }}></div>
-                <span>PWD (37%)</span>
-              </div>
-              <div className={styles.legendItem}>
-                <div className={styles.legendColor} style={{ backgroundColor: '#1e40af' }}></div>
-                <span>Senior Citizens (37%)</span>
-              </div>
-              <div className={styles.legendItem}>
-                <div className={styles.legendColor} style={{ backgroundColor: '#16a34a' }}></div>
-                <span>Solo Parents (26%)</span>
-              </div>
-            </div>
-          </div>
+        <Card title="Sector Distribution" className={styles.chartCard}>
+          <PieChart 
+            data={sectorDistribution}
+            size={150}
+            donut={true}
+          />
         </Card>
       </div>
 

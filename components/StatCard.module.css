@@ -40,3 +40,65 @@
   align-items: center;
   justify-content: center;
 }
+
+/* ======================= */
+/* RESPONSIVE STYLES       */
+/* ======================= */
+@media (max-width: 900px) {
+  .statCard {
+    padding: 16px;
+  }
+
+  .value {
+    font-size: 28px;
+  }
+
+  .iconWrapper {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (max-width: 768px) {
+  .statCard {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .title {
+    font-size: 12px;
+  }
+
+  .value {
+    font-size: 24px;
+  }
+
+  .subtitle {
+    font-size: 11px;
+  }
+
+  .iconWrapper {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+}
+
+@media (max-width: 576px) {
+  .statCard {
+    padding: 12px;
+  }
+
+  .title {
+    font-size: 11px;
+  }
+
+  .value {
+    font-size: 20px;
+  }
+
+  .iconWrapper {
+    width: 28px;
+    height: 28px;
+  }
+}

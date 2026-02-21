@@ -2,7 +2,6 @@
   background-color: white;
   border-radius: 12px;
   border: 1px solid #e5e7eb;
-  overflow: hidden;
 }
 
 .withPadding {
@@ -28,4 +27,47 @@
 
 .cardContent {
   width: 100%;
+}
+
+/* ======================= */
+/* RESPONSIVE STYLES       */
+/* ======================= */
+@media (max-width: 900px) {
+  .card {
+    border-radius: 10px;
+  }
+
+  .withPadding {
+    padding: 16px;
+  }
+
+  .cardTitle {
+    font-size: 15px;
+  }
+
+  .cardSubtitle {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 576px) {
+  .card {
+    border-radius: 10px;
+  }
+
+  .withPadding {
+    padding: 14px;
+  }
+
+  .cardHeader {
+    margin-bottom: 12px;
+  }
+
+  .cardTitle {
+    font-size: 14px;
+  }
+
+  .cardSubtitle {
+    font-size: 11px;
+  }
 }

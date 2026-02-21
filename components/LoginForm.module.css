@@ -38,13 +38,97 @@
   line-height: 1.5;
 }
 
-@media (max-width: 480px) {
+/* ======================= */
+/* RESPONSIVE STYLES       */
+/* ======================= */
+@media (max-width: 900px) {
   .form {
-    padding: 24px;
-    margin: 16px;
+    padding: 32px;
+    max-width: 400px;
+  }
+
+  .formHeader {
+    margin-bottom: 28px;
+  }
+
+  .title {
+    font-size: 26px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 768px) {
+  .form {
+    padding: 28px 24px;
+    border-radius: 14px;
+    max-width: 100%;
+  }
+
+  .formHeader {
+    margin-bottom: 24px;
   }
 
   .title {
     font-size: 24px;
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+  }
+
+  .formFields {
+    gap: 16px;
+  }
+
+  .note {
+    margin-top: 20px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 576px) {
+  .form {
+    padding: 24px 20px;
+    margin: 0;
+    border-radius: 12px;
+  }
+
+  .formHeader {
+    margin-bottom: 20px;
+  }
+
+  .title {
+    font-size: 22px;
+  }
+
+  .subtitle {
+    font-size: 12px;
+  }
+
+  .formFields {
+    gap: 14px;
+  }
+
+  .note {
+    margin-top: 18px;
+  }
+}
+
+@media (max-width: 375px) {
+  .form {
+    padding: 20px 16px;
+    border-radius: 10px;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+
+  .formFields {
+    gap: 12px;
   }
 }

@@ -204,22 +204,165 @@
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+  .requirementsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .guidelinesPage {
+    gap: 20px;
+  }
+
+  .content {
+    gap: 28px;
+  }
+
+  .sectionTitle {
+    font-size: 16px;
+    gap: 10px;
+  }
+
+  .requirementsGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .cardHeader {
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .cardIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+  }
+
+  .cardTitle {
+    font-size: 15px;
+  }
+
+  .cardFooter {
+    margin-top: 16px;
+    padding-top: 14px;
+  }
+
+  .ceilingAmount {
+    font-size: 16px;
+  }
+
+  .contactContent {
+    gap: 20px;
+  }
+}
+
 @media (max-width: 768px) {
+  .guidelinesPage {
+    gap: 16px;
+  }
+
   .pageHeader {
     margin: -16px -16px 0 -16px;
     padding: 24px 16px;
   }
 
   .pageTitle {
-    font-size: 22px;
+    font-size: 20px;
   }
 
-  .requirementsGrid {
-    grid-template-columns: 1fr;
+  .pageSubtitle {
+    font-size: 13px;
+  }
+
+  .content {
+    gap: 24px;
+  }
+
+  .section {
+    gap: 14px;
+  }
+
+  .sectionTitle {
+    font-size: 15px;
+  }
+
+  .checkList {
+    gap: 8px;
+  }
+
+  .checkList li {
+    font-size: 13px;
+    gap: 8px;
+  }
+
+  .checkIcon {
+    width: 18px;
+    height: 18px;
+    font-size: 11px;
   }
 
   .contactContent {
     flex-direction: column;
     text-align: center;
+    gap: 16px;
+  }
+
+  .notesList li {
+    font-size: 13px;
+    padding-left: 18px;
+  }
+}
+
+@media (max-width: 576px) {
+  .guidelinesPage {
+    gap: 14px;
+  }
+
+  .pageTitle {
+    font-size: 18px;
+  }
+
+  .pageSubtitle {
+    font-size: 12px;
+  }
+
+  .sectionTitle {
+    font-size: 14px;
+    gap: 8px;
+  }
+
+  .cardIcon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .cardTitle {
+    font-size: 14px;
+  }
+
+  .checkList li {
+    font-size: 12px;
+  }
+
+  .ceilingLabel {
+    font-size: 12px;
+  }
+
+  .ceilingAmount {
+    font-size: 15px;
+  }
+
+  .contactInfo h3 {
+    font-size: 14px;
+  }
+
+  .contactInfo p {
+    font-size: 13px;
+  }
+
+  .notesList li {
+    font-size: 12px;
   }
 }

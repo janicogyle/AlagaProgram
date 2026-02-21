@@ -92,3 +92,53 @@
   font-size: 12px;
   color: #dc2626;
 }
+
+/* ======================= */
+/* RESPONSIVE STYLES       */
+/* ======================= */
+@media (max-width: 768px) {
+  .label {
+    font-size: 13px;
+  }
+
+  .input {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .withIcon {
+    padding-left: 40px;
+  }
+
+  .inputIcon {
+    left: 12px;
+  }
+
+  .errorMessage {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 576px) {
+  .inputGroup {
+    gap: 4px;
+  }
+
+  .label {
+    font-size: 12px;
+  }
+
+  .input {
+    padding: 10px 12px;
+    font-size: 13px;
+    border-radius: 6px;
+  }
+
+  .withIcon {
+    padding-left: 36px;
+  }
+
+  .inputIcon {
+    left: 10px;
+  }
+}
