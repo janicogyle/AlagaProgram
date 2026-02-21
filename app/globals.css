@@ -25,6 +25,13 @@ body {
   overflow-x: hidden;
 }
 
+html {
+  /* Smooth scrolling for anchor links */
+  scroll-behavior: smooth;
+  /* Prevent iOS text size adjust */
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
@@ -32,6 +39,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
+  /* Prevent pull-to-refresh on mobile in some cases */
+  overscroll-behavior: contain;
 }
 
 a {
@@ -41,4 +50,47 @@ a {
 
 button {
   font-family: inherit;
+  /* Prevent tap highlight on mobile */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Improve touch targets on mobile */
+input,
+button,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Ensure images don't exceed their containers */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Scrollbar styles for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Responsive scrollbar - thinner on mobile */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
 }

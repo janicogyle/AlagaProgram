@@ -293,7 +293,85 @@ export default function RequestsPage() {
           />
         </FilterBar>
 
-        <Table columns={columns} data={filteredRequests} />
+        {/* Desktop Table View */}
+        <div className={styles.tableView}>
+          <Table columns={columns} data={filteredRequests} />
+        </div>
+
+        {/* Mobile Card View */}
+        <div className={styles.mobileCardView}>
+          {filteredRequests.length === 0 ? (
+            <div className={styles.emptyCard}>No requests found</div>
+          ) : (
+            filteredRequests.map((request) => (
+              <div key={request.id} className={styles.requestCard}>
+                <div className={styles.cardHeader}>
+                  <div className={styles.cardHeaderLeft}>
+                    <span className={styles.cardControlNo}>{request.controlNo}</span>
+                    {getStatusBadge(request.status)}
+                  </div>
+                  <div className={styles.cardActions}>
+                    <button 
+                      className={styles.viewBtn}
+                      onClick={() => handleViewRequest(request)}
+                      title="View Details"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    </button>
+                    {request.status === 'Pending' && (
+                      <>
+                        <button 
+                          className={styles.approveBtn}
+                          onClick={() => handleOpenDecision(request, 'approve')}
+                          title="Approve"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </button>
+                        <button 
+                          className={styles.rejectBtn}
+                          onClick={() => handleOpenDecision(request, 'reject')}
+                          title="Reject"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className={styles.cardBody}>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Requester</span>
+                    <span className={styles.cardValue}>{request.requester}</span>
+                  </div>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Beneficiary</span>
+                    <span className={styles.cardValue}>{request.beneficiary}</span>
+                  </div>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Type</span>
+                    <Badge>{request.type}</Badge>
+                  </div>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Amount</span>
+                    <span className={styles.cardValue}>{request.amount}</span>
+                  </div>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Date</span>
+                    <span className={styles.cardValue}>{request.date}</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
 
         <DataTableFooter
           showing={filteredRequests.length}

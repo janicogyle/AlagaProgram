@@ -108,6 +108,17 @@
   gap: 20px;
 }
 
+/* Charts Grid - matching analytics page */
+.chartsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+.chartCard {
+  min-height: 320px;
+}
+
 /* Line Chart */
 .lineChart {
   display: flex;
@@ -241,12 +252,6 @@
   padding: 16px 0;
 }
 
-.pieChart {
-  width: 160px;
-  height: 160px;
-  flex-shrink: 0;
-}
-
 .pieSvg {
   width: 100%;
   height: 100%;
@@ -323,19 +328,193 @@
   .chartsSection {
     grid-template-columns: 1fr;
   }
+
+  .header h2 {
+    font-size: 24px;
+  }
+
+  .header p {
+    font-size: 14px;
+  }
+
+  .kpiCard {
+    padding: 20px;
+  }
+
+  .kpiValue {
+    font-size: 28px;
+  }
+
+  .kpiTitle {
+    font-size: 12px;
+  }
+
+  .kpiIcon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .insight {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .insightIcon {
+    font-size: 28px;
+  }
+
+  .insightContent h4 {
+    font-size: 15px;
+  }
+
+  .insightContent p {
+    font-size: 13px;
+  }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
+  .dashboard {
+    gap: 20px;
+  }
+
+  .header h2 {
+    font-size: 22px;
+  }
+
   .kpiGrid,
   .statsGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .kpiCard {
+    padding: 16px;
+  }
+
+  .kpiValue {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+
+  .kpiTitle {
+    font-size: 11px;
+  }
+
+  .kpiIcon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .kpiGrowth {
+    font-size: 12px;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .lineChart {
+    height: 160px;
+    padding: 16px 0;
+  }
+
+  .lineBar {
+    width: 20px;
+  }
+
+  .lineLabel {
+    font-size: 10px;
+  }
+
+  .lineValue {
+    font-size: 12px;
+  }
+
+  .pieContainer {
+    width: 120px;
+    height: 120px;
+  }
+
+  .pieContainer::after {
+    width: 50px;
+    height: 50px;
+  }
+
+  .legendItem {
+    font-size: 12px;
   }
 
   .pieChartContainer {
     flex-direction: column;
+    align-items: center;
+    text-align: center;
   }
-  
+
   .pieChart {
+    width: 140px;
+    height: 140px;
+  }
+}
+
+@media (max-width: 576px) {
+  .dashboard {
+    gap: 16px;
+  }
+
+  .header h2 {
+    font-size: 20px;
+  }
+
+  .header p {
+    font-size: 13px;
+  }
+
+  .kpiGrid,
+  .statsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .kpiCard {
+    padding: 16px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .kpiHeader {
+    flex-direction: row-reverse;
+    margin-bottom: 0;
+    gap: 12px;
+    flex: 1;
+  }
+
+  .kpiValue {
+    font-size: 22px;
+    margin-bottom: 2px;
+  }
+
+  .insight {
     flex-direction: column;
+    text-align: center;
+    padding: 16px;
+  }
+
+  .insightIcon {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 375px) {
+  .kpiCard {
+    padding: 14px;
+  }
+
+  .kpiValue {
+    font-size: 20px;
+  }
+
+  .kpiIcon {
+    width: 28px;
+    height: 28px;
   }
 }

@@ -1,0 +1,135 @@
+.chartContainer {
+  width: 100%;
+  padding: 8px 0 0 0;
+}
+
+.barChart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 100%;
+  gap: 4px;
+  padding-bottom: 0;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.barGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  height: 100%;
+  min-width: 24px;
+}
+
+.barWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+  width: 100%;
+  position: relative;
+}
+
+.bar {
+  width: 100%;
+  max-width: 28px;
+  min-height: 4px;
+  border-radius: 4px 4px 0 0;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.bar:hover,
+.barHovered {
+  transform: scaleX(1.1);
+  filter: brightness(1.1);
+}
+
+.tooltip {
+  position: absolute;
+  top: -45px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2937;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: fadeIn 0.15s ease;
+}
+
+.tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px 6px 0 6px;
+  border-style: solid;
+  border-color: #1f2937 transparent transparent transparent;
+}
+
+.tooltipLabel {
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.tooltipValue {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.barValue {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.barLabel {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 500;
+  margin-top: 6px;
+  text-align: center;
+}
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .bar {
+    width: 24px;
+  }
+  
+  .barLabel {
+    font-size: 10px;
+  }
+}

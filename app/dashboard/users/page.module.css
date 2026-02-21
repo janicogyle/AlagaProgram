@@ -47,10 +47,65 @@
 }
 
 /* Responsive */
+@media (max-width: 900px) {
+  .usersPage {
+    gap: 20px;
+  }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 11px;
+  }
+
+  .userName {
+    font-size: 13px;
+  }
+
+  .userEmail {
+    font-size: 11px;
+  }
+}
+
 @media (max-width: 768px) {
+  .usersPage {
+    gap: 16px;
+  }
+
   .userCell {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+  }
+
+  .placeholder {
+    padding: 32px 16px;
+  }
+}
+
+@media (max-width: 576px) {
+  .userCell {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 10px;
+  }
+
+  .userName {
+    font-size: 12px;
+  }
+
+  .userEmail {
+    font-size: 10px;
+  }
+
+  .placeholder {
+    padding: 24px 12px;
+    font-size: 13px;
   }
 }

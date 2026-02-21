@@ -102,18 +102,45 @@
   text-align: center;
 }
 
-/* Responsive */
+/* ======================= */
+/* RESPONSIVE STYLES       */
+/* ======================= */
+@media (max-width: 1024px) {
+  .brandSection {
+    padding: 48px 32px;
+  }
+
+  .loginSection {
+    padding: 48px 32px;
+  }
+
+  .logoCircle {
+    width: 160px;
+    height: 160px;
+  }
+
+  .title {
+    font-size: 26px;
+  }
+
+  .subtitle {
+    font-size: 15px;
+  }
+}
+
 @media (max-width: 900px) {
   .main {
     flex-direction: column;
   }
 
   .brandSection {
-    padding: 60px 24px;
+    padding: 48px 24px;
+    min-height: auto;
   }
 
   .loginSection {
     padding: 40px 24px;
+    flex: none;
   }
 
   .logoCircle {
@@ -123,5 +150,138 @@
 
   .logoText {
     font-size: 14px;
+  }
+
+  .systemIcon {
+    width: 52px;
+    height: 52px;
+    margin-bottom: 16px;
+  }
+
+  .title {
+    font-size: 24px;
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+
+  .description {
+    font-size: 13px;
+  }
+
+  .errorBanner {
+    max-width: 100%;
+    font-size: 13px;
+    padding: 10px 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .brandSection {
+    padding: 40px 20px;
+  }
+
+  .loginSection {
+    padding: 32px 20px;
+  }
+
+  .brandContent {
+    max-width: 100%;
+  }
+
+  .logoContainer {
+    margin-bottom: 24px;
+  }
+
+  .logoCircle {
+    width: 120px;
+    height: 120px;
+    border-width: 3px;
+  }
+
+  .logoText {
+    font-size: 13px;
+  }
+
+  .systemIcon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+  }
+
+  .title {
+    font-size: 22px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+
+  .description {
+    font-size: 12px;
+    display: none;
+  }
+}
+
+@media (max-width: 576px) {
+  .brandSection {
+    padding: 32px 16px;
+  }
+
+  .loginSection {
+    padding: 28px 16px 40px;
+  }
+
+  .logoCircle {
+    width: 100px;
+    height: 100px;
+  }
+
+  .logoText {
+    font-size: 12px;
+  }
+
+  .systemIcon {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 12px;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+
+  .subtitle {
+    font-size: 12px;
+  }
+
+  .errorBanner {
+    font-size: 12px;
+    padding: 10px 14px;
+    border-radius: 6px;
+  }
+}
+
+@media (max-width: 375px) {
+  .brandSection {
+    padding: 28px 14px;
+  }
+
+  .loginSection {
+    padding: 24px 14px 36px;
+  }
+
+  .logoCircle {
+    width: 90px;
+    height: 90px;
+  }
+
+  .title {
+    font-size: 18px;
   }
 }

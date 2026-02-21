@@ -291,7 +291,7 @@ export default function HomePage() {
               <span className={styles.heroTitleHighlight}>Digital Identification System</span>
             </h1>
             <p className={styles.heroDescription}>
-              A comprehensive digital platform for managing resident profiles, tracking assistance programs, 
+              A digital platform for managing resident profiles, tracking assistance programs, 
               and generating QR-coded identification for PWD, Senior Citizens, and Solo Parents in our barangay.
             </p>
             <div className={styles.heroActions}>
@@ -367,7 +367,7 @@ export default function HomePage() {
         <div className={styles.sectionContainer}>
           <div className={styles.sectionHeader}>
             <span className={styles.sectionTag}>About the System</span>
-            <h2 className={styles.sectionTitle}>Streamlining Barangay Services</h2>
+            <h2 className={styles.sectionTitle}>Barangay Services</h2>
             <p className={styles.sectionDescription}>
               Our Digital Identification System modernizes how we manage resident records, 
               track assistance programs, and deliver services to our community.
