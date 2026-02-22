@@ -407,7 +407,7 @@ export default function RegistrationPage() {
                 name="representativeContact"
                 value={formData.representativeContact}
                 onChange={handleChange}
-                placeholder="09XX XXX XXXX"
+                placeholder="09-- --- ----"
                 maxLength={11}
               />
             </div>
