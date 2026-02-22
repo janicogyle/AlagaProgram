@@ -130,9 +130,9 @@ export default function Sidebar({ user, onLogout, minimized }) {
 
       <div className={styles.userSection}>
         <div className={styles.userInfo}>
-          <div className={styles.userAvatar}>
-            {user?.name?.charAt(0) || 'AU'}
-          </div>
+            <div className={styles.userAvatar}>
+              {user?.name?.charAt(0) || 'AU'}
+            </div>
           {!minimized && (
             <div className={styles.userDetails}>
               <span className={styles.userName}>{user?.name || 'Admin User'}</span>

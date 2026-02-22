@@ -57,7 +57,15 @@ export default function RegistrationPage() {
     representativeName: '',
     representativeContact: '',
   });
-  const [documents, setDocuments] = useState([]);
+  const [requiredDocuments, setRequiredDocuments] = useState([
+    'Valid Government-issued ID (e.g., PhilSys, SSS, GSIS, Voter\'s ID)',
+    'Barangay Certificate of Residency',
+    'Birth Certificate (PSA or Local Civil Registrar)',
+    '1x1 or 2x2 Recent ID Photo',
+    'PWD ID / Senior Citizen ID / Solo Parent ID (if applicable)',
+  ]);
+  const [newDocument, setNewDocument] = useState('');
+  const [isEditingDocs, setIsEditingDocs] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Generate control number on mount
@@ -107,23 +115,23 @@ export default function RegistrationPage() {
     }));
   };
 
-  const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    setDocuments((prev) => [...prev, ...files]);
+  const handleAddDocument = () => {
+    const trimmed = newDocument.trim();
+    if (trimmed && !requiredDocuments.includes(trimmed)) {
+      setRequiredDocuments((prev) => [...prev, trimmed]);
+      setNewDocument('');
+    }
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    const files = Array.from(e.dataTransfer.files);
-    setDocuments((prev) => [...prev, ...files]);
+  const handleRemoveDocument = (index) => {
+    setRequiredDocuments((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
-
-  const removeDocument = (index) => {
-    setDocuments((prev) => prev.filter((_, i) => i !== index));
+  const handleDocumentKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddDocument();
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -144,7 +152,6 @@ export default function RegistrationPage() {
         age: calculateAge(formData.birthday),
       };
       console.log('Form Data:', submissionData);
-      console.log('Documents:', documents);
 
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -172,7 +179,6 @@ export default function RegistrationPage() {
         representativeName: '',
         representativeContact: '',
       });
-      setDocuments([]);
       setControlNumber(generateControlNumber());
 
       alert('Registration saved successfully!');
@@ -207,7 +213,6 @@ export default function RegistrationPage() {
       representativeName: '',
       representativeContact: '',
     });
-    setDocuments([]);
     setControlNumber(generateControlNumber());
   };
 
@@ -408,49 +413,88 @@ export default function RegistrationPage() {
             </div>
           </Card>
 
-          {/* Document Upload */}
-          <Card title="Document Upload" subtitle="Upload ID or supporting documents">
-            <div 
-              className={styles.uploadArea}
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-            >
-              <input
-                type="file"
-                id="fileUpload"
-                multiple
-                onChange={handleFileChange}
-                className={styles.fileInput}
-                accept=".pdf,.jpg,.jpeg,.png"
-              />
-              <label htmlFor="fileUpload" className={styles.uploadLabel}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-                <span>Drag and drop files here or</span>
-                <span className={styles.browseLink}>Browse files</span>
-              </label>
-            </div>
-            {documents.length > 0 && (
-              <div className={styles.fileList}>
-                {documents.map((file, index) => (
-                  <div key={index} className={styles.fileItem}>
-                    <div className={styles.fileInfo}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                      </svg>
-                      <span>{file.name}</span>
-                    </div>
-                    <button type="button" onClick={() => removeDocument(index)} className={styles.removeBtn}>
-                      ×
-                    </button>
-                  </div>
-                ))}
+          {/* Required Documents */}
+          <Card
+            title="Required Documents"
+            subtitle="Prepare the following documents for submission"
+            headerAction={
+              <button
+                type="button"
+                className={isEditingDocs ? styles.savDocsBtn : styles.editDocsBtn}
+                onClick={() => {
+                  if (isEditingDocs) setNewDocument('');
+                  setIsEditingDocs(!isEditingDocs);
+                }}
+              >
+                {isEditingDocs ? (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                      <polyline points="17 21 17 13 7 13 7 21" />
+                      <polyline points="7 3 7 8 15 8" />
+                    </svg>
+                    Save
+                  </>
+                ) : (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    Edit
+                  </>
+                )}
+              </button>
+            }
+          >
+            {isEditingDocs && (
+              <div className={styles.addDocumentRow}>
+                <input
+                  type="text"
+                  className={styles.addDocumentInput}
+                  value={newDocument}
+                  onChange={(e) => setNewDocument(e.target.value)}
+                  onKeyDown={handleDocumentKeyDown}
+                  placeholder="Enter document name"
+                />
+                <button
+                  type="button"
+                  className={styles.addDocumentBtn}
+                  onClick={handleAddDocument}
+                  disabled={!newDocument.trim()}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Add
+                </button>
               </div>
             )}
+            <ul className={styles.requirementsList}>
+              {requiredDocuments.map((doc, index) => (
+                <li key={index} className={styles.requirementItem}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  <span className={styles.requirementText}>{doc}</span>
+                  {isEditingDocs && (
+                    <button
+                      type="button"
+                      className={styles.removeDocBtn}
+                      onClick={() => handleRemoveDocument(index)}
+                      title="Remove document"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
           </Card>
 
           {/* Action Buttons */}
