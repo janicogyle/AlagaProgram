@@ -4,6 +4,7 @@ export default function Card({
   children, 
   title, 
   subtitle,
+  headerAction,
   className = '',
   padding = true 
 }) {
@@ -11,8 +12,11 @@ export default function Card({
     <div className={`${styles.card} ${padding ? styles.withPadding : ''} ${className}`}>
       {(title || subtitle) && (
         <div className={styles.cardHeader}>
-          {title && <h3 className={styles.cardTitle}>{title}</h3>}
-          {subtitle && <p className={styles.cardSubtitle}>{subtitle}</p>}
+          <div className={styles.cardHeaderText}>
+            {title && <h3 className={styles.cardTitle}>{title}</h3>}
+            {subtitle && <p className={styles.cardSubtitle}>{subtitle}</p>}
+          </div>
+          {headerAction && <div className={styles.cardHeaderAction}>{headerAction}</div>}
         </div>
       )}
       <div className={styles.cardContent}>

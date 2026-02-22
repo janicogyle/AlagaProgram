@@ -9,7 +9,20 @@
 }
 
 .cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 16px;
+}
+
+.cardHeaderText {
+  flex: 1;
+  min-width: 0;
+}
+
+.cardHeaderAction {
+  flex-shrink: 0;
 }
 
 .cardTitle {

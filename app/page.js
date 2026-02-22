@@ -482,7 +482,7 @@ export default function HomePage() {
                   </div>
                   <div>
                     <strong>Address</strong>
-                    <p>Barangay Hall, Sta. Rita, Your City</p>
+                    <p>Barangay Hall, Sta. Rita, Olongapo City</p>
                   </div>
                 </div>
                 <div className={styles.contactItem}>
