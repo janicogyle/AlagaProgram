@@ -1,0 +1,513 @@
+/* ======================= */
+/* ANIMATIONS              */
+/* ======================= */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ======================= */
+/* BACKDROP (mobile)       */
+/* ======================= */
+.backdrop {
+  display: none;
+}
+
+/* ======================= */
+/* PANEL                   */
+/* ======================= */
+.panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 400px;
+  height: 520px;
+  max-height: 520px;
+  background: white;
+  border-radius: 14px;
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.04),
+    0 10px 40px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 200;
+  animation: slideDown 0.2s ease-out;
+}
+
+/* ======================= */
+/* DRAG HANDLE             */
+/* ======================= */
+.dragHandle {
+  display: none;
+}
+
+.dragBar {
+  display: block;
+  width: 36px;
+  height: 4px;
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+/* ======================= */
+/* HEADER                  */
+/* ======================= */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  flex-shrink: 0;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.unreadBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: #1e40af;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 10px;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.markAllBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1e40af;
+  background: #eff6ff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.markAllBtn:hover {
+  background: #dbeafe;
+}
+
+.closeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 50%;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.closeBtn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* ======================= */
+/* FILTER TABS             */
+/* ======================= */
+.filterBar {
+  display: flex;
+  gap: 4px;
+  padding: 8px 20px;
+  border-bottom: 1px solid #f3f4f6;
+  flex-shrink: 0;
+}
+
+.filterTab {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.filterTab:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.filterTabActive {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+/* ======================= */
+/* ACTIVITY LIST           */
+/* ======================= */
+.activityList {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+}
+
+.activityItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 20px;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f9fafb;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  font-family: inherit;
+  position: relative;
+}
+
+.activityItem:hover {
+  background-color: #f9fafb;
+}
+
+.activityItem:last-child {
+  border-bottom: none;
+}
+
+.activityItem.unread {
+  background-color: #f0f7ff;
+}
+
+.activityItem.unread:hover {
+  background-color: #e8f2ff;
+}
+
+/* Icon circle */
+.activityIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Icon color variants */
+.activityIcon.blue {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.activityIcon.orange {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.activityIcon.green {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.activityIcon.purple {
+  background: #faf5ff;
+  color: #7c3aed;
+}
+
+.activityIcon.teal {
+  background: #f0fdfa;
+  color: #0d9488;
+}
+
+.activityIcon.indigo {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.activityIcon.red {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* Activity body */
+.activityBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.activityHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.activityTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.3;
+}
+
+.activityTime {
+  font-size: 11px;
+  color: #9ca3af;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.activityMessage {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Unread dot */
+.unreadDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1e40af;
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+
+/* ======================= */
+/* EMPTY STATE             */
+/* ======================= */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: #9ca3af;
+}
+
+.emptyTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 12px 0 4px;
+}
+
+.emptyText {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+/* ======================= */
+/* FOOTER                  */
+/* ======================= */
+.footer {
+  padding: 10px 20px;
+  border-top: 1px solid #f3f4f6;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.footerText {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* ======================= */
+/* RESPONSIVE STYLES       */
+/* ======================= */
+
+/* Tablets */
+@media (max-width: 900px) {
+  .panel {
+    width: 360px;
+    max-height: 480px;
+  }
+
+  .header {
+    padding: 14px 16px 10px;
+  }
+
+  .filterBar {
+    padding: 6px 16px;
+  }
+
+  .activityItem {
+    padding: 12px 16px;
+  }
+
+  .activityIcon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+
+  .activityTitle {
+    font-size: 12px;
+  }
+
+  .activityMessage {
+    font-size: 11px;
+  }
+
+  .footer {
+    padding: 8px 16px;
+  }
+}
+
+/* Mobile — full-screen bottom sheet */
+@media (max-width: 640px) {
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 199;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .panel {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 85vh;
+    border-radius: 20px 20px 0 0;
+    animation: slideUp 0.25s ease-out;
+    z-index: 200;
+    box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.15);
+  }
+
+  .dragHandle {
+    display: flex;
+    justify-content: center;
+    padding: 12px 0 4px;
+    flex-shrink: 0;
+  }
+
+  .header {
+    padding: 8px 20px 12px;
+  }
+
+  .filterBar {
+    padding: 6px 20px 10px;
+  }
+
+  .activityItem {
+    padding: 14px 20px;
+  }
+
+  .activityIcon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .activityTitle {
+    font-size: 13px;
+  }
+
+  .activityMessage {
+    font-size: 12px;
+  }
+
+  .footer {
+    padding: 12px 20px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Small mobile */
+@media (max-width: 375px) {
+  .header {
+    padding: 6px 16px 10px;
+  }
+
+  .markAllBtn {
+    font-size: 11px;
+    padding: 5px 8px;
+  }
+
+  .filterBar {
+    padding: 4px 16px 8px;
+  }
+
+  .filterTab {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  .activityItem {
+    padding: 12px 16px;
+    gap: 10px;
+  }
+
+  .activityIcon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+}
