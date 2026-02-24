@@ -1,105 +1,291 @@
+/* ======================= */
+/* ANIMATIONS              */
+/* ======================= */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+@keyframes float2 {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(-4deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+@keyframes logoGlow {
+  0%, 100% { box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3), 0 0 30px rgba(59, 130, 246, 0.3); }
+  50% { box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3), 0 0 50px rgba(59, 130, 246, 0.5); }
+}
+
+/* ======================= */
+/* MAIN LAYOUT             */
+/* ======================= */
 .main {
   display: flex;
   min-height: 100vh;
 }
 
-/* Brand Section - Left Side */
+/* ======================= */
+/* BRAND SECTION           */
+/* ======================= */
 .brandSection {
   flex: 1;
-  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+  background: linear-gradient(145deg, #0f2557 0%, #1e3a8a 40%, #1e40af 70%, #2563eb 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 48px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Decorative floating shapes */
+.decorativeShapes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.shape {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.shape1 {
+  width: 300px;
+  height: 300px;
+  top: -80px;
+  right: -60px;
+  animation: float 8s ease-in-out infinite;
+}
+
+.shape2 {
+  width: 200px;
+  height: 200px;
+  bottom: -40px;
+  left: -40px;
+  animation: float2 10s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+.shape3 {
+  width: 120px;
+  height: 120px;
+  top: 30%;
+  right: 10%;
+  animation: float 12s ease-in-out infinite;
+  animation-delay: 2s;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.shape4 {
+  width: 80px;
+  height: 80px;
+  bottom: 25%;
+  left: 15%;
+  animation: float2 9s ease-in-out infinite;
+  animation-delay: 3s;
+}
+
+.shape5 {
+  width: 160px;
+  height: 160px;
+  top: 10%;
+  left: 5%;
+  animation: pulse 6s ease-in-out infinite;
+  border-radius: 30%;
+  transform: rotate(45deg);
 }
 
 .brandContent {
   text-align: center;
-  max-width: 400px;
+  max-width: 420px;
+  position: relative;
+  z-index: 1;
+  animation: fadeInUp 0.8s ease-out both;
 }
 
+/* Logo */
 .logoContainer {
   margin-bottom: 32px;
+  position: relative;
+  display: inline-block;
+}
+
+.logoGlow {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%);
+  animation: pulse 4s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .logoCircle {
-  width: 180px;
-  height: 180px;
+  width: 160px;
+  height: 160px;
   border-radius: 50%;
   background: linear-gradient(145deg, #2563eb, #1e40af);
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  border: 4px solid rgba(255, 255, 255, 0.2);
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+  animation: logoGlow 4s ease-in-out infinite;
+  transition: transform 0.3s ease;
 }
 
-.logoPlaceholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.logoCircle:hover {
+  transform: scale(1.05);
 }
 
-.logoText {
-  color: white;
-  font-size: 18px;
-  font-weight: 700;
+.logoImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 50%;
 }
 
-.systemIcon {
-  width: 60px;
-  height: 60px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 20px;
-  color: white;
-}
-
+/* Title area */
 .title {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 30px;
+  font-weight: 800;
   color: white;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
+}
+
+.divider {
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  margin: 0 auto 12px;
+  border-radius: 2px;
 }
 
 .subtitle {
-  font-size: 16px;
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin-bottom: 4px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.tagline {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 28px;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 24px;
 }
 
 .description {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.75);
-  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.8;
+  margin-bottom: 32px;
 }
 
-/* Login Section - Right Side */
+/* Feature highlights */
+.features {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.featureItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(4px);
+  transition: all 0.25s ease;
+}
+
+.featureItem:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateX(4px);
+}
+
+.featureItem svg {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+/* ======================= */
+/* LOGIN SECTION           */
+/* ======================= */
 .loginSection {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 48px;
   background: #f8fafc;
+  position: relative;
 }
 
-.errorBanner {
-  background-color: #fee2e2;
-  color: #dc2626;
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  margin-bottom: 16px;
-  max-width: 420px;
+.loginWrapper {
   width: 100%;
+  max-width: 440px;
+  animation: fadeInUp 0.8s ease-out 0.2s both;
+}
+
+/* Error banner */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: #fef2f2;
+  color: #dc2626;
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  margin-bottom: 20px;
+  border: 1px solid #fecaca;
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.errorBanner svg {
+  flex-shrink: 0;
+}
+
+/* Footer text */
+.footerText {
   text-align: center;
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 24px;
 }
 
 /* ======================= */
@@ -107,16 +293,16 @@
 /* ======================= */
 @media (max-width: 1024px) {
   .brandSection {
-    padding: 48px 32px;
+    padding: 40px 32px;
   }
 
   .loginSection {
-    padding: 48px 32px;
+    padding: 40px 32px;
   }
 
   .logoCircle {
-    width: 160px;
-    height: 160px;
+    width: 140px;
+    height: 140px;
   }
 
   .title {
@@ -124,7 +310,7 @@
   }
 
   .subtitle {
-    font-size: 15px;
+    font-size: 16px;
   }
 }
 
@@ -134,7 +320,7 @@
   }
 
   .brandSection {
-    padding: 48px 24px;
+    padding: 48px 24px 40px;
     min-height: auto;
   }
 
@@ -144,44 +330,58 @@
   }
 
   .logoCircle {
-    width: 140px;
-    height: 140px;
+    width: 120px;
+    height: 120px;
   }
 
-  .logoText {
-    font-size: 14px;
-  }
-
-  .systemIcon {
-    width: 52px;
-    height: 52px;
-    margin-bottom: 16px;
+  .logoGlow {
+    width: 160px;
+    height: 160px;
   }
 
   .title {
     font-size: 24px;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
 
   .subtitle {
     font-size: 14px;
+  }
+
+  .tagline {
+    font-size: 13px;
     margin-bottom: 20px;
   }
 
   .description {
     font-size: 13px;
+    margin-bottom: 24px;
+  }
+
+  .features {
+    gap: 8px;
+  }
+
+  .featureItem {
+    padding: 8px 14px;
+    font-size: 12px;
   }
 
   .errorBanner {
-    max-width: 100%;
     font-size: 13px;
-    padding: 10px 16px;
+    padding: 12px 16px;
+  }
+
+  /* Hide some shapes on mobile */
+  .shape3,
+  .shape5 {
+    display: none;
   }
 }
 
 @media (max-width: 768px) {
   .brandSection {
-    padding: 40px 20px;
+    padding: 40px 20px 32px;
   }
 
   .loginSection {
@@ -197,40 +397,38 @@
   }
 
   .logoCircle {
-    width: 120px;
-    height: 120px;
-    border-width: 3px;
-  }
-
-  .logoText {
-    font-size: 13px;
-  }
-
-  .systemIcon {
-    width: 48px;
-    height: 48px;
-    border-radius: 10px;
-    margin-bottom: 14px;
+    width: 100px;
+    height: 100px;
+    border-width: 2px;
   }
 
   .title {
     font-size: 22px;
   }
 
+  .divider {
+    width: 40px;
+    height: 2px;
+    margin-bottom: 8px;
+  }
+
   .subtitle {
     font-size: 13px;
-    margin-bottom: 16px;
+    letter-spacing: 1.5px;
   }
 
   .description {
-    font-size: 12px;
+    display: none;
+  }
+
+  .features {
     display: none;
   }
 }
 
 @media (max-width: 576px) {
   .brandSection {
-    padding: 32px 16px;
+    padding: 32px 16px 28px;
   }
 
   .loginSection {
@@ -238,18 +436,8 @@
   }
 
   .logoCircle {
-    width: 100px;
-    height: 100px;
-  }
-
-  .logoText {
-    font-size: 12px;
-  }
-
-  .systemIcon {
-    width: 44px;
-    height: 44px;
-    margin-bottom: 12px;
+    width: 90px;
+    height: 90px;
   }
 
   .title {
@@ -260,16 +448,20 @@
     font-size: 12px;
   }
 
+  .tagline {
+    font-size: 12px;
+  }
+
   .errorBanner {
     font-size: 12px;
     padding: 10px 14px;
-    border-radius: 6px;
+    border-radius: 8px;
   }
 }
 
 @media (max-width: 375px) {
   .brandSection {
-    padding: 28px 14px;
+    padding: 28px 14px 24px;
   }
 
   .loginSection {
@@ -277,8 +469,8 @@
   }
 
   .logoCircle {
-    width: 90px;
-    height: 90px;
+    width: 80px;
+    height: 80px;
   }
 
   .title {

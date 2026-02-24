@@ -23,4 +23,5 @@ export { default as DataTableFooter } from './DataTableFooter';
 export { default as Modal } from './Modal';
 export { default as ActionMenu } from './ActionMenu';
 export { default as EmptyState } from './EmptyState';
+export { default as NotificationPanel } from './NotificationPanel';
 
