@@ -16,54 +16,9 @@ import {
 } from '@/components';
 import styles from './page.module.css';
 
-// Sample pending requests - Replace with actual data from Supabase
-const sampleRequests = [
-  { 
-    id: 1, 
-    controlNo: 'AST-2024-00003', 
-    requester: 'Ana Reyes Garcia', 
-    requesterContact: '09171234567',
-    requesterAddress: 'Purok 2, Barangay Sta. Rita',
-    beneficiary: 'Pedro Garcia Sr.', 
-    beneficiaryContact: '09181234567',
-    beneficiaryAddress: 'Purok 2, Barangay Sta. Rita',
-    type: 'Burial Assistance', 
-    date: '2024-02-01', 
-    amount: '₱1,000', 
-    status: 'Pending',
-    processedBy: 'Maria Santos',
-  },
-  { 
-    id: 2, 
-    controlNo: 'AST-2024-00006', 
-    requester: 'Carlos Mendoza', 
-    requesterContact: '09191234567',
-    requesterAddress: 'Purok 3, Barangay Sta. Rita',
-    beneficiary: 'Carlos Mendoza', 
-    beneficiaryContact: '09191234567',
-    beneficiaryAddress: 'Purok 3, Barangay Sta. Rita',
-    type: 'Medicine Assistance', 
-    date: '2024-02-12', 
-    amount: '₱450', 
-    status: 'Pending',
-    processedBy: 'Juan Dela Cruz',
-  },
-  { 
-    id: 3, 
-    controlNo: 'AST-2024-00007', 
-    requester: 'Elena Santos', 
-    requesterContact: '09201234567',
-    requesterAddress: 'Purok 1, Barangay Sta. Rita',
-    beneficiary: 'Roberto Santos', 
-    beneficiaryContact: '09211234567',
-    beneficiaryAddress: 'Purok 1, Barangay Sta. Rita',
-    type: 'Confinement Assistance', 
-    date: '2024-02-14', 
-    amount: '₱1,000', 
-    status: 'Pending',
-    processedBy: 'Maria Santos',
-  },
-];
+// TODO: Fetch from Supabase
+// Expected shape: [{ id, controlNo, requester, type, beneficiary, amount, status, date }]
+const sampleRequests = [];
 
 const typeOptions = [
   { value: '', label: 'All Types' },

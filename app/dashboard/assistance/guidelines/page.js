@@ -4,11 +4,9 @@ import Link from 'next/link';
 import { Card, Button, Table } from '@/components';
 import styles from './page.module.css';
 
-const budgetCeilings = [
-  { id: 1, type: 'Medicine Reimbursement', ceiling: '₱500', frequency: 'Per transaction' },
-  { id: 2, type: 'Confinement Reimbursement', ceiling: '₱1,000', frequency: 'Per confinement' },
-  { id: 3, type: 'Burial Assistance', ceiling: '₱1,000', frequency: 'Per death' },
-];
+// TODO: Fetch from Supabase
+// Expected shape: [{ type, ceiling, frequency }]
+const budgetCeilings = [];
 
 const columns = [
   { key: 'type', label: 'Type of Assistance' },

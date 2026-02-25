@@ -17,14 +17,9 @@ import {
 } from '@/components';
 import styles from './page.module.css';
 
-// Sample data - Replace with actual data from Supabase
-const sampleAssistance = [
-  { id: 1, controlNo: 'AST-2024-00001', requester: 'Maria Santos Cruz', beneficiary: 'Maria Santos Cruz', type: 'Medicine Assistance', date: '2024-01-20', amount: '₱500', status: 'Released' },
-  { id: 2, controlNo: 'AST-2024-00002', requester: 'Juan Dela Cruz', beneficiary: 'Elena Dela Cruz', type: 'Confinement Assistance', date: '2024-01-25', amount: '₱1,000', status: 'Approved' },
-  { id: 3, controlNo: 'AST-2024-00003', requester: 'Ana Reyes Garcia', beneficiary: 'Pedro Garcia Sr.', type: 'Burial Assistance', date: '2024-02-01', amount: '₱1,000', status: 'Pending' },
-  { id: 4, controlNo: 'AST-2024-00004', requester: 'Rosa Mendoza Tan', beneficiary: 'Rosa Mendoza Tan', type: 'Medicine Assistance', date: '2024-02-05', amount: '₱500', status: 'Released' },
-  { id: 5, controlNo: 'AST-2024-00005', requester: 'Pedro Lim Torres', beneficiary: 'Pedro Lim Torres', type: 'Others', date: '2024-02-10', amount: '₱300', status: 'Rejected' },
-];
+// TODO: Fetch from Supabase
+// Expected shape: [{ id, controlNo, requester, type, beneficiary, amount, status, date }]
+const sampleAssistance = [];
 
 const typeOptions = [
   { value: '', label: 'All Types' },
@@ -61,6 +56,7 @@ export default function AssistancePage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
   
   // Form state
   const [formData, setFormData] = useState({
@@ -90,6 +86,12 @@ export default function AssistancePage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+
     if (name === 'requesterContact' || name === 'beneficiaryContact') {
       const numericValue = value.replace(/\D/g, '');
       if (numericValue.length <= 11) {
@@ -101,7 +103,34 @@ export default function AssistancePage() {
   };
 
   const handleServiceTypeChange = (type) => {
+    if (errors.serviceType) {
+      setErrors(prev => ({ ...prev, serviceType: '' }));
+    }
     setFormData(prev => ({ ...prev, serviceType: type }));
+  };
+
+  const validateAssistanceForm = () => {
+    const newErrors = {};
+
+    if (!formData.requesterName.trim()) newErrors.requesterName = 'Requester name is required';
+    if (!formData.requesterContact.trim()) {
+      newErrors.requesterContact = 'Contact number is required';
+    } else if (formData.requesterContact.length !== 11) {
+      newErrors.requesterContact = 'Contact number must be exactly 11 digits';
+    }
+    if (!formData.requesterAddress.trim()) newErrors.requesterAddress = 'Address is required';
+    if (!formData.serviceType) newErrors.serviceType = 'Please select a service type';
+    if (formData.serviceType === 'others' && !formData.otherService.trim()) {
+      newErrors.otherService = 'Please specify the type of assistance';
+    }
+    if (!formData.beneficiaryName.trim()) newErrors.beneficiaryName = 'Beneficiary name is required';
+    if (!formData.beneficiaryAddress.trim()) newErrors.beneficiaryAddress = 'Beneficiary address is required';
+    if (formData.beneficiaryContact && formData.beneficiaryContact.length !== 11) {
+      newErrors.beneficiaryContact = 'Contact number must be exactly 11 digits';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const resetForm = () => {
@@ -121,6 +150,10 @@ export default function AssistancePage() {
   };
 
   const handleSubmit = async () => {
+    if (!validateAssistanceForm()) {
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const submission = {
@@ -307,6 +340,7 @@ export default function AssistancePage() {
                 value={formData.requesterName}
                 onChange={handleChange}
                 placeholder="Enter full name"
+                error={errors.requesterName}
                 required
               />
               <Input
@@ -315,6 +349,8 @@ export default function AssistancePage() {
                 value={formData.requesterContact}
                 onChange={handleChange}
                 placeholder="09XX XXX XXXX"
+                error={errors.requesterContact}
+                required
                 maxLength={11}
               />
               <div className={styles.fullWidth}>
@@ -324,6 +360,8 @@ export default function AssistancePage() {
                   value={formData.requesterAddress}
                   onChange={handleChange}
                   placeholder="Complete address"
+                  error={errors.requesterAddress}
+                  required
                 />
               </div>
             </div>
@@ -350,6 +388,7 @@ export default function AssistancePage() {
                 </label>
               ))}
             </div>
+            {errors.serviceType && <span style={{ color: '#dc2626', fontSize: '13px', fontWeight: 500, marginTop: '8px', display: 'block' }}>{errors.serviceType}</span>}
             {formData.serviceType === 'others' && (
               <div className={styles.otherInput}>
                 <Input
@@ -358,6 +397,7 @@ export default function AssistancePage() {
                   value={formData.otherService}
                   onChange={handleChange}
                   placeholder="Describe the type of assistance needed"
+                  error={errors.otherService}
                 />
               </div>
             )}
@@ -373,6 +413,7 @@ export default function AssistancePage() {
                 value={formData.beneficiaryName}
                 onChange={handleChange}
                 placeholder="Enter full name"
+                error={errors.beneficiaryName}
                 required
               />
               <Input
@@ -381,7 +422,9 @@ export default function AssistancePage() {
                 value={formData.beneficiaryContact}
                 onChange={handleChange}
                 placeholder="09XX XXX XXXX"
+                error={errors.beneficiaryContact}
                 maxLength={11}
+                optional
               />
               <div className={styles.fullWidth}>
                 <Input
@@ -390,6 +433,8 @@ export default function AssistancePage() {
                   value={formData.beneficiaryAddress}
                   onChange={handleChange}
                   placeholder="Complete address"
+                  error={errors.beneficiaryAddress}
+                  required
                 />
               </div>
             </div>

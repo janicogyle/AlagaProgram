@@ -11,6 +11,7 @@ export default function Input({
   onChange,
   placeholder = '',
   required = false,
+  optional = false,
   disabled = false,
   error = '',
   icon = null,
@@ -27,6 +28,7 @@ export default function Input({
         <label htmlFor={name} className={styles.label}>
           {label}
           {required && <span className={styles.required}>*</span>}
+          {optional && <span className={styles.optional}>(Optional)</span>}
         </label>
       )}
       <div className={styles.inputWrapper}>

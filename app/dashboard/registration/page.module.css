@@ -93,6 +93,13 @@
   gap: 14px;
 }
 
+.sectorError {
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
 .checkbox {
   display: flex;
   align-items: center;

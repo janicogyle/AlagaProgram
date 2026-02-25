@@ -16,13 +16,9 @@ import {
 } from '@/components';
 import styles from './page.module.css';
 
-// Sample data - Replace with actual data from Supabase
-const sampleUsers = [
-  { id: 1, name: 'Admin User', email: 'admin@barangaystarita.gov.ph', role: 'Admin', lastLogin: '2024-02-15 09:30:00', status: 'Active' },
-  { id: 2, name: 'Barangay Secretary', email: 'secretary@barangaystarita.gov.ph', role: 'Staff', lastLogin: '2024-02-14 14:20:00', status: 'Active' },
-  { id: 3, name: 'PWD Desk Officer', email: 'pwd@barangaystarita.gov.ph', role: 'Staff', lastLogin: '2024-02-13 10:15:00', status: 'Active' },
-  { id: 4, name: 'OSCA Officer', email: 'osca@barangaystarita.gov.ph', role: 'Staff', lastLogin: '2024-01-30 08:45:00', status: 'Inactive' },
-];
+// TODO: Fetch from Supabase
+// Expected shape: [{ id, name, email, role, status, lastLogin }]
+const sampleUsers = [];
 
 const roleOptions = [
   { value: '', label: 'All Roles' },

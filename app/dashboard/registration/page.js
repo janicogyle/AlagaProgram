@@ -67,6 +67,7 @@ export default function RegistrationPage() {
   const [newDocument, setNewDocument] = useState('');
   const [isEditingDocs, setIsEditingDocs] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
 
   // Generate control number on mount
   useEffect(() => {
@@ -89,6 +90,11 @@ export default function RegistrationPage() {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+
     if (name === 'contactNumber' || name === 'representativeContact') {
       const numericValue = value.replace(/\D/g, '');
       if (numericValue.length <= 11) {
@@ -106,6 +112,10 @@ export default function RegistrationPage() {
   };
 
   const handleSectorChange = (sector) => {
+    // Clear sector error when user selects
+    if (errors.sectors) {
+      setErrors((prev) => ({ ...prev, sectors: '' }));
+    }
     setFormData((prev) => ({
       ...prev,
       sectors: {
@@ -134,11 +144,43 @@ export default function RegistrationPage() {
     }
   };
 
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
+    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
+    if (!formData.houseNo.trim()) newErrors.houseNo = 'House number is required';
+    if (!formData.street.trim()) newErrors.street = 'Street is required';
+    if (!formData.birthday) newErrors.birthday = 'Birthday is required';
+    if (!formData.birthplace.trim()) newErrors.birthplace = 'Birthplace is required';
+    if (!formData.sex) newErrors.sex = 'Sex is required';
+    if (!formData.citizenship.trim()) newErrors.citizenship = 'Citizenship is required';
+    if (!formData.civilStatus) newErrors.civilStatus = 'Civil status is required';
+    if (!formData.contactNumber.trim()) {
+      newErrors.contactNumber = 'Contact number is required';
+    } else if (formData.contactNumber.length !== 11) {
+      newErrors.contactNumber = 'Contact number must be exactly 11 digits';
+    }
+    if (!formData.sectors.pwd && !formData.sectors.seniorCitizen && !formData.sectors.soloParent) {
+      newErrors.sectors = 'At least one sector must be selected';
+    }
+    if (!formData.representativeName.trim()) {
+      newErrors.representativeName = 'Representative name is required';
+    }
+    if (!formData.representativeContact.trim()) {
+      newErrors.representativeContact = 'Contact number is required';
+    } else if (formData.representativeContact.length !== 11) {
+      newErrors.representativeContact = 'Contact number must be exactly 11 digits';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (formData.contactNumber && formData.contactNumber.length !== 11) {
-      alert('Contact number must be exactly 11 digits.');
+    if (!validateForm()) {
       return;
     }
 
@@ -235,6 +277,7 @@ export default function RegistrationPage() {
                 value={formData.lastName}
                 onChange={handleChange}
                 placeholder="Enter last name"
+                error={errors.lastName}
                 required
               />
               <Input
@@ -243,6 +286,7 @@ export default function RegistrationPage() {
                 value={formData.firstName}
                 onChange={handleChange}
                 placeholder="Enter first name"
+                error={errors.firstName}
                 required
               />
               <Input
@@ -251,6 +295,7 @@ export default function RegistrationPage() {
                 value={formData.middleName}
                 onChange={handleChange}
                 placeholder="Enter middle name"
+                optional
               />
             </div>
 
@@ -261,6 +306,8 @@ export default function RegistrationPage() {
                 value={formData.houseNo}
                 onChange={handleChange}
                 placeholder="House number"
+                error={errors.houseNo}
+                required
               />
               <Input
                 label="Street"
@@ -268,6 +315,8 @@ export default function RegistrationPage() {
                 value={formData.street}
                 onChange={handleChange}
                 placeholder="Street name"
+                error={errors.street}
+                required
               />
             </div>
 
@@ -280,6 +329,7 @@ export default function RegistrationPage() {
                 options={barangayOptions}
                 placeholder="Select barangay"
                 required
+                disabled
               />
               <Input
                 label="City/Municipality"
@@ -287,6 +337,7 @@ export default function RegistrationPage() {
                 value={formData.city}
                 onChange={handleChange}
                 placeholder="Enter city"
+                disabled
               />
             </div>
 
@@ -297,6 +348,7 @@ export default function RegistrationPage() {
                 name="birthday"
                 value={formData.birthday}
                 onChange={handleChange}
+                error={errors.birthday}
                 required
               />
               <div className={styles.ageField}>
@@ -311,6 +363,8 @@ export default function RegistrationPage() {
                 value={formData.birthplace}
                 onChange={handleChange}
                 placeholder="Place of birth"
+                error={errors.birthplace}
+                required
               />
             </div>
 
@@ -322,6 +376,7 @@ export default function RegistrationPage() {
                 onChange={handleChange}
                 options={sexOptions}
                 placeholder="Select sex"
+                error={errors.sex}
                 required
               />
               <Input
@@ -330,6 +385,8 @@ export default function RegistrationPage() {
                 value={formData.citizenship}
                 onChange={handleChange}
                 placeholder="Enter citizenship"
+                error={errors.citizenship}
+                required
               />
             </div>
 
@@ -341,6 +398,7 @@ export default function RegistrationPage() {
                 onChange={handleChange}
                 options={civilStatusOptions}
                 placeholder="Select civil status"
+                error={errors.civilStatus}
                 required
               />
               <Input
@@ -350,6 +408,7 @@ export default function RegistrationPage() {
                 value={formData.contactNumber}
                 onChange={handleChange}
                 placeholder="09XX XXX XXXX"
+                error={errors.contactNumber}
                 maxLength={11}
               />
             </div>
@@ -361,6 +420,7 @@ export default function RegistrationPage() {
           {/* Sector Classification */}
           <Card title="Sector Classification" subtitle="Select applicable sector(s)">
             <div className={styles.sectorList}>
+              {errors.sectors && <span className={styles.sectorError}>{errors.sectors}</span>}
               <label className={styles.checkbox}>
                 <input
                   type="checkbox"
@@ -392,7 +452,7 @@ export default function RegistrationPage() {
           </Card>
 
           {/* Representative Information */}
-          <Card title="Representative Information" subtitle="Fill only if applicable">
+          <Card title="Representative Information" subtitle="Enter the representative's details">
             <div className={styles.formFields}>
               <Input
                 label="Representative Name"
@@ -400,6 +460,8 @@ export default function RegistrationPage() {
                 value={formData.representativeName}
                 onChange={handleChange}
                 placeholder="Enter representative's full name"
+                error={errors.representativeName}
+                required
               />
               <Input
                 label="Contact Number"
@@ -408,7 +470,9 @@ export default function RegistrationPage() {
                 value={formData.representativeContact}
                 onChange={handleChange}
                 placeholder="09-- --- ----"
+                error={errors.representativeContact}
                 maxLength={11}
+                required
               />
             </div>
           </Card>
