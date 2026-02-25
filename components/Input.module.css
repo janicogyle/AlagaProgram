@@ -16,6 +16,13 @@
   margin-left: 2px;
 }
 
+.optional {
+  color: #9ca3af;
+  font-weight: 400;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
 .inputWrapper {
   position: relative;
   display: flex;

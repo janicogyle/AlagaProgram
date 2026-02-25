@@ -278,3 +278,194 @@
     font-size: 11px;
   }
 }
+
+/* Assistance History Modal */
+.assistanceModalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.assistanceResidentInfo {
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.assistanceResidentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.assistanceResidentName {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.assistanceResidentMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.assistanceResidentDetail {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.assistanceSummaryRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.assistanceSummaryStat {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.assistanceSummaryValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.assistanceSummaryLabel {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.assistanceEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.assistanceEmpty p {
+  margin: 0;
+}
+
+.assistanceList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.assistanceCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px 16px;
+  transition: border-color 0.15s;
+}
+
+.assistanceCard:hover {
+  border-color: #c7d2fe;
+}
+
+.assistanceCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.assistanceCardTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.assistanceType {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.assistanceControlNo {
+  font-size: 12px;
+  color: #9ca3af;
+  font-family: 'Courier New', monospace;
+}
+
+.assistanceCardBody {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.assistanceDetail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.assistanceRemarks {
+  width: 100%;
+  font-size: 13px;
+  color: #6b7280;
+  padding-top: 8px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.remarksLabel {
+  font-weight: 500;
+  color: #374151;
+}
+
+@media (max-width: 768px) {
+  .assistanceSummaryRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .assistanceSummaryValue {
+    font-size: 18px;
+  }
+
+  .assistanceList {
+    max-height: 300px;
+  }
+
+  .assistanceCardBody {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 576px) {
+  .assistanceSummaryRow {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .assistanceSummaryStat {
+    padding: 10px;
+  }
+
+  .assistanceSummaryValue {
+    font-size: 16px;
+  }
+
+  .assistanceResidentName {
+    font-size: 15px;
+  }
+}

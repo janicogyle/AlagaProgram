@@ -68,6 +68,7 @@ export default function LoginForm({ onSubmit, isLoading = false }) {
           value={formData.username}
           onChange={handleChange}
           placeholder="Enter your username"
+          autoComplete="username"
           error={errors.username}
           icon={
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -84,6 +85,7 @@ export default function LoginForm({ onSubmit, isLoading = false }) {
           value={formData.password}
           onChange={handleChange}
           placeholder="Enter your password"
+          autoComplete="current-password"
           error={errors.password}
           icon={
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -97,6 +99,8 @@ export default function LoginForm({ onSubmit, isLoading = false }) {
           <label className={styles.rememberMe}>
             <input
               type="checkbox"
+              id="rememberMe"
+              name="rememberMe"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
               className={styles.checkbox}

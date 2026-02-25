@@ -7,43 +7,22 @@ import BarChart from '@/components/BarChart';
 import PieChart from '@/components/PieChart';
 import styles from './page.module.css';
 
-// Sample data - Replace with actual data from Supabase
+// TODO: Fetch from Supabase
 const kpiData = [
-  { title: 'Total Residents', current: 8, previous: 6, growth: 33.3, icon: 'users', color: 'blue' },
-  { title: 'PWD Residents', current: 3, previous: 2, growth: 50, icon: 'disability', color: 'purple' },
-  { title: 'Senior Citizens', current: 3, previous: 3, growth: 0, icon: 'senior', color: 'green' },
-  { title: 'Solo Parents', current: 2, previous: 1, growth: 100, icon: 'parent', color: 'orange' },
+  { title: 'Total Residents', current: 0, previous: 0, growth: 0, icon: 'users', color: 'blue' },
+  { title: 'PWD Residents', current: 0, previous: 0, growth: 0, icon: 'disability', color: 'purple' },
+  { title: 'Senior Citizens', current: 0, previous: 0, growth: 0, icon: 'senior', color: 'green' },
+  { title: 'Solo Parents', current: 0, previous: 0, growth: 0, icon: 'parent', color: 'orange' },
 ];
 
-// Chart data - Ready for backend integration
-const monthlyRegistrations = [
-  { month: 'Apr', registrations: 1 },
-  { month: 'May', registrations: 2 },
-  { month: 'Jun', registrations: 3 },
-  { month: 'Jul', registrations: 2 },
-  { month: 'Aug', registrations: 4 },
-  { month: 'Sep', registrations: 3 },
-  { month: 'Oct', registrations: 2 },
-  { month: 'Nov', registrations: 3 },
-  { month: 'Dec', registrations: 1 },
-  { month: 'Jan', registrations: 2 },
-  { month: 'Feb', registrations: 3 },
-  { month: 'Mar', registrations: 2 },
-];
+// TODO: Fetch from Supabase
+const monthlyRegistrations = [];
 
-// Sector distribution data - Ready for backend calculation
-const sectorDistribution = [
-  { label: 'PWD', value: 3, color: '#7c3aed' },
-  { label: 'Senior Citizens', value: 3, color: '#1e40af' },
-  { label: 'Solo Parents', value: 2, color: '#16a34a' },
-];
+// TODO: Fetch from Supabase
+const sectorDistribution = [];
 
-const recentRegistrations = [
-  { id: 1, name: 'Maria Santos Cruz', sector: ['Senior Citizen'], purok: 'Purok 1', date: '2024-01-15', status: 'Active' },
-  { id: 2, name: 'Juan Dela Cruz', sector: ['PWD'], purok: 'Purok 2', date: '2024-01-18', status: 'Active' },
-  { id: 3, name: 'Ana Reyes Garcia', sector: ['Solo Parent'], purok: 'Purok 3', date: '2024-01-20', status: 'Active' },
-  { id: 4, name: 'Rosa Mendoza Tan', sector: ['Senior Citizen', 'PWD'], purok: 'Purok 2', date: '2024-01-25', status: 'Active' },
-];
+// TODO: Fetch from Supabase
+const recentRegistrations = [];
 
 const columns = [
   { key: 'name', label: 'Name' },
@@ -105,8 +84,8 @@ export default function DashboardPage() {
         <Card title="Registration Trends" className={styles.chartCard}>
           <BarChart 
             data={monthlyRegistrations}
-            labelKey="month"
-            valueKey="registrations"
+            labelKey="label"
+            valueKey="value"
             height={200}
           />
         </Card>
@@ -124,33 +103,6 @@ export default function DashboardPage() {
       {/* Recent Registrations */}
       <Card title="Recent Registrations" subtitle="Latest residents added to the system">
         <Table columns={columns} data={recentRegistrations} />
-      </Card>
-
-      {/* Quick Insights */}
-      <Card title="Quick Insights" className={styles.insightsCard}>
-        <div className={styles.insights}>
-          <div className={styles.insight}>
-            <div className={styles.insightIcon}>📈</div>
-            <div className={styles.insightContent}>
-              <h4>Growth Trend</h4>
-              <p>Total residents increased by 33.3% this month with balanced sector distribution.</p>
-            </div>
-          </div>
-          <div className={styles.insight}>
-            <div className={styles.insightIcon}>⚖️</div>
-            <div className={styles.insightContent}>
-              <h4>Balanced Demographics</h4>
-              <p>PWD and Senior Citizens each represent 37% of total registered residents.</p>
-            </div>
-          </div>
-          <div className={styles.insight}>
-            <div className={styles.insightIcon}>👥</div>
-            <div className={styles.insightContent}>
-              <h4>Active Community</h4>
-              <p>4 new residents registered recently across different sectors and puroks.</p>
-            </div>
-          </div>
-        </div>
       </Card>
     </div>
   );

@@ -3,81 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import styles from './NotificationPanel.module.css';
 
-// Sample recent activity data — replace with Supabase real-time queries
-const SAMPLE_ACTIVITIES = [
-  {
-    id: 1,
-    type: 'registration',
-    title: 'New Resident Registered',
-    message: 'Maria Santos Cruz was registered as Senior Citizen in Purok 1.',
-    time: new Date(Date.now() - 1000 * 60 * 5),  // 5 min ago
-    read: false,
-    icon: 'user-plus',
-  },
-  {
-    id: 2,
-    type: 'assistance',
-    title: 'Assistance Request Submitted',
-    message: 'Juan Dela Cruz submitted a Medicine Assistance request.',
-    time: new Date(Date.now() - 1000 * 60 * 23), // 23 min ago
-    read: false,
-    icon: 'clipboard',
-  },
-  {
-    id: 3,
-    type: 'approval',
-    title: 'Assistance Approved',
-    message: 'Burial Assistance for Rosa Mendoza has been approved.',
-    time: new Date(Date.now() - 1000 * 60 * 60), // 1 hr ago
-    read: false,
-    icon: 'check-circle',
-  },
-  {
-    id: 4,
-    type: 'update',
-    title: 'Resident Record Updated',
-    message: 'Profile of Ana Reyes Garcia (Solo Parent) was updated.',
-    time: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hrs ago
-    read: true,
-    icon: 'edit',
-  },
-  {
-    id: 5,
-    type: 'release',
-    title: 'Assistance Released',
-    message: 'Cash assistance of ₱2,000 released to Pedro Bautista.',
-    time: new Date(Date.now() - 1000 * 60 * 60 * 3), // 3 hrs ago
-    read: true,
-    icon: 'package',
-  },
-  {
-    id: 6,
-    type: 'registration',
-    title: 'New PWD Resident',
-    message: 'Elena Villanueva was registered as PWD in Purok 4.',
-    time: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hrs ago
-    read: true,
-    icon: 'user-plus',
-  },
-  {
-    id: 7,
-    type: 'report',
-    title: 'Monthly Report Generated',
-    message: 'January 2024 sector distribution report is ready.',
-    time: new Date(Date.now() - 1000 * 60 * 60 * 8), // 8 hrs ago
-    read: true,
-    icon: 'file-text',
-  },
-  {
-    id: 8,
-    type: 'rejection',
-    title: 'Assistance Rejected',
-    message: 'Medical assistance request for Lito Ramos was declined.',
-    time: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-    read: true,
-    icon: 'x-circle',
-  },
-];
+// TODO: Fetch from Supabase real-time queries
+// Expected shape: [{ id, type, title, message, time: Date, read: boolean, icon: string }]
+const SAMPLE_ACTIVITIES = [];
 
 function formatTimeAgo(date) {
   const now = new Date();

@@ -17,15 +17,13 @@ import {
 } from '@/components';
 import styles from './page.module.css';
 
-// Sample data - Replace with actual data from Supabase
-const sampleResidents = [
-  { id: 1, name: 'Maria Santos Cruz', sector: ['Senior Citizen'], purok: 'Purok 1', age: 70, status: 'Active', controlNo: 'ALAGA-2024-00001' },
-  { id: 2, name: 'Juan Dela Cruz', sector: ['PWD'], purok: 'Purok 2', age: 45, status: 'Active', controlNo: 'ALAGA-2024-00002' },
-  { id: 3, name: 'Ana Reyes Garcia', sector: ['Solo Parent'], purok: 'Purok 3', age: 35, status: 'Active', controlNo: 'ALAGA-2024-00003' },
-  { id: 4, name: 'Rosa Mendoza Tan', sector: ['Senior Citizen', 'PWD'], purok: 'Purok 2', age: 77, status: 'Active', controlNo: 'ALAGA-2024-00004' },
-  { id: 5, name: 'Carlos Ramos Villanueva', sector: ['Senior Citizen'], purok: 'Purok 4', age: 65, status: 'Inactive', controlNo: 'ALAGA-2024-00005' },
-  { id: 6, name: 'Elena Bautista Lopez', sector: ['Solo Parent', 'PWD'], purok: 'Purok 3', age: 40, status: 'Active', controlNo: 'ALAGA-2024-00006' },
-];
+// TODO: Fetch from Supabase
+// Expected shape: [{ id, name, sector: ['PWD'], purok, age, sex, contact, status, registeredAt, controlNo }]
+const sampleResidents = [];
+
+// TODO: Fetch from Supabase - assistance records linked to residents
+// Expected shape: [{ id, residentId, controlNo, type, amount, status, date, remarks }]
+const assistanceRecords = [];
 
 const sectorOptions = [
   { value: '', label: 'All Sectors' },
@@ -48,6 +46,7 @@ export default function ResidentsPage() {
   const [sectorFilter, setSectorFilter] = useState('');
   const [purokFilter, setPurokFilter] = useState('');
   const [showQRModal, setShowQRModal] = useState(false);
+  const [showAssistanceModal, setShowAssistanceModal] = useState(false);
   const [selectedResident, setSelectedResident] = useState(null);
 
   // Filter residents based on search and filters
@@ -63,6 +62,25 @@ export default function ResidentsPage() {
     setShowQRModal(true);
   };
 
+  const handleViewAssistance = (resident) => {
+    setSelectedResident(resident);
+    setShowAssistanceModal(true);
+  };
+
+  const getResidentAssistance = (residentId) => {
+    return assistanceRecords.filter((record) => record.residentId === residentId);
+  };
+
+  const getStatusVariant = (status) => {
+    switch (status) {
+      case 'Released': return 'success';
+      case 'Approved': return 'info';
+      case 'Pending': return 'warning';
+      case 'Rejected': return 'danger';
+      default: return 'default';
+    }
+  };
+
   const handleDownloadQR = () => {
     // TODO: Implement actual QR download
     alert('QR Code download will be implemented with backend integration.');
@@ -70,6 +88,7 @@ export default function ResidentsPage() {
 
   const getResidentActions = (resident) => [
     { label: 'View Details', onClick: () => console.log('View', resident.id) },
+    { label: 'View Assistance History', onClick: () => handleViewAssistance(resident) },
     { label: 'Edit', onClick: () => console.log('Edit', resident.id) },
     { type: 'divider' },
     { label: 'Generate QR ID', onClick: () => handleGenerateQR(resident) },
@@ -237,6 +256,114 @@ export default function ResidentsPage() {
                 QR Code will be generated upon backend integration
               </p>
             </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Assistance History Modal */}
+      <Modal
+        isOpen={showAssistanceModal}
+        onClose={() => setShowAssistanceModal(false)}
+        title="Assistance History"
+        footer={
+          <Button variant="secondary" onClick={() => setShowAssistanceModal(false)}>Close</Button>
+        }
+        size="large"
+      >
+        {selectedResident && (
+          <div className={styles.assistanceModalContent}>
+            <div className={styles.assistanceResidentInfo}>
+              <div className={styles.assistanceResidentHeader}>
+                <div>
+                  <h4 className={styles.assistanceResidentName}>{selectedResident.name}</h4>
+                  <div className={styles.assistanceResidentMeta}>
+                    {selectedResident.sector.map((s, i) => (
+                      <Badge key={i}>{s}</Badge>
+                    ))}
+                    <span className={styles.assistanceResidentDetail}>{selectedResident.purok}</span>
+                    <span className={styles.assistanceResidentDetail}>Age: {selectedResident.age}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {(() => {
+              const records = getResidentAssistance(selectedResident.id);
+              const totalAmount = records.reduce((sum, r) => {
+                const num = parseFloat(r.amount.replace(/[^\d.]/g, ''));
+                return sum + (isNaN(num) ? 0 : num);
+              }, 0);
+
+              return (
+                <>
+                  <div className={styles.assistanceSummaryRow}>
+                    <div className={styles.assistanceSummaryStat}>
+                      <span className={styles.assistanceSummaryValue}>{records.length}</span>
+                      <span className={styles.assistanceSummaryLabel}>Total Records</span>
+                    </div>
+                    <div className={styles.assistanceSummaryStat}>
+                      <span className={styles.assistanceSummaryValue}>₱{totalAmount.toLocaleString()}</span>
+                      <span className={styles.assistanceSummaryLabel}>Total Amount</span>
+                    </div>
+                    <div className={styles.assistanceSummaryStat}>
+                      <span className={styles.assistanceSummaryValue}>{records.filter(r => r.status === 'Released').length}</span>
+                      <span className={styles.assistanceSummaryLabel}>Released</span>
+                    </div>
+                    <div className={styles.assistanceSummaryStat}>
+                      <span className={styles.assistanceSummaryValue}>{records.filter(r => r.status === 'Pending').length}</span>
+                      <span className={styles.assistanceSummaryLabel}>Pending</span>
+                    </div>
+                  </div>
+
+                  {records.length === 0 ? (
+                    <div className={styles.assistanceEmpty}>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                      </svg>
+                      <p>No assistance records found for this resident.</p>
+                    </div>
+                  ) : (
+                    <div className={styles.assistanceList}>
+                      {records.map((record) => (
+                        <div key={record.id} className={styles.assistanceCard}>
+                          <div className={styles.assistanceCardHeader}>
+                            <div className={styles.assistanceCardTitle}>
+                              <span className={styles.assistanceType}>{record.type}</span>
+                              <span className={styles.assistanceControlNo}>{record.controlNo}</span>
+                            </div>
+                            <Badge variant={getStatusVariant(record.status)}>{record.status}</Badge>
+                          </div>
+                          <div className={styles.assistanceCardBody}>
+                            <div className={styles.assistanceDetail}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                <line x1="16" y1="2" x2="16" y2="6" />
+                                <line x1="8" y1="2" x2="8" y2="6" />
+                                <line x1="3" y1="10" x2="21" y2="10" />
+                              </svg>
+                              <span>{record.date}</span>
+                            </div>
+                            <div className={styles.assistanceDetail}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="12" y1="1" x2="12" y2="23" />
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                              </svg>
+                              <span>{record.amount}</span>
+                            </div>
+                            {record.remarks && (
+                              <div className={styles.assistanceRemarks}>
+                                <span className={styles.remarksLabel}>Remarks:</span> {record.remarks}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
       </Modal>

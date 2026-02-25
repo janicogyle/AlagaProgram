@@ -8,63 +8,25 @@ import BarChart from '@/components/BarChart';
 import PieChart from '@/components/PieChart';
 import styles from './page.module.css';
 
-// Sample analytics data - Replace with actual Supabase data
+// TODO: Fetch from Supabase
 const kpiData = [
-  { title: 'Total Residents', current: 8, previous: 6, growth: 33.3, icon: 'users', color: 'blue' },
-  { title: 'New Registrations', current: 4, previous: 2, growth: 100, icon: 'registration', color: 'green' },
-  { title: 'Active Cases', current: 6, previous: 8, growth: -25, icon: 'assistance', color: 'orange' },
-  { title: 'Completion Rate', current: 94, previous: 87, growth: 8, icon: 'completion', format: '%', color: 'purple' },
+  { title: 'Total Residents', current: 0, previous: 0, growth: 0, icon: 'users', color: 'blue' },
+  { title: 'New Registrations', current: 0, previous: 0, growth: 0, icon: 'registration', color: 'green' },
+  { title: 'Active Cases', current: 0, previous: 0, growth: 0, icon: 'assistance', color: 'orange' },
+  { title: 'Completion Rate', current: 0, previous: 0, growth: 0, icon: 'completion', format: '%', color: 'purple' },
 ];
 
-const sectorTrends = [
-  { month: 'Jan', PWD: 1, 'Senior Citizen': 2, 'Solo Parent': 1 },
-  { month: 'Feb', PWD: 2, 'Senior Citizen': 3, 'Solo Parent': 1 },
-  { month: 'Mar', PWD: 3, 'Senior Citizen': 3, 'Solo Parent': 2 },
-];
-
-const purokDistribution = [
-  { purok: 'Purok 1', count: 2, percentage: 25 },
-  { purok: 'Purok 2', count: 3, percentage: 37.5 },
-  { purok: 'Purok 3', count: 2, percentage: 25 },
-  { purok: 'Purok 4', count: 1, percentage: 12.5 },
-  { purok: 'Purok 5', count: 0, percentage: 0 },
-];
-
-const ageDistribution = [
-  { range: '0-17', count: 0, percentage: 0 },
-  { range: '18-39', count: 3, percentage: 37.5 },
-  { range: '40-59', count: 2, percentage: 25 },
-  { range: '60+', count: 3, percentage: 37.5 },
-];
-
-const monthlyRegistrations = [
-  { month: 'Apr', registrations: 1 },
-  { month: 'May', registrations: 2 },
-  { month: 'Jun', registrations: 3 },
-  { month: 'Jul', registrations: 2 },
-  { month: 'Aug', registrations: 4 },
-  { month: 'Sep', registrations: 3 },
-  { month: 'Oct', registrations: 2 },
-  { month: 'Nov', registrations: 3 },
-  { month: 'Dec', registrations: 1 },
-  { month: 'Jan', registrations: 2 },
-  { month: 'Feb', registrations: 3 },
-  { month: 'Mar', registrations: 2 },
-];
-
-// Sector distribution data - Ready for backend calculation
-const sectorDistribution = [
-  { label: 'PWD', value: 3, color: '#7c3aed' },
-  { label: 'Senior Citizens', value: 3, color: '#1e40af' },
-  { label: 'Solo Parents', value: 2, color: '#16a34a' },
-];
-
-const assistanceData = [
-  { type: 'Medical', count: 12, amount: '₱45,000' },
-  { type: 'Educational', count: 8, amount: '₱25,000' },
-  { type: 'Cash Aid', count: 15, amount: '₱75,000' },
-  { type: 'Relief Goods', count: 20, amount: '₱30,000' },
-];
+// TODO: Fetch from Supabase
+// Expected shapes for Supabase queries:
+// purokDistribution: [{ purok: 'Purok 1', count: 10, percentage: 25 }]
+// assistanceData: [{ type: 'Medicine Assistance', amount: '₱50,000', count: 15 }]
+const sectorTrends = [];
+const purokDistribution = [];
+const ageDistribution = [];
+const monthlyRegistrations = [];
+const sectorDistribution = [];
+const genderDistribution = [];
+const assistanceData = [];
 
 export default function AnalyticsPage() {
   const [timePeriod, setTimePeriod] = useState('3months');
@@ -121,8 +83,8 @@ export default function AnalyticsPage() {
         <Card title="Registration Trends" className={styles.chartCard}>
           <BarChart 
             data={monthlyRegistrations}
-            labelKey="month"
-            valueKey="registrations"
+            labelKey="label"
+            valueKey="value"
             height={200}
           />
         </Card>
@@ -136,12 +98,21 @@ export default function AnalyticsPage() {
           />
         </Card>
 
+        {/* Gender Distribution */}
+        <Card title="Gender Distribution" className={styles.chartCard}>
+          <PieChart 
+            data={genderDistribution}
+            size={150}
+            donut={true}
+          />
+        </Card>
+
         {/* Age Demographics */}
         <Card title="Age Demographics" className={styles.chartCard}>
           <BarChart 
             data={ageDistribution}
-            labelKey="range"
-            valueKey="count"
+            labelKey="label"
+            valueKey="value"
             height={200}
             color="linear-gradient(180deg, #10b981 0%, #059669 100%)"
           />
