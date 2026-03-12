@@ -1,35 +1,120 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Card from '@/components/Card';
 import Select from '@/components/Select';
 import StatCard from '@/components/StatCard';
 import BarChart from '@/components/BarChart';
 import PieChart from '@/components/PieChart';
 import styles from './page.module.css';
-
-// TODO: Fetch from Supabase
-const kpiData = [
-  { title: 'Total Residents', current: 0, previous: 0, growth: 0, icon: 'users', color: 'blue' },
-  { title: 'New Registrations', current: 0, previous: 0, growth: 0, icon: 'registration', color: 'green' },
-  { title: 'Active Cases', current: 0, previous: 0, growth: 0, icon: 'assistance', color: 'orange' },
-  { title: 'Completion Rate', current: 0, previous: 0, growth: 0, icon: 'completion', format: '%', color: 'purple' },
-];
-
-// TODO: Fetch from Supabase
-// Expected shapes for Supabase queries:
-// purokDistribution: [{ purok: 'Purok 1', count: 10, percentage: 25 }]
-// assistanceData: [{ type: 'Medicine Assistance', amount: '₱50,000', count: 15 }]
-const sectorTrends = [];
-const purokDistribution = [];
-const ageDistribution = [];
-const monthlyRegistrations = [];
-const sectorDistribution = [];
-const genderDistribution = [];
-const assistanceData = [];
+import { supabase } from '@/lib/supabaseClient';
 
 export default function AnalyticsPage() {
   const [timePeriod, setTimePeriod] = useState('3months');
+  const [kpiData, setKpiData] = useState([
+    { title: 'Total Residents', current: 0, previous: 0, growth: 0, icon: 'users', color: 'blue' },
+    { title: 'New Registrations', current: 0, previous: 0, growth: 0, icon: 'registration', color: 'green' },
+    { title: 'Active Cases', current: 0, previous: 0, growth: 0, icon: 'assistance', color: 'orange' },
+    { title: 'Completion Rate', current: 0, previous: 0, growth: 0, icon: 'completion', format: '%', color: 'purple' },
+  ]);
+  const [monthlyRegistrations, setMonthlyRegistrations] = useState([]);
+  const [sectorDistribution, setSectorDistribution] = useState([]);
+  const [genderDistribution, setGenderDistribution] = useState([]);
+  const [ageDistribution, setAgeDistribution] = useState([]);
+  const [purokDistribution, setPurokDistribution] = useState([]);
+  const [assistanceData] = useState([]);
+
+  const fetchData = async () => {
+    const periodDays = { '1month': 30, '3months': 90, '6months': 180, '12months': 365 };
+    const days = periodDays[timePeriod] || 90;
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: residents } = await supabase
+      .from('residents')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!residents) return;
+
+    const inPeriod = residents.filter((r) => r.created_at >= since);
+    const total = residents.length;
+    const pwd = residents.filter((r) => r.is_pwd).length;
+    const senior = residents.filter((r) => r.is_senior_citizen).length;
+    const soloParent = residents.filter((r) => r.is_solo_parent).length;
+    const active = residents.filter((r) => r.status === 'Active').length;
+    const completionRate = total > 0 ? Math.round((active / total) * 100) : 0;
+
+    setKpiData([
+      { title: 'Total Residents', current: total, previous: 0, growth: 0, icon: 'users', color: 'blue' },
+      { title: 'New Registrations', current: inPeriod.length, previous: 0, growth: 0, icon: 'registration', color: 'green' },
+      { title: 'Active Cases', current: active, previous: 0, growth: 0, icon: 'assistance', color: 'orange' },
+      { title: 'Completion Rate', current: completionRate, previous: 0, growth: 0, icon: 'completion', format: '%', color: 'purple' },
+    ]);
+
+    // Monthly registrations
+    const months = {};
+    residents.forEach((r) => {
+      const d = new Date(r.created_at);
+      const key = d.toLocaleString('default', { month: 'short', year: '2-digit' });
+      months[key] = (months[key] || 0) + 1;
+    });
+    setMonthlyRegistrations(
+      Object.entries(months).map(([label, value]) => ({ label, value })).slice(-6)
+    );
+
+    setSectorDistribution([
+      { label: 'PWD', value: pwd, color: '#8b5cf6' },
+      { label: 'Senior Citizen', value: senior, color: '#10b981' },
+      { label: 'Solo Parent', value: soloParent, color: '#f59e0b' },
+    ]);
+
+    // Gender distribution
+    const male = residents.filter((r) => r.sex === 'male').length;
+    const female = residents.filter((r) => r.sex === 'female').length;
+    setGenderDistribution([
+      { label: 'Male', value: male, color: '#3b82f6' },
+      { label: 'Female', value: female, color: '#ec4899' },
+    ]);
+
+    // Age distribution
+    const ageBuckets = { '0-17': 0, '18-35': 0, '36-59': 0, '60+': 0 };
+    residents.forEach((r) => {
+      const age = r.age ?? (r.birthday ? Math.floor((Date.now() - new Date(r.birthday)) / 31557600000) : null);
+      if (age === null) return;
+      if (age < 18) ageBuckets['0-17']++;
+      else if (age < 36) ageBuckets['18-35']++;
+      else if (age < 60) ageBuckets['36-59']++;
+      else ageBuckets['60+']++;
+    });
+    setAgeDistribution(Object.entries(ageBuckets).map(([label, value]) => ({ label, value })));
+
+    // Purok distribution by street
+    const purokCounts = {};
+    residents.forEach((r) => {
+      const key = r.street || 'Unknown';
+      purokCounts[key] = (purokCounts[key] || 0) + 1;
+    });
+    const purokTotal = residents.length || 1;
+    setPurokDistribution(
+      Object.entries(purokCounts).map(([purok, count]) => ({
+        purok,
+        count,
+        percentage: Math.round((count / purokTotal) * 100),
+      }))
+    );
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [timePeriod]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('analytics-residents')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'residents' }, fetchData)
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
 
   const timePeriodOptions = [
     { value: '1month', label: 'Last Month' },

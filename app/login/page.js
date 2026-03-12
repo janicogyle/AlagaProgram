@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import LoginForm from '@/components/LoginForm';
 import styles from './page.module.css';
-// import { authHelpers } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,20 +14,18 @@ export default function LoginPage() {
   const handleLogin = async (formData) => {
     setIsLoading(true);
     setError('');
-    
+
     try {
-      // TODO: Implement actual Supabase authentication
-      // const { data, error } = await authHelpers.signIn(formData.username, formData.password);
-      // if (error) throw error;
-      
-      // Simulate login for now - remove this when implementing actual auth
-      console.log('Login attempt with:', formData);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.username,
+        password: formData.password,
+      });
+      if (error) throw error;
+
       // Redirect to dashboard on successful login
       router.push('/dashboard');
     } catch (err) {
-      setError(err.message || 'Invalid username or password');
+      setError(err.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }

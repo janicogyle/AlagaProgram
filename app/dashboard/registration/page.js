@@ -6,6 +6,7 @@ import Input from '@/components/Input';
 import Select from '@/components/Select';
 import Button from '@/components/Button';
 import styles from './page.module.css';
+import { supabase } from '@/lib/supabaseClient';
 
 const sexOptions = [
   { value: 'male', label: 'Male' },
@@ -187,16 +188,32 @@ export default function RegistrationPage() {
     setIsSubmitting(true);
 
     try {
-      // TODO: Implement Supabase submission
-      const submissionData = {
-        controlNumber,
-        ...formData,
-        age: calculateAge(formData.birthday),
-      };
-      console.log('Form Data:', submissionData);
+      const age = calculateAge(formData.birthday);
+      const { error } = await supabase.from('residents').insert({
+        control_number: controlNumber,
+        last_name: formData.lastName,
+        first_name: formData.firstName,
+        middle_name: formData.middleName || null,
+        house_no: formData.houseNo,
+        street: formData.street,
+        barangay: formData.barangay,
+        city: formData.city,
+        birthday: formData.birthday,
+        birthplace: formData.birthplace,
+        age: age ? parseInt(age) : null,
+        sex: formData.sex,
+        citizenship: formData.citizenship,
+        civil_status: formData.civilStatus,
+        contact_number: formData.contactNumber,
+        is_pwd: formData.sectors.pwd,
+        is_senior_citizen: formData.sectors.seniorCitizen,
+        is_solo_parent: formData.sectors.soloParent,
+        representative_name: formData.representativeName,
+        representative_contact: formData.representativeContact,
+        status: 'Active',
+      });
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (error) throw error;
 
       // Reset form after successful submission
       setFormData({
@@ -226,7 +243,7 @@ export default function RegistrationPage() {
       alert('Registration saved successfully!');
     } catch (error) {
       console.error('Error:', error);
-      alert('Failed to save registration');
+      alert('Failed to save registration: ' + error.message);
     } finally {
       setIsSubmitting(false);
     }

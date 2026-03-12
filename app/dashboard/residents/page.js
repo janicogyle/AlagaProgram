@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Card,
@@ -16,32 +16,10 @@ import {
   Modal,
 } from '@/components';
 import styles from './page.module.css';
-
-// TODO: Fetch from Supabase
-// Expected shape: [{ id, name, sector: ['PWD'], purok, age, sex, contact, status, registeredAt, controlNo }]
-const sampleResidents = [];
-
-// TODO: Fetch from Supabase - assistance records linked to residents
-// Expected shape: [{ id, residentId, controlNo, type, amount, status, date, remarks }]
-const assistanceRecords = [];
-
-const sectorOptions = [
-  { value: '', label: 'All Sectors' },
-  { value: 'PWD', label: 'PWD' },
-  { value: 'Senior Citizen', label: 'Senior Citizen' },
-  { value: 'Solo Parent', label: 'Solo Parent' },
-];
-
-const purokOptions = [
-  { value: '', label: 'All Purok' },
-  { value: 'Purok 1', label: 'Purok 1' },
-  { value: 'Purok 2', label: 'Purok 2' },
-  { value: 'Purok 3', label: 'Purok 3' },
-  { value: 'Purok 4', label: 'Purok 4' },
-  { value: 'Purok 5', label: 'Purok 5' },
-];
+import { supabase } from '@/lib/supabaseClient';
 
 export default function ResidentsPage() {
+  const [residents, setResidents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
   const [purokFilter, setPurokFilter] = useState('');
@@ -49,8 +27,61 @@ export default function ResidentsPage() {
   const [showAssistanceModal, setShowAssistanceModal] = useState(false);
   const [selectedResident, setSelectedResident] = useState(null);
 
+  const fetchResidents = async () => {
+    const { data } = await supabase
+      .from('residents')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!data) return;
+
+    setResidents(
+      data.map((r) => ({
+        id: r.id,
+        name: `${r.last_name}, ${r.first_name}${r.middle_name ? ' ' + r.middle_name : ''}`,
+        sector: [
+          r.is_pwd && 'PWD',
+          r.is_senior_citizen && 'Senior Citizen',
+          r.is_solo_parent && 'Solo Parent',
+        ].filter(Boolean),
+        purok: r.street,
+        age: r.age ?? (r.birthday ? Math.floor((Date.now() - new Date(r.birthday)) / 31557600000) : '—'),
+        sex: r.sex,
+        contact: r.contact_number,
+        status: r.status || 'Active',
+        registeredAt: r.created_at,
+        controlNo: r.control_number,
+      }))
+    );
+  };
+
+  useEffect(() => {
+    fetchResidents();
+    const channel = supabase
+      .channel('residents-list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'residents' }, fetchResidents)
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
+
+  const sectorOptions = [
+    { value: '', label: 'All Sectors' },
+    { value: 'PWD', label: 'PWD' },
+    { value: 'Senior Citizen', label: 'Senior Citizen' },
+    { value: 'Solo Parent', label: 'Solo Parent' },
+  ];
+
+  const purokOptions = [
+    { value: '', label: 'All Purok' },
+    { value: 'Purok 1', label: 'Purok 1' },
+    { value: 'Purok 2', label: 'Purok 2' },
+    { value: 'Purok 3', label: 'Purok 3' },
+    { value: 'Purok 4', label: 'Purok 4' },
+    { value: 'Purok 5', label: 'Purok 5' },
+  ];
+
   // Filter residents based on search and filters
-  const filteredResidents = sampleResidents.filter((resident) => {
+  const filteredResidents = residents.filter((resident) => {
     const matchesSearch = resident.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSector = !sectorFilter || resident.sector.includes(sectorFilter);
     const matchesPurok = !purokFilter || resident.purok === purokFilter;
@@ -68,7 +99,7 @@ export default function ResidentsPage() {
   };
 
   const getResidentAssistance = (residentId) => {
-    return assistanceRecords.filter((record) => record.residentId === residentId);
+    return [];
   };
 
   const getStatusVariant = (status) => {
@@ -214,7 +245,7 @@ export default function ResidentsPage() {
 
         <DataTableFooter
           showing={filteredResidents.length}
-          total={sampleResidents.length}
+          total={residents.length}
           itemName="residents"
         />
       </Card>
