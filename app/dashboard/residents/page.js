@@ -20,6 +20,7 @@ import { supabase } from '@/lib/supabaseClient';
 
 export default function ResidentsPage() {
   const [residents, setResidents] = useState([]);
+  const [allAssistance, setAllAssistance] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
   const [purokFilter, setPurokFilter] = useState('');
@@ -39,6 +40,8 @@ export default function ResidentsPage() {
       data.map((r) => ({
         id: r.id,
         name: `${r.last_name}, ${r.first_name}${r.middle_name ? ' ' + r.middle_name : ''}`,
+        firstName: r.first_name,
+        lastName: r.last_name,
         sector: [
           r.is_pwd && 'PWD',
           r.is_senior_citizen && 'Senior Citizen',
@@ -55,13 +58,29 @@ export default function ResidentsPage() {
     );
   };
 
+  const fetchAssistance = async () => {
+    const { data } = await supabase
+      .from('assistance_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (data) setAllAssistance(data);
+  };
+
   useEffect(() => {
     fetchResidents();
-    const channel = supabase
+    fetchAssistance();
+    const resChannel = supabase
       .channel('residents-list')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'residents' }, fetchResidents)
       .subscribe();
-    return () => supabase.removeChannel(channel);
+    const astChannel = supabase
+      .channel('residents-assistance')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'assistance_requests' }, fetchAssistance)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(resChannel);
+      supabase.removeChannel(astChannel);
+    };
   }, []);
 
   const sectorOptions = [
@@ -98,8 +117,21 @@ export default function ResidentsPage() {
     setShowAssistanceModal(true);
   };
 
-  const getResidentAssistance = (residentId) => {
-    return [];
+  const getResidentAssistance = (resident) => {
+    const fullName = `${resident.firstName} ${resident.lastName}`.toLowerCase();
+    return allAssistance
+      .filter((r) => r.beneficiary_name?.toLowerCase().includes(fullName) ||
+                     fullName.includes(r.beneficiary_name?.toLowerCase()))
+      .map((r) => ({
+        id: r.id,
+        controlNo: r.control_number,
+        type: r.service_type === 'others' ? (r.other_service || 'Others') :
+              ({ medicine: 'Medicine Assistance', confinement: 'Confinement Assistance', burial: 'Burial Assistance' }[r.service_type] || r.service_type),
+        amount: r.amount ? `₱${Number(r.amount).toLocaleString()}` : '—',
+        date: r.date ? new Date(r.date).toLocaleDateString() : '—',
+        status: r.status,
+        remarks: r.remarks || '',
+      }));
   };
 
   const getStatusVariant = (status) => {
@@ -319,7 +351,7 @@ export default function ResidentsPage() {
             </div>
 
             {(() => {
-              const records = getResidentAssistance(selectedResident.id);
+              const records = getResidentAssistance(selectedResident);
               const totalAmount = records.reduce((sum, r) => {
                 const num = parseFloat(r.amount.replace(/[^\d.]/g, ''));
                 return sum + (isNaN(num) ? 0 : num);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Card,
@@ -16,10 +16,31 @@ import {
   Modal,
 } from '@/components';
 import styles from './page.module.css';
+import { supabase } from '@/lib/supabaseClient';
 
-// TODO: Fetch from Supabase
-// Expected shape: [{ id, controlNo, requester, type, beneficiary, amount, status, date }]
-const sampleAssistance = [];
+const SERVICE_LABELS = {
+  medicine: 'Medicine Assistance',
+  confinement: 'Confinement Assistance',
+  burial: 'Burial Assistance',
+  others: 'Others',
+};
+
+const mapRow = (r) => ({
+  id: r.id,
+  controlNo: r.control_number,
+  requester: r.requester_name,
+  requesterContact: r.requester_contact,
+  requesterAddress: r.requester_address,
+  beneficiary: r.beneficiary_name,
+  beneficiaryContact: r.beneficiary_contact || '—',
+  beneficiaryAddress: r.beneficiary_address,
+  type: r.service_type === 'others' ? (r.other_service || 'Others') : (SERVICE_LABELS[r.service_type] || r.service_type),
+  amount: r.amount ? `₱${Number(r.amount).toLocaleString()}` : '—',
+  approverName: r.approver_name || '—',
+  processedBy: r.approver_name || '—',
+  status: r.status,
+  date: r.date ? new Date(r.date).toLocaleDateString() : '—',
+});
 
 const typeOptions = [
   { value: '', label: 'All Types' },
@@ -51,12 +72,30 @@ const generateControlNumber = () => {
 };
 
 export default function AssistancePage() {
+  const [assistanceList, setAssistanceList] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+
+  const fetchAssistance = async () => {
+    const { data } = await supabase
+      .from('assistance_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (data) setAssistanceList(data.map(mapRow));
+  };
+
+  useEffect(() => {
+    fetchAssistance();
+    const channel = supabase
+      .channel('assistance-records')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'assistance_requests' }, fetchAssistance)
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -74,7 +113,7 @@ export default function AssistancePage() {
   });
 
   // Filter assistance records
-  const filteredAssistance = sampleAssistance.filter((record) => {
+  const filteredAssistance = assistanceList.filter((record) => {
     const matchesSearch = 
       record.requester.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.beneficiary.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -156,21 +195,32 @@ export default function AssistancePage() {
 
     setIsSubmitting(true);
     try {
-      const submission = {
-        controlNumber: generateControlNumber(),
-        ...formData,
+      const controlNumber = generateControlNumber();
+      const { error } = await supabase.from('assistance_requests').insert({
+        control_number: controlNumber,
+        requester_name: formData.requesterName,
+        requester_contact: formData.requesterContact,
+        requester_address: formData.requesterAddress,
+        service_type: formData.serviceType,
+        other_service: formData.serviceType === 'others' ? formData.otherService : null,
+        beneficiary_name: formData.beneficiaryName,
+        beneficiary_address: formData.beneficiaryAddress,
+        beneficiary_contact: formData.beneficiaryContact || null,
+        amount: formData.amount ? parseFloat(formData.amount.replace(/[^\d.]/g, '')) : null,
+        approver_name: formData.approverName || null,
+        date: formData.date,
         status: 'Pending',
-      };
-      console.log('Assistance Request:', submission);
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      });
+
+      if (error) throw error;
+
       resetForm();
       setShowModal(false);
       alert('Assistance request submitted successfully!');
     } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to submit request');
+      console.error('Supabase error:', JSON.stringify(error));
+      const msg = error?.message || error?.details || JSON.stringify(error);
+      alert('Failed to submit request: ' + msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -317,7 +367,7 @@ export default function AssistancePage() {
 
         <DataTableFooter
           showing={filteredAssistance.length}
-          total={sampleAssistance.length}
+          total={assistanceList.length}
           itemName="records"
         />
       </Card>

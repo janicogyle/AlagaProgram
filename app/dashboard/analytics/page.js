@@ -29,10 +29,13 @@ export default function AnalyticsPage() {
     const days = periodDays[timePeriod] || 90;
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-    const { data: residents } = await supabase
-      .from('residents')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const [residentsResult, assistanceResult] = await Promise.all([
+      supabase.from('residents').select('*').order('created_at', { ascending: false }),
+      supabase.from('assistance_requests').select('id, status'),
+    ]);
+
+    const residents = residentsResult.data;
+    const assistance = assistanceResult.data;
 
     if (!residents) return;
 
@@ -41,13 +44,15 @@ export default function AnalyticsPage() {
     const pwd = residents.filter((r) => r.is_pwd).length;
     const senior = residents.filter((r) => r.is_senior_citizen).length;
     const soloParent = residents.filter((r) => r.is_solo_parent).length;
-    const active = residents.filter((r) => r.status === 'Active').length;
-    const completionRate = total > 0 ? Math.round((active / total) * 100) : 0;
+    const activeCases = (assistance || []).filter((a) => a.status === 'Pending' || a.status === 'Approved').length;
+    const completionRate = (assistance || []).length > 0
+      ? Math.round(((assistance || []).filter((a) => a.status === 'Released').length / (assistance || []).length) * 100)
+      : 0;
 
     setKpiData([
       { title: 'Total Residents', current: total, previous: 0, growth: 0, icon: 'users', color: 'blue' },
       { title: 'New Registrations', current: inPeriod.length, previous: 0, growth: 0, icon: 'registration', color: 'green' },
-      { title: 'Active Cases', current: active, previous: 0, growth: 0, icon: 'assistance', color: 'orange' },
+      { title: 'Active Cases', current: activeCases, previous: 0, growth: 0, icon: 'assistance', color: 'orange' },
       { title: 'Completion Rate', current: completionRate, previous: 0, growth: 0, icon: 'completion', format: '%', color: 'purple' },
     ]);
 
@@ -106,15 +111,19 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     fetchData();
-  }, [timePeriod]);
-
-  useEffect(() => {
-    const channel = supabase
+    const resChannel = supabase
       .channel('analytics-residents')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'residents' }, fetchData)
       .subscribe();
-    return () => supabase.removeChannel(channel);
-  }, []);
+    const astChannel = supabase
+      .channel('analytics-assistance')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'assistance_requests' }, fetchData)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(resChannel);
+      supabase.removeChannel(astChannel);
+    };
+  }, [timePeriod]);
 
   const timePeriodOptions = [
     { value: '1month', label: 'Last Month' },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Card,
@@ -15,10 +15,31 @@ import {
   Modal,
 } from '@/components';
 import styles from './page.module.css';
+import { supabase } from '@/lib/supabaseClient';
 
-// TODO: Fetch from Supabase
-// Expected shape: [{ id, controlNo, requester, type, beneficiary, amount, status, date }]
-const sampleRequests = [];
+const SERVICE_LABELS = {
+  medicine: 'Medicine Assistance',
+  confinement: 'Confinement Assistance',
+  burial: 'Burial Assistance',
+  others: 'Others',
+};
+
+const mapRow = (r) => ({
+  id: r.id,
+  controlNo: r.control_number,
+  requester: r.requester_name,
+  requesterContact: r.requester_contact,
+  requesterAddress: r.requester_address,
+  beneficiary: r.beneficiary_name,
+  beneficiaryContact: r.beneficiary_contact || '—',
+  beneficiaryAddress: r.beneficiary_address,
+  type: r.service_type === 'others' ? (r.other_service || 'Others') : (SERVICE_LABELS[r.service_type] || r.service_type),
+  amount: r.amount ? `₱${Number(r.amount).toLocaleString()}` : '—',
+  processedBy: r.approver_name || '—',
+  status: r.status,
+  date: r.date ? new Date(r.date).toLocaleDateString() : '—',
+  remarks: r.remarks || '',
+});
 
 const typeOptions = [
   { value: '', label: 'All Types' },
@@ -40,12 +61,29 @@ export default function RequestsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [requests, setRequests] = useState(sampleRequests);
+  const [requests, setRequests] = useState([]);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showDecisionModal, setShowDecisionModal] = useState(false);
   const [decisionType, setDecisionType] = useState(null);
   const [remarks, setRemarks] = useState('');
+
+  const fetchRequests = async () => {
+    const { data } = await supabase
+      .from('assistance_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (data) setRequests(data.map(mapRow));
+  };
+
+  useEffect(() => {
+    fetchRequests();
+    const channel = supabase
+      .channel('assistance-requests-list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'assistance_requests' }, fetchRequests)
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
 
   // Filter requests
   const filteredRequests = requests.filter((record) => {
@@ -70,15 +108,19 @@ export default function RequestsPage() {
     setShowDecisionModal(true);
   };
 
-  const handleConfirmDecision = () => {
-    // Update request status
-    setRequests(prev => prev.map(req => 
-      req.id === selectedRequest.id 
-        ? { ...req, status: decisionType === 'approve' ? 'Approved' : 'Rejected' }
-        : req
-    ));
-    
-    alert(`Request ${selectedRequest.controlNo} has been ${decisionType === 'approve' ? 'approved' : 'rejected'}.`);
+  const handleConfirmDecision = async () => {
+    const newStatus = decisionType === 'approve' ? 'Approved' : 'Rejected';
+    const { error } = await supabase
+      .from('assistance_requests')
+      .update({ status: newStatus, remarks: remarks || null })
+      .eq('id', selectedRequest.id);
+
+    if (error) {
+      alert('Failed to update status: ' + (error.message || JSON.stringify(error)));
+      return;
+    }
+
+    alert(`Request ${selectedRequest.controlNo} has been ${newStatus.toLowerCase()}.`);
     setShowDecisionModal(false);
     setShowViewModal(false);
     setSelectedRequest(null);

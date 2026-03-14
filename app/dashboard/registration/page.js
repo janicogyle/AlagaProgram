@@ -239,11 +239,11 @@ export default function RegistrationPage() {
         representativeContact: '',
       });
       setControlNumber(generateControlNumber());
-
       alert('Registration saved successfully!');
     } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to save registration: ' + error.message);
+      console.error('Supabase error:', JSON.stringify(error));
+      const msg = error?.message || error?.details || error?.hint || JSON.stringify(error);
+      alert('Failed to save registration: ' + msg);
     } finally {
       setIsSubmitting(false);
     }

@@ -1,115 +1,221 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Card from '@/components/Card';
 import Modal from '@/components/Modal';
 import Button from '@/components/Button';
 import styles from './page.module.css';
+import { supabase } from '@/lib/supabaseClient';
 
-const reportTypes = [
-  {
-    id: 'pwd',
-    title: 'PWD List',
-    description: 'Generate list of all Persons with Disability',
-    count: 0,
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+export default function ReportsPage() {
+  const [residents, setResidents] = useState([]);
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedFormat, setSelectedFormat] = useState('pdf');
+
+  const fetchResidents = async () => {
+    const { data } = await supabase
+      .from('residents')
+      .select('*')
+      .order('last_name', { ascending: true });
+    if (data) setResidents(data);
+  };
+
+  useEffect(() => {
+    fetchResidents();
+    const channel = supabase
+      .channel('reports-residents')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'residents' }, fetchResidents)
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
+
+  const pwd = residents.filter((r) => r.is_pwd);
+  const senior = residents.filter((r) => r.is_senior_citizen);
+  const soloParent = residents.filter((r) => r.is_solo_parent);
+
+  const reportTypes = [
+    {
+      id: 'pwd',
+      title: 'PWD List',
+      description: 'Generate list of all Persons with Disability',
+      count: pwd.length,
+      data: pwd,
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="4" r="2" />
+          <path d="M12 6v6" />
+          <path d="M12 12l-4 4-2 2" />
+          <path d="M12 12l4 4 2 2" />
+        </svg>
+      ),
+      color: '#1e40af',
+      bgColor: '#dbeafe',
+    },
+    {
+      id: 'senior',
+      title: 'Senior Citizens List',
+      description: 'Generate list of all Senior Citizens',
+      count: senior.length,
+      data: senior,
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      ),
+      color: '#16a34a',
+      bgColor: '#dcfce7',
+    },
+    {
+      id: 'soloparent',
+      title: 'Solo Parent List',
+      description: 'Generate list of all Solo Parents',
+      count: soloParent.length,
+      data: soloParent,
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+        </svg>
+      ),
+      color: '#dc2626',
+      bgColor: '#fee2e2',
+    },
+    {
+      id: 'all',
+      title: 'All Residents',
+      description: 'Generate complete list of all registered residents',
+      count: residents.length,
+      data: residents,
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      ),
+      color: '#7c3aed',
+      bgColor: '#ede9fe',
+    },
+  ];
+
+  const summaryStats = [
+    { label: 'PWD', value: pwd.length, icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="4" r="2" />
         <path d="M12 6v6" />
         <path d="M12 12l-4 4-2 2" />
         <path d="M12 12l4 4 2 2" />
       </svg>
-    ),
-    color: '#1e40af',
-    bgColor: '#dbeafe',
-  },
-  {
-    id: 'senior',
-    title: 'Senior Citizens List',
-    description: 'Generate list of all Senior Citizens',
-    count: 0,
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    )},
+    { label: 'Senior Citizens', value: senior.length, icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
         <circle cx="9" cy="7" r="4" />
         <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
       </svg>
-    ),
-    color: '#16a34a',
-    bgColor: '#dcfce7',
-  },
-  {
-    id: 'soloparent',
-    title: 'Solo Parent List',
-    description: 'Generate list of all Solo Parents',
-    count: 0,
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    )},
+    { label: 'Solo Parents', value: soloParent.length, icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
       </svg>
-    ),
-    color: '#dc2626',
-    bgColor: '#fee2e2',
-  },
-  {
-    id: 'all',
-    title: 'All Residents',
-    description: 'Generate complete list of all registered residents',
-    count: 0,
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-      </svg>
-    ),
-    color: '#7c3aed',
-    bgColor: '#ede9fe',
-  },
-];
-
-// TODO: Fetch from Supabase
-const summaryStats = [
-  { label: 'PWD', value: 0, icon: (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="4" r="2" />
-      <path d="M12 6v6" />
-      <path d="M12 12l-4 4-2 2" />
-      <path d="M12 12l4 4 2 2" />
-    </svg>
-  )},
-  { label: 'Senior Citizens', value: 0, icon: (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  )},
-  { label: 'Solo Parents', value: 0, icon: (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-    </svg>
-  )},
-];
-
-export default function ReportsPage() {
-  const [selectedReport, setSelectedReport] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedFormat, setSelectedFormat] = useState('pdf');
+    )},
+  ];
 
   const handleReportClick = (report) => {
     setSelectedReport(report);
-    setSelectedFormat('pdf'); // Reset to default
+    setSelectedFormat('pdf');
     setIsModalOpen(true);
   };
 
+  const exportCSV = (data, filename) => {
+    const headers = ['Control No', 'Last Name', 'First Name', 'Middle Name', 'Sex', 'Age', 'Birthday', 'Street', 'Barangay', 'City', 'Civil Status', 'Contact Number', 'PWD', 'Senior Citizen', 'Solo Parent', 'Status', 'Registered At'];
+    const rows = data.map((r) => [
+      r.control_number,
+      r.last_name,
+      r.first_name,
+      r.middle_name || '',
+      r.sex,
+      r.age || '',
+      r.birthday || '',
+      r.street || '',
+      r.barangay || '',
+      r.city || '',
+      r.civil_status || '',
+      r.contact_number || '',
+      r.is_pwd ? 'Yes' : 'No',
+      r.is_senior_citizen ? 'Yes' : 'No',
+      r.is_solo_parent ? 'Yes' : 'No',
+      r.status || 'Active',
+      r.created_at ? new Date(r.created_at).toLocaleDateString() : '',
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportPDF = (data, title) => {
+    const rows = data.map((r) => `
+      <tr>
+        <td>${r.control_number}</td>
+        <td>${r.last_name}, ${r.first_name}${r.middle_name ? ' ' + r.middle_name : ''}</td>
+        <td>${r.sex || ''}</td>
+        <td>${r.age || ''}</td>
+        <td>${r.street || ''}</td>
+        <td>${r.is_pwd ? '✓' : ''} ${r.is_senior_citizen ? '✓SC' : ''} ${r.is_solo_parent ? '✓SP' : ''}</td>
+        <td>${r.status || 'Active'}</td>
+        <td>${r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}</td>
+      </tr>`).join('');
+
+    const html = `<!DOCTYPE html><html><head><title>${title}</title>
+      <style>
+        body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; }
+        h2 { text-align: center; margin-bottom: 4px; }
+        p { text-align: center; color: #666; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #1e40af; color: white; padding: 8px; text-align: left; }
+        td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; }
+        tr:nth-child(even) { background: #f9fafb; }
+        @media print { button { display: none; } }
+      </style></head><body>
+      <h2>Barangay Sta. Rita — ${title}</h2>
+      <p>Generated: ${new Date().toLocaleString()} &nbsp;|&nbsp; Total Records: ${data.length}</p>
+      <table>
+        <thead><tr>
+          <th>Control No</th><th>Name</th><th>Sex</th><th>Age</th>
+          <th>Street</th><th>Sector</th><th>Status</th><th>Date Registered</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <script>window.onload = () => window.print();<\/script>
+      </body></html>`;
+
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+  };
+
   const handleConfirmGenerate = () => {
-    // TODO: Implement report generation with Supabase data
-    console.log('Generating report:', selectedReport?.id, 'Format:', selectedFormat);
-    alert(`Report "${selectedReport?.title}" generated as ${selectedFormat.toUpperCase()} successfully!`);
+    if (!selectedReport) return;
+    const filename = selectedReport.title.replace(/\s+/g, '_');
+    if (selectedFormat === 'excel') {
+      exportCSV(selectedReport.data, filename);
+    } else {
+      exportPDF(selectedReport.data, selectedReport.title);
+    }
     setIsModalOpen(false);
     setSelectedReport(null);
   };
@@ -178,8 +284,8 @@ export default function ReportsPage() {
       >
         {selectedReport && (
           <div className={styles.confirmContent}>
-            <div 
-              className={styles.confirmIcon} 
+            <div
+              className={styles.confirmIcon}
               style={{ backgroundColor: selectedReport.bgColor, color: selectedReport.color }}
             >
               {selectedReport.icon}
@@ -238,3 +344,4 @@ export default function ReportsPage() {
     </div>
   );
 }
+

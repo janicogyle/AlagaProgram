@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import LoginForm from '@/components/LoginForm';
 import styles from './page.module.css';
@@ -10,20 +10,65 @@ export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [nextPath, setNextPath] = useState('/dashboard');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const redirectTo = params.get('next');
+
+    if (redirectTo && redirectTo.startsWith('/')) {
+      setNextPath(redirectTo);
+    }
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const checkSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (mounted && session) {
+        router.replace(nextPath);
+      }
+    };
+
+    checkSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) {
+        return;
+      }
+
+      if (event === 'SIGNED_IN' && session) {
+        router.replace(nextPath);
+        router.refresh();
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [nextPath, router]);
 
   const handleLogin = async (formData) => {
     setIsLoading(true);
     setError('');
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.username,
         password: formData.password,
       });
-      if (error) throw error;
+      if (signInError) throw signInError;
 
       // Redirect to dashboard on successful login
-      router.push('/dashboard');
+      router.replace(nextPath);
+      router.refresh();
     } catch (err) {
       setError(err.message || 'Invalid email or password');
     } finally {

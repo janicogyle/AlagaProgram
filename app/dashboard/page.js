@@ -21,10 +21,13 @@ export default function DashboardPage() {
   const [recentRegistrations, setRecentRegistrations] = useState([]);
 
   const fetchData = async () => {
-    const { data: residents } = await supabase
-      .from('residents')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const [residentsResult, assistanceResult] = await Promise.all([
+      supabase.from('residents').select('*').order('created_at', { ascending: false }),
+      supabase.from('assistance_requests').select('id, status'),
+    ]);
+
+    const residents = residentsResult.data;
+    const assistance = assistanceResult.data;
 
     if (!residents) return;
 
@@ -32,6 +35,7 @@ export default function DashboardPage() {
     const pwd = residents.filter((r) => r.is_pwd).length;
     const senior = residents.filter((r) => r.is_senior_citizen).length;
     const soloParent = residents.filter((r) => r.is_solo_parent).length;
+    const activeCases = (assistance || []).filter((a) => a.status === 'Pending' || a.status === 'Approved').length;
 
     setKpiData([
       { title: 'Total Residents', current: total, previous: 0, growth: 0, icon: 'users', color: 'blue' },
@@ -75,11 +79,18 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchData();
-    const channel = supabase
+    const resChannel = supabase
       .channel('dashboard-residents')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'residents' }, fetchData)
       .subscribe();
-    return () => supabase.removeChannel(channel);
+    const astChannel = supabase
+      .channel('dashboard-assistance')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'assistance_requests' }, fetchData)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(resChannel);
+      supabase.removeChannel(astChannel);
+    };
   }, []);
 
   const columns = [
