@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Card from '@/components/Card';
 import Input from '@/components/Input';
 import Select from '@/components/Select';
 import Button from '@/components/Button';
 import styles from './page.module.css';
 import { supabase } from '@/lib/supabaseClient';
+import { assistanceTypeOptions, assistanceData } from '@/lib/assistanceData';
 
 const sexOptions = [
   { value: 'male', label: 'Male' },
@@ -32,6 +34,7 @@ const generateControlNumber = () => {
 };
 
 export default function RegistrationPage() {
+  const router = useRouter();
   const [controlNumber, setControlNumber] = useState('');
   const [formData, setFormData] = useState({
     // Personal Information
@@ -57,16 +60,13 @@ export default function RegistrationPage() {
     // Representative Information
     representativeName: '',
     representativeContact: '',
+    // Assistance Request
+    assistanceType: '',
+    otherAssistanceType: '',
+    assistanceAmount: '',
+    beneficiaryName: '',
+    dateOfRequest: new Date().toISOString().split('T')[0],
   });
-  const [requiredDocuments, setRequiredDocuments] = useState([
-    'Valid Government-issued ID (e.g., PhilSys, SSS, GSIS, Voter\'s ID)',
-    'Barangay Certificate of Residency',
-    'Birth Certificate (PSA or Local Civil Registrar)',
-    '1x1 or 2x2 Recent ID Photo',
-    'PWD ID / Senior Citizen ID / Solo Parent ID (if applicable)',
-  ]);
-  const [newDocument, setNewDocument] = useState('');
-  const [isEditingDocs, setIsEditingDocs] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -109,6 +109,19 @@ export default function RegistrationPage() {
         ...prev,
         [name]: value,
       }));
+    }
+  };
+
+  const handleAmountChange = (e) => {
+    const { value } = e.target;
+
+    if (!formData.assistanceType) {
+      setErrors((prev) => ({ ...prev, assistanceAmount: '' }));
+    } else {
+      const ceiling = assistanceData[formData.assistanceType].ceiling;
+      if (value > ceiling) {
+        setErrors((prev) => ({ ...prev, assistanceAmount: `Amount exceeds the ₱${ceiling} ceiling for this assistance type.` }));
+      }
     }
   };
 
@@ -162,16 +175,12 @@ export default function RegistrationPage() {
     } else if (formData.contactNumber.length !== 11) {
       newErrors.contactNumber = 'Contact number must be exactly 11 digits';
     }
-    if (!formData.sectors.pwd && !formData.sectors.seniorCitizen && !formData.sectors.soloParent) {
-      newErrors.sectors = 'At least one sector must be selected';
-    }
-    if (!formData.representativeName.trim()) {
-      newErrors.representativeName = 'Representative name is required';
-    }
-    if (!formData.representativeContact.trim()) {
-      newErrors.representativeContact = 'Contact number is required';
-    } else if (formData.representativeContact.length !== 11) {
-      newErrors.representativeContact = 'Contact number must be exactly 11 digits';
+
+    // Validate assistance fields if a type is selected
+    if (formData.assistanceType) {
+      if (!formData.beneficiaryName.trim()) {
+        newErrors.beneficiaryName = 'Beneficiary name is required for assistance';
+      }
     }
 
     setErrors(newErrors);
@@ -189,7 +198,9 @@ export default function RegistrationPage() {
 
     try {
       const age = calculateAge(formData.birthday);
-      const { error } = await supabase.from('residents').insert({
+      
+      // 1. Insert into residents table
+      const { data: residentData, error: residentError } = await supabase.from('residents').insert({
         control_number: controlNumber,
         last_name: formData.lastName,
         first_name: formData.firstName,
@@ -211,9 +222,27 @@ export default function RegistrationPage() {
         representative_name: formData.representativeName,
         representative_contact: formData.representativeContact,
         status: 'Active',
-      });
+      }).select().single();
 
-      if (error) throw error;
+      if (residentError) throw residentError;
+
+      // 2. Insert into assistance_requests table if an assistance type is selected
+      if (formData.assistanceType && residentData) {
+        const assistanceControlNumber = `AST-${new Date().getFullYear()}-${Math.floor(Math.random() * 100000).toString().padStart(5, '0')}`;
+        
+        const { error: assistanceError } = await supabase.from('assistance_requests').insert({
+          control_number: assistanceControlNumber,
+          resident_id: residentData.id, // Link to the newly created resident
+          requester_name: `${formData.firstName} ${formData.lastName}`,
+          requester_contact: formData.contactNumber,
+          beneficiary_name: formData.beneficiaryName,
+          assistance_type: formData.assistanceType === 'Others' ? formData.otherAssistanceType : formData.assistanceType,
+          amount: formData.assistanceAmount || 0,
+          status: 'Pending', // Default status
+          request_date: formData.dateOfRequest,
+        })
+        if (assistanceError) throw assistanceError;
+      }
 
       // Reset form after successful submission
       setFormData({
@@ -237,10 +266,17 @@ export default function RegistrationPage() {
         },
         representativeName: '',
         representativeContact: '',
+        beneficiaryName: '',
+        dateOfRequest: new Date().toISOString().split('T')[0],
       });
       setControlNumber(generateControlNumber());
 
       alert('Registration saved successfully!');
+
+      // Navigate to assistance page with resident data
+      if (residentData) {
+        router.push(`/dashboard/assistance?residentId=${residentData.id}`);
+      }
     } catch (error) {
       console.error('Error:', error);
       alert('Failed to save registration: ' + error.message);
@@ -271,6 +307,10 @@ export default function RegistrationPage() {
       },
       representativeName: '',
       representativeContact: '',
+      assistanceType: '',
+      assistanceAmount: '',
+      beneficiaryName: '',
+      dateOfRequest: new Date().toISOString().split('T')[0],
     });
     setControlNumber(generateControlNumber());
   };
@@ -468,114 +508,68 @@ export default function RegistrationPage() {
             </div>
           </Card>
 
-          {/* Representative Information */}
-          <Card title="Representative Information" subtitle="Enter the representative's details">
+          {/* Assistance Request Card */}
+          <Card title="Initial Assistance Request" subtitle="Optional: log an assistance request upon registration">
             <div className={styles.formFields}>
+              <Select
+                label="Type of Assistance"
+                name="assistanceType"
+                value={formData.assistanceType}
+                onChange={handleChange}
+                options={[{ value: '', label: 'Select type (if any)' }, ...assistanceTypeOptions]}
+                optional
+              />
+              {formData.assistanceType === 'Others' && (
+                <Input
+                  label="Please specify"
+                  name="otherAssistanceType"
+                  value={formData.otherAssistanceType}
+                  onChange={handleChange}
+                  placeholder="Specify other assistance"
+                  required
+                />
+              )}
               <Input
                 label="Representative Name"
                 name="representativeName"
                 value={formData.representativeName}
                 onChange={handleChange}
                 placeholder="Enter representative's full name"
-                error={errors.representativeName}
-                required
+                disabled={!formData.assistanceType}
+                optional
               />
               <Input
-                label="Contact Number"
-                type="tel"
+                label="Representative Contact"
                 name="representativeContact"
                 value={formData.representativeContact}
                 onChange={handleChange}
-                placeholder="09-- --- ----"
-                error={errors.representativeContact}
+                placeholder="09XX XXX XXXX"
                 maxLength={11}
-                required
+                disabled={!formData.assistanceType}
+                optional
+              />
+              <Input
+                label="Beneficiary Name"
+                name="beneficiaryName"
+                value={formData.beneficiaryName}
+                onChange={handleChange}
+                placeholder="Enter beneficiary's full name"
+                error={errors.beneficiaryName}
+                disabled={!formData.assistanceType}
+                optional
+              />
+              <Input
+                label="Amount Requested"
+                name="assistanceAmount"
+                type="number"
+                value={formData.assistanceAmount}
+                onChange={handleAmountChange}
+                placeholder="Enter amount"
+                error={errors.assistanceAmount}
+                disabled={!formData.assistanceType}
+                optional
               />
             </div>
-          </Card>
-
-          {/* Required Documents */}
-          <Card
-            title="Required Documents"
-            subtitle="Prepare the following documents for submission"
-            headerAction={
-              <button
-                type="button"
-                className={isEditingDocs ? styles.savDocsBtn : styles.editDocsBtn}
-                onClick={() => {
-                  if (isEditingDocs) setNewDocument('');
-                  setIsEditingDocs(!isEditingDocs);
-                }}
-              >
-                {isEditingDocs ? (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                      <polyline points="17 21 17 13 7 13 7 21" />
-                      <polyline points="7 3 7 8 15 8" />
-                    </svg>
-                    Save
-                  </>
-                ) : (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    Edit
-                  </>
-                )}
-              </button>
-            }
-          >
-            {isEditingDocs && (
-              <div className={styles.addDocumentRow}>
-                <input
-                  type="text"
-                  className={styles.addDocumentInput}
-                  value={newDocument}
-                  onChange={(e) => setNewDocument(e.target.value)}
-                  onKeyDown={handleDocumentKeyDown}
-                  placeholder="Enter document name"
-                />
-                <button
-                  type="button"
-                  className={styles.addDocumentBtn}
-                  onClick={handleAddDocument}
-                  disabled={!newDocument.trim()}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                  Add
-                </button>
-              </div>
-            )}
-            <ul className={styles.requirementsList}>
-              {requiredDocuments.map((doc, index) => (
-                <li key={index} className={styles.requirementItem}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                  </svg>
-                  <span className={styles.requirementText}>{doc}</span>
-                  {isEditingDocs && (
-                    <button
-                      type="button"
-                      className={styles.removeDocBtn}
-                      onClick={() => handleRemoveDocument(index)}
-                      title="Remove document"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
           </Card>
 
           {/* Action Buttons */}

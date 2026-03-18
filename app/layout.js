@@ -9,6 +9,9 @@ const geistSans = Geist({
 export const metadata = {
   title: "Barangay Sta. Rita - Digital Identification System",
   description: "Digital ID System for Barangay Sta. Rita residents - manage PWD, Senior Citizens, and Solo Parents",
+  icons: {
+    icon: "/Brand.png",
+  },
 };
 
 export default function RootLayout({ children }) {

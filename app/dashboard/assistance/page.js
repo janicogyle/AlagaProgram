@@ -230,24 +230,13 @@ export default function AssistancePage() {
               Guidelines
             </Button>
           </Link>
-          <Link href="/dashboard/assistance/requests" className={styles.guidelinesLink}>
-            <Button variant="secondary">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-              </svg>
-              Manage Requests
-            </Button>
-          </Link>
-          <Button onClick={() => setShowModal(true)}>
+          {/* <Button onClick={() => setShowModal(true)}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
             New Request
-          </Button>
+          </Button> */}
         </PageHeader>
 
         <FilterBar>
@@ -322,7 +311,7 @@ export default function AssistancePage() {
         />
       </Card>
 
-      <Modal
+      {/* <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title="ALAGA Assistance Request Form"
@@ -330,7 +319,7 @@ export default function AssistancePage() {
         size="large"
       >
         <div className={styles.assistanceForm}>
-          {/* Requester Information */}
+          
           <section className={styles.formSection}>
             <h4 className={styles.sectionTitle}>Requester Information</h4>
             <div className={styles.formGrid}>
@@ -367,7 +356,7 @@ export default function AssistancePage() {
             </div>
           </section>
 
-          {/* Type of Social Service */}
+          
           <section className={styles.formSection}>
             <h4 className={styles.sectionTitle}>Type of Social Service</h4>
             <div className={styles.serviceTypeGrid}>
@@ -403,7 +392,7 @@ export default function AssistancePage() {
             )}
           </section>
 
-          {/* Beneficiary Information */}
+          
           <section className={styles.formSection}>
             <h4 className={styles.sectionTitle}>Beneficiary Information</h4>
             <div className={styles.formGrid}>
@@ -440,7 +429,7 @@ export default function AssistancePage() {
             </div>
           </section>
 
-          {/* Document Requirements */}
+          
           <section className={styles.formSection}>
             <h4 className={styles.sectionTitle}>Document Requirements</h4>
             <p className={styles.sectionHint}>Please ensure the applicant has the following documents</p>
@@ -566,7 +555,7 @@ export default function AssistancePage() {
             </div>
           </section>
 
-          {/* Acknowledgement Section */}
+          
           <section className={styles.formSection}>
             <h4 className={styles.sectionTitle}>Acknowledgement</h4>
             <div className={styles.acknowledgementBox}>
@@ -607,7 +596,7 @@ export default function AssistancePage() {
             </div>
           </section>
         </div>
-      </Modal>
+      </Modal> */}
     </div>
   );
 }
