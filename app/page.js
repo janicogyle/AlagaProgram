@@ -253,6 +253,9 @@ export default function HomePage() {
             <Link href="/login" className={styles.navLoginBtn}>
               Sign In
             </Link>
+            <Link href="/signup" className={styles.navSignupBtn}>
+              Sign Up
+            </Link>
           </nav>
 
           <button 
@@ -284,7 +287,7 @@ export default function HomePage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
-              Official Government System
+              ALAGA Program
             </div>
             <h1 className={styles.heroTitle}>
               Welcome to Barangay Sta. Rita
@@ -320,8 +323,8 @@ export default function HomePage() {
                     <img src="/Brand.png" alt="Logo" />
                   </div>
                   <div className={styles.illustrationTitle}>
-                    <span>Digital ID</span>
-                    <small>Barangay Sta. Rita</small>
+                    <span>Digital Management System</span>
+                    <small>PWD's, Senior Citizens, Solo Parents</small>
                   </div>
                 </div>
                 <div className={styles.illustrationQR}>

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import styles from './Button.module.css';
 
 export default function Button({ 
@@ -11,7 +12,8 @@ export default function Button({
   fullWidth = false,
   disabled = false,
   icon = null,
-  className = ''
+  className = '',
+  href
 }) {
   const buttonClasses = `
     ${styles.button} 
@@ -20,6 +22,15 @@ export default function Button({
     ${fullWidth ? styles.fullWidth : ''} 
     ${className}
   `.trim();
+
+  if (href && !disabled) {
+    return (
+      <Link href={href} className={buttonClasses} onClick={onClick}>
+        {icon && <span className={styles.icon}>{icon}</span>}
+        {children}
+      </Link>
+    );
+  }
 
   return (
     <button

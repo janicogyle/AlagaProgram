@@ -100,6 +100,24 @@
   transform: translateY(-1px);
 }
 
+.navSignupBtn {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e40af;
+  background: transparent;
+  border-radius: 8px;
+  margin-left: 8px;
+  border: 1px solid #1e40af;
+  transition: all 0.2s ease;
+}
+
+.navSignupBtn:hover {
+  background: #1e40af;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
 .mobileMenuBtn {
   display: none;
   width: 44px;
@@ -125,7 +143,6 @@
   min-height: 100vh;
   background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 50%, #172554 100%);
   padding-top: 72px;
-  overflow: hidden;
 }
 
 .heroContainer {
