@@ -102,22 +102,13 @@ export default function ReportsPage() {
             >
               <div className={styles.reportInfo}>
                 <h3 className={styles.reportTitle}>{report.title}</h3>
-                  <Button variant="secondary" onClick={handleCloseModal} disabled={isGenerating}>
+                <p className={styles.reportDesc}>{report.description}</p>
               </div>
               <span className={styles.reportCount}>{report.count} records</span>
-                  <Button
-                    variant="primary"
-                    onClick={() => {
-                      setIsGenerating(true);
-                      handleConfirmGenerate();
-                    }}
-                    disabled={isGenerating}
-                  >
+            </button>
           ))}
         </div>
-      </Card>
 
-                    {isGenerating ? 'Generating…' : 'Generate'}
         <div className={styles.summaryGrid}>
           {summaryStats.map((stat, index) => (
             <div key={index} className={styles.summaryCard}>
