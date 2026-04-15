@@ -18,6 +18,9 @@ export default function GuidelinesPage() {
   useEffect(() => {
     const loadBudgets = async () => {
       try {
+        if (!supabase) {
+          throw new Error('Database client not available');
+        }
         const { data, error } = await supabase
           .from('assistance_budgets')
           .select('assistance_type, ceiling');
@@ -95,6 +98,9 @@ export default function GuidelinesPage() {
 
     setSaving(true);
     try {
+      if (!supabase) {
+        throw new Error('Database client not available');
+      }
       const { error } = await supabase
         .from('assistance_budgets')
         .upsert({

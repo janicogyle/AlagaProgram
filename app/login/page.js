@@ -4,32 +4,101 @@ import { useState } from 'react';
 import Link from 'next/link';
 import styles from './login.module.css';
 import { useRouter } from 'next/navigation';
-import { UnifiedLoginForm } from '@/components';
+import { UnifiedLoginForm, Modal, Button } from '@/components';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function LoginPage() {
   const [role, setRole] = useState('beneficiary');
+  const [loading, setLoading] = useState(false);
+  const [alertState, setAlertState] = useState({ open: false, title: '', message: '' });
   const router = useRouter();
 
+  const openAlert = ({ title, message }) => {
+    setAlertState({ open: true, title, message });
+  };
+
+  const closeAlert = () => {
+    setAlertState((prev) => ({ ...prev, open: false }));
+  };
+
   const handleLogin = async ({ username, password }) => {
-    // Add your authentication logic here based on role
-    console.log('Role:', role);
-    console.log('Username:', username);
-    console.log('Password:', password);
+    setLoading(true);
 
-    if (role === 'beneficiary') {
-      try {
-        // Look up the resident by contact number so profile/dashboard can load their data
-        const { data, error } = await supabase
-          .from('residents')
-          .select('id, first_name, last_name, contact_number')
-          .eq('contact_number', username)
-          .order('id', { ascending: false })
-          .limit(1);
+    try {
+      if (role === 'admin') {
+        // Admin login with Supabase Auth
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: username,
+          password,
+        });
 
-        const resident = !error && Array.isArray(data) && data.length > 0 ? data[0] : null;
+        if (error) {
+          openAlert({ title: 'Login failed', message: error.message });
+          return;
+        }
 
-        if (resident && typeof window !== 'undefined') {
+        // Check if user exists in users table
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (userError || !userData) {
+          openAlert({
+            title: 'Admin account not found',
+            message: 'Please contact the administrator.',
+          });
+          await supabase.auth.signOut();
+          return;
+        }
+
+        if (userData.status !== 'Active') {
+          openAlert({
+            title: 'Account inactive',
+            message: 'Your account has been deactivated. Please contact the administrator.',
+          });
+          await supabase.auth.signOut();
+          return;
+        }
+
+        // Update last login
+        await supabase
+          .from('users')
+          .update({ last_login: new Date().toISOString() })
+          .eq('id', data.user.id);
+
+        // Store in localStorage for persistence
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('adminUser', JSON.stringify(userData));
+        }
+
+        router.push('/admin');
+      } else {
+        // Beneficiary login (contact number + password)
+        const response = await fetch('/api/beneficiary/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contactNumber: username, password }),
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          openAlert({
+            title: 'Login failed',
+            message: result?.error || 'Login failed. Please try again.',
+          });
+          return;
+        }
+
+        const resident = result?.data;
+        if (!resident) {
+          openAlert({ title: 'Login failed', message: 'Login failed. Please try again.' });
+          return;
+        }
+
+        if (typeof window !== 'undefined') {
           try {
             window.localStorage.setItem('beneficiaryResidentId', String(resident.id));
             window.localStorage.setItem('beneficiaryContactNumber', resident.contact_number || '');
@@ -41,15 +110,17 @@ export default function LoginPage() {
             console.warn('Unable to persist beneficiary identity in localStorage:', storageError);
           }
         }
-      } catch (lookupError) {
-        console.error('Failed to look up beneficiary during login:', lookupError);
-      }
-    }
 
-    if (role === 'admin') {
-      router.push('/admin');
-    } else {
-      router.push('/beneficiary/dashboard');
+        router.push('/beneficiary/dashboard');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      openAlert({
+        title: 'Login error',
+        message: error?.message || 'An error occurred during login. Please try again.',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -106,6 +177,20 @@ export default function LoginPage() {
           )}
         </div>
       </div>
+
+      {/* Error / Info Modal */}
+      <Modal
+        isOpen={!!alertState.open}
+        onClose={closeAlert}
+        title={alertState.title || 'Message'}
+        footer={
+          <>
+            <Button onClick={closeAlert}>OK</Button>
+          </>
+        }
+      >
+        <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{alertState.message}</p>
+      </Modal>
     </div>
   );
 }

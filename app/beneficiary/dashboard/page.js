@@ -9,7 +9,7 @@ import Table from '../../../components/Table';
 import Button from '../../../components/Button';
 import Badge from '../../../components/Badge';
 import styles from './page.module.css';
-import { supabase } from '@/lib/supabaseClient';
+import Modal from '../../../components/Modal';
 
 const columns = [
   { key: 'control_number', label: 'Control No.' },
@@ -31,6 +31,15 @@ export default function BeneficiaryDashboardPage() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all | active | completed | rejected
+  const [alertState, setAlertState] = useState({ open: false, title: '', message: '' });
+
+  const openAlert = ({ title, message }) => {
+    setAlertState({ open: true, title, message });
+  };
+
+  const closeAlert = () => {
+    setAlertState((prev) => ({ ...prev, open: false }));
+  };
 
   const [stats, setStats] = useState({
     total: 0,
@@ -63,15 +72,14 @@ export default function BeneficiaryDashboardPage() {
           return;
         }
 
-        const { data, error } = await supabase
-          .from('assistance_requests')
-          .select('*')
-          .eq('resident_id', residentId)
-          .order('request_date', { ascending: false });
+        const response = await fetch(`/api/assistance-requests?residentId=${encodeURIComponent(residentId)}`);
+        const result = await response.json();
 
-        if (error) throw error;
+        if (!response.ok || result?.error) {
+          throw new Error(result?.error || 'Failed to load assistance requests.');
+        }
 
-        const safeData = data || [];
+        const safeData = result.data || [];
         setRequests(safeData);
 
         if (safeData.length > 0) {
@@ -89,6 +97,10 @@ export default function BeneficiaryDashboardPage() {
         console.error('Failed to load beneficiary dashboard data:', err);
         setRequests([]);
         setStats({ total: 0, active: 0, pending: 0, completed: 0, rejected: 0, lastDate: null });
+        openAlert({
+          title: 'Load failed',
+          message: err?.message || 'Failed to load your dashboard data. Please try again.',
+        });
       } finally {
         setLoading(false);
       }
@@ -285,6 +297,21 @@ export default function BeneficiaryDashboardPage() {
           <Table columns={columns} data={recentRequests} />
         )}
       </Card>
+
+      {/* Alert Modal */}
+      <Modal
+        isOpen={!!alertState.open}
+        onClose={closeAlert}
+        title={alertState.title || 'Notice'}
+        size="small"
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <Button onClick={closeAlert}>OK</Button>
+          </div>
+        }
+      >
+        <p>{alertState.message}</p>
+      </Modal>
     </div>
   );
 }

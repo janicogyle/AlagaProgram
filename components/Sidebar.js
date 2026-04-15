@@ -10,6 +10,7 @@ const menuItems = [
     items: [
       { name: 'Dashboard', href: '/admin/analytics', icon: 'dashboard' },
       { name: 'Registration', href: '/admin/registration', icon: 'registration' },
+      { name: 'Beneficiaries', href: '/admin/residents', icon: 'user' },
       { name: 'Requests', href: '/admin/assistance/requests', icon: 'list' },
       { name: 'Assistance Tracking', href: '/admin/assistance', icon: 'assistance' },
       { name: 'Assistance Guidelines', href: '/admin/assistance/guidelines', icon: 'guidelines' },

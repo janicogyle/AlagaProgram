@@ -83,6 +83,10 @@ export default function RegistrationPage() {
   useEffect(() => {
     const loadBudgets = async () => {
       try {
+        if (!supabase) {
+          console.error('Database client not available');
+          return;
+        }
         const { data, error } = await supabase
           .from('assistance_budgets')
           .select('assistance_type, ceiling');
@@ -301,6 +305,9 @@ export default function RegistrationPage() {
 
       // 2. Insert into assistance_requests table if an assistance type is selected
       if (formData.assistanceType && residentData) {
+        if (!supabase) {
+          throw new Error('Database client not available');
+        }
         const assistanceControlNumber = `AST-${new Date().getFullYear()}-${Math.floor(Math.random() * 100000).toString().padStart(5, '0')}`;
         
         const { error: assistanceError } = await supabase.from('assistance_requests').insert({

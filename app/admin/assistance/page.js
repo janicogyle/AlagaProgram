@@ -76,6 +76,9 @@ export default function AssistancePage() {
   useEffect(() => {
     const loadAssistance = async () => {
       try {
+        if (!supabase) {
+          throw new Error('Database client not available');
+        }
         const { data, error } = await supabase
           .from('assistance_requests')
           .select('*')

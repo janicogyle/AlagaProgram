@@ -18,15 +18,15 @@ const beneficiaryMenuItems = [
   },
 ];
 
-const beneficiaryUser = {
-  name: 'Beneficiary User',
-  role: 'Beneficiary',
-};
-
 export default function BeneficiaryLayout({ children }) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [beneficiaryUser] = useState(() => {
+    if (typeof window === 'undefined') return { name: 'Beneficiary', role: 'Beneficiary' };
+    const name = window.localStorage.getItem('beneficiaryName');
+    return { name: name || 'Beneficiary', role: 'Beneficiary' };
+  });
 
   useEffect(() => {
     const checkMobile = () => {
@@ -43,6 +43,7 @@ export default function BeneficiaryLayout({ children }) {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
 
   const handleOverlayClick = () => {
     if (isMobile) {

@@ -7,7 +7,7 @@ import Table from '../../../components/Table';
 import Badge from '../../../components/Badge';
 import Button from '../../../components/Button';
 import styles from './page.module.css';
-import { supabase } from '@/lib/supabaseClient';
+import Modal from '../../../components/Modal';
 
 const columns = [
   { key: 'control_number', label: 'Control No.' },
@@ -38,6 +38,15 @@ const columns = [
 export default function BeneficiaryHistoryPage() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [alertState, setAlertState] = useState({ open: false, title: '', message: '' });
+
+  const openAlert = ({ title, message }) => {
+    setAlertState({ open: true, title, message });
+  };
+
+  const closeAlert = () => {
+    setAlertState((prev) => ({ ...prev, open: false }));
+  };
 
   useEffect(() => {
     const loadRequests = async () => {
@@ -53,17 +62,21 @@ export default function BeneficiaryHistoryPage() {
           return;
         }
 
-        const { data, error } = await supabase
-          .from('assistance_requests')
-          .select('*')
-          .eq('resident_id', residentId)
-          .order('request_date', { ascending: false });
+        const response = await fetch(`/api/assistance-requests?residentId=${encodeURIComponent(residentId)}`);
+        const result = await response.json();
 
-        if (error) throw error;
-        setRequests(data || []);
+        if (!response.ok || result?.error) {
+          throw new Error(result?.error || 'Failed to load assistance history.');
+        }
+
+        setRequests(result.data || []);
       } catch (err) {
         console.error('Failed to load assistance history:', err);
         setRequests([]);
+        openAlert({
+          title: 'Load failed',
+          message: err?.message || 'Failed to load assistance history. Please try again.',
+        });
       } finally {
         setLoading(false);
       }
@@ -94,12 +107,27 @@ export default function BeneficiaryHistoryPage() {
           <p className={styles.muted}>Loading your assistance history...</p>
         ) : tableData.length === 0 ? (
           <p className={styles.muted}>
-            You have no assistance requests yet. Click "New Request" to submit one.
+            You have no assistance requests yet. Click &quot;New Request&quot; to submit one.
           </p>
         ) : (
           <Table columns={columns} data={tableData} />
         )}
       </Card>
+
+      {/* Alert Modal */}
+      <Modal
+        isOpen={!!alertState.open}
+        onClose={closeAlert}
+        title={alertState.title || 'Notice'}
+        size="small"
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <Button onClick={closeAlert}>OK</Button>
+          </div>
+        }
+      >
+        <p>{alertState.message}</p>
+      </Modal>
     </div>
   );
 }

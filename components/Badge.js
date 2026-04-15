@@ -22,6 +22,7 @@ const variants = {
   'Approved': 'primary',
   'Released': 'success',
   'Rejected': 'danger',
+  'Archived': 'secondary',
 };
 
 export default function Badge({ children, variant }) {

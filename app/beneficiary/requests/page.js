@@ -9,7 +9,6 @@ import Select from '../../../components/Select';
 import Button from '../../../components/Button';
 import FileUpload from '../../../components/FileUpload';
 import styles from './page.module.css';
-import { supabase } from '@/lib/supabaseClient';
 import { createOrUpdateResident } from '@/lib/residents';
 import { assistanceTypeOptions, assistanceData } from '@/lib/assistanceData';
 
@@ -277,22 +276,29 @@ export default function BeneficiaryRequestPage() {
           .toString()
           .padStart(5, '0')}`;
 
-        const { error: assistanceError } = await supabase.from('assistance_requests').insert({
-          control_number: assistanceControlNumber,
-          resident_id: residentData.id,
-          requester_name: `${formData.firstName} ${formData.lastName}`,
-          requester_contact: formData.contactNumber,
-          beneficiary_name: formData.beneficiaryName,
-          assistance_type:
-            formData.assistanceType === 'Others'
-              ? formData.otherAssistanceType
-              : formData.assistanceType,
-          amount: formData.assistanceAmount || 0,
-          status: 'Pending',
-          request_date: formData.dateOfRequest,
+        const response = await fetch('/api/assistance-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            control_number: assistanceControlNumber,
+            resident_id: residentData.id,
+            requester_name: `${formData.firstName} ${formData.lastName}`,
+            requester_contact: formData.contactNumber,
+            beneficiary_name: formData.beneficiaryName,
+            assistance_type:
+              formData.assistanceType === 'Others'
+                ? formData.otherAssistanceType
+                : formData.assistanceType,
+            amount: formData.assistanceAmount || 0,
+            status: 'Pending',
+            request_date: formData.dateOfRequest,
+          }),
         });
 
-        if (assistanceError) throw assistanceError;
+        const result = await response.json();
+        if (!response.ok || result?.error) {
+          throw new Error(result?.error || 'Failed to create assistance request.');
+        }
       }
 
       // Persist basic beneficiary identity locally for dashboard/profile views

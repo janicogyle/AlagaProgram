@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import styles from './layout.module.css';
-// import { authHelpers } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 
 export default function DashboardLayout({ children }) {
@@ -57,13 +57,22 @@ export default function DashboardLayout({ children }) {
 
   const handleLogout = async () => {
     try {
-      // TODO: Implement actual Supabase logout
-      // await authHelpers.signOut();
+      // Sign out from Supabase Auth
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
+      
+      // Clear localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('adminUser');
+      }
       
       // Redirect to login page
       router.push('/login');
     } catch (error) {
       console.error('Logout failed:', error);
+      // Still redirect even if there's an error
+      router.push('/login');
     }
   };
 

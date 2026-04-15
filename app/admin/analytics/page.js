@@ -27,6 +27,10 @@ export default function AnalyticsPage() {
   const [recentRegistrations, setRecentRegistrations] = useState([]);
 
   const fetchData = async () => {
+    if (!supabase) {
+      console.error('Database client not available');
+      return;
+    }
     const periodDays = { '1month': 30, '3months': 90, '6months': 180, '12months': 365 };
     const days = periodDays[timePeriod] || 90;
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
@@ -126,6 +130,7 @@ export default function AnalyticsPage() {
   }, [timePeriod]);
 
   useEffect(() => {
+    if (!supabase) return;
     const channel = supabase
       .channel('analytics-residents')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'residents' }, fetchData)

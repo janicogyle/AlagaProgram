@@ -10,8 +10,6 @@ import Select from '../../components/Select';
 import SectionHeader from '@/components/SectionHeader';
 import HelperText from '@/components/HelperText';
 import styles from './page.module.css';
-import { supabase } from '@/lib/supabaseClient';
-import { createOrUpdateResident } from '@/lib/residents';
 
 const streetOptions = [
   { value: '25th Street', label: '25th Street' },
@@ -52,6 +50,8 @@ export default function BeneficiarySignupPage() {
     lastName: '',
     birthday: '',
     contactNumber: '',
+    password: '',
+    confirmPassword: '',
     isPwd: false,
     isSeniorCitizen: false,
     isSoloParent: false,
@@ -75,40 +75,52 @@ export default function BeneficiarySignupPage() {
     setIsSubmitting(true);
 
     try {
-      const residentData = await createOrUpdateResident({
-        first_name: form.firstName,
-        middle_name: form.middleName || null,
-        last_name: form.lastName,
-        birthday: form.birthday,
-        contact_number: form.contactNumber,
-        house_no: form.houseNo,
-        purok: form.purok,
-        street: form.street,
-        barangay: form.barangay,
-        city: form.city,
-        is_pwd: form.isPwd,
-        is_senior_citizen: form.isSeniorCitizen,
-        is_solo_parent: form.isSoloParent,
-        status: 'Active',
+      if (!form.password || form.password.length < 8) {
+        setStatus({ type: 'error', message: 'Password must be at least 8 characters long.' });
+        return;
+      }
+
+      if (form.password !== form.confirmPassword) {
+        setStatus({ type: 'error', message: 'Passwords do not match.' });
+        return;
+      }
+
+      const response = await fetch('/api/account-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: form.firstName,
+          middleName: form.middleName,
+          lastName: form.lastName,
+          birthday: form.birthday,
+          contactNumber: form.contactNumber,
+          password: form.password,
+          isPwd: form.isPwd,
+          isSeniorCitizen: form.isSeniorCitizen,
+          isSoloParent: form.isSoloParent,
+          houseNo: form.houseNo,
+          purok: form.purok,
+          street: form.street,
+          barangay: form.barangay,
+          city: form.city,
+        }),
       });
 
-      // Persist identity locally so beneficiary views (profile, dashboard, history) can load this resident
-      if (typeof window !== 'undefined' && residentData) {
-        try {
-          window.localStorage.setItem('beneficiaryResidentId', String(residentData.id));
-          window.localStorage.setItem('beneficiaryContactNumber', form.contactNumber);
-          window.localStorage.setItem('beneficiaryName', `${form.firstName} ${form.lastName}`);
-        } catch (storageError) {
-          console.warn('Unable to persist beneficiary identity in localStorage:', storageError);
-        }
+      const { data, error } = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(error || 'Failed to submit sign-up request.');
       }
 
       setStatus({
         type: 'success',
         message:
-          'Your sign-up request has been recorded. Please visit the barangay office for verification.',
+          'Your sign-up request has been submitted successfully! Please wait for admin approval before you can log in.',
       });
-      router.push('/login');
+      
+      // Redirect to login after 3 seconds
+      setTimeout(() => {
+        router.push('/login');
+      }, 3000);
     } catch (err) {
       console.error('Failed to submit beneficiary sign-up:', err);
       setStatus({
@@ -191,6 +203,26 @@ export default function BeneficiarySignupPage() {
                 value={form.contactNumber}
                 onChange={handleChange}
                 placeholder="09XX XXX XXXX"
+                required
+              />
+              <Input
+                label="Password"
+                type="password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                placeholder="At least 8 characters"
+                minLength={8}
+                required
+              />
+              <Input
+                label="Confirm Password"
+                type="password"
+                name="confirmPassword"
+                value={form.confirmPassword}
+                onChange={handleChange}
+                placeholder="Re-enter your password"
+                minLength={8}
                 required
               />
             </div>

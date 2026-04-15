@@ -15,7 +15,6 @@ import {
   Modal,
 } from '@/components';
 import styles from './page.module.css';
-import { supabase } from '@/lib/supabaseClient';
 
 // Requests are loaded from the `assistance_requests` table in Supabase.
 // Shape in state: { id, controlNo, requester, requesterContact, beneficiary, beneficiaryContact, type, amount, rawAmount, status, date, processedBy }
@@ -36,57 +35,6 @@ const statusOptions = [
   { value: 'Rejected', label: 'Rejected' },
 ];
 
-// Local sample requests for UI testing when Supabase is not available
-const sampleRequests = [
-  {
-    id: 'sample-1',
-    controlNo: 'AST-2026-00001',
-    requester: 'Juan Dela Cruz',
-    requesterContact: '09171234567',
-    requesterAddress: 'Purok 1, Barangay Sta. Rita',
-    beneficiary: 'Juan Dela Cruz',
-    beneficiaryContact: '09171234567',
-    beneficiaryAddress: 'Purok 1, Barangay Sta. Rita',
-    type: 'Medicine Assistance',
-    amount: 400,
-    rawAmount: 400,
-    status: 'Pending',
-    date: '03/01/2026',
-    processedBy: '',
-  },
-  {
-    id: 'sample-2',
-    controlNo: 'AST-2026-00002',
-    requester: 'Maria Santos',
-    requesterContact: '09181234567',
-    requesterAddress: 'Purok 3, Barangay Sta. Rita',
-    beneficiary: 'Pedro Santos',
-    beneficiaryContact: '09181234567',
-    beneficiaryAddress: 'Purok 3, Barangay Sta. Rita',
-    type: 'Confinement Assistance',
-    amount: 2500,
-    rawAmount: 2500,
-    status: 'Approved',
-    date: '03/02/2026',
-    processedBy: 'Admin User',
-  },
-  {
-    id: 'sample-3',
-    controlNo: 'AST-2026-00003',
-    requester: 'Jose Cruz',
-    requesterContact: '09191234567',
-    requesterAddress: 'Purok 5, Barangay Sta. Rita',
-    beneficiary: 'Jose Cruz',
-    beneficiaryContact: '09191234567',
-    beneficiaryAddress: 'Purok 5, Barangay Sta. Rita',
-    type: 'Burial Assistance',
-    amount: 4500,
-    rawAmount: 4500,
-    status: 'Released',
-    date: '03/03/2026',
-    processedBy: 'Admin User',
-  },
-];
 
 export default function RequestsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -94,8 +42,13 @@ export default function RequestsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [usingSample, setUsingSample] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [alertState, setAlertState] = useState({
+    open: false,
+    title: '',
+    message: '',
+    variant: 'info', // info | success | error
+  });
   const [showViewModal, setShowViewModal] = useState(false);
   const [showDecisionModal, setShowDecisionModal] = useState(false);
   const [decisionType, setDecisionType] = useState(null);
@@ -103,17 +56,25 @@ export default function RequestsPage() {
   const [status, setStatus] = useState(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
+  const openAlert = ({ title, message, variant = 'info' }) => {
+    setAlertState({ open: true, title, message, variant });
+  };
+
+  const closeAlert = () => {
+    setAlertState((prev) => ({ ...prev, open: false }));
+  };
+
   useEffect(() => {
     const loadRequests = async () => {
       try {
-        const { data, error } = await supabase
-          .from('assistance_requests')
-          .select('*, residents:resident_id(*)')
-          .order('request_date', { ascending: false });
+        const response = await fetch('/api/assistance-requests');
+        const result = await response.json();
 
-        if (error) throw error;
+        if (!response.ok || result?.error) {
+          throw new Error(result?.error || 'Failed to load assistance requests.');
+        }
 
-        const mapped = (data || []).map((r) => {
+        const mapped = (result.data || []).map((r) => {
           const resident = r.residents || {};
 
           const addressParts = [];
@@ -173,9 +134,13 @@ export default function RequestsPage() {
 
         setRequests(mapped);
       } catch (err) {
-        console.error('Failed to load assistance requests, falling back to sample data:', err);
-        setUsingSample(true);
-        setRequests(sampleRequests);
+        console.error('Failed to load assistance requests:', err);
+        setRequests([]);
+        openAlert({
+          title: 'Load failed',
+          message: err?.message || 'Failed to load assistance requests. Please try again.',
+          variant: 'error',
+        });
       } finally {
         setLoading(false);
       }
@@ -230,19 +195,19 @@ export default function RequestsPage() {
     setIsUpdatingStatus(true);
 
     try {
-      if (!usingSample) {
-        const { error } = await supabase
-          .from('assistance_requests')
-          .update({ status: newStatus, decision_remarks: remarks || null })
-          .eq('id', selectedRequest.id);
+      const response = await fetch(`/api/assistance-requests/${selectedRequest.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus, decision_remarks: remarks || null }),
+      });
 
-        if (error) throw error;
+      const result = await response.json();
+      if (!response.ok || result?.error) {
+        throw new Error(result?.error || 'Failed to update request status.');
       }
 
       setRequests((prev) =>
-        prev.map((req) =>
-          req.id === selectedRequest.id ? { ...req, status: newStatus } : req
-        )
+        prev.map((req) => (req.id === selectedRequest.id ? { ...req, status: newStatus } : req)),
       );
       setStatus({
         type: 'success',
@@ -256,6 +221,11 @@ export default function RequestsPage() {
       });
     } catch (err) {
       console.error('Failed to update request status:', err);
+      openAlert({
+        title: 'Update failed',
+        message: err?.message || 'Failed to update request status. Please try again.',
+        variant: 'error',
+      });
       setStatus({
         type: 'error',
         message: 'Failed to update request status. Please try again.',
@@ -803,6 +773,21 @@ export default function RequestsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Alert Modal */}
+      <Modal
+        isOpen={!!alertState.open}
+        onClose={closeAlert}
+        title={alertState.title || 'Notice'}
+        size="small"
+        footer={
+          <div className={styles.modalFooter}>
+            <Button onClick={closeAlert}>OK</Button>
+          </div>
+        }
+      >
+        <p>{alertState.message}</p>
       </Modal>
     </div>
   );

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Card,
   Badge,
   Button,
+  Input,
   PageHeader,
   SearchInput,
   FilterBar,
@@ -14,51 +15,11 @@ import {
 } from "@/components";
 import styles from "./page.module.css";
 
-// TODO: Replace with real data from Supabase (beneficiary signup table)
-const sampleRequests = [
-  {
-    id: "REQ-2026-0001",
-    createdAt: "2026-03-20T10:15:00Z",
-    status: "Pending",
-    firstName: "Maria",
-    middleName: "Santos",
-    lastName: "Dela Cruz",
-    contactNumber: "09171234567",
-    isPwd: true,
-    isSeniorCitizen: false,
-    isSoloParent: false,
-    houseNo: "123",
-    purok: "3",
-    street: "Camia St.",
-    barangay: "Sta. Rita",
-    city: "Olongapo City",
-    notes: "Walk-in signup during barangay caravan.",
-  },
-  {
-    id: "REQ-2026-0002",
-    createdAt: "2026-03-21T09:00:00Z",
-    status: "Pending",
-    firstName: "Juan",
-    middleName: "Garcia",
-    lastName: "Reyes",
-    contactNumber: "09998887777",
-    isPwd: false,
-    isSeniorCitizen: true,
-    isSoloParent: false,
-    houseNo: "45-B",
-    purok: "1",
-    street: "Mahogany St.",
-    barangay: "Sta. Rita",
-    city: "Olongapo City",
-    notes: "Referred by senior citizens association.",
-  },
-];
-
 const statusOptions = [
   { value: "", label: "All Status" },
   { value: "Pending", label: "Pending" },
   { value: "Approved", label: "Approved" },
-  { value: "Rejected", label: "Rejected" },
+  { value: "Archived", label: "Archived" },
 ];
 
 function formatDate(dateString) {
@@ -74,15 +35,15 @@ function formatDate(dateString) {
 }
 
 function buildFullName(request) {
-  const parts = [request.firstName, request.middleName, request.lastName].filter(Boolean);
+  const parts = [request.first_name || request.firstName, request.middle_name || request.middleName, request.last_name || request.lastName].filter(Boolean);
   return parts.join(" ");
 }
 
 function getSectorBadges(request) {
   const sectors = [];
-  if (request.isPwd) sectors.push("PWD");
-  if (request.isSeniorCitizen) sectors.push("Senior Citizen");
-  if (request.isSoloParent) sectors.push("Solo Parent");
+  if (request.is_pwd || request.isPwd) sectors.push("PWD");
+  if (request.is_senior_citizen || request.isSeniorCitizen) sectors.push("Senior Citizen");
+  if (request.is_solo_parent || request.isSoloParent) sectors.push("Solo Parent");
   return sectors;
 }
 
@@ -90,12 +51,48 @@ export default function AccountRequestsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("Pending");
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [modalMode, setModalMode] = useState("view"); // "view" | "approve" | "reject"
+  const [modalMode, setModalMode] = useState("view"); // "view" | "approve" | "reject" | "unarchive"
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+  const [archiveNotes, setArchiveNotes] = useState('');
+  const [alertState, setAlertState] = useState({
+    open: false,
+    title: '',
+    message: '',
+    variant: 'info', // info | success | error
+  });
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  const fetchRequests = async () => {
+    try {
+      const response = await fetch('/api/account-requests');
+      const result = await response.json();
+      
+      if (result.error) {
+        console.error('Error fetching requests:', result.error);
+        setRequests([]);
+      } else {
+        const normalized = (result.data || []).map((r) =>
+          r?.status === "Rejected" ? { ...r, status: "Archived" } : r,
+        );
+        setRequests(normalized);
+      }
+    } catch (error) {
+      console.error('Failed to fetch requests:', error);
+      setRequests([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredRequests = useMemo(() => {
-    return sampleRequests.filter((req) => {
+    return requests.filter((req) => {
       const fullName = buildFullName(req).toLowerCase();
-      const contact = (req.contactNumber || "").toLowerCase();
+      const contact = (req.contact_number || req.contactNumber || "").toLowerCase();
       const query = searchTerm.toLowerCase();
 
       const matchesSearch = !query || fullName.includes(query) || contact.includes(query);
@@ -103,11 +100,19 @@ export default function AccountRequestsPage() {
 
       return matchesSearch && matchesStatus;
     });
-  }, [searchTerm, statusFilter]);
+  }, [requests, searchTerm, statusFilter]);
 
   const handleOpenDetails = (request) => {
     setSelectedRequest(request);
     setModalMode("view");
+  };
+
+  const openAlert = ({ title, message, variant = 'info' }) => {
+    setAlertState({ open: true, title, message, variant });
+  };
+
+  const closeAlert = () => {
+    setAlertState((prev) => ({ ...prev, open: false }));
   };
 
   const handleOpenApprove = (request) => {
@@ -117,28 +122,161 @@ export default function AccountRequestsPage() {
 
   const handleOpenReject = (request) => {
     setSelectedRequest(request);
+    setArchiveNotes('');
     setModalMode("reject");
+  };
+
+  const handleOpenUnarchive = (request) => {
+    setSelectedRequest(request);
+    setArchiveNotes('');
+    setModalMode('unarchive');
   };
 
   const handleCloseModal = () => {
     setSelectedRequest(null);
     setModalMode("view");
+    setArchiveNotes('');
   };
 
-  // TODO: Replace with actual Supabase calls
   const handleConfirmApprove = async () => {
-    if (!selectedRequest) return;
-    console.log("Approve signup request", selectedRequest.id);
-    // e.g. 1) update signup status to Approved
-    //      2) create beneficiary user account linked to this record
-    handleCloseModal();
+    if (!selectedRequest || processing) return;
+
+    setProcessing(true);
+    try {
+      const response = await fetch(`/api/account-requests/${selectedRequest.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'approve',
+          processedBy: 'Admin', // TODO: Get from actual user session
+        }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || result.error) {
+        throw new Error(result.error || 'Failed to approve request');
+      }
+
+      handleCloseModal();
+      await fetchRequests();
+      openAlert({
+        title: 'Approved',
+        message: 'Request approved and beneficiary account created successfully.',
+        variant: 'success',
+      });
+    } catch (error) {
+      console.error('Approve error:', error);
+      openAlert({
+        title: 'Approve failed',
+        message: error.message || 'Unknown error',
+        variant: 'error',
+      });
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const handleConfirmReject = async () => {
-    if (!selectedRequest) return;
-    console.log("Reject signup request", selectedRequest.id);
-    // e.g. 1) update signup status to Rejected with reason
-    handleCloseModal();
+    if (!selectedRequest || processing) return;
+
+    const requestId = selectedRequest.id;
+    if (!requestId) {
+      console.error('Selected request has no id:', selectedRequest);
+      openAlert({
+        title: 'Archive failed',
+        message: 'Request ID is missing.',
+        variant: 'error',
+      });
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      const response = await fetch(`/api/account-requests/${requestId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'archive',
+          processedBy: 'Admin', // TODO: Get from actual user session
+          notes: archiveNotes || null,
+        }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || result.error) {
+        throw new Error(result.error || 'Failed to archive request');
+      }
+
+      handleCloseModal();
+      await fetchRequests();
+      openAlert({
+        title: 'Archived',
+        message: 'Request archived successfully.',
+        variant: 'success',
+      });
+    } catch (error) {
+      console.error('Archive error:', error);
+      openAlert({
+        title: 'Archive failed',
+        message: error.message || 'Unknown error',
+        variant: 'error',
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleConfirmUnarchive = async () => {
+    if (!selectedRequest || processing) return;
+
+    const requestId = selectedRequest.id;
+    if (!requestId) {
+      console.error('Selected request has no id:', selectedRequest);
+      openAlert({
+        title: 'Unarchive failed',
+        message: 'Request ID is missing.',
+        variant: 'error',
+      });
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      const response = await fetch(`/api/account-requests/${requestId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'unarchive',
+          processedBy: 'Admin', // TODO: Get from actual user session
+          notes: archiveNotes || null,
+        }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || result.error) {
+        throw new Error(result.error || 'Failed to unarchive request');
+      }
+
+      handleCloseModal();
+      await fetchRequests();
+      openAlert({
+        title: 'Unarchived',
+        message: 'Request moved back to Pending.',
+        variant: 'success',
+      });
+    } catch (error) {
+      console.error('Unarchive error:', error);
+      openAlert({
+        title: 'Unarchive failed',
+        message: error.message || 'Unknown error',
+        variant: 'error',
+      });
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const columns = [
@@ -156,7 +294,7 @@ export default function AccountRequestsPage() {
           }</div>
           <div className={styles.applicantInfo}>
             <span className={styles.applicantName}>{buildFullName(row)}</span>
-            <span className={styles.applicantMeta}>{row.contactNumber}</span>
+            <span className={styles.applicantMeta}>{row.contact_number || row.contactNumber}</span>
           </div>
         </div>
       ),
@@ -183,7 +321,7 @@ export default function AccountRequestsPage() {
       label: "Address",
       render: (_, row) => (
         <div className={styles.addressCell}>
-          <span>{`${row.houseNo || ""} ${row.street || ""}`.trim()}</span>
+          <span>{`${row.house_no || row.houseNo || ""} ${row.street || ""}`.trim()}</span>
           <span className={styles.addressMeta}>{`Purok ${row.purok || "-"}, ${row.barangay}`}</span>
         </div>
       ),
@@ -191,7 +329,7 @@ export default function AccountRequestsPage() {
     {
       key: "createdAt",
       label: "Submitted",
-      render: (value) => <span>{formatDate(value)}</span>,
+      render: (_, row) => <span>{formatDate(row.created_at || row.createdAt)}</span>,
     },
     {
       key: "status",
@@ -201,12 +339,12 @@ export default function AccountRequestsPage() {
           variant={
             status === "Approved"
               ? "success"
-              : status === "Rejected"
-              ? "danger"
+              : status === "Archived" || status === "Rejected"
+              ? "secondary"
               : "warning"
           }
         >
-          {status}
+          {status === "Archived" || status === "Rejected" ? "Archived" : status}
         </Badge>
       ),
     },
@@ -236,21 +374,33 @@ export default function AccountRequestsPage() {
                 size="small"
                 onClick={() => handleOpenReject(row)}
               >
-                Reject
+                Archive
               </Button>
             </>
+          )}
+
+          {(row.status === "Archived" || row.status === "Rejected") && (
+            <Button
+              variant="outline"
+              size="small"
+              onClick={() => handleOpenUnarchive(row)}
+            >
+              Unarchive
+            </Button>
           )}
         </div>
       ),
     },
   ];
 
-  const total = sampleRequests.length;
+  const total = requests.length;
   const showing = filteredRequests.length;
 
   const isDetailsModalOpen = !!selectedRequest && modalMode === "view";
   const isApproveModalOpen = !!selectedRequest && modalMode === "approve";
   const isRejectModalOpen = !!selectedRequest && modalMode === "reject";
+  const isUnarchiveModalOpen = !!selectedRequest && modalMode === "unarchive";
+  const isAlertModalOpen = !!alertState.open;
 
   return (
     <div className={styles.page}>
@@ -303,19 +453,21 @@ export default function AccountRequestsPage() {
               <div>
                 <div className={styles.detailsId}>{selectedRequest.id}</div>
                 <div className={styles.detailsSubmitted}>
-                  Submitted: {formatDate(selectedRequest.createdAt)}
+                  Submitted: {formatDate(selectedRequest.created_at || selectedRequest.createdAt)}
                 </div>
               </div>
               <Badge
                 variant={
                   selectedRequest.status === "Approved"
                     ? "success"
-                    : selectedRequest.status === "Rejected"
-                    ? "danger"
+                    : selectedRequest.status === "Archived" || selectedRequest.status === "Rejected"
+                    ? "secondary"
                     : "warning"
                 }
               >
-                {selectedRequest.status}
+                {selectedRequest.status === "Archived" || selectedRequest.status === "Rejected"
+                  ? "Archived"
+                  : selectedRequest.status}
               </Badge>
             </div>
 
@@ -328,7 +480,7 @@ export default function AccountRequestsPage() {
                 </div>
                 <div>
                   <span className={styles.label}>Contact Number</span>
-                  <span className={styles.value}>{selectedRequest.contactNumber}</span>
+                  <span className={styles.value}>{selectedRequest.contact_number || selectedRequest.contactNumber}</span>
                 </div>
                 <div>
                   <span className={styles.label}>Sector Classification</span>
@@ -348,7 +500,7 @@ export default function AccountRequestsPage() {
               <div className={styles.detailsGrid}>
                 <div>
                   <span className={styles.label}>House Number</span>
-                  <span className={styles.value}>{selectedRequest.houseNo}</span>
+                  <span className={styles.value}>{selectedRequest.house_no || selectedRequest.houseNo}</span>
                 </div>
                 <div>
                   <span className={styles.label}>Purok</span>
@@ -382,10 +534,18 @@ export default function AccountRequestsPage() {
                   variant="secondary"
                   onClick={() => handleOpenReject(selectedRequest)}
                 >
-                  Reject
+                  Archive
                 </Button>
                 <Button onClick={() => handleOpenApprove(selectedRequest)}>
                   Approve & Create Account
+                </Button>
+              </div>
+            )}
+
+            {(selectedRequest.status === "Archived" || selectedRequest.status === "Rejected") && (
+              <div className={styles.detailsActionsRow}>
+                <Button variant="outline" onClick={() => handleOpenUnarchive(selectedRequest)}>
+                  Unarchive
                 </Button>
               </div>
             )}
@@ -400,10 +560,12 @@ export default function AccountRequestsPage() {
         title="Approve Signup Request"
         footer={
           <>
-            <Button variant="secondary" onClick={handleCloseModal}>
+            <Button variant="secondary" onClick={handleCloseModal} disabled={processing}>
               Cancel
             </Button>
-            <Button onClick={handleConfirmApprove}>Confirm Approve</Button>
+            <Button onClick={handleConfirmApprove} disabled={processing}>
+              {processing ? 'Approving…' : 'Confirm Approve'}
+            </Button>
           </>
         }
       >
@@ -416,29 +578,84 @@ export default function AccountRequestsPage() {
         )}
       </Modal>
 
-      {/* Reject Confirmation Modal */}
+      {/* Archive Confirmation Modal */}
       <Modal
         isOpen={isRejectModalOpen}
         onClose={handleCloseModal}
-        title="Reject Signup Request"
+        title="Archive Signup Request"
         footer={
           <>
-            <Button variant="secondary" onClick={handleCloseModal}>
+            <Button variant="secondary" onClick={handleCloseModal} disabled={processing}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={handleConfirmReject}>
-              Confirm Reject
+            <Button variant="danger" onClick={handleConfirmReject} disabled={processing}>
+              {processing ? 'Archiving…' : 'Confirm Archive'}
             </Button>
           </>
         }
       >
         {selectedRequest && (
-          <p className={styles.confirmText}>
-            Are you sure you want to reject this signup request for
-            <strong> {buildFullName(selectedRequest)} </strong>?
-            You can record a reason when we connect this to the backend.
-          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p className={styles.confirmText} style={{ margin: 0 }}>
+              Are you sure you want to archive this signup request for
+              <strong> {buildFullName(selectedRequest)} </strong>?
+            </p>
+            <Input
+              label="Archive note (optional)"
+              name="archiveNotes"
+              value={archiveNotes}
+              onChange={(e) => setArchiveNotes(e.target.value)}
+              placeholder="e.g. Duplicate request"
+            />
+          </div>
         )}
+      </Modal>
+
+      {/* Unarchive Confirmation Modal */}
+      <Modal
+        isOpen={isUnarchiveModalOpen}
+        onClose={handleCloseModal}
+        title="Unarchive Signup Request"
+        footer={
+          <>
+            <Button variant="secondary" onClick={handleCloseModal} disabled={processing}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmUnarchive} disabled={processing}>
+              {processing ? 'Unarchiving…' : 'Confirm Unarchive'}
+            </Button>
+          </>
+        }
+      >
+        {selectedRequest && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p className={styles.confirmText} style={{ margin: 0 }}>
+              Move this request back to <strong>Pending</strong> for
+              <strong> {buildFullName(selectedRequest)} </strong>?
+            </p>
+            <Input
+              label="Unarchive note (optional)"
+              name="unarchiveNotes"
+              value={archiveNotes}
+              onChange={(e) => setArchiveNotes(e.target.value)}
+              placeholder="e.g. Archived by mistake"
+            />
+          </div>
+        )}
+      </Modal>
+
+      {/* Alert Modal */}
+      <Modal
+        isOpen={isAlertModalOpen}
+        onClose={closeAlert}
+        title={alertState.title || 'Message'}
+        footer={
+          <>
+            <Button onClick={closeAlert}>OK</Button>
+          </>
+        }
+      >
+        <p style={{ margin: 0, color: '#374151', whiteSpace: 'pre-wrap' }}>{alertState.message}</p>
       </Modal>
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   Select,
@@ -17,10 +17,6 @@ import {
 } from '@/components';
 import styles from './page.module.css';
 
-// TODO: Fetch from Supabase
-// Expected shape: [{ id, name, email, role, status, lastLogin }]
-const sampleUsers = [];
-
 const roleOptions = [
   { value: '', label: 'All Roles' },
   { value: 'Admin', label: 'Admin' },
@@ -31,18 +27,45 @@ export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     fullName: '',
     email: '',
     contactNumber: '',
     role: '',
+    password: '',
   });
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('/api/users');
+      const result = await response.json();
+      
+      if (result.error) {
+        console.error('Error fetching users:', result.error);
+        setUsers([]);
+      } else {
+        setUsers(result.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter users
-  const filteredUsers = sampleUsers.filter((user) => {
+  const filteredUsers = users.filter((user) => {
     const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = !roleFilter || user.role === roleFilter;
     return matchesSearch && matchesRole;
@@ -72,16 +95,22 @@ export default function UsersPage() {
   const handleCloseModal = () => {
     setShowModal(false);
     setErrors({});
+    setForm({
+      fullName: '',
+      email: '',
+      contactNumber: '',
+      role: '',
+      password: '',
+    });
   };
 
-  // TODO: Replace with Supabase insert + auth user creation
-  const handleCreateUser = () => {
+  const handleCreateUser = async () => {
     const newErrors = {};
     if (!form.fullName.trim()) newErrors.fullName = 'Full name is required';
     if (!form.role) newErrors.role = 'Role is required';
-
-    if (!form.email.trim()) {
-      newErrors.email = 'Email is required';
+    if (!form.email.trim()) newErrors.email = 'Email is required';
+    if (!form.password || form.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
     }
 
     if (Object.keys(newErrors).length) {
@@ -89,29 +118,103 @@ export default function UsersPage() {
       return;
     }
 
-    const payload = {
-      name: form.fullName.trim(),
-      email: form.email.trim(),
-      contactNumber: form.contactNumber.trim() || null,
-      role: form.role,
-    };
+    setSubmitting(true);
+    try {
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: form.fullName.trim(),
+          email: form.email.trim(),
+          contactNumber: form.contactNumber.trim() || null,
+          role: form.role,
+          password: form.password,
+        }),
+      });
 
-    console.log('Create system user payload', payload);
+      const result = await response.json();
 
-    // Reset and close
-    setForm({ fullName: '', email: '', contactNumber: '', role: '' });
-    setErrors({});
-    setShowModal(false);
+      if (!response.ok || result.error) {
+        throw new Error(result.error || 'Failed to create user');
+      }
+
+      alert('✅ User created successfully!');
+      handleCloseModal();
+      fetchUsers(); // Refresh list
+    } catch (error) {
+      alert('❌ Failed to create user: ' + (error.message || 'Unknown error'));
+      console.error('Create user error:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async (user) => {
+    const newPassword = prompt(`Enter new password for ${user.full_name}:\n\n(Minimum 6 characters)`);
+    if (!newPassword) return;
+
+    if (newPassword.length < 6) {
+      alert('❌ Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/users/${user.id}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || result.error) {
+        throw new Error(result.error || 'Failed to reset password');
+      }
+
+      alert('✅ Password reset successfully!');
+    } catch (error) {
+      alert('❌ Failed to reset password: ' + (error.message || 'Unknown error'));
+      console.error('Reset password error:', error);
+    }
+  };
+
+  const handleToggleStatus = async (user) => {
+    const newStatus = user.status === 'Active' ? 'Inactive' : 'Active';
+    const action = newStatus === 'Inactive' ? 'deactivate' : 'activate';
+    
+    if (!confirm(`Are you sure you want to ${action} ${user.full_name}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || result.error) {
+        throw new Error(result.error || 'Failed to update status');
+      }
+
+      alert(`✅ User ${action}d successfully!`);
+      fetchUsers();
+    } catch (error) {
+      alert('❌ Failed to update status: ' + (error.message || 'Unknown error'));
+      console.error('Toggle status error:', error);
+    }
   };
 
   const getUserActions = (user) => [
     { label: 'View Details', onClick: () => console.log('View', user.id) },
     { label: 'Edit', onClick: () => console.log('Edit', user.id) },
-    { label: 'Reset Password', onClick: () => console.log('Reset Password', user.id) },
+    { label: 'Reset Password', onClick: () => handleResetPassword(user) },
     { type: 'divider' },
     { 
       label: user.status === 'Active' ? 'Deactivate' : 'Activate', 
-      onClick: () => console.log('Toggle status', user.id), 
+      onClick: () => handleToggleStatus(user), 
       variant: user.status === 'Active' ? 'danger' : 'success' 
     },
   ];
@@ -122,9 +225,9 @@ export default function UsersPage() {
       label: 'User',
       render: (_, row) => (
         <div className={styles.userCell}>
-          <div className={styles.avatar}>{row.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>
+          <div className={styles.avatar}>{row.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>
           <div className={styles.userInfo}>
-            <span className={styles.userName}>{row.name}</span>
+            <span className={styles.userName}>{row.full_name}</span>
             <span className={styles.userEmail}>{row.email}</span>
           </div>
         </div>
@@ -135,7 +238,11 @@ export default function UsersPage() {
       label: 'Role',
       render: (role) => <Badge variant={role === 'Admin' ? 'primary' : 'secondary'}>{role}</Badge>,
     },
-    { key: 'lastLogin', label: 'Last Login' },
+    { 
+      key: 'last_login', 
+      label: 'Last Login',
+      render: (lastLogin) => lastLogin ? new Date(lastLogin).toLocaleString() : 'Never'
+    },
     {
       key: 'status',
       label: 'Status',
@@ -150,8 +257,10 @@ export default function UsersPage() {
 
   const modalFooter = (
     <>
-      <Button variant="secondary" onClick={handleCloseModal}>Cancel</Button>
-      <Button onClick={handleCreateUser}>Create User</Button>
+      <Button variant="secondary" onClick={handleCloseModal} disabled={submitting}>Cancel</Button>
+      <Button onClick={handleCreateUser} disabled={submitting}>
+        {submitting ? 'Creating...' : 'Create User'}
+      </Button>
     </>
   );
 
@@ -188,9 +297,12 @@ export default function UsersPage() {
 
         <Table columns={columns} data={filteredUsers} />
 
+        {loading && <p style={{ padding: '20px', textAlign: 'center' }}>Loading users...</p>}
+        {!loading && filteredUsers.length === 0 && <p style={{ padding: '20px', textAlign: 'center' }}>No users found. Click "Add User" to create one.</p>}
+
         <DataTableFooter
           showing={filteredUsers.length}
-          total={sampleUsers.length}
+          total={users.length}
           itemName="users"
         />
       </Card>
@@ -243,6 +355,17 @@ export default function UsersPage() {
               error={errors.role}
             />
           </div>
+
+          <Input
+            label="Initial Password"
+            type="password"
+            name="password"
+            value={form.password}
+            onChange={handleFieldChange}
+            placeholder="At least 6 characters"
+            required
+            error={errors.password}
+          />
 
           <p className={styles.formHelperText}>
             After saving, you can manage this user&#39;s permissions and reset their password from this page.
