@@ -19,19 +19,25 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    const id = params?.id;
-    if (!id || id === 'undefined' || id === 'null') {
-      return NextResponse.json({ data: null, error: 'Missing request id.' }, { status: 400 });
-    }
-
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-
     let body;
     try {
       body = await request.json();
     } catch {
       return NextResponse.json({ data: null, error: 'Invalid request body.' }, { status: 400 });
     }
+
+    const paramId = params?.id;
+    const bodyKey = body?.control_number || body?.controlNo || body?.request_id || body?.id;
+    const id =
+      paramId && paramId !== 'undefined' && paramId !== 'null'
+        ? paramId
+        : bodyKey;
+
+    if (!id || id === 'undefined' || id === 'null') {
+      return NextResponse.json({ data: null, error: 'Missing request id.' }, { status: 400 });
+    }
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
 
     const status = body.status;
     if (status && !ALLOWED_STATUSES.has(status)) {
@@ -51,7 +57,7 @@ export async function PATCH(request, { params }) {
     }
 
     let query = db.from('assistance_requests').update(update);
-    query = isUuid ? query.eq('id', id) : query.eq('control_number', id);
+    query = isUuid ? query.eq('id', String(id)) : query.eq('control_number', String(id));
 
     const { data, error } = await query.select('*').single();
 

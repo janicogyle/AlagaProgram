@@ -208,7 +208,7 @@ export default function RequestsPage() {
       }
 
       const requestKey = selectedRequest?.controlNo || selectedRequest?.id;
-      if (!requestKey) {
+      if (!requestKey || requestKey === 'undefined' || requestKey === 'null') {
         throw new Error('Missing request id. Please refresh the page and try again.');
       }
 
@@ -218,7 +218,12 @@ export default function RequestsPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status: newStatus, decision_remarks: remarks || null }),
+        body: JSON.stringify({
+          status: newStatus,
+          decision_remarks: remarks || null,
+          control_number: selectedRequest?.controlNo || null,
+          request_id: selectedRequest?.id || null,
+        }),
       });
 
       const result = await response.json();
