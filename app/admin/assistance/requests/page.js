@@ -207,7 +207,7 @@ export default function RequestsPage() {
         throw new Error('Unauthorized. Please sign in again.');
       }
 
-      const requestKey = selectedRequest?.id || selectedRequest?.controlNo;
+      const requestKey = selectedRequest?.controlNo || selectedRequest?.id;
       if (!requestKey) {
         throw new Error('Missing request id. Please refresh the page and try again.');
       }
@@ -228,7 +228,7 @@ export default function RequestsPage() {
 
       setRequests((prev) =>
         prev.map((req) =>
-          req.id === selectedRequest.id
+          req.controlNo === selectedRequest.controlNo || req.id === selectedRequest.id
             ? { ...req, status: newStatus, statusLabel: getStatusLabel(newStatus) }
             : req,
         ),
