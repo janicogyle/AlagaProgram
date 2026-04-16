@@ -7,17 +7,39 @@ import Navbar from '@/components/Navbar';
 import styles from './layout.module.css';
 import { supabase } from '@/lib/supabaseClient';
 
-
 export default function DashboardLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [user] = useState({
-    name: 'Admin User',
-    role: 'Administrator',
-    email: 'admin@barangaystarita.gov.ph'
-  });
+  const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Load admin user from localStorage (set on login)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const raw = localStorage.getItem('adminUser');
+      if (!raw) {
+        router.replace('/login');
+        return;
+      }
+
+      const stored = JSON.parse(raw);
+      // Defer state update to avoid cascading render warnings from strict hook lint rules
+      setTimeout(() => {
+        setUser({
+          name: stored.full_name || stored.name || 'User',
+          role: stored.role || 'Staff',
+          email: stored.email,
+          id: stored.id,
+        });
+      }, 0);
+    } catch (e) {
+      console.error('Failed to load adminUser from localStorage:', e);
+      router.replace('/login');
+    }
+  }, [router]);
 
   // Handle window resize for responsive behavior
   useEffect(() => {
@@ -37,9 +59,11 @@ export default function DashboardLayout({ children }) {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Basic role-based guard for admin-only pages (ready for backend auth)
+  // Role-based guard for admin-only pages
   useEffect(() => {
-    const isStaff = user?.role === 'Staff';
+    if (!user) return;
+
+    const isStaff = user.role === 'Staff';
     if (!isStaff) return;
 
     const adminOnlyPaths = ['/admin/account-requests', '/admin/users'];
@@ -61,12 +85,12 @@ export default function DashboardLayout({ children }) {
       if (supabase) {
         await supabase.auth.signOut();
       }
-      
+
       // Clear localStorage
       if (typeof window !== 'undefined') {
         localStorage.removeItem('adminUser');
       }
-      
+
       // Redirect to login page
       router.push('/login');
     } catch (error) {
@@ -76,11 +100,13 @@ export default function DashboardLayout({ children }) {
     }
   };
 
+  if (!user) return null;
+
   return (
     <div className={styles.layout}>
       {/* Mobile overlay */}
       {isMobile && (
-        <div 
+        <div
           className={`${styles.overlay} ${sidebarOpen ? styles.overlayVisible : ''}`}
           onClick={handleOverlayClick}
         />
@@ -88,9 +114,7 @@ export default function DashboardLayout({ children }) {
       <Sidebar user={user} onLogout={handleLogout} minimized={!sidebarOpen} />
       <div className={`${styles.mainContent} ${!sidebarOpen ? styles.sidebarMinimized : ''}`}>
         <Navbar onMenuClick={() => setSidebarOpen((open) => !open)} />
-        <main className={styles.pageContent}>
-          {children}
-        </main>
+        <main className={styles.pageContent}>{children}</main>
       </div>
     </div>
   );

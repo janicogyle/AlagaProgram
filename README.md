@@ -2,6 +2,18 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### Environment variables (Supabase)
+
+Create a `.env.local` with:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...   # server-side only (do NOT prefix with NEXT_PUBLIC)
+```
+
+If deploying to Vercel, make sure `SUPABASE_SERVICE_ROLE_KEY` is configured in **Project Settings → Environment Variables**. Without it, creating admin/staff users will fail with “Admin client not available”.
+
 First, run the development server:
 
 ```bash

@@ -12,15 +12,23 @@ export default function ActionMenu({
   const [dropdownStyle, setDropdownStyle] = useState({});
   const menuRef = useRef(null);
   const triggerRef = useRef(null);
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setIsOpen(false);
-      }
+      const target = e.target;
+
+      // Dropdown is rendered in a portal, so it is NOT inside menuRef.
+      // Treat both trigger wrapper and the portaled dropdown as "inside".
+      if (menuRef.current?.contains(target)) return;
+      if (dropdownRef.current?.contains(target)) return;
+
+      setIsOpen(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    // Use 'click' so menu item onClick can fire first.
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -74,6 +82,7 @@ export default function ActionMenu({
       </button>
       {isOpen && actions.length > 0 && createPortal(
         <div
+          ref={dropdownRef}
           className={`${styles.dropdown} ${styles[position]}`}
           style={dropdownStyle}
         >
