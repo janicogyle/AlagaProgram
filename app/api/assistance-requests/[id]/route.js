@@ -24,6 +24,8 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ data: null, error: 'Missing request id.' }, { status: 400 });
     }
 
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
     let body;
     try {
       body = await request.json();
@@ -48,12 +50,10 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ data: null, error: 'No fields to update.' }, { status: 400 });
     }
 
-    const { data, error } = await db
-      .from('assistance_requests')
-      .update(update)
-      .eq('id', id)
-      .select('*')
-      .single();
+    let query = db.from('assistance_requests').update(update);
+    query = isUuid ? query.eq('id', id) : query.eq('control_number', id);
+
+    const { data, error } = await query.select('*').single();
 
     if (error) throw error;
 

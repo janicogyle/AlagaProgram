@@ -92,9 +92,10 @@ export default function RequestsPage() {
           if (sectors.soloParent) sectorLabels.push('Solo Parent');
 
           const status = r.status || 'Pending';
+          const requestKey = r.id || r.request_id || r.control_number;
 
           return {
-            id: r.id,
+            id: requestKey,
             controlNo: r.control_number,
             // Show exactly what was submitted in the request (avoid falling back to resident profile)
             requester: r.requester_name || '',
@@ -206,7 +207,12 @@ export default function RequestsPage() {
         throw new Error('Unauthorized. Please sign in again.');
       }
 
-      const response = await fetch(`/api/assistance-requests/${selectedRequest.id}`, {
+      const requestKey = selectedRequest?.id || selectedRequest?.controlNo;
+      if (!requestKey) {
+        throw new Error('Missing request id. Please refresh the page and try again.');
+      }
+
+      const response = await fetch(`/api/assistance-requests/${encodeURIComponent(requestKey)}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
