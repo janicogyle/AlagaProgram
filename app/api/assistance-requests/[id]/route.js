@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
-import { requireAdmin } from '@/lib/apiAuth';
+import { requireStaffOrAdmin } from '@/lib/apiAuth';
 
 export const runtime = 'nodejs';
 
@@ -8,7 +8,7 @@ const ALLOWED_STATUSES = new Set(['Pending', 'Approved', 'Released', 'Rejected']
 
 export async function PATCH(request, { params }) {
   try {
-    const auth = await requireAdmin(request);
+    const auth = await requireStaffOrAdmin(request);
     if (!auth.ok) return auth.response;
 
     const db = supabaseAdmin;
