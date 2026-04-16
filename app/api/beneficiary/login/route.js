@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { verifyPassword } from '@/lib/passwords.server';
+import { BENEFICIARY_SESSION_COOKIE, createBeneficiarySessionToken } from '@/lib/beneficiarySession.server';
 
 export const runtime = 'nodejs';
 
@@ -91,7 +92,15 @@ export async function POST(request) {
       return NextResponse.json({ data: null, error: 'Invalid contact number or password.' }, { status: 401 });
     }
 
-    return NextResponse.json({
+    let sessionToken = null;
+    try {
+      sessionToken = createBeneficiarySessionToken(resident.id);
+    } catch (e) {
+      // QR/ID features are optional; don't block beneficiary login if secrets aren't configured yet.
+      console.warn('Beneficiary session cookie not set:', e?.message || e);
+    }
+
+    const res = NextResponse.json({
       data: {
         id: resident.id,
         first_name: resident.first_name,
@@ -100,6 +109,18 @@ export async function POST(request) {
       },
       error: null,
     });
+
+    if (sessionToken) {
+      res.cookies.set(BENEFICIARY_SESSION_COOKIE, sessionToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+      });
+    }
+
+    return res;
   } catch (err) {
     console.error('Beneficiary login error:', err);
     return NextResponse.json({ data: null, error: err.message || 'Login failed.' }, { status: 500 });

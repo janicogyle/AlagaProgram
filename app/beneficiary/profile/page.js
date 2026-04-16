@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import PageHeader from '../../../components/PageHeader';
 import Card from '../../../components/Card';
 import Input from '../../../components/Input';
-import { SectionHeader, HelperText, StatusChip } from '@/components';
+import { SectionHeader, HelperText, StatusChip, Button } from '@/components';
 import styles from './page.module.css';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function ProfilePage() {
   const [resident, setResident] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [idCard, setIdCard] = useState({ loading: true, token: null, qrUrl: null, card: null, error: null });
 
   useEffect(() => {
     const load = async () => {
@@ -45,6 +46,50 @@ export default function ProfilePage() {
     load();
   }, []);
 
+  useEffect(() => {
+    const loadCard = async () => {
+      setIdCard({ loading: true, token: null, qrUrl: null, card: null, error: null });
+      try {
+        const response = await fetch('/api/beneficiary-cards/me', {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload?.error) {
+          throw new Error(payload?.error || 'Unable to load your ID card.');
+        }
+
+        const token = payload?.data?.token;
+        const card = payload?.data?.card;
+        if (!token || !card) throw new Error('No ID card available.');
+
+        const qrcodeMod = await import('qrcode');
+        const QRCode = qrcodeMod.default ?? qrcodeMod;
+        const qrUrl = await QRCode.toDataURL(token, { margin: 1, width: 220 });
+
+        setIdCard({ loading: false, token, qrUrl, card, error: null });
+      } catch (err) {
+        const msg = String(err?.message || 'Unable to load ID card.');
+        const isNotSetup =
+          msg.toLowerCase().includes('beneficiary_cards') &&
+          (msg.toLowerCase().includes('schema cache') || msg.toLowerCase().includes('could not find the table') || msg.toLowerCase().includes('does not exist'));
+
+        setIdCard({
+          loading: false,
+          token: null,
+          qrUrl: null,
+          card: null,
+          error: isNotSetup
+            ? 'Beneficiary ID (QR) is not enabled yet. Please ask the barangay office/admin to run the database setup.'
+            : msg,
+        });
+      }
+    };
+
+    loadCard();
+  }, []);
+
   const formatDate = (value) => {
     if (!value) return '';
     return new Date(value).toLocaleDateString();
@@ -72,6 +117,59 @@ export default function ProfilePage() {
         )}
 
         <form className={styles.profileForm}>
+            <section className={styles.section} aria-labelledby="id-card-heading">
+              <SectionHeader
+                id="id-card-heading"
+                title="Beneficiary ID (QR)"
+                subtitle="Show this QR code at the barangay office for quick identification."
+              />
+
+              {idCard.loading && <p className={styles.muted}>Loading your ID card…</p>}
+              {!idCard.loading && idCard.error && (
+                <p className={styles.muted}>{idCard.error}</p>
+              )}
+              {!idCard.loading && idCard.qrUrl && (
+                <div className={styles.qrWrap}>
+                  <img className={styles.qrImage} src={idCard.qrUrl} alt="Beneficiary ID QR Code" />
+                  <div className={styles.qrMeta}>
+                    <div className={styles.qrRow}>
+                      <span className={styles.qrLabel}>Expires:</span>
+                      <strong>{idCard.card?.expires_at ? new Date(idCard.card.expires_at).toLocaleDateString() : '-'}</strong>
+                    </div>
+                    <div className={styles.qrButtons}>
+                      <Button
+                        variant="secondary"
+                        size="small"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(idCard.token);
+                          } catch (e) {
+                            console.warn('Copy failed:', e);
+                          }
+                        }}
+                      >
+                        Copy Token
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="small"
+                        onClick={() => {
+                          const a = document.createElement('a');
+                          a.href = idCard.qrUrl;
+                          a.download = 'beneficiary-id-qr.png';
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                        }}
+                      >
+                        Download QR
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
+
             <section className={styles.section} aria-labelledby="personal-info-heading">
               <SectionHeader
                 id="personal-info-heading"

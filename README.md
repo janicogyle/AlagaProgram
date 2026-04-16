@@ -10,9 +10,17 @@ Create a `.env.local` with:
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...   # server-side only (do NOT prefix with NEXT_PUBLIC)
+
+# QR Beneficiary ID (server-side only)
+QR_CARD_SECRET=...              # used to sign/verify beneficiary ID QR tokens
+BENEFICIARY_SESSION_SECRET=...  # used for beneficiary session cookie (optional; falls back to QR_CARD_SECRET)
 ```
 
 If deploying to Vercel, make sure `SUPABASE_SERVICE_ROLE_KEY` is configured in **Project Settings → Environment Variables**. Without it, creating admin/staff users will fail with “Admin client not available”.
+
+### Database
+
+To enable QR ID cards, run `setup-step5.sql` in the Supabase SQL Editor (creates `public.beneficiary_cards`).
 
 First, run the development server:
 

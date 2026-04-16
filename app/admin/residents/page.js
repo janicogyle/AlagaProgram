@@ -14,6 +14,7 @@ import {
   Table,
 } from "@/components";
 import styles from "./page.module.css";
+import { supabase } from '@/lib/supabaseClient';
 
 const statusOptions = [
   { value: "", label: "All Status" },
@@ -32,11 +33,14 @@ function formatDate(dateString) {
 }
 
 function buildFullName(resident) {
+  if (!resident) return "-";
   const parts = [resident.first_name, resident.middle_name, resident.last_name].filter(Boolean);
-  return parts.join(" ");
+  const name = parts.join(" ").trim();
+  return name || "-";
 }
 
 function getSectorBadges(resident) {
+  if (!resident) return [];
   const sectors = [];
   if (resident.is_pwd) sectors.push("PWD");
   if (resident.is_senior_citizen) sectors.push("Senior Citizen");
@@ -54,6 +58,9 @@ export default function ResidentsPage() {
   const [resetPassword, setResetPassword] = useState('');
   const [resetPasswordConfirm, setResetPasswordConfirm] = useState('');
   const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [issuingCard, setIssuingCard] = useState(false);
+  const [issuedCard, setIssuedCard] = useState(null); // { token, card, qrUrl }
+  const [cardModalOpen, setCardModalOpen] = useState(false);
   const [alertState, setAlertState] = useState({ open: false, title: '', message: '' });
 
   const openAlert = ({ title, message }) => {
@@ -67,6 +74,16 @@ export default function ResidentsPage() {
   useEffect(() => {
     fetchResidents();
   }, []);
+
+  const getAuthHeaders = async () => {
+    if (!supabase) throw new Error('Supabase client not initialized.');
+
+    const { data, error } = await supabase.auth.getSession();
+    const session = data?.session;
+    if (error || !session) throw new Error('Not authenticated. Please log in again.');
+
+    return { Authorization: `Bearer ${session.access_token}` };
+  };
 
   const fetchResidents = async () => {
     try {
@@ -219,6 +236,48 @@ export default function ResidentsPage() {
     }
   };
 
+  const handleIssueCard = async () => {
+    if (!selectedResident || issuingCard) return;
+
+    setIssuingCard(true);
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch('/api/beneficiary-cards/issue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({ residentId: selectedResident.id, expiresInDays: 365 }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.error) {
+        const msg = String(payload?.error || 'Failed to issue ID card.');
+        openAlert({ title: 'Issue failed', message: msg });
+        return;
+      }
+
+      const token = payload?.data?.token;
+      const card = payload?.data?.card;
+      if (!token || !card) {
+        openAlert({ title: 'Issue failed', message: 'Card issued but token missing.' });
+        return;
+      }
+
+      const qrcodeMod = await import('qrcode');
+      const QRCode = qrcodeMod.default ?? qrcodeMod;
+      const qrUrl = await QRCode.toDataURL(token, { margin: 1, width: 260 });
+
+      setIssuedCard({ token, card, qrUrl });
+      setCardModalOpen(true);
+    } catch (error) {
+      const msg = String(error?.message || error || 'Unknown error');
+      // Avoid console.error in dev overlay; we already show the message to the user.
+      console.warn('Issue card failed:', msg);
+      openAlert({ title: 'Issue failed', message: msg });
+    } finally {
+      setIssuingCard(false);
+    }
+  };
+
   return (
     <div className={styles.residentsPage}>
       <Card padding={false}>
@@ -269,10 +328,13 @@ export default function ResidentsPage() {
         footer={
           selectedResident ? (
             <>
-              <Button variant="secondary" onClick={handleOpenReset} disabled={processing}>
+              <Button variant="secondary" onClick={handleOpenReset} disabled={processing || issuingCard}>
                 Reset Password
               </Button>
-              <Button onClick={() => setSelectedResident(null)} disabled={processing}>
+              <Button variant="secondary" onClick={handleIssueCard} disabled={processing || issuingCard}>
+                {issuingCard ? 'Issuing…' : 'Issue ID QR'}
+              </Button>
+              <Button onClick={() => setSelectedResident(null)} disabled={processing || issuingCard}>
                 Close
               </Button>
             </>
@@ -363,6 +425,54 @@ export default function ResidentsPage() {
             onChange={(e) => setResetPasswordConfirm(e.target.value)}
           />
         </div>
+      </Modal>
+
+      {/* Issued ID Card Modal */}
+      <Modal
+        isOpen={!!selectedResident && cardModalOpen}
+        onClose={() => setCardModalOpen(false)}
+        title="Beneficiary ID (QR)"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (!issuedCard?.qrUrl) return;
+                const a = document.createElement('a');
+                a.href = issuedCard.qrUrl;
+                a.download = `${selectedResident?.control_number || 'beneficiary'}_id_qr.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              }}
+              disabled={!issuedCard?.qrUrl}
+            >
+              Download QR
+            </Button>
+            <Button onClick={() => setCardModalOpen(false)}>Close</Button>
+          </>
+        }
+      >
+        {issuedCard ? (
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            <img
+              src={issuedCard.qrUrl}
+              alt="Beneficiary ID QR"
+              style={{ width: 260, height: 260, borderRadius: 12, border: '1px solid #e5e7eb', background: 'white' }}
+            />
+            <div style={{ minWidth: 240 }}>
+              <p style={{ margin: '0 0 8px', fontWeight: 700 }}>{buildFullName(selectedResident)}</p>
+              <p style={{ margin: '0 0 8px', color: '#6b7280' }}>
+                Expires: {issuedCard.card?.expires_at ? new Date(issuedCard.card.expires_at).toLocaleDateString() : '-'}
+              </p>
+              <p style={{ margin: 0, color: '#6b7280', fontSize: 13 }}>
+                Tip: You can verify this QR on the “Verify Beneficiary ID” page.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p style={{ margin: 0 }}>No card issued yet.</p>
+        )}
       </Modal>
 
       {/* Alert Modal */}

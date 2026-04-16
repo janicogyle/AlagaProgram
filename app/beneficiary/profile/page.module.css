@@ -76,6 +76,44 @@
     font-weight: 500;
 }
 
+.qrWrap {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.qrImage {
+    width: 220px;
+    height: 220px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    background: white;
+}
+
+.qrMeta {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.qrRow {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+}
+
+.qrLabel {
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.qrButtons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 @media (max-width: 640px) {
     .profilePage {
         padding: 0 1rem 1.75rem;
