@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabaseClient';
 import {
   Card,
   Select,
@@ -32,7 +33,7 @@ const statusOptions = [
   { value: 'Pending', label: 'Pending' },
   { value: 'Approved', label: 'Approved' },
   { value: 'Released', label: 'Released' },
-  { value: 'Rejected', label: 'Rejected' },
+  { value: 'Archived', label: 'Archived' },
 ];
 
 
@@ -64,6 +65,8 @@ export default function RequestsPage() {
     setAlertState((prev) => ({ ...prev, open: false }));
   };
 
+  const getStatusLabel = (dbStatus) => (dbStatus === 'Rejected' ? 'Archived' : dbStatus);
+
   useEffect(() => {
     const loadRequests = async () => {
       try {
@@ -77,13 +80,6 @@ export default function RequestsPage() {
         const mapped = (result.data || []).map((r) => {
           const resident = r.residents || {};
 
-          const addressParts = [];
-          if (resident.house_no) addressParts.push(resident.house_no);
-          if (resident.street) addressParts.push(resident.street);
-          if (resident.barangay) addressParts.push(`Barangay ${resident.barangay}`);
-          if (resident.city) addressParts.push(resident.city);
-          const formattedAddress = addressParts.join(', ');
-
           const sectors = {
             pwd: !!resident.is_pwd,
             seniorCitizen: !!resident.is_senior_citizen,
@@ -95,38 +91,27 @@ export default function RequestsPage() {
           if (sectors.seniorCitizen) sectorLabels.push('Senior Citizen');
           if (sectors.soloParent) sectorLabels.push('Solo Parent');
 
+          const status = r.status || 'Pending';
+
           return {
             id: r.id,
             controlNo: r.control_number,
-            requester:
-              r.requester_name ||
-              [resident.first_name, resident.last_name].filter(Boolean).join(' '),
-            requesterContact: r.requester_contact || resident.contact_number || '',
-            requesterAddress: r.requester_address || formattedAddress || '',
-            beneficiary: r.beneficiary_name || resident.beneficiary_name || '',
-            beneficiaryContact: r.beneficiary_contact || resident.contact_number || '',
-            beneficiaryAddress: r.beneficiary_address || formattedAddress || '',
+            // Show exactly what was submitted in the request (avoid falling back to resident profile)
+            requester: r.requester_name || '',
+            requesterContact: r.requester_contact || '',
+            requesterAddress: r.requester_address || '',
+            beneficiary: r.beneficiary_name || '',
+            beneficiaryContact: r.beneficiary_contact || '',
+            beneficiaryAddress: r.beneficiary_address || '',
             type: r.assistance_type,
             amount: r.amount,
             rawAmount: r.amount,
             validIdUrl: r.valid_id_url || null,
-            status: r.status || 'Pending',
+            status,
+            statusLabel: getStatusLabel(status),
             date: r.request_date ? new Date(r.request_date).toLocaleDateString() : '',
             processedBy: r.processed_by || '',
-            // Details mirrored from request form via residents table
-            lastName: resident.last_name || '',
-            firstName: resident.first_name || '',
-            middleName: resident.middle_name || '',
-            birthday: resident.birthday || '',
-            birthplace: resident.birthplace || '',
-            age: resident.age || null,
-            sex: resident.sex || '',
-            citizenship: resident.citizenship || '',
-            civilStatus: resident.civil_status || '',
-            barangay: resident.barangay || '',
-            city: resident.city || '',
-            representativeName: resident.representative_name || '',
-            representativeContact: resident.representative_contact || '',
+            decisionRemarks: r.decision_remarks || '',
             sectors,
             sectorText: sectorLabels.length ? sectorLabels.join(', ') : 'None',
           };
@@ -151,12 +136,13 @@ export default function RequestsPage() {
 
   // Filter requests
   const filteredRequests = requests.filter((record) => {
-    const matchesSearch = 
+    const matchesSearch =
       record.requester.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.beneficiary.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.controlNo.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = !typeFilter || record.type === typeFilter;
-    const matchesStatus = !statusFilter || record.status === statusFilter;
+    const matchesStatus =
+      !statusFilter || getStatusLabel(record.status) === statusFilter;
     return matchesSearch && matchesType && matchesStatus;
   });
 
@@ -178,15 +164,33 @@ export default function RequestsPage() {
     const newStatus =
       decisionType === 'approve'
         ? 'Approved'
-        : decisionType === 'reject'
-        ? 'Rejected'
-        : 'Released';
+        : decisionType === 'archive'
+          ? 'Rejected'
+          : decisionType === 'unarchive'
+            ? 'Pending'
+            : 'Released';
 
-    // Extra safety: only pending requests can be approved or rejected
-    if ((decisionType === 'approve' || decisionType === 'reject') && selectedRequest.status !== 'Pending') {
+    // Extra safety guards
+    if ((decisionType === 'approve' || decisionType === 'archive') && selectedRequest.status !== 'Pending') {
       setStatus({
         type: 'error',
-        message: 'Only pending requests can be approved or rejected.',
+        message: 'Only pending requests can be approved or archived.',
+      });
+      return;
+    }
+
+    if (decisionType === 'release' && selectedRequest.status !== 'Approved') {
+      setStatus({
+        type: 'error',
+        message: 'Only approved requests can be marked as released.',
+      });
+      return;
+    }
+
+    if (decisionType === 'unarchive' && selectedRequest.status !== 'Rejected') {
+      setStatus({
+        type: 'error',
+        message: 'Only archived requests can be unarchived.',
       });
       return;
     }
@@ -195,9 +199,19 @@ export default function RequestsPage() {
     setIsUpdatingStatus(true);
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      if (!token) {
+        throw new Error('Unauthorized. Please sign in again.');
+      }
+
       const response = await fetch(`/api/assistance-requests/${selectedRequest.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ status: newStatus, decision_remarks: remarks || null }),
       });
 
@@ -207,16 +221,24 @@ export default function RequestsPage() {
       }
 
       setRequests((prev) =>
-        prev.map((req) => (req.id === selectedRequest.id ? { ...req, status: newStatus } : req)),
+        prev.map((req) =>
+          req.id === selectedRequest.id
+            ? { ...req, status: newStatus, statusLabel: getStatusLabel(newStatus) }
+            : req,
+        ),
       );
+
+      const statusLabel = getStatusLabel(newStatus);
       setStatus({
         type: 'success',
         message: `Request ${selectedRequest.controlNo} has been ${
-          newStatus === 'Approved'
+          statusLabel === 'Approved'
             ? 'approved'
-            : newStatus === 'Rejected'
-            ? 'rejected'
-            : 'marked as released'
+            : statusLabel === 'Archived'
+              ? 'archived'
+              : statusLabel === 'Pending'
+                ? 'unarchived'
+                : 'marked as released'
         }.`,
       });
     } catch (err) {
@@ -240,13 +262,8 @@ export default function RequestsPage() {
   };
 
   const getStatusBadge = (status) => {
-    const variants = {
-      'Pending': 'warning',
-      'Approved': 'primary',
-      'Released': 'success',
-      'Rejected': 'danger',
-    };
-    return <Badge variant={variants[status]}>{status}</Badge>;
+    const label = getStatusLabel(status);
+    return <Badge>{label}</Badge>;
   };
 
   const getTypeBadge = (type) => {
@@ -303,15 +320,30 @@ export default function RequestsPage() {
               </button>
               <button 
                 className={styles.rejectBtn}
-                onClick={() => handleOpenDecision(row, 'reject')}
-                title="Reject"
+                onClick={() => handleOpenDecision(row, 'archive')}
+                title="Archive"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
+                  <path d="M21 8v13H3V8" />
+                  <path d="M1 3h22v5H1z" />
+                  <path d="M10 12h4" />
                 </svg>
               </button>
             </>
+          )}
+          {row.status === 'Rejected' && (
+            <button
+              className={styles.releaseBtn}
+              onClick={() => handleOpenDecision(row, 'unarchive')}
+              title="Unarchive"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 8v13H3V8" />
+                <path d="M1 3h22v5H1z" />
+                <path d="M12 12v5" />
+                <path d="M9 15l3 3 3-3" />
+              </svg>
+            </button>
           )}
           {row.status === 'Approved' && (
             <button
@@ -380,7 +412,7 @@ export default function RequestsPage() {
           </div>
           <div className={styles.summaryInfo}>
             <span className={styles.summaryValue}>{requests.filter(r => r.status === 'Rejected').length}</span>
-            <span className={styles.summaryLabel}>Rejected</span>
+            <span className={styles.summaryLabel}>Archived</span>
           </div>
         </div>
       </div>
@@ -474,15 +506,41 @@ export default function RequestsPage() {
                         </button>
                         <button 
                           className={styles.rejectBtn}
-                          onClick={() => handleOpenDecision(request, 'reject')}
-                          title="Reject"
+                          onClick={() => handleOpenDecision(request, 'archive')}
+                          title="Archive"
                         >
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
+                            <path d="M21 8v13H3V8" />
+                            <path d="M1 3h22v5H1z" />
+                            <path d="M10 12h4" />
                           </svg>
                         </button>
                       </>
+                    )}
+                    {request.status === 'Rejected' && (
+                      <button
+                        className={styles.releaseBtn}
+                        onClick={() => handleOpenDecision(request, 'unarchive')}
+                        title="Unarchive"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M21 8v13H3V8" />
+                          <path d="M1 3h22v5H1z" />
+                          <path d="M12 12v5" />
+                          <path d="M9 15l3 3 3-3" />
+                        </svg>
+                      </button>
+                    )}
+                    {request.status === 'Approved' && (
+                      <button
+                        className={styles.releaseBtn}
+                        onClick={() => handleOpenDecision(request, 'release')}
+                        title="Mark as Released"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        </svg>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -532,18 +590,37 @@ export default function RequestsPage() {
               <Button variant="secondary" onClick={() => setShowViewModal(false)}>
                 Close
               </Button>
-              <Button variant="danger" onClick={() => handleOpenDecision(selectedRequest, 'reject')}>
+              <Button variant="secondary" onClick={() => handleOpenDecision(selectedRequest, 'archive')}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
+                  <path d="M21 8v13H3V8" />
+                  <path d="M1 3h22v5H1z" />
+                  <path d="M10 12h4" />
                 </svg>
-                Reject
+                Archive
               </Button>
               <Button onClick={() => handleOpenDecision(selectedRequest, 'approve')}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
                 Approve
+              </Button>
+            </div>
+          ) : selectedRequest?.status === 'Rejected' ? (
+            <div className={styles.modalFooter}>
+              <Button variant="secondary" onClick={() => setShowViewModal(false)}>
+                Close
+              </Button>
+              <Button onClick={() => handleOpenDecision(selectedRequest, 'unarchive')}>
+                Unarchive
+              </Button>
+            </div>
+          ) : selectedRequest?.status === 'Approved' ? (
+            <div className={styles.modalFooter}>
+              <Button variant="secondary" onClick={() => setShowViewModal(false)}>
+                Close
+              </Button>
+              <Button onClick={() => handleOpenDecision(selectedRequest, 'release')}>
+                Mark as Released
               </Button>
             </div>
           ) : (
@@ -565,15 +642,15 @@ export default function RequestsPage() {
                 <h4>Requester Information</h4>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Name:</span>
-                  <span className={styles.detailValue}>{selectedRequest.requester}</span>
+                  <span className={styles.detailValue}>{selectedRequest.requester || 'Not provided'}</span>
                 </div>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Contact:</span>
-                  <span className={styles.detailValue}>{selectedRequest.requesterContact}</span>
+                  <span className={styles.detailValue}>{selectedRequest.requesterContact || 'Not provided'}</span>
                 </div>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Address:</span>
-                  <span className={styles.detailValue}>{selectedRequest.requesterAddress}</span>
+                  <span className={styles.detailValue}>{selectedRequest.requesterAddress || 'Not provided'}</span>
                 </div>
               </div>
 
@@ -581,72 +658,25 @@ export default function RequestsPage() {
                 <h4>Beneficiary Information</h4>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Name:</span>
-                  <span className={styles.detailValue}>{selectedRequest.beneficiary}</span>
+                  <span className={styles.detailValue}>{selectedRequest.beneficiary || 'Not provided'}</span>
                 </div>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Contact:</span>
-                  <span className={styles.detailValue}>{selectedRequest.beneficiaryContact}</span>
+                  <span className={styles.detailValue}>{selectedRequest.beneficiaryContact || 'Not provided'}</span>
                 </div>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Address:</span>
-                  <span className={styles.detailValue}>{selectedRequest.beneficiaryAddress}</span>
+                  <span className={styles.detailValue}>{selectedRequest.beneficiaryAddress || 'Not provided'}</span>
                 </div>
               </div>
             </div>
 
             <div className={styles.detailSection}>
-              <h4>Additional Details</h4>
+              <h4>Remarks</h4>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Birthday:</span>
+                <span className={styles.detailLabel}>Decision Remarks:</span>
                 <span className={styles.detailValue}>
-                  {selectedRequest.birthday
-                    ? new Date(selectedRequest.birthday).toLocaleDateString()
-                    : 'Not specified'}
-                </span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Age:</span>
-                <span className={styles.detailValue}>
-                  {selectedRequest.age != null ? selectedRequest.age : 'Not specified'}
-                </span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Sex:</span>
-                <span className={styles.detailValue}>{selectedRequest.sex || 'Not specified'}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Civil Status:</span>
-                <span className={styles.detailValue}>{selectedRequest.civilStatus || 'Not specified'}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Citizenship:</span>
-                <span className={styles.detailValue}>{selectedRequest.citizenship || 'Not specified'}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Birthplace:</span>
-                <span className={styles.detailValue}>{selectedRequest.birthplace || 'Not specified'}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Barangay / City:</span>
-                <span className={styles.detailValue}>
-                  {[selectedRequest.barangay, selectedRequest.city].filter(Boolean).join(', ') ||
-                    'Not specified'}
-                </span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Sectors:</span>
-                <span className={styles.detailValue}>{selectedRequest.sectorText}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Representative Name:</span>
-                <span className={styles.detailValue}>
-                  {selectedRequest.representativeName || 'None'}
-                </span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Representative Contact:</span>
-                <span className={styles.detailValue}>
-                  {selectedRequest.representativeContact || 'None'}
+                  {selectedRequest.decisionRemarks || 'None'}
                 </span>
               </div>
             </div>
@@ -657,7 +687,7 @@ export default function RequestsPage() {
                 <span className={styles.infoValue}>{getTypeBadge(selectedRequest.type)}</span>
               </div>
               <div className={styles.infoCard}>
-                <span className={styles.infoLabel}>Budget Ceiling</span>
+                <span className={styles.infoLabel}>Amount</span>
                 <span className={styles.infoValue}>{selectedRequest.amount}</span>
               </div>
               <div className={styles.infoCard}>
@@ -697,9 +727,11 @@ export default function RequestsPage() {
         title={
           decisionType === 'approve'
             ? 'Approve Request'
-            : decisionType === 'reject'
-            ? 'Reject Request'
-            : 'Mark as Released'
+            : decisionType === 'archive'
+              ? 'Archive Request'
+              : decisionType === 'unarchive'
+                ? 'Unarchive Request'
+                : 'Mark as Released'
         }
         size="small"
         footer={
@@ -712,17 +744,19 @@ export default function RequestsPage() {
               Cancel
             </Button>
             <Button 
-              variant={decisionType === 'reject' ? 'danger' : 'primary'} 
+              variant={decisionType === 'archive' ? 'secondary' : 'primary'} 
               onClick={handleConfirmDecision}
               disabled={isUpdatingStatus}
             >
               {isUpdatingStatus
                 ? 'Saving...'
                 : decisionType === 'approve'
-                ? 'Confirm Approval'
-                : decisionType === 'reject'
-                ? 'Confirm Rejection'
-                : 'Confirm Release'}
+                  ? 'Confirm Approval'
+                  : decisionType === 'archive'
+                    ? 'Confirm Archive'
+                    : decisionType === 'unarchive'
+                      ? 'Confirm Unarchive'
+                      : 'Confirm Release'}
             </Button>
           </div>
         }
@@ -732,27 +766,51 @@ export default function RequestsPage() {
             <div 
               className={styles.decisionIcon}
               style={{ 
-                backgroundColor: decisionType === 'approve' ? '#dcfce7' : '#fee2e2',
-                color: decisionType === 'approve' ? '#16a34a' : '#dc2626'
+                backgroundColor:
+                  decisionType === 'approve'
+                    ? '#dcfce7'
+                    : decisionType === 'archive'
+                      ? '#fef3c7'
+                      : '#dbeafe',
+                color:
+                  decisionType === 'approve'
+                    ? '#16a34a'
+                    : decisionType === 'archive'
+                      ? '#d97706'
+                      : '#2563eb',
               }}
             >
               {decisionType === 'approve' ? (
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
+              ) : decisionType === 'archive' ? (
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 8v13H3V8" />
+                  <path d="M1 3h22v5H1z" />
+                  <path d="M10 12h4" />
+                </svg>
+              ) : decisionType === 'unarchive' ? (
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 8v13H3V8" />
+                  <path d="M1 3h22v5H1z" />
+                  <path d="M12 12v5" />
+                  <path d="M9 15l3 3 3-3" />
+                </svg>
               ) : (
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
               )}
             </div>
             <h4 className={styles.decisionTitle}>
               {decisionType === 'approve'
                 ? 'Approve this assistance request?'
-                : decisionType === 'reject'
-                ? 'Reject this assistance request?'
-                : 'Mark this assistance request as released?'}
+                : decisionType === 'archive'
+                  ? 'Archive this assistance request?'
+                  : decisionType === 'unarchive'
+                    ? 'Unarchive this assistance request?'
+                    : 'Mark this assistance request as released?'}
             </h4>
             <p className={styles.decisionDesc}>
               Control No: <strong>{selectedRequest.controlNo}</strong><br />
@@ -765,9 +823,13 @@ export default function RequestsPage() {
                 className={styles.remarksInput}
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
-                placeholder={decisionType === 'approve' 
-                  ? 'Add any notes for this approval...' 
-                  : 'Please provide a reason for rejection...'}
+                placeholder={
+                  decisionType === 'approve'
+                    ? 'Add any notes for this approval...'
+                    : decisionType === 'archive'
+                      ? 'Add a reason for archiving (optional)...'
+                      : 'Add any notes (optional)...'
+                }
                 rows={3}
               />
             </div>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseClient';
+import { requireAdmin } from '@/lib/apiAuth';
 
 export const runtime = 'nodejs';
 
@@ -7,16 +8,19 @@ const ALLOWED_STATUSES = new Set(['Pending', 'Approved', 'Released', 'Rejected']
 
 export async function PATCH(request, { params }) {
   try {
-    const db = supabaseAdmin ?? supabase;
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+
+    const db = supabaseAdmin;
     if (!db) {
       return NextResponse.json(
-        { data: null, error: 'Server configuration error. Database client not available.' },
+        { data: null, error: 'Server configuration error. Database admin client not available.' },
         { status: 500 },
       );
     }
 
     const id = params?.id;
-    if (!id) {
+    if (!id || id === 'undefined' || id === 'null') {
       return NextResponse.json({ data: null, error: 'Missing request id.' }, { status: 400 });
     }
 
