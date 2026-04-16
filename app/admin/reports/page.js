@@ -107,11 +107,47 @@ export default function ReportsPage() {
     setIsModalOpen(true);
   };
 
+  const downloadBlob = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
+  const toExportRows = (residents) => {
+    const data = Array.isArray(residents) ? residents : [];
+
+    return data.map((row) => ({
+      'Control Number': row.control_number || '',
+      'Last Name': row.last_name || '',
+      'First Name': row.first_name || '',
+      'Middle Name': row.middle_name || '',
+      'Birthday': row.birthday || '',
+      Age: row.age || '',
+      Sex: row.sex || '',
+      'Contact Number': row.contact_number || '',
+      Address: `${row.house_no || ''} ${row.street || ''}`.trim(),
+      Barangay: row.barangay || '',
+      City: row.city || '',
+      PWD: row.is_pwd ? 'Yes' : 'No',
+      'Senior Citizen': row.is_senior_citizen ? 'Yes' : 'No',
+      'Solo Parent': row.is_solo_parent ? 'Yes' : 'No',
+      Status: row.status || '',
+    }));
+  };
+
   const handleConfirmGenerate = async () => {
     if (!selectedReport || isGenerating) return;
 
     setIsGenerating(true);
     try {
+      const dateStr = new Date().toISOString().split('T')[0];
+      const baseName = `${selectedReport.id}_report_${dateStr}`;
+
       const response = await fetch('/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -121,28 +157,90 @@ export default function ReportsPage() {
         }),
       });
 
+      if (!response.ok) {
+        let errorMessage = response.statusText || 'Failed to generate report.';
+        try {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const payload = await response.json();
+            errorMessage = payload?.error || payload?.message || errorMessage;
+          } else {
+            const text = await response.text();
+            errorMessage = text || errorMessage;
+          }
+        } catch {
+          // ignore parsing failures
+        }
+        throw new Error(errorMessage);
+      }
+
       if (selectedFormat === 'csv') {
-        // For CSV, download directly
         const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${selectedReport.id}_report.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        downloadBlob(blob, `${baseName}.csv`);
 
         setStatus({
           type: 'success',
           message: `CSV report "${selectedReport.title}" downloaded successfully!`,
         });
       } else {
-        // For PDF and Excel, show success (would need additional libs to generate)
-        setStatus({
-          type: 'success',
-          message: `Report "${selectedReport.title}" generated successfully! (PDF/Excel generation requires additional setup)`,
-        });
+        const payload = await response.json();
+        if (payload?.error) throw new Error(payload.error);
+
+        const exportRows = toExportRows(payload?.data);
+
+        if (selectedFormat === 'excel') {
+          const xlsxMod = await import('xlsx');
+          const XLSX = xlsxMod.default ?? xlsxMod;
+
+          const ws = XLSX.utils.json_to_sheet(exportRows);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, 'Report');
+
+          const arrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+          const blob = new Blob([arrayBuffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          });
+          downloadBlob(blob, `${baseName}.xlsx`);
+
+          setStatus({
+            type: 'success',
+            message: `Excel report "${selectedReport.title}" downloaded successfully!`,
+          });
+        } else if (selectedFormat === 'pdf') {
+          const { jsPDF } = await import('jspdf');
+          const autoTableMod = await import('jspdf-autotable');
+          const autoTable = autoTableMod.default ?? autoTableMod;
+
+          const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+          doc.setFontSize(14);
+          doc.text(`${selectedReport.title} - ${dateStr}`, 40, 40);
+
+          if (exportRows.length === 0) {
+            doc.setFontSize(12);
+            doc.text('No records found.', 40, 70);
+          } else {
+            const head = [Object.keys(exportRows[0])];
+            const body = exportRows.map((r) => Object.values(r));
+
+            autoTable(doc, {
+              startY: 60,
+              head,
+              body,
+              styles: { fontSize: 8 },
+              headStyles: { fillColor: [30, 64, 175] },
+              margin: { left: 40, right: 40 },
+            });
+          }
+
+          doc.save(`${baseName}.pdf`);
+
+          setStatus({
+            type: 'success',
+            message: `PDF report "${selectedReport.title}" downloaded successfully!`,
+          });
+        } else {
+          throw new Error('Unsupported format selected.');
+        }
       }
 
       setIsModalOpen(false);
@@ -211,16 +309,16 @@ export default function ReportsPage() {
         size="small"
         footer={
           <div className={styles.modalFooter}>
-            <Button variant="secondary" onClick={handleCloseModal}>
+            <Button variant="secondary" onClick={handleCloseModal} disabled={isGenerating}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={handleConfirmGenerate}>
+            <Button variant="primary" onClick={handleConfirmGenerate} disabled={isGenerating}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              Generate Report
+              {isGenerating ? 'Generating…' : 'Generate Report'}
             </Button>
           </div>
         }
