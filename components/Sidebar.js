@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import styles from './Sidebar.module.css';
@@ -113,8 +114,15 @@ const icons = {
 
 export default function Sidebar({ user, onLogout, minimized, menuItems: customMenuItems, hideBranding, customTitle, customSubtitle }) {
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
 
-  const isAdminRole = user?.role === 'Administrator' || user?.role === 'Admin';
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const resolvedUser = mounted ? user : null;
+
+  const isAdminRole = resolvedUser?.role === 'Administrator' || resolvedUser?.role === 'Admin';
   const baseMenuItems = customMenuItems || menuItems;
   const sidebarMenuItems = isAdminRole
     ? baseMenuItems
@@ -139,8 +147,8 @@ export default function Sidebar({ user, onLogout, minimized, menuItems: customMe
           {!minimized && (
             <div className={styles.logoText}>
               <span className={styles.logoTitle}>{customTitle || 'Beneficiary Portal'}</span>
-              { (customSubtitle || user?.role) && (
-                <span className={styles.logoSubtitle}>{customSubtitle || user?.role}</span>
+              {(customSubtitle || resolvedUser?.role) && (
+                <span className={styles.logoSubtitle}>{customSubtitle || resolvedUser?.role}</span>
               )}
             </div>
           )}
@@ -171,13 +179,21 @@ export default function Sidebar({ user, onLogout, minimized, menuItems: customMe
 
       <div className={styles.userSection}>
         <div className={styles.userInfo}>
-            <div className={styles.userAvatar}>
-              {user?.name?.charAt(0) || 'AU'}
-            </div>
+          <div className={styles.userAvatar}>
+            <span suppressHydrationWarning>
+              {mounted
+                ? (resolvedUser?.name || 'Admin User').trim().charAt(0).toUpperCase() || 'A'
+                : 'A'}
+            </span>
+          </div>
           {!minimized && (
             <div className={styles.userDetails}>
-              <span className={styles.userName}>{user?.name || 'Admin User'}</span>
-              <span className={styles.userRole}>{user?.role || 'Administrator'}</span>
+              <span className={styles.userName} suppressHydrationWarning>
+                {mounted ? resolvedUser?.name || 'Admin User' : 'Loading...'}
+              </span>
+              <span className={styles.userRole} suppressHydrationWarning>
+                {mounted ? resolvedUser?.role || 'Administrator' : ''}
+              </span>
             </div>
           )}
         </div>
