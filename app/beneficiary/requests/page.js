@@ -11,6 +11,7 @@ import FileUpload from '../../../components/FileUpload';
 import styles from './page.module.css';
 import { createOrUpdateResident } from '@/lib/residents';
 import { assistanceTypeOptions, assistanceData } from '@/lib/assistanceData';
+import { supabase } from '@/lib/supabaseClient';
 
 const sexOptions = [
   { value: 'male', label: 'Male' },
@@ -78,6 +79,11 @@ export default function BeneficiaryRequestPage() {
   useEffect(() => {
     const loadBudgets = async () => {
       try {
+        if (!supabase) {
+          console.error('Supabase client not initialized');
+          return;
+        }
+
         const { data, error } = await supabase
           .from('assistance_budgets')
           .select('assistance_type, ceiling');
@@ -90,8 +96,9 @@ export default function BeneficiaryRequestPage() {
         if (data) {
           const map = {};
           data.forEach((row) => {
-            if (row.assistance_type && typeof row.ceiling === 'number') {
-              map[row.assistance_type] = row.ceiling;
+            const ceiling = Number(row.ceiling);
+            if (row.assistance_type && Number.isFinite(ceiling)) {
+              map[row.assistance_type] = ceiling;
             }
           });
           setBudgets(map);
