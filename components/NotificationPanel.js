@@ -1,14 +1,44 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
 import styles from './NotificationPanel.module.css';
 
-// TODO: Fetch from Supabase real-time queries
-// Expected shape: [{ id, type, title, message, time: Date, read: boolean, icon: string }]
-const SAMPLE_ACTIVITIES = [];
+const DEFAULT_ACTIVITIES = [];
 
-function formatTimeAgo(date) {
+function getLocalReadKey() {
+  if (typeof window === 'undefined') return null;
+  const rid = window.localStorage.getItem('beneficiaryResidentId');
+  return `activityReadIds:${rid || 'anon'}`;
+}
+
+function readLocalReadSet() {
+  try {
+    const key = getLocalReadKey();
+    if (!key) return new Set();
+    const raw = window.localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeLocalReadSet(set) {
+  try {
+    const key = getLocalReadKey();
+    if (!key) return;
+    window.localStorage.setItem(key, JSON.stringify(Array.from(set)));
+  } catch {
+    // ignore
+  }
+}
+
+function formatTimeAgo(value) {
   const now = new Date();
+  const date = value instanceof Date ? value : new Date(value);
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
   const diffMs = now - date;
   const diffMin = Math.floor(diffMs / 60000);
   const diffHr = Math.floor(diffMs / 3600000);
@@ -79,25 +109,38 @@ function ActivityIcon({ type }) {
 }
 
 const TYPE_COLORS = {
-  registration: 'blue',
-  assistance: 'orange',
-  approval: 'green',
-  update: 'purple',
-  release: 'teal',
-  report: 'indigo',
-  rejection: 'red',
+  blue: 'blue',
+  orange: 'orange',
+  green: 'green',
+  purple: 'purple',
+  teal: 'teal',
+  indigo: 'indigo',
+  red: 'red',
 };
 
-export default function NotificationPanel({ isOpen, onClose, anchorRef }) {
-  const [activities, setActivities] = useState(SAMPLE_ACTIVITIES);
-  const [filter, setFilter] = useState('all'); // 'all' | 'unread'
+export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnreadCountChange }) {
+  const router = useRouter();
+  const [activities, setActivities] = useState(DEFAULT_ACTIVITIES);
+  const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState('all'); // 'all' | 'unread' | 'staff'
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [staffActivities, setStaffActivities] = useState([]);
+  const [staffLoading, setStaffLoading] = useState(false);
   const panelRef = useRef(null);
 
-  const unreadCount = activities.filter(a => !a.read).length;
+  const unreadCount = useMemo(() => activities.filter((a) => !a.read).length, [activities]);
 
-  const filteredActivities = filter === 'unread'
-    ? activities.filter(a => !a.read)
-    : activities;
+  useEffect(() => {
+    if (typeof onUnreadCountChange === 'function') {
+      onUnreadCountChange(unreadCount);
+    }
+  }, [unreadCount, onUnreadCountChange]);
+
+  const filteredActivities = useMemo(() => {
+    if (filter === 'staff') return staffActivities;
+    if (filter === 'unread') return activities.filter((a) => !a.read);
+    return activities;
+  }, [activities, filter, staffActivities]);
 
   // Close on outside click
   useEffect(() => {
@@ -124,15 +167,188 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef }) {
     };
   }, [isOpen, onClose, anchorRef]);
 
-  const markAllAsRead = useCallback(() => {
-    setActivities(prev => prev.map(a => ({ ...a, read: true })));
+  const getAccessToken = useCallback(async () => {
+    if (!supabase) return null;
+    const { data, error } = await supabase.auth.getSession();
+    if (error) return null;
+    return data?.session?.access_token || null;
   }, []);
 
-  const markAsRead = useCallback((id) => {
-    setActivities(prev =>
-      prev.map(a => a.id === id ? { ...a, read: true } : a)
-    );
+  const applyLocalReadState = useCallback((items) => {
+    const readSet = readLocalReadSet();
+    return (items || []).map((a) => {
+      if (a?.source === 'beneficiary' || a?.source === 'system') {
+        return { ...a, read: a.read || readSet.has(a.id) };
+      }
+      return a;
+    });
   }, []);
+
+  const mapLevelToIconAndColor = useCallback((level) => {
+    const l = String(level || 'info');
+    const colorByLevel = {
+      info: 'blue',
+      success: 'green',
+      warning: 'orange',
+      error: 'red',
+    };
+
+    const iconByLevel = {
+      info: 'clipboard',
+      success: 'check-circle',
+      warning: 'file-text',
+      error: 'x-circle',
+    };
+
+    return {
+      icon: iconByLevel[l] || 'clipboard',
+      color: colorByLevel[l] || 'blue',
+    };
+  }, []);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = await getAccessToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+
+      const res = await fetch('/api/activity', { headers });
+      const json = await res.json();
+
+      if (!res.ok || json?.error) {
+        throw new Error(json?.error || 'Failed to load activity.');
+      }
+
+      setActivities(applyLocalReadState(json?.data || []));
+
+      // Admin-only: load staff activity feed for monitoring
+      if (token) {
+        setStaffLoading(true);
+        try {
+          const staffRes = await fetch('/api/admin/staff-activity?limit=30', { headers });
+          const staffJson = await staffRes.json().catch(() => ({}));
+
+          if (staffRes.ok && !staffJson?.error) {
+            setIsAdmin(true);
+            const items = (staffJson?.data || []).map((row) => {
+              const { icon, color } = mapLevelToIconAndColor(row?.type);
+              return {
+                id: `staff:${String(row?.id || '')}`,
+                source: 'staff',
+                title: row?.title || 'Staff activity',
+                message: row?.message || '',
+                time: row?.time || row?.created_at || null,
+                read: true,
+                icon,
+                color,
+                link: row?.link || '/admin/assistance/requests',
+              };
+            });
+            setStaffActivities(items);
+          } else {
+            // 403 for non-admin is expected; don't treat as an error
+            setIsAdmin(false);
+            setStaffActivities([]);
+          }
+        } catch {
+          setIsAdmin(false);
+          setStaffActivities([]);
+        } finally {
+          setStaffLoading(false);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load recent activity:', err);
+      setActivities([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [applyLocalReadState, getAccessToken, mapLevelToIconAndColor]);
+
+  useEffect(() => {
+    // Load once on mount so the navbar badge works even before opening.
+    refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    if (isOpen) refresh();
+  }, [isOpen, refresh]);
+
+  const markAllAsRead = useCallback(async () => {
+    const token = await getAccessToken();
+
+    // If we have a token, we can update server notifications.
+    if (token) {
+      try {
+        await fetch('/api/notifications', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ markAll: true }),
+        });
+      } catch {
+        // ignore
+      }
+    }
+
+    // Always persist local derived read-state too.
+    const readSet = readLocalReadSet();
+    activities.forEach((a) => {
+      if (a?.source === 'beneficiary' || a?.source === 'system') {
+        readSet.add(a.id);
+      }
+    });
+    writeLocalReadSet(readSet);
+
+    setActivities((prev) => prev.map((a) => ({ ...a, read: true })));
+  }, [activities, getAccessToken]);
+
+  const markAsRead = useCallback(
+    async (activity) => {
+      if (!activity || activity.read) return;
+
+      const next = (prev) => prev.map((a) => (a.id === activity.id ? { ...a, read: true } : a));
+
+      if (activity.source === 'notification') {
+        const token = await getAccessToken();
+        if (token) {
+          try {
+            await fetch('/api/notifications', {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ ids: [activity.id] }),
+            });
+          } catch {
+            // ignore
+          }
+        }
+        setActivities(next);
+        return;
+      }
+
+      const readSet = readLocalReadSet();
+      readSet.add(activity.id);
+      writeLocalReadSet(readSet);
+      setActivities(next);
+    },
+    [getAccessToken],
+  );
+
+  const handleClickActivity = useCallback(
+    async (activity) => {
+      await markAsRead(activity);
+      if (activity?.link) {
+        router.push(activity.link);
+        onClose();
+      }
+    },
+    [markAsRead, onClose, router],
+  );
 
   if (!isOpen) return null;
 
@@ -156,7 +372,7 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef }) {
             )}
           </div>
           <div className={styles.headerRight}>
-            {unreadCount > 0 && (
+            {filter !== 'staff' && unreadCount > 0 && (
               <button className={styles.markAllBtn} onClick={markAllAsRead}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="22 4 12 14.01 9 11.01" />
@@ -187,21 +403,40 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef }) {
           >
             Unread{unreadCount > 0 && ` (${unreadCount})`}
           </button>
+          {isAdmin && (
+            <button
+              className={`${styles.filterTab} ${filter === 'staff' ? styles.filterTabActive : ''}`}
+              onClick={() => setFilter('staff')}
+            >
+              Staff Activity
+            </button>
+          )}
         </div>
 
         {/* Activity list */}
         <div className={styles.activityList}>
-          {filteredActivities.length === 0 ? (
+          {(filter === 'staff' ? staffLoading : loading) ? (
+            <div className={styles.emptyState}>
+              <p className={styles.emptyTitle}>
+                {filter === 'staff' ? 'Loading staff activity…' : 'Loading activity…'}
+              </p>
+              <p className={styles.emptyText}>Please wait.</p>
+            </div>
+          ) : filteredActivities.length === 0 ? (
             <div className={styles.emptyState}>
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
-              <p className={styles.emptyTitle}>No recent activity</p>
+              <p className={styles.emptyTitle}>
+                {filter === 'staff' ? 'No staff activity yet' : 'No recent activity'}
+              </p>
               <p className={styles.emptyText}>
                 {filter === 'unread'
                   ? "You're all caught up!"
-                  : 'Recent activities will appear here.'}
+                  : filter === 'staff'
+                    ? 'Staff activities will appear here.'
+                    : 'Recent activities will appear here.'}
               </p>
             </div>
           ) : (
@@ -209,9 +444,9 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef }) {
               <button
                 key={activity.id}
                 className={`${styles.activityItem} ${!activity.read ? styles.unread : ''}`}
-                onClick={() => markAsRead(activity.id)}
+                onClick={() => handleClickActivity(activity)}
               >
-                <div className={`${styles.activityIcon} ${styles[TYPE_COLORS[activity.type]] || ''}`}>
+                <div className={`${styles.activityIcon} ${styles[TYPE_COLORS[activity.color]] || ''}`}>
                   <ActivityIcon type={activity.icon} />
                 </div>
                 <div className={styles.activityBody}>

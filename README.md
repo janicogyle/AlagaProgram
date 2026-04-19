@@ -2,16 +2,38 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+### Environment variables (Supabase)
+
+Create a `.env.local` with:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...   # server-side only (do NOT prefix with NEXT_PUBLIC)
+
+# QR Beneficiary ID (server-side only)
+QR_CARD_SECRET=...              # used to sign/verify beneficiary ID QR tokens
+BENEFICIARY_SESSION_SECRET=...  # used for beneficiary session cookie (optional; falls back to QR_CARD_SECRET)
+```
+
+If deploying to Vercel, make sure `SUPABASE_SERVICE_ROLE_KEY` is configured in **Project Settings → Environment Variables**. Without it, creating admin/staff users will fail with “Admin client not available”.
+
+### Database
+
+To enable QR ID cards, run `setup-step5.sql` in the Supabase SQL Editor (creates `public.beneficiary_cards`).
+
+### Supabase Storage (Valid ID uploads)
+
+This app uploads beneficiary Valid IDs to Supabase Storage.
+
+Create a Storage bucket named **`document`** in your Supabase project (Storage → Buckets → New bucket).
+
+Admin/Staff view the uploaded ID through a signed URL (server-side) for verification.
+
+First, run the development server (this repo enforces **pnpm**):
+
+```bash
 pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

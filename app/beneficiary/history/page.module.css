@@ -1,0 +1,29 @@
+.historyPage {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.historyCard {
+  margin-top: 0.5rem;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.muted {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+@media (max-width: 576px) {
+  .headerRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+}

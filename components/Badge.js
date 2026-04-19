@@ -19,17 +19,21 @@ const variants = {
   'Others': 'secondary',
   // Status types
   'Pending': 'warning',
+  'Resubmitted': 'warning',
   'Approved': 'primary',
   'Released': 'success',
+  'Incomplete': 'danger',
   'Rejected': 'danger',
+  'Archived': 'secondary',
 };
 
 export default function Badge({ children, variant }) {
-  const colorVariant = variant || variants[children] || 'default';
-  
+  const displayText = children === 'Rejected' ? 'Incomplete' : children;
+  const colorVariant = variant || variants[displayText] || variants[children] || 'default';
+
   return (
     <span className={`${styles.badge} ${styles[colorVariant]}`}>
-      {children}
+      {displayText}
     </span>
   );
 }

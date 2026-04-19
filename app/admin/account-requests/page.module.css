@@ -1,0 +1,182 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.applicantCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary-50, #e6f0ff);
+  color: var(--primary-700, #1d4ed8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.applicantInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.applicantName {
+  font-weight: 600;
+  color: #111827;
+}
+
+.applicantMeta {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.sectorBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.addressCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.addressMeta {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.subtleText {
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.actionsCell {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filterLabel {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.select {
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: #111827;
+  background-color: #ffffff;
+}
+
+.select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.1);
+}
+
+.detailsContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detailsHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.detailsId {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.detailsSubmitted {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.detailsSection {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 12px;
+}
+
+.detailsSection h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px 16px;
+}
+
+.label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+
+.value {
+  font-size: 14px;
+  color: #111827;
+}
+
+.notes {
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.detailsActionsRow {
+  margin-top: 4px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirmText {
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.confirmText strong {
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .actionsCell {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .detailsHeaderRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

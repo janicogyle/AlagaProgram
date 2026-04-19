@@ -26,10 +26,18 @@ export default function StatCard({
   const icons = {
     disability: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="12" cy="4" r="2" />
-        <path d="M12 6v6" />
-        <path d="M12 12l-4 4-2 2" />
-        <path d="M12 12l4 4 2 2" />
+        {/* Head */}
+        <circle cx="9" cy="6" r="2" />
+        {/* Back */}
+        <path d="M9 8v3" />
+        {/* Arm to wheel */}
+        <path d="M9 9h3" />
+        {/* Seat */}
+        <path d="M9 11h4" />
+        {/* Wheel */}
+        <circle cx="14" cy="17" r="4" />
+        {/* Leg */}
+        <path d="M13 11l2 4" />
       </svg>
     ),
     senior: (
@@ -61,15 +69,17 @@ export default function StatCard({
         <span className={styles.value}>{value}</span>
         <span className={styles.subtitle}>{subtitle}</span>
       </div>
-      <div 
-        className={styles.iconWrapper}
-        style={{ 
-          backgroundColor: iconBgColors[color],
-          color: iconColors[color]
-        }}
-      >
-        {icons[icon] || icon}
-      </div>
+      {icon && (
+        <div 
+          className={styles.iconWrapper}
+          style={{ 
+            backgroundColor: iconBgColors[color],
+            color: iconColors[color]
+          }}
+        >
+          {icons[icon] || icon}
+        </div>
+      )}
     </div>
   );
 }

@@ -8,19 +8,21 @@ const menuItems = [
   {
     section: 'Main Menu',
     items: [
-      { name: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
-      { name: 'Analytics', href: '/dashboard/analytics', icon: 'analytics' },
-      { name: 'Registration', href: '/dashboard/registration', icon: 'registration' },
-      { name: 'Alaga List', href: '/dashboard/residents', icon: 'list' },
-      { name: 'Assistance Tracking', href: '/dashboard/assistance', icon: 'assistance' },
-      { name: 'Assistance Guidelines', href: '/dashboard/assistance/guidelines', icon: 'guidelines' },
-      { name: 'Reports', href: '/dashboard/reports', icon: 'reports' },
+      { name: 'Dashboard', href: '/admin/analytics', icon: 'dashboard' },
+      { name: 'Registration', href: '/admin/registration', icon: 'registration' },
+      { name: 'Beneficiaries', href: '/admin/residents', icon: 'user' },
+      { name: 'Verify Beneficiary ID', href: '/admin/beneficiary-id', icon: 'document' },
+      { name: 'Requests', href: '/admin/assistance/requests', icon: 'list' },
+      { name: 'Assistance Tracking', href: '/admin/assistance', icon: 'assistance' },
+      { name: 'Assistance Guidelines', href: '/admin/assistance/guidelines', icon: 'guidelines' },
+      { name: 'Reports', href: '/admin/reports', icon: 'reports' },
     ]
   },
   {
     section: 'Administration',
     items: [
-      { name: 'User Management', href: '/dashboard/users', icon: 'users' },
+      { name: 'Account Requests', href: '/admin/account-requests', icon: 'document' },
+      { name: 'User Management', href: '/admin/users', icon: 'users' },
     ]
   }
 ];
@@ -76,6 +78,21 @@ const icons = {
       <line x1="2" y1="20" x2="22" y2="20" />
     </svg>
   ),
+  document: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M6 2h7l5 5v15H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" />
+      <path d="M13 2v5h5" />
+      <line x1="9" y1="13" x2="15" y2="13" />
+      <line x1="9" y1="17" x2="13" y2="17" />
+    </svg>
+  ),
+  documents: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M8 4h7l5 5v11H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
+      <path d="M15 4v5h5" />
+      <path d="M4 8h3v11a2 2 0 0 0 2 2h9v1H9a3 3 0 0 1-3-3V8z" />
+    </svg>
+  ),
   analytics: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <polyline points="22,12 18,12 15,21 9,3 6,12 2,12" />
@@ -87,27 +104,53 @@ const icons = {
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
   ),
+  user: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" />
+      <path d="M4 20a8 8 0 0 1 16 0" />
+    </svg>
+  ),
 };
 
-export default function Sidebar({ user, onLogout, minimized }) {
+export default function Sidebar({ user, onLogout, minimized, menuItems: customMenuItems, hideBranding, customTitle, customSubtitle }) {
   const pathname = usePathname();
+  const resolvedUser = user;
+
+  const isAdminRole = resolvedUser?.role === 'Admin';
+  const baseMenuItems = customMenuItems || menuItems;
+  const sidebarMenuItems = isAdminRole
+    ? baseMenuItems
+    : baseMenuItems.filter((section) => section.section !== 'Administration');
 
   return (
     <aside className={minimized ? `${styles.sidebar} ${styles.minimized}` : styles.sidebar}>
-      <div className={styles.logo}>
-        <div className={styles.logoCircle}>
-          <img src="/Brand.png" alt="Barangay Sta. Rita Logo" className={styles.logoImg} />
-        </div>
-        {!minimized && (
-          <div className={styles.logoText}>
-            <span className={styles.logoTitle}>Barangay Sta. Rita</span>
-            <span className={styles.logoSubtitle}>Digital ID System</span>
+      {!hideBranding ? (
+        <div className={styles.logo}>
+          <div className={styles.logoCircle}>
+            <img src="/Brand.png" alt="Barangay Sta. Rita Logo" className={styles.logoImg} />
           </div>
-        )}
-      </div>
+          {!minimized && (
+            <div className={styles.logoText}>
+              <span className={styles.logoTitle}>Barangay Sta. Rita</span>
+              <span className={styles.logoSubtitle}>Digital ID System</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className={styles.logo}>
+          {!minimized && (
+            <div className={styles.logoText}>
+              <span className={styles.logoTitle}>{customTitle || 'Beneficiary Portal'}</span>
+              {(customSubtitle || resolvedUser?.role) && (
+                <span className={styles.logoSubtitle}>{customSubtitle || resolvedUser?.role}</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <nav className={styles.nav}>
-        {menuItems.map((section) => (
+        {sidebarMenuItems.map((section) => (
           <div key={section.section} className={styles.section}>
             {!minimized && <span className={styles.sectionTitle}>{section.section}</span>}
             <ul className={styles.menuList}>
@@ -130,13 +173,19 @@ export default function Sidebar({ user, onLogout, minimized }) {
 
       <div className={styles.userSection}>
         <div className={styles.userInfo}>
-            <div className={styles.userAvatar}>
-              {user?.name?.charAt(0) || 'AU'}
-            </div>
+          <div className={styles.userAvatar}>
+            <span suppressHydrationWarning>
+              {(resolvedUser?.name || 'Admin User').trim().charAt(0).toUpperCase() || 'A'}
+            </span>
+          </div>
           {!minimized && (
             <div className={styles.userDetails}>
-              <span className={styles.userName}>{user?.name || 'Admin User'}</span>
-              <span className={styles.userRole}>{user?.role || 'Administrator'}</span>
+              <span className={styles.userName} suppressHydrationWarning>
+                {resolvedUser?.name || 'Admin User'}
+              </span>
+              <span className={styles.userRole} suppressHydrationWarning>
+                {resolvedUser?.role || 'Staff'}
+              </span>
             </div>
           )}
         </div>

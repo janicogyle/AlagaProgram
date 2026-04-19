@@ -8,7 +8,6 @@ export { default as Table } from './Table';
 export { default as StatCard } from './StatCard';
 export { default as Navbar } from './Navbar';
 export { default as Sidebar } from './Sidebar';
-export { default as LoginForm } from './LoginForm';
 export { default as FileUpload } from './FileUpload';
 
 // Chart Components
@@ -24,4 +23,8 @@ export { default as Modal } from './Modal';
 export { default as ActionMenu } from './ActionMenu';
 export { default as EmptyState } from './EmptyState';
 export { default as NotificationPanel } from './NotificationPanel';
+export { UnifiedLoginForm } from './UnifiedLoginForm/UnifiedLoginForm';
+export { default as SectionHeader } from './SectionHeader';
+export { default as HelperText } from './HelperText';
+export { default as StatusChip } from './StatusChip';
 
