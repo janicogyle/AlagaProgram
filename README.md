@@ -22,16 +22,18 @@ If deploying to Vercel, make sure `SUPABASE_SERVICE_ROLE_KEY` is configured in *
 
 To enable QR ID cards, run `setup-step5.sql` in the Supabase SQL Editor (creates `public.beneficiary_cards`).
 
-First, run the development server:
+### Supabase Storage (Valid ID uploads)
+
+This app uploads beneficiary Valid IDs to Supabase Storage.
+
+Create a Storage bucket named **`document`** in your Supabase project (Storage → Buckets → New bucket).
+
+Admin/Staff view the uploaded ID through a signed URL (server-side) for verification.
+
+First, run the development server (this repo enforces **pnpm**):
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
 pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS public.assistance_requests (
   -- Assistance Details
   assistance_type TEXT NOT NULL,
   amount DECIMAL(10, 2) DEFAULT 0,
-  status TEXT DEFAULT 'Pending' CHECK (status IN ('Pending', 'Approved', 'Released', 'Rejected')),
+  status TEXT DEFAULT 'Pending' CHECK (status IN ('Pending', 'Resubmitted', 'Approved', 'Released', 'Rejected')),
   
   -- Processing Info
   processed_by TEXT,

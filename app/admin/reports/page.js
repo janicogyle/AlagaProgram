@@ -188,25 +188,7 @@ export default function ReportsPage() {
 
         const exportRows = toExportRows(payload?.data);
 
-        if (selectedFormat === 'excel') {
-          const xlsxMod = await import('xlsx');
-          const XLSX = xlsxMod.default ?? xlsxMod;
-
-          const ws = XLSX.utils.json_to_sheet(exportRows);
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, 'Report');
-
-          const arrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-          const blob = new Blob([arrayBuffer], {
-            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          });
-          downloadBlob(blob, `${baseName}.xlsx`);
-
-          setStatus({
-            type: 'success',
-            message: `Excel report "${selectedReport.title}" downloaded successfully!`,
-          });
-        } else if (selectedFormat === 'pdf') {
+        if (selectedFormat === 'pdf') {
           const { jsPDF } = await import('jspdf');
           const autoTableMod = await import('jspdf-autotable');
           const autoTable = autoTableMod.default ?? autoTableMod;
@@ -358,17 +340,16 @@ export default function ReportsPage() {
                 </button>
                 <button
                   type="button"
-                  className={`${styles.formatBtn} ${selectedFormat === 'excel' ? styles.formatBtnActive : ''}`}
-                  onClick={() => setSelectedFormat('excel')}
+                  className={`${styles.formatBtn} ${selectedFormat === 'csv' ? styles.formatBtnActive : ''}`}
+                  onClick={() => setSelectedFormat('csv')}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <line x1="3" y1="9" x2="21" y2="9" />
-                    <line x1="3" y1="15" x2="21" y2="15" />
-                    <line x1="9" y1="3" x2="9" y2="21" />
-                    <line x1="15" y1="3" x2="15" y2="21" />
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <path d="M8 13h8" />
+                    <path d="M8 17h8" />
                   </svg>
-                  Excel
+                  CSV
                 </button>
               </div>
             </div>

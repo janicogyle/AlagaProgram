@@ -58,23 +58,28 @@ export default function PieChart({
     );
   }
 
-  // Calculate slices with percentages and angles
-  let cumulativePercentage = 0;
-  const slices = data.map((item, index) => {
-    const value = item[valueKey] || 0;
-    const percentage = (value / total) * 100;
-    const startPercentage = cumulativePercentage;
-    cumulativePercentage += percentage;
-    
-    return {
-      label: item[labelKey] || `Item ${index + 1}`,
-      value,
-      percentage,
-      color: item[colorKey] || DEFAULT_COLORS[index % DEFAULT_COLORS.length],
-      startPercentage,
-      endPercentage: cumulativePercentage,
-    };
-  });
+  // Calculate slices with percentages and angles (linear time, no array re-alloc per item)
+  const { slices } = data.reduce(
+    (acc, item, index) => {
+      const value = item[valueKey] || 0;
+      const percentage = (value / total) * 100;
+      const startPercentage = acc.cumulative;
+      const endPercentage = startPercentage + percentage;
+
+      acc.slices.push({
+        label: item[labelKey] || `Item ${index + 1}`,
+        value,
+        percentage,
+        color: item[colorKey] || DEFAULT_COLORS[index % DEFAULT_COLORS.length],
+        startPercentage,
+        endPercentage,
+      });
+
+      acc.cumulative = endPercentage;
+      return acc;
+    },
+    { cumulative: 0, slices: [] },
+  );
 
   // SVG parameters
   const center = size / 2;

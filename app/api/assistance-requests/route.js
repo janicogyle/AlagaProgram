@@ -24,12 +24,32 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const residentId = searchParams.get('residentId');
 
+    const requestFields = [
+      'id',
+      'control_number',
+      'resident_id',
+      'requester_name',
+      'requester_contact',
+      'requester_address',
+      'beneficiary_name',
+      'beneficiary_contact',
+      'beneficiary_address',
+      'assistance_type',
+      'amount',
+      'status',
+      'request_date',
+      'processed_by',
+      'decision_remarks',
+      'valid_id_url',
+      'created_at',
+    ].join(',');
+
     let query = db
       .from('assistance_requests')
       .select(
         [
-          '*',
-          'residents:resident_id(id, first_name, middle_name, last_name, contact_number, house_no, purok, street, barangay, city, is_pwd, is_senior_citizen, is_solo_parent)',
+          requestFields,
+          'residents:resident_id(id, control_number, first_name, middle_name, last_name, birthday, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, representative_name, representative_contact, is_pwd, is_senior_citizen, is_solo_parent)',
         ].join(','),
       )
       .order('request_date', { ascending: false });
@@ -100,10 +120,36 @@ export async function POST(request) {
     const { data, error } = await db
       .from('assistance_requests')
       .insert(payload)
-      .select('*')
+      .select(
+        'id, control_number, resident_id, requester_name, requester_contact, requester_address, beneficiary_name, beneficiary_contact, beneficiary_address, assistance_type, amount, status, request_date, processed_by, decision_remarks, valid_id_url, created_at',
+      )
       .single();
 
     if (error) throw error;
+
+    // Best-effort: notify all active Admin/Staff of the new request.
+    if (supabaseAdmin) {
+      try {
+        const { data: recipients } = await supabaseAdmin
+          .from('users')
+          .select('id, role, status')
+          .in('role', ['Admin', 'Staff'])
+          .eq('status', 'Active');
+
+        if (recipients?.length) {
+          const rows = recipients.map((u) => ({
+            user_id: u.id,
+            title: 'New assistance request',
+            message: `Reference: ${data.control_number}${data.requester_name ? ` • Requester: ${data.requester_name}` : ''}`,
+            type: 'info',
+            link: '/admin/assistance/requests',
+          }));
+          await supabaseAdmin.from('notifications').insert(rows);
+        }
+      } catch (notifyError) {
+        console.warn('Unable to create notifications for assistance request:', notifyError);
+      }
+    }
 
     return NextResponse.json({ data, error: null }, { status: 201 });
   } catch (error) {

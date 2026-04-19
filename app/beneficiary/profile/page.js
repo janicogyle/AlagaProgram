@@ -29,7 +29,9 @@ export default function ProfilePage() {
 
         const { data, error } = await supabase
           .from('residents')
-          .select('*')
+          .select(
+            'id, first_name, middle_name, last_name, birthday, contact_number, house_no, purok, street, barangay, city, is_pwd, is_senior_citizen, is_solo_parent',
+          )
           .eq('id', residentId)
           .single();
 
@@ -112,7 +114,7 @@ export default function ProfilePage() {
         )}
         {!loading && !resident && (
           <p className={styles.muted}>
-            We couldn't find your beneficiary profile yet. The layout below shows what will be stored once you sign up.
+            We couldn&apos;t find your beneficiary profile yet. The layout below shows what will be stored once you sign up.
           </p>
         )}
 

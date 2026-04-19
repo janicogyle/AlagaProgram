@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './ActionMenu.module.css';
 
@@ -31,47 +31,65 @@ export default function ActionMenu({
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (isOpen && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      const menuWidth = 160;
-      const menuHeight = 200;
-      const padding = 12;
-      
-      let top = rect.bottom + 4;
-      let left = rect.right - menuWidth; // Align to right edge of trigger
-      
-      // Ensure dropdown doesn't overflow right edge
-      if (left + menuWidth > window.innerWidth - padding) {
-        left = window.innerWidth - menuWidth - padding;
-      }
-      
-      // Ensure dropdown doesn't overflow left edge
-      if (left < padding) {
-        left = padding;
-      }
-      
-      // Check if dropdown should open upward
-      if (window.innerHeight - rect.bottom < menuHeight && rect.top > menuHeight) {
-        top = rect.top - menuHeight - 4;
-      }
-      
-      setDropdownStyle({
-        position: 'fixed',
-        top: `${top}px`,
-        left: `${left}px`,
-        minWidth: menuWidth,
-        zIndex: 9999,
-      });
+  const computeDropdownStyle = useCallback(() => {
+    if (!triggerRef.current) return {};
+
+    const rect = triggerRef.current.getBoundingClientRect();
+    const menuWidth = 160;
+    const menuHeight = 200;
+    const padding = 12;
+
+    let top = rect.bottom + 4;
+    let left = rect.right - menuWidth; // Align to right edge of trigger
+
+    if (left + menuWidth > window.innerWidth - padding) {
+      left = window.innerWidth - menuWidth - padding;
     }
-  }, [isOpen]);
+
+    if (left < padding) {
+      left = padding;
+    }
+
+    if (window.innerHeight - rect.bottom < menuHeight && rect.top > menuHeight) {
+      top = rect.top - menuHeight - 4;
+    }
+
+    return {
+      position: 'fixed',
+      top: `${top}px`,
+      left: `${left}px`,
+      minWidth: menuWidth,
+      zIndex: 9999,
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleReposition = () => {
+      setDropdownStyle(computeDropdownStyle());
+    };
+
+    window.addEventListener('resize', handleReposition);
+    window.addEventListener('scroll', handleReposition, true);
+
+    return () => {
+      window.removeEventListener('resize', handleReposition);
+      window.removeEventListener('scroll', handleReposition, true);
+    };
+  }, [isOpen, computeDropdownStyle]);
 
   return (
     <div className={styles.actionMenu} ref={menuRef}>
       <button
         className={styles.trigger}
         ref={triggerRef}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (!isOpen) {
+            setDropdownStyle(computeDropdownStyle());
+          }
+          setIsOpen(!isOpen);
+        }}
         aria-label="More actions"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">

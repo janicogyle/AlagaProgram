@@ -18,11 +18,14 @@ const columns = [
   {
     key: 'status',
     label: 'Status',
-    render: (status) => (
-      <Badge variant={status === 'Released' || status === 'Approved' ? 'success' : status === 'Rejected' ? 'danger' : 'warning'}>
-        {status}
-      </Badge>
-    ),
+    render: (status) => {
+      const label = status === 'Rejected' ? 'Incomplete' : status;
+      return (
+        <Badge variant={status === 'Released' || status === 'Approved' ? 'success' : status === 'Rejected' ? 'danger' : 'warning'}>
+          {label}
+        </Badge>
+      );
+    },
   },
 ];
 
@@ -121,7 +124,7 @@ export default function BeneficiaryDashboardPage() {
       return 'Your assistance request has been approved and released.';
     }
     if (isRejectedStatus(status)) {
-      return 'Your request was not approved. Please see details or contact the barangay.';
+      return 'Your request is incomplete. Please see details or contact the barangay.';
     }
     return 'Status updated by the barangay office.';
   };
@@ -171,7 +174,7 @@ export default function BeneficiaryDashboardPage() {
           <StatCard title="Total Requests" value={stats.total} subtitle="All assistance requests you have submitted" />
           <StatCard title="Active" value={stats.active} subtitle="Requests currently under review" />
           <StatCard title="Completed" value={stats.completed} subtitle="Approved and released assistance" />
-          <StatCard title="Rejected" value={stats.rejected} subtitle="Requests that were not approved" />
+          <StatCard title="Incomplete" value={stats.rejected} subtitle="Requests that were not approved" />
         </div>
 
         <Card className={styles.nextStepsCard}>
@@ -211,7 +214,7 @@ export default function BeneficiaryDashboardPage() {
                       : 'warning'
                   }
                 >
-                  {currentRequest.status}
+                  {currentRequest.status === 'Rejected' ? 'Incomplete' : currentRequest.status}
                 </Badge>
                 <p className={styles.statusHint}>{getStatusDescription(currentRequest.status)}</p>
               </div>
@@ -285,7 +288,7 @@ export default function BeneficiaryDashboardPage() {
             className={`${styles.filterButton} ${filter === 'rejected' ? styles.filterButtonActive : ''}`}
             onClick={() => setFilter('rejected')}
           >
-            Rejected
+            Incomplete
           </button>
         </div>
 

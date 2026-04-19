@@ -49,7 +49,9 @@ export async function POST(request, { params }) {
 
     const { data: accountRequest, error: fetchError } = await db
       .from('account_requests')
-      .select('*')
+      .select(
+        'id, status, first_name, middle_name, last_name, birthday, contact_number, house_no, purok, street, barangay, city, is_pwd, is_senior_citizen, is_solo_parent, password_hash',
+      )
       .eq('id', requestId)
       .single();
 

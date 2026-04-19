@@ -31,7 +31,7 @@ const statusOptions = [
   { value: 'Pending', label: 'Pending' },
   { value: 'Approved', label: 'Approved' },
   { value: 'Released', label: 'Released' },
-  { value: 'Rejected', label: 'Rejected' },
+  { value: 'Rejected', label: 'Incomplete' },
 ];
 
 const serviceTypes = [
@@ -81,7 +81,7 @@ export default function AssistancePage() {
         }
         const { data, error } = await supabase
           .from('assistance_requests')
-          .select('*')
+          .select('id, control_number, requester_name, beneficiary_name, assistance_type, amount, status, request_date')
           .order('request_date', { ascending: false });
 
         if (error) throw error;
@@ -221,12 +221,13 @@ export default function AssistancePage() {
 
   const getStatusBadge = (status) => {
     const variants = {
-      'Pending': 'warning',
-      'Approved': 'primary',
-      'Released': 'success',
-      'Rejected': 'danger',
+      Pending: 'warning',
+      Approved: 'primary',
+      Released: 'success',
+      Rejected: 'danger',
     };
-    return <Badge variant={variants[status]}>{status}</Badge>;
+    const label = status === 'Rejected' ? 'Incomplete' : status;
+    return <Badge variant={variants[status]}>{label}</Badge>;
   };
 
   const columns = [

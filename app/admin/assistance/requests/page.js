@@ -31,9 +31,10 @@ const typeOptions = [
 const statusOptions = [
   { value: '', label: 'All Status' },
   { value: 'Pending', label: 'Pending' },
+  { value: 'Resubmitted', label: 'Resubmitted' },
   { value: 'Approved', label: 'Approved' },
   { value: 'Released', label: 'Released' },
-  { value: 'Archived', label: 'Archived' },
+  { value: 'Incomplete', label: 'Incomplete' },
 ];
 
 
@@ -65,7 +66,7 @@ export default function RequestsPage() {
     setAlertState((prev) => ({ ...prev, open: false }));
   };
 
-  const getStatusLabel = (dbStatus) => (dbStatus === 'Rejected' ? 'Archived' : dbStatus);
+  const getStatusLabel = (dbStatus) => (dbStatus === 'Rejected' ? 'Incomplete' : dbStatus);
 
   useEffect(() => {
     const loadRequests = async () => {
@@ -79,6 +80,22 @@ export default function RequestsPage() {
 
         const mapped = (result.data || []).map((r) => {
           const resident = r.residents || {};
+
+          const residentName = [resident.first_name, resident.middle_name, resident.last_name]
+            .map((s) => String(s || '').trim())
+            .filter(Boolean)
+            .join(' ');
+
+          const residentAddress = [
+            resident.house_no,
+            resident.purok,
+            resident.street,
+            resident.barangay,
+            resident.city,
+          ]
+            .map((s) => String(s || '').trim())
+            .filter(Boolean)
+            .join(', ');
 
           const sectors = {
             pwd: !!resident.is_pwd,
@@ -97,13 +114,13 @@ export default function RequestsPage() {
           return {
             id: requestKey,
             controlNo: r.control_number,
-            // Show exactly what was submitted in the request (avoid falling back to resident profile)
-            requester: r.requester_name || '',
-            requesterContact: r.requester_contact || '',
-            requesterAddress: r.requester_address || '',
-            beneficiary: r.beneficiary_name || '',
-            beneficiaryContact: r.beneficiary_contact || '',
-            beneficiaryAddress: r.beneficiary_address || '',
+            // Prefer submitted fields; fall back to resident profile when request fields are empty (older records).
+            requester: r.requester_name || residentName || '',
+            requesterContact: r.requester_contact || resident.contact_number || '',
+            requesterAddress: r.requester_address || residentAddress || '',
+            beneficiary: r.beneficiary_name || residentName || '',
+            beneficiaryContact: r.beneficiary_contact || resident.contact_number || '',
+            beneficiaryAddress: r.beneficiary_address || residentAddress || '',
             type: r.assistance_type,
             amount: r.amount,
             rawAmount: r.amount,
@@ -159,6 +176,45 @@ export default function RequestsPage() {
     setShowDecisionModal(true);
   };
 
+  const openValidId = async (pathOrUrl) => {
+    if (!pathOrUrl) return;
+
+    try {
+      // Legacy: stored as full URL
+      if (/^https?:\/\//i.test(pathOrUrl)) {
+        window.open(pathOrUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      if (!token) {
+        throw new Error('Please sign in again.');
+      }
+
+      const res = await fetch(`/api/documents/view?path=${encodeURIComponent(pathOrUrl)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+
+      if (!res.ok || json?.error) {
+        throw new Error(json?.error || 'Unable to open document.');
+      }
+
+      const url = json?.data?.url;
+      if (!url) throw new Error('Unable to open document.');
+
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      openAlert({
+        title: 'Open document failed',
+        message: err?.message || 'Unable to open the uploaded ID. Please try again.',
+        variant: 'error',
+      });
+    }
+  };
+
   const handleConfirmDecision = async () => {
     if (!selectedRequest || !decisionType) return;
 
@@ -172,10 +228,13 @@ export default function RequestsPage() {
             : 'Released';
 
     // Extra safety guards
-    if ((decisionType === 'approve' || decisionType === 'archive') && selectedRequest.status !== 'Pending') {
+    if (
+      (decisionType === 'approve' || decisionType === 'archive') &&
+      !['Pending', 'Resubmitted'].includes(selectedRequest.status)
+    ) {
       setStatus({
         type: 'error',
-        message: 'Only pending requests can be approved or archived.',
+        message: 'Only pending/resubmitted requests can be approved or marked as incomplete.',
       });
       return;
     }
@@ -191,7 +250,7 @@ export default function RequestsPage() {
     if (decisionType === 'unarchive' && selectedRequest.status !== 'Rejected') {
       setStatus({
         type: 'error',
-        message: 'Only archived requests can be unarchived.',
+        message: 'Only incomplete requests can be reopened.',
       });
       return;
     }
@@ -231,10 +290,19 @@ export default function RequestsPage() {
         throw new Error(result?.error || 'Failed to update request status.');
       }
 
+      const updatedProcessedBy = result?.data?.processed_by;
+      const updatedRemarks = result?.data?.decision_remarks;
+
       setRequests((prev) =>
         prev.map((req) =>
           req.controlNo === selectedRequest.controlNo || req.id === selectedRequest.id
-            ? { ...req, status: newStatus, statusLabel: getStatusLabel(newStatus) }
+            ? {
+                ...req,
+                status: newStatus,
+                statusLabel: getStatusLabel(newStatus),
+                processedBy: updatedProcessedBy ?? req.processedBy,
+                decisionRemarks: updatedRemarks ?? req.decisionRemarks,
+              }
             : req,
         ),
       );
@@ -245,10 +313,10 @@ export default function RequestsPage() {
         message: `Request ${selectedRequest.controlNo} has been ${
           statusLabel === 'Approved'
             ? 'approved'
-            : statusLabel === 'Archived'
-              ? 'archived'
+            : statusLabel === 'Incomplete'
+              ? 'marked as incomplete'
               : statusLabel === 'Pending'
-                ? 'unarchived'
+                ? 'reopened'
                 : 'marked as released'
         }.`,
       });
@@ -287,6 +355,12 @@ export default function RequestsPage() {
     return <Badge variant={variants[type] || 'default'}>{type}</Badge>;
   };
 
+  const formatProcessedBy = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '-';
+    return raw.includes('@') ? raw.split('@')[0] : raw;
+  };
+
   const columns = [
     { key: 'controlNo', label: 'Control No.' },
     { key: 'requester', label: 'Requester' },
@@ -304,6 +378,11 @@ export default function RequestsPage() {
       render: (status) => getStatusBadge(status),
     },
     {
+      key: 'processedBy',
+      label: 'Processed By',
+      render: (value) => formatProcessedBy(value),
+    },
+    {
       key: 'actions',
       label: 'Actions',
       render: (_, row) => (
@@ -318,7 +397,7 @@ export default function RequestsPage() {
               <circle cx="12" cy="12" r="3" />
             </svg>
           </button>
-          {row.status === 'Pending' && (
+          {['Pending', 'Resubmitted'].includes(row.status) && (
             <>
               <button 
                 className={styles.approveBtn}
@@ -332,7 +411,7 @@ export default function RequestsPage() {
               <button 
                 className={styles.rejectBtn}
                 onClick={() => handleOpenDecision(row, 'archive')}
-                title="Archive"
+                title="Mark Incomplete"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 8v13H3V8" />
@@ -346,7 +425,7 @@ export default function RequestsPage() {
             <button
               className={styles.releaseBtn}
               onClick={() => handleOpenDecision(row, 'unarchive')}
-              title="Unarchive"
+              title="Reopen"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 8v13H3V8" />
@@ -372,7 +451,7 @@ export default function RequestsPage() {
     },
   ];
 
-  const pendingCount = requests.filter(r => r.status === 'Pending').length;
+  const pendingCount = requests.filter((r) => ['Pending', 'Resubmitted'].includes(r.status)).length;
 
   return (
     <div className={styles.requestsPage}>
@@ -387,7 +466,7 @@ export default function RequestsPage() {
           </div>
           <div className={styles.summaryInfo}>
             <span className={styles.summaryValue}>{pendingCount}</span>
-            <span className={styles.summaryLabel}>Pending Requests</span>
+            <span className={styles.summaryLabel}>Pending / Resubmitted</span>
           </div>
         </div>
         <div className={styles.summaryCard}>
@@ -423,7 +502,7 @@ export default function RequestsPage() {
           </div>
           <div className={styles.summaryInfo}>
             <span className={styles.summaryValue}>{requests.filter(r => r.status === 'Rejected').length}</span>
-            <span className={styles.summaryLabel}>Archived</span>
+            <span className={styles.summaryLabel}>Incomplete</span>
           </div>
         </div>
       </div>
@@ -532,7 +611,7 @@ export default function RequestsPage() {
                       <button
                         className={styles.releaseBtn}
                         onClick={() => handleOpenDecision(request, 'unarchive')}
-                        title="Unarchive"
+                        title="Reopen"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M21 8v13H3V8" />
@@ -607,7 +686,7 @@ export default function RequestsPage() {
                   <path d="M1 3h22v5H1z" />
                   <path d="M10 12h4" />
                 </svg>
-                Archive
+                Mark Incomplete
               </Button>
               <Button onClick={() => handleOpenDecision(selectedRequest, 'approve')}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -622,7 +701,7 @@ export default function RequestsPage() {
                 Close
               </Button>
               <Button onClick={() => handleOpenDecision(selectedRequest, 'unarchive')}>
-                Unarchive
+                Reopen
               </Button>
             </div>
           ) : selectedRequest?.status === 'Approved' ? (
@@ -648,39 +727,75 @@ export default function RequestsPage() {
               {getStatusBadge(selectedRequest.status)}
             </div>
 
-            <div className={styles.detailsGrid}>
-              <div className={styles.detailSection}>
-                <h4>Requester Information</h4>
-                <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>Name:</span>
-                  <span className={styles.detailValue}>{selectedRequest.requester || 'Not provided'}</span>
-                </div>
-                <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>Contact:</span>
-                  <span className={styles.detailValue}>{selectedRequest.requesterContact || 'Not provided'}</span>
-                </div>
-                <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>Address:</span>
-                  <span className={styles.detailValue}>{selectedRequest.requesterAddress || 'Not provided'}</span>
-                </div>
-              </div>
+            {(() => {
+              const norm = (v) => String(v || '').trim().toLowerCase();
+              const samePerson =
+                norm(selectedRequest.requester) === norm(selectedRequest.beneficiary) &&
+                norm(selectedRequest.requesterContact) === norm(selectedRequest.beneficiaryContact) &&
+                norm(selectedRequest.requesterAddress) === norm(selectedRequest.beneficiaryAddress);
 
-              <div className={styles.detailSection}>
-                <h4>Beneficiary Information</h4>
-                <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>Name:</span>
-                  <span className={styles.detailValue}>{selectedRequest.beneficiary || 'Not provided'}</span>
+              if (samePerson) {
+                return (
+                  <div className={styles.detailsGrid}>
+                    <div className={styles.detailSection}>
+                      <h4>Requester / Beneficiary Information</h4>
+                      <div className={styles.detailRow}>
+                        <span className={styles.detailLabel}>Name:</span>
+                        <span className={styles.detailValue}>{selectedRequest.requester || 'Not provided'}</span>
+                      </div>
+                      <div className={styles.detailRow}>
+                        <span className={styles.detailLabel}>Contact:</span>
+                        <span className={styles.detailValue}>{selectedRequest.requesterContact || 'Not provided'}</span>
+                      </div>
+                      <div className={styles.detailRow}>
+                        <span className={styles.detailLabel}>Address:</span>
+                        <span className={styles.detailValue}>{selectedRequest.requesterAddress || 'Not provided'}</span>
+                      </div>
+                      <div className={styles.detailRow}>
+                        <span className={styles.detailLabel}>Note:</span>
+                        <span className={styles.detailValue}>Beneficiary is the same as requester.</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div className={styles.detailsGrid}>
+                  <div className={styles.detailSection}>
+                    <h4>Requester Information</h4>
+                    <div className={styles.detailRow}>
+                      <span className={styles.detailLabel}>Name:</span>
+                      <span className={styles.detailValue}>{selectedRequest.requester || 'Not provided'}</span>
+                    </div>
+                    <div className={styles.detailRow}>
+                      <span className={styles.detailLabel}>Contact:</span>
+                      <span className={styles.detailValue}>{selectedRequest.requesterContact || 'Not provided'}</span>
+                    </div>
+                    <div className={styles.detailRow}>
+                      <span className={styles.detailLabel}>Address:</span>
+                      <span className={styles.detailValue}>{selectedRequest.requesterAddress || 'Not provided'}</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.detailSection}>
+                    <h4>Beneficiary Information</h4>
+                    <div className={styles.detailRow}>
+                      <span className={styles.detailLabel}>Name:</span>
+                      <span className={styles.detailValue}>{selectedRequest.beneficiary || 'Not provided'}</span>
+                    </div>
+                    <div className={styles.detailRow}>
+                      <span className={styles.detailLabel}>Contact:</span>
+                      <span className={styles.detailValue}>{selectedRequest.beneficiaryContact || 'Not provided'}</span>
+                    </div>
+                    <div className={styles.detailRow}>
+                      <span className={styles.detailLabel}>Address:</span>
+                      <span className={styles.detailValue}>{selectedRequest.beneficiaryAddress || 'Not provided'}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>Contact:</span>
-                  <span className={styles.detailValue}>{selectedRequest.beneficiaryContact || 'Not provided'}</span>
-                </div>
-                <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>Address:</span>
-                  <span className={styles.detailValue}>{selectedRequest.beneficiaryAddress || 'Not provided'}</span>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
 
             <div className={styles.detailSection}>
               <h4>Remarks</h4>
@@ -707,20 +822,19 @@ export default function RequestsPage() {
               </div>
               <div className={styles.infoCard}>
                 <span className={styles.infoLabel}>Processed By</span>
-                <span className={styles.infoValue}>{selectedRequest.processedBy}</span>
+                <span className={styles.infoValue}>{formatProcessedBy(selectedRequest.processedBy)}</span>
               </div>
               <div className={styles.infoCard}>
                 <span className={styles.infoLabel}>Valid ID</span>
                 <span className={styles.infoValue}>
                   {selectedRequest.validIdUrl ? (
-                    <a
-                      href={selectedRequest.validIdUrl}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      type="button"
                       className={styles.validIdLink}
+                      onClick={() => openValidId(selectedRequest.validIdUrl)}
                     >
                       View Uploaded ID
-                    </a>
+                    </button>
                   ) : (
                     'Not available'
                   )}
@@ -764,9 +878,9 @@ export default function RequestsPage() {
                 : decisionType === 'approve'
                   ? 'Confirm Approval'
                   : decisionType === 'archive'
-                    ? 'Confirm Archive'
+                    ? 'Confirm Incomplete'
                     : decisionType === 'unarchive'
-                      ? 'Confirm Unarchive'
+                      ? 'Confirm Reopen'
                       : 'Confirm Release'}
             </Button>
           </div>
@@ -838,7 +952,7 @@ export default function RequestsPage() {
                   decisionType === 'approve'
                     ? 'Add any notes for this approval...'
                     : decisionType === 'archive'
-                      ? 'Add a reason for archiving (optional)...'
+                      ? 'Add a reason (optional)...'
                       : 'Add any notes (optional)...'
                 }
                 rows={3}

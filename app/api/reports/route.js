@@ -37,15 +37,18 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
-    const validFormats = ['csv', 'pdf', 'excel'];
+    const validFormats = ['csv', 'pdf'];
     if (!validFormats.includes(format)) {
-      return NextResponse.json({ 
-        data: null, 
-        error: `Invalid format. Must be one of: ${validFormats.join(', ')}.` 
+      return NextResponse.json({
+        data: null,
+        error: `Invalid format. Must be one of: ${validFormats.join(', ')}.`,
       }, { status: 400 });
     }
 
-    let query = supabase.from('residents').select('*');
+    const selectFields =
+      'control_number, last_name, first_name, middle_name, birthday, age, sex, contact_number, house_no, street, barangay, city, is_pwd, is_senior_citizen, is_solo_parent, status';
+
+    let query = supabase.from('residents').select(selectFields);
 
     // Filter by sector
     if (reportType === 'pwd') {
@@ -79,11 +82,11 @@ export async function POST(request) {
       });
     }
 
-    // For PDF and Excel, return JSON data (frontend will handle generation)
-    return NextResponse.json({ 
-      data, 
-      error: null, 
-      message: `${data.length} records found.` 
+    // For PDF, return JSON data (frontend will handle generation)
+    return NextResponse.json({
+      data,
+      error: null,
+      message: `${data.length} records found.`,
     });
   } catch (error) {
     console.error('Generate report error:', error);

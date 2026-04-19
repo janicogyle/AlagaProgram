@@ -6,6 +6,11 @@ const readline = require('readline');
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+if (!supabaseUrl || !serviceRoleKey) {
+  console.error('Missing required env vars: NEXT_PUBLIC_SUPABASE_URL and/or SUPABASE_SERVICE_ROLE_KEY');
+  process.exit(1);
+}
+
 const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
   auth: {
     autoRefreshToken: false,
@@ -19,7 +24,32 @@ const rl = readline.createInterface({
 });
 
 function question(query) {
-  return new Promise(resolve => rl.question(query, resolve));
+  return new Promise((resolve) => rl.question(query, resolve));
+}
+
+function questionHidden(query) {
+  return new Promise((resolve) => {
+    const originalWrite = rl._writeToOutput;
+    rl.stdoutMuted = true;
+
+    rl._writeToOutput = function _writeToOutput(stringToWrite) {
+      if (rl.stdoutMuted) {
+        // Mask user input (but keep newlines, prompts, etc.)
+        if (stringToWrite && stringToWrite.trim()) {
+          rl.output.write('*');
+        }
+      } else {
+        rl.output.write(stringToWrite);
+      }
+    };
+
+    rl.question(query, (answer) => {
+      rl.stdoutMuted = false;
+      rl._writeToOutput = originalWrite;
+      rl.output.write('\n');
+      resolve(answer);
+    });
+  });
 }
 
 async function createAdminUser() {
@@ -31,7 +61,7 @@ async function createAdminUser() {
     // Get user input
     const fullName = await question('Enter full name: ');
     const email = await question('Enter email address: ');
-    const password = await question('Enter password (min 6 chars): ');
+    const password = await questionHidden('Enter password (min 6 chars): ');
     const role = await question('Enter role (Admin/Staff) [Admin]: ') || 'Admin';
 
     console.log('\n📝 Creating admin user...\n');
@@ -74,11 +104,12 @@ async function createAdminUser() {
     console.log('═══════════════════════════════════════');
     console.log('🎉 Admin user created successfully!');
     console.log('═══════════════════════════════════════\n');
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_BASE_URL || 'http://localhost:3000';
+
     console.log('Login credentials:');
     console.log(`Email: ${email}`);
-    console.log(`Password: ${password}`);
     console.log(`Role: ${role}\n`);
-    console.log('You can now login at: http://localhost:3000/login');
+    console.log(`You can now login at: ${baseUrl.replace(/\/$/, '')}/login`);
     console.log('Select "Admin" and use your email/password\n');
 
   } catch (error) {

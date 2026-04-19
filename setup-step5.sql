@@ -58,5 +58,75 @@ BEGIN
   END IF;
 END $$;
 
+-- =====================================================
+-- Notifications table (Recent Activity)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  type TEXT DEFAULT 'info' CHECK (type IN ('info', 'success', 'warning', 'error')),
+  is_read BOOLEAN DEFAULT FALSE,
+  link TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON public.notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON public.notifications(created_at);
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'notifications' AND policyname = 'Users can view their own notifications'
+  ) THEN
+    CREATE POLICY "Users can view their own notifications" ON public.notifications
+      FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'notifications' AND policyname = 'Users can update their own notifications'
+  ) THEN
+    CREATE POLICY "Users can update their own notifications" ON public.notifications
+      FOR UPDATE USING (auth.uid() = user_id);
+  END IF;
+END $$;
+
+-- =====================================================
+-- Assistance request status: add "Resubmitted"
+-- Some installations used a CHECK constraint that blocks new status values.
+-- =====================================================
+DO $$
+BEGIN
+  IF to_regclass('public.assistance_requests') IS NOT NULL THEN
+    -- Drop known constraint names if present
+    BEGIN
+      ALTER TABLE public.assistance_requests DROP CONSTRAINT IF EXISTS assistance_requests_status_check;
+    EXCEPTION WHEN undefined_object THEN
+      NULL;
+    END;
+
+    BEGIN
+      ALTER TABLE public.assistance_requests DROP CONSTRAINT IF EXISTS assistance_requests_status_check1;
+    EXCEPTION WHEN undefined_object THEN
+      NULL;
+    END;
+
+    -- Re-create (idempotent) with Resubmitted allowed
+    BEGIN
+      ALTER TABLE public.assistance_requests
+        ADD CONSTRAINT assistance_requests_status_check
+        CHECK (status IN ('Pending','Resubmitted','Approved','Released','Rejected'));
+    EXCEPTION WHEN duplicate_object THEN
+      NULL;
+    END;
+  END IF;
+END $$;
+
 -- Refresh PostgREST schema cache
 NOTIFY pgrst, 'reload schema';

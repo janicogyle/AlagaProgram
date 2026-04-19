@@ -37,17 +37,27 @@ export default function LoginPage() {
           return;
         }
 
-        // Check if user exists in users table
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
+        // Resolve admin profile (and auto-repair legacy DB where public.users.id isn't linked to auth.users.id)
+        const token = data?.session?.access_token;
+        if (!token) {
+          openAlert({ title: 'Login failed', message: 'Missing session. Please try again.' });
+          await supabase.auth.signOut();
+          return;
+        }
 
-        if (userError || !userData) {
+        const profileRes = await fetch('/api/admin/profile', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const profileJson = await profileRes.json().catch(() => ({}));
+        const userData = profileJson?.data;
+
+        if (!profileRes.ok || !userData) {
           openAlert({
             title: 'Admin account not found',
-            message: 'Please contact the administrator.',
+            message: profileJson?.error || 'Please contact the administrator.',
           });
           await supabase.auth.signOut();
           return;
@@ -62,11 +72,7 @@ export default function LoginPage() {
           return;
         }
 
-        // Update last login
-        await supabase
-          .from('users')
-          .update({ last_login: new Date().toISOString() })
-          .eq('id', data.user.id);
+        // last_login is updated server-side in /api/admin/profile
 
         // Store in localStorage for persistence
         if (typeof window !== 'undefined') {
@@ -172,7 +178,7 @@ export default function LoginPage() {
           
           {role === 'beneficiary' && (
             <p className={styles.signup}>
-              Don't have an account? <Link href="/signup">Sign up</Link>
+              Don&apos;t have an account? <Link href="/signup">Sign up</Link>
             </p>
           )}
         </div>

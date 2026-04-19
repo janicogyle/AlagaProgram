@@ -6,6 +6,7 @@ import styles from './Navbar.module.css';
 
 export default function Navbar({ title, breadcrumb, onMenuClick }) {
   const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const notificationBtnRef = useRef(null);
 
   return (
@@ -33,12 +34,13 @@ export default function Navbar({ title, breadcrumb, onMenuClick }) {
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
-            <span className={styles.notificationBadge}></span>
+            {unreadCount > 0 && <span className={styles.notificationBadge} />}
           </button>
           <NotificationPanel
             isOpen={showNotifications}
             onClose={() => setShowNotifications(false)}
             anchorRef={notificationBtnRef}
+            onUnreadCountChange={setUnreadCount}
           />
         </div>
       </div>

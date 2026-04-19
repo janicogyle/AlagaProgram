@@ -19,19 +19,32 @@ const columns = [
   {
     key: 'status',
     label: 'Status',
-    render: (status) => (
-      <Badge
-        variant={
-          status === 'Released' || status === 'Approved'
-            ? 'success'
-            : status === 'Rejected'
-            ? 'danger'
-            : 'warning'
-        }
-      >
-        {status}
-      </Badge>
-    ),
+    render: (status) => {
+      const label = status === 'Rejected' ? 'Incomplete' : status;
+      return (
+        <Badge
+          variant={
+            status === 'Released' || status === 'Approved'
+              ? 'success'
+              : status === 'Rejected'
+                ? 'danger'
+                : 'warning'
+          }
+        >
+          {label}
+        </Badge>
+      );
+    },
+  },
+  {
+    key: 'actions',
+    label: 'Action',
+    render: (_, row) =>
+      row.status === 'Rejected' ? (
+        <Button href={`/beneficiary/requests?edit=${encodeURIComponent(row.id)}`}>Edit</Button>
+      ) : (
+        <span className={styles.muted}>—</span>
+      ),
   },
 ];
 

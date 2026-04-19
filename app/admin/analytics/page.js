@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Card from '@/components/Card';
 import Select from '@/components/Select';
 import StatCard from '@/components/StatCard';
@@ -25,8 +25,10 @@ export default function AnalyticsPage() {
   const [ageDistribution, setAgeDistribution] = useState([]);
   const [purokDistribution, setPurokDistribution] = useState([]);
   const [recentRegistrations, setRecentRegistrations] = useState([]);
+  const [staffActivity, setStaffActivity] = useState([]);
+  const [staffActivityLoading, setStaffActivityLoading] = useState(true);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!supabase) {
       console.error('Database client not available');
       return;
@@ -37,36 +39,83 @@ export default function AnalyticsPage() {
 
     const { data: residents } = await supabase
       .from('residents')
-      .select('*')
+      .select(
+        'id, created_at, last_name, first_name, is_pwd, is_senior_citizen, is_solo_parent, status, sex, age, birthday, street',
+      )
       .order('created_at', { ascending: false });
 
     if (!residents) return;
 
-    const inPeriod = residents.filter((r) => r.created_at >= since);
     const total = residents.length;
-    const pwd = residents.filter((r) => r.is_pwd).length;
-    const senior = residents.filter((r) => r.is_senior_citizen).length;
-    const soloParent = residents.filter((r) => r.is_solo_parent).length;
-    const active = residents.filter((r) => r.status === 'Active').length;
+
+    let inPeriodCount = 0;
+    let pwd = 0;
+    let senior = 0;
+    let soloParent = 0;
+    let active = 0;
+    let male = 0;
+    let female = 0;
+
+    const months = {};
+    const ageBuckets = { '0-17': 0, '18-35': 0, '36-59': 0, '60+': 0 };
+    const purokCounts = {};
+
+    residents.forEach((r) => {
+      const createdAt = r.created_at;
+      if (createdAt && createdAt >= since) inPeriodCount++;
+
+      if (r.is_pwd) pwd++;
+      if (r.is_senior_citizen) senior++;
+      if (r.is_solo_parent) soloParent++;
+      if (r.status === 'Active') active++;
+
+      if (r.sex === 'male') male++;
+      if (r.sex === 'female') female++;
+
+      if (createdAt) {
+        const d = new Date(createdAt);
+        const key = d.toLocaleString('default', { month: 'short', year: '2-digit' });
+        months[key] = (months[key] || 0) + 1;
+      }
+
+      const age =
+        r.age ?? (r.birthday ? Math.floor((Date.now() - new Date(r.birthday)) / 31557600000) : null);
+      if (age !== null) {
+        if (age < 18) ageBuckets['0-17']++;
+        else if (age < 36) ageBuckets['18-35']++;
+        else if (age < 60) ageBuckets['36-59']++;
+        else ageBuckets['60+']++;
+      }
+
+      const purokKey = r.street || 'Unknown';
+      purokCounts[purokKey] = (purokCounts[purokKey] || 0) + 1;
+    });
+
     const completionRate = total > 0 ? Math.round((active / total) * 100) : 0;
 
     setKpiData([
       { title: 'Total Residents', current: total, previous: 0, growth: 0, icon: 'users', color: 'blue' },
-      { title: 'New Registrations', current: inPeriod.length, previous: 0, growth: 0, icon: 'registration', color: 'green' },
+      {
+        title: 'New Registrations',
+        current: inPeriodCount,
+        previous: 0,
+        growth: 0,
+        icon: 'registration',
+        color: 'green',
+      },
       { title: 'Active Cases', current: active, previous: 0, growth: 0, icon: 'assistance', color: 'orange' },
-      { title: 'Completion Rate', current: completionRate, previous: 0, growth: 0, icon: 'completion', format: '%', color: 'purple' },
+      {
+        title: 'Completion Rate',
+        current: completionRate,
+        previous: 0,
+        growth: 0,
+        icon: 'completion',
+        format: '%',
+        color: 'purple',
+      },
     ]);
 
-    // Monthly registrations
-    const months = {};
-    residents.forEach((r) => {
-      const d = new Date(r.created_at);
-      const key = d.toLocaleString('default', { month: 'short', year: '2-digit' });
-      months[key] = (months[key] || 0) + 1;
-    });
-    setMonthlyRegistrations(
-      Object.entries(months).map(([label, value]) => ({ label, value })).slice(-6)
-    );
+    setMonthlyRegistrations(Object.entries(months).map(([label, value]) => ({ label, value })).slice(-6));
 
     setSectorDistribution([
       { label: 'PWD', value: pwd, color: '#8b5cf6' },
@@ -74,39 +123,20 @@ export default function AnalyticsPage() {
       { label: 'Solo Parent', value: soloParent, color: '#f59e0b' },
     ]);
 
-    // Gender distribution
-    const male = residents.filter((r) => r.sex === 'male').length;
-    const female = residents.filter((r) => r.sex === 'female').length;
     setGenderDistribution([
       { label: 'Male', value: male, color: '#3b82f6' },
       { label: 'Female', value: female, color: '#ec4899' },
     ]);
 
-    // Age distribution
-    const ageBuckets = { '0-17': 0, '18-35': 0, '36-59': 0, '60+': 0 };
-    residents.forEach((r) => {
-      const age = r.age ?? (r.birthday ? Math.floor((Date.now() - new Date(r.birthday)) / 31557600000) : null);
-      if (age === null) return;
-      if (age < 18) ageBuckets['0-17']++;
-      else if (age < 36) ageBuckets['18-35']++;
-      else if (age < 60) ageBuckets['36-59']++;
-      else ageBuckets['60+']++;
-    });
     setAgeDistribution(Object.entries(ageBuckets).map(([label, value]) => ({ label, value })));
 
-    // Purok distribution by street
-    const purokCounts = {};
-    residents.forEach((r) => {
-      const key = r.street || 'Unknown';
-      purokCounts[key] = (purokCounts[key] || 0) + 1;
-    });
-    const purokTotal = residents.length || 1;
+    const purokTotal = total || 1;
     setPurokDistribution(
       Object.entries(purokCounts).map(([purok, count]) => ({
         purok,
         count,
         percentage: Math.round((count / purokTotal) * 100),
-      }))
+      })),
     );
 
     setRecentRegistrations(
@@ -119,24 +149,84 @@ export default function AnalyticsPage() {
           r.is_solo_parent && 'Solo Parent',
         ].filter(Boolean),
         purok: r.street,
-        date: new Date(r.created_at).toLocaleDateString(),
+        date: r.created_at ? new Date(r.created_at).toLocaleDateString() : '',
         status: r.status || 'Active',
-      }))
+      })),
     );
-  };
+  }, [timePeriod]);
 
   useEffect(() => {
-    fetchData();
-  }, [timePeriod]);
+    const timeoutId = setTimeout(() => {
+      void fetchData();
+    }, 0);
+    return () => clearTimeout(timeoutId);
+  }, [fetchData]);
+
+  const fetchStaffActivity = useCallback(async () => {
+    setStaffActivityLoading(true);
+    try {
+      // Only Admin should see this panel; Staff can access Analytics but shouldn’t error.
+      if (typeof window !== 'undefined') {
+        try {
+          const raw = window.localStorage.getItem('adminUser');
+          const user = raw ? JSON.parse(raw) : null;
+          if (user?.role && user.role !== 'Admin') {
+            setStaffActivity([]);
+            return;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!supabase) {
+        setStaffActivity([]);
+        return;
+      }
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) {
+        setStaffActivity([]);
+        return;
+      }
+
+      const res = await fetch('/api/admin/staff-activity?limit=10', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.status === 403) {
+        // Not an admin; don’t surface noisy errors.
+        setStaffActivity([]);
+        return;
+      }
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.error) {
+        setStaffActivity([]);
+        return;
+      }
+
+      setStaffActivity(json?.data || []);
+    } finally {
+      setStaffActivityLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!supabase) return;
     const channel = supabase
       .channel('analytics-residents')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'residents' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'residents' }, () => {
+        void fetchData();
+      })
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, []);
+  }, [fetchData]);
+
+  useEffect(() => {
+    void fetchStaffActivity();
+  }, [fetchStaffActivity]);
 
   const timePeriodOptions = [
     { value: '1month', label: 'Last Month' },
@@ -168,6 +258,17 @@ export default function AnalyticsPage() {
       ),
     },
   ];
+
+  const staffActivityColumns = [
+    { key: 'title', label: 'Activity' },
+    { key: 'time', label: 'When' },
+  ];
+
+  const staffActivityRows = (staffActivity || []).map((a) => ({
+    id: a.id,
+    title: `${a.title}\n${a.message}`,
+    time: a.time ? new Date(a.time).toLocaleString() : '',
+  }));
 
   return (
     <div className={styles.analyticsPage}>
@@ -283,6 +384,28 @@ export default function AnalyticsPage() {
       {/* Recent Registrations (same as Dashboard) */}
       <Card title="Recent Registrations" subtitle="Latest residents added to the system">
         <Table columns={columns} data={recentRegistrations} />
+      </Card>
+
+      <Card title="Staff Recent Activity" subtitle="Latest actions performed by staff/admin accounts">
+        {staffActivityLoading ? (
+          <p style={{ padding: 12, margin: 0, color: '#6b7280' }}>Loading staff activity...</p>
+        ) : staffActivityRows.length === 0 ? (
+          <p style={{ padding: 12, margin: 0, color: '#6b7280' }}>No staff activity yet.</p>
+        ) : (
+          <Table
+            columns={staffActivityColumns.map((c) =>
+              c.key === 'title'
+                ? {
+                    ...c,
+                    render: (value) => (
+                      <div style={{ whiteSpace: 'pre-line' }}>{value}</div>
+                    ),
+                  }
+                : c,
+            )}
+            data={staffActivityRows}
+          />
+        )}
       </Card>
     </div>
   );

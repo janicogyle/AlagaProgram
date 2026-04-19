@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import styles from './Sidebar.module.css';
@@ -115,15 +114,9 @@ const icons = {
 
 export default function Sidebar({ user, onLogout, minimized, menuItems: customMenuItems, hideBranding, customTitle, customSubtitle }) {
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
+  const resolvedUser = user;
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const resolvedUser = mounted ? user : null;
-
-  const isAdminRole = resolvedUser?.role === 'Administrator' || resolvedUser?.role === 'Admin';
+  const isAdminRole = resolvedUser?.role === 'Admin';
   const baseMenuItems = customMenuItems || menuItems;
   const sidebarMenuItems = isAdminRole
     ? baseMenuItems
@@ -182,18 +175,16 @@ export default function Sidebar({ user, onLogout, minimized, menuItems: customMe
         <div className={styles.userInfo}>
           <div className={styles.userAvatar}>
             <span suppressHydrationWarning>
-              {mounted
-                ? (resolvedUser?.name || 'Admin User').trim().charAt(0).toUpperCase() || 'A'
-                : 'A'}
+              {(resolvedUser?.name || 'Admin User').trim().charAt(0).toUpperCase() || 'A'}
             </span>
           </div>
           {!minimized && (
             <div className={styles.userDetails}>
               <span className={styles.userName} suppressHydrationWarning>
-                {mounted ? resolvedUser?.name || 'Admin User' : 'Loading...'}
+                {resolvedUser?.name || 'Admin User'}
               </span>
               <span className={styles.userRole} suppressHydrationWarning>
-                {mounted ? resolvedUser?.role || 'Administrator' : ''}
+                {resolvedUser?.role || 'Staff'}
               </span>
             </div>
           )}

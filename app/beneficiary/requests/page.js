@@ -45,6 +45,7 @@ export default function BeneficiaryRequestPage() {
     firstName: '',
     middleName: '',
     houseNo: '',
+    purok: '',
     street: '',
     barangay: 'sta-rita',
     city: 'Olongapo',
@@ -65,15 +66,220 @@ export default function BeneficiaryRequestPage() {
     otherAssistanceType: '',
     assistanceAmount: '',
     beneficiaryName: '',
+    beneficiaryContact: '',
+    beneficiaryAddress: '',
     dateOfRequest: new Date().toISOString().split('T')[0],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [validIdFiles, setValidIdFiles] = useState([]);
   const [status, setStatus] = useState(null); // { type: 'success' | 'error', message: string }
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isLoadingEdit, setIsLoadingEdit] = useState(false);
+  const [editingRequestId, setEditingRequestId] = useState(null);
+  const [editingAssistanceControlNumber, setEditingAssistanceControlNumber] = useState(null);
+  const [existingValidIdPath, setExistingValidIdPath] = useState(null);
+  const [beneficiaryIsRequester, setBeneficiaryIsRequester] = useState(true);
 
   useEffect(() => {
     setControlNumber(generateControlNumber());
+  }, []);
+
+  // Auto-fill from beneficiary sign up/profile (still editable)
+  useEffect(() => {
+    const loadProfileDefaults = async () => {
+      try {
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('edit')) return; // edit-mode loads from the request itself
+
+        const residentId = window.localStorage.getItem('beneficiaryResidentId');
+        if (!residentId || !supabase) return;
+
+        const { data, error } = await supabase
+          .from('residents')
+          .select(
+            'id, first_name, middle_name, last_name, birthday, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, representative_name, representative_contact, is_pwd, is_senior_citizen, is_solo_parent',
+          )
+          .eq('id', residentId)
+          .single();
+
+        if (error) throw error;
+
+        const normalizeBarangay = (value) => {
+          const raw = String(value || '').toLowerCase();
+          if (raw.includes('sta') && raw.includes('rita')) return 'sta-rita';
+          if (raw === 'sta-rita') return 'sta-rita';
+          return 'sta-rita';
+        };
+
+        setFormData((prev) => {
+          const next = { ...prev };
+          const setIfEmpty = (key, value) => {
+            const cur = String(prev?.[key] ?? '').trim();
+            const val = String(value ?? '').trim();
+            if (!cur && val) next[key] = value;
+          };
+
+          setIfEmpty('firstName', data?.first_name || '');
+          setIfEmpty('middleName', data?.middle_name || '');
+          setIfEmpty('lastName', data?.last_name || '');
+          setIfEmpty('houseNo', data?.house_no || '');
+          setIfEmpty('purok', data?.purok || '');
+          setIfEmpty('street', data?.street || '');
+          if (!String(prev?.barangay || '').trim() && data?.barangay) next.barangay = normalizeBarangay(data.barangay);
+          setIfEmpty('city', data?.city || '');
+          if (!prev?.birthday && data?.birthday) next.birthday = data.birthday;
+          setIfEmpty('birthplace', data?.birthplace || '');
+          setIfEmpty('sex', data?.sex || '');
+          setIfEmpty('citizenship', data?.citizenship || 'Filipino');
+          setIfEmpty('civilStatus', data?.civil_status || '');
+          setIfEmpty('contactNumber', data?.contact_number || '');
+          setIfEmpty('representativeName', data?.representative_name || '');
+          setIfEmpty('representativeContact', data?.representative_contact || '');
+
+          const hasSector = prev?.sectors?.pwd || prev?.sectors?.seniorCitizen || prev?.sectors?.soloParent;
+          if (!hasSector) {
+            next.sectors = {
+              pwd: !!data?.is_pwd,
+              seniorCitizen: !!data?.is_senior_citizen,
+              soloParent: !!data?.is_solo_parent,
+            };
+          }
+
+          return next;
+        });
+      } catch (err) {
+        console.warn('Unable to auto-fill beneficiary profile defaults:', err);
+      }
+    };
+
+    void loadProfileDefaults();
+  }, []);
+
+  useEffect(() => {
+    const loadEditRequest = async () => {
+      if (typeof window === 'undefined') return;
+      const params = new URLSearchParams(window.location.search);
+      const editId = params.get('edit');
+      if (!editId) return;
+
+      setIsEditMode(true);
+      setIsLoadingEdit(true);
+
+      try {
+        const residentId = window.localStorage.getItem('beneficiaryResidentId');
+        if (!residentId) {
+          throw new Error('Missing beneficiary identity. Please log in again.');
+        }
+
+        const response = await fetch(`/api/assistance-requests?residentId=${encodeURIComponent(residentId)}`);
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || result?.error) {
+          throw new Error(result?.error || 'Failed to load the request for editing.');
+        }
+
+        const list = result?.data || [];
+        const match = list.find(
+          (r) => String(r.id) === String(editId) || String(r.control_number) === String(editId),
+        );
+
+        if (!match) {
+          throw new Error('Request not found.');
+        }
+
+        if (match.status !== 'Rejected') {
+          throw new Error('Only incomplete requests can be edited.');
+        }
+
+        setEditingRequestId(match.id);
+        setEditingAssistanceControlNumber(match.control_number);
+        setExistingValidIdPath(match.valid_id_url || null);
+
+        const norm = (v) => String(v || '').trim().toLowerCase();
+        const beneficiarySameAsRequester =
+          !match.beneficiary_name && !match.beneficiary_contact && !match.beneficiary_address
+            ? true
+            : norm(match.beneficiary_name) === norm(match.requester_name) &&
+              norm(match.beneficiary_contact) === norm(match.requester_contact) &&
+              norm(match.beneficiary_address) === norm(match.requester_address);
+        setBeneficiaryIsRequester(beneficiarySameAsRequester);
+
+        const resident = match.residents || {};
+
+        const normalizeBarangay = (value) => {
+          const raw = String(value || '').toLowerCase();
+          if (raw.includes('sta') && raw.includes('rita')) return 'sta-rita';
+          if (raw === 'sta-rita') return 'sta-rita';
+          return 'sta-rita';
+        };
+
+        const normalizeAssistanceType = (value) => {
+          const v = String(value || '').trim();
+          if (!v) return { assistanceType: '', otherAssistanceType: '' };
+          const known = assistanceTypeOptions.some((o) => o.value === v);
+          if (known) return { assistanceType: v, otherAssistanceType: '' };
+          return { assistanceType: 'Others', otherAssistanceType: v };
+        };
+
+        const assistance = normalizeAssistanceType(match.assistance_type);
+
+        setFormData((prev) => ({
+          ...prev,
+          lastName: resident.last_name || '',
+          firstName: resident.first_name || '',
+          middleName: resident.middle_name || '',
+          houseNo: resident.house_no || '',
+          purok: resident.purok || '',
+          street: resident.street || '',
+          barangay: normalizeBarangay(resident.barangay),
+          city: resident.city || 'Olongapo',
+          birthday: resident.birthday || '',
+          birthplace: resident.birthplace || '',
+          sex: resident.sex || '',
+          citizenship: resident.citizenship || 'Filipino',
+          civilStatus: resident.civil_status || '',
+          contactNumber: resident.contact_number || '',
+          sectors: {
+            pwd: !!resident.is_pwd,
+            seniorCitizen: !!resident.is_senior_citizen,
+            soloParent: !!resident.is_solo_parent,
+          },
+          representativeName: resident.representative_name || '',
+          representativeContact: resident.representative_contact || '',
+          assistanceType: assistance.assistanceType,
+          otherAssistanceType: assistance.otherAssistanceType,
+          assistanceAmount: match.amount != null ? String(match.amount) : '',
+          beneficiaryName: beneficiarySameAsRequester ? '' : match.beneficiary_name || '',
+          beneficiaryContact: beneficiarySameAsRequester ? '' : match.beneficiary_contact || '',
+          beneficiaryAddress: beneficiarySameAsRequester ? '' : match.beneficiary_address || '',
+          dateOfRequest: match.request_date || new Date().toISOString().split('T')[0],
+        }));
+
+        setValidIdFiles([]);
+        setErrors({});
+        setStatus({
+          type: 'success',
+          message:
+            'Editing an incomplete request. Update the missing details, then click Resubmit Request.',
+        });
+      } catch (err) {
+        console.error('Failed to load request for edit:', err);
+        setIsEditMode(false);
+        setEditingRequestId(null);
+        setEditingAssistanceControlNumber(null);
+        setExistingValidIdPath(null);
+        setStatus({
+          type: 'error',
+          message: err?.message || 'Failed to load request for editing.',
+        });
+      } finally {
+        setIsLoadingEdit(false);
+      }
+    };
+
+    void loadEditRequest();
   }, []);
 
   useEffect(() => {
@@ -152,7 +358,7 @@ export default function BeneficiaryRequestPage() {
       return;
     }
 
-    if (name === 'contactNumber' || name === 'representativeContact') {
+    if (name === 'contactNumber' || name === 'representativeContact' || name === 'beneficiaryContact') {
       const numericValue = value.replace(/\D/g, '');
       if (numericValue.length <= 11) {
         setFormData((prev) => ({
@@ -222,13 +428,22 @@ export default function BeneficiaryRequestPage() {
       newErrors.contactNumber = 'Contact number must be exactly 11 digits';
     }
 
-    if (formData.assistanceType) {
+    if (formData.assistanceType && !beneficiaryIsRequester) {
       if (!formData.beneficiaryName.trim()) {
-        newErrors.beneficiaryName = 'Beneficiary name is required for assistance';
+        newErrors.beneficiaryName = 'Beneficiary name is required';
+      }
+      if (!formData.beneficiaryContact.trim()) {
+        newErrors.beneficiaryContact = 'Beneficiary contact number is required';
+      } else if (formData.beneficiaryContact.replace(/\D/g, '').length !== 11) {
+        newErrors.beneficiaryContact = 'Beneficiary contact number must be exactly 11 digits';
+      }
+      if (!formData.beneficiaryAddress.trim()) {
+        newErrors.beneficiaryAddress = 'Beneficiary address is required';
       }
     }
 
-    if (validIdFiles.length === 0) {
+    const hasExistingValidId = !!existingValidIdPath;
+    if (formData.assistanceType && validIdFiles.length === 0 && !hasExistingValidId) {
       newErrors.validId = 'Please upload at least one valid ID';
     }
 
@@ -252,64 +467,194 @@ export default function BeneficiaryRequestPage() {
     try {
       const age = calculateAge(formData.birthday);
 
-      const residentData = await createOrUpdateResident({
-        control_number: controlNumber,
-        last_name: formData.lastName,
-        first_name: formData.firstName,
-        middle_name: formData.middleName || null,
-        house_no: formData.houseNo,
-        street: formData.street,
-        barangay: formData.barangay,
-        city: formData.city,
-        birthday: formData.birthday,
-        birthplace: formData.birthplace,
-        age: age ? parseInt(age) : null,
-        sex: formData.sex,
-        citizenship: formData.citizenship,
-        civil_status: formData.civilStatus,
-        contact_number: formData.contactNumber,
-        is_pwd: formData.sectors.pwd,
-        is_senior_citizen: formData.sectors.seniorCitizen,
-        is_solo_parent: formData.sectors.soloParent,
-        representative_name: formData.representativeName,
-        representative_contact: formData.representativeContact,
-        status: 'Active',
-      });
+      // IMPORTANT: in edit/resubmit mode, keep the original resident identity.
+      // Updating by contact_number can accidentally create a new resident row, causing Forbidden on resubmit.
+      let residentIdForRequest = null;
+      let residentData = null;
 
-      if (formData.assistanceType && residentData) {
-        const assistanceControlNumber = `AST-${new Date().getFullYear()}-${Math.floor(
-          Math.random() * 100000,
-        )
-          .toString()
-          .padStart(5, '0')}`;
+      if (isEditMode) {
+        if (typeof window !== 'undefined') {
+          residentIdForRequest = window.localStorage.getItem('beneficiaryResidentId');
+        }
+        if (!residentIdForRequest) {
+          throw new Error('Missing beneficiary identity. Please log in again.');
+        }
 
-        const response = await fetch('/api/assistance-requests', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            control_number: assistanceControlNumber,
-            resident_id: residentData.id,
-            requester_name: `${formData.firstName} ${formData.lastName}`,
-            requester_contact: formData.contactNumber,
-            beneficiary_name: formData.beneficiaryName,
-            assistance_type:
-              formData.assistanceType === 'Others'
-                ? formData.otherAssistanceType
-                : formData.assistanceType,
-            amount: formData.assistanceAmount || 0,
-            status: 'Pending',
-            request_date: formData.dateOfRequest,
-          }),
-        });
+        const residentPayload = {
+          id: residentIdForRequest,
+          last_name: formData.lastName,
+          first_name: formData.firstName,
+          middle_name: formData.middleName || null,
+          house_no: formData.houseNo,
+          street: formData.street,
+          barangay: formData.barangay,
+          city: formData.city,
+          birthday: formData.birthday,
+          birthplace: formData.birthplace,
+          age: age ? parseInt(age) : null,
+          sex: formData.sex,
+          citizenship: formData.citizenship,
+          civil_status: formData.civilStatus,
+          contact_number: formData.contactNumber,
+          is_pwd: formData.sectors.pwd,
+          is_senior_citizen: formData.sectors.seniorCitizen,
+          is_solo_parent: formData.sectors.soloParent,
+          representative_name: formData.representativeName,
+          representative_contact: formData.representativeContact,
+          status: 'Active',
+        };
+
+        residentData = await createOrUpdateResident(residentPayload);
+        residentIdForRequest = residentData?.id || residentIdForRequest;
+      } else {
+        const residentPayload = {
+          control_number: controlNumber,
+          last_name: formData.lastName,
+          first_name: formData.firstName,
+          middle_name: formData.middleName || null,
+          house_no: formData.houseNo,
+          street: formData.street,
+          barangay: formData.barangay,
+          city: formData.city,
+          birthday: formData.birthday,
+          birthplace: formData.birthplace,
+          age: age ? parseInt(age) : null,
+          sex: formData.sex,
+          citizenship: formData.citizenship,
+          civil_status: formData.civilStatus,
+          contact_number: formData.contactNumber,
+          is_pwd: formData.sectors.pwd,
+          is_senior_citizen: formData.sectors.seniorCitizen,
+          is_solo_parent: formData.sectors.soloParent,
+          representative_name: formData.representativeName,
+          representative_contact: formData.representativeContact,
+          status: 'Active',
+        };
+
+        residentData = await createOrUpdateResident(residentPayload);
+        residentIdForRequest = residentData?.id || null;
+      }
+
+      if (formData.assistanceType && residentIdForRequest) {
+        if (!supabase) {
+          throw new Error('Database client not available');
+        }
+
+        if (isEditMode && !editingAssistanceControlNumber) {
+          throw new Error('Missing request reference number. Please go back and try again.');
+        }
+
+        const assistanceControlNumber = isEditMode
+          ? editingAssistanceControlNumber
+          : `AST-${new Date().getFullYear()}-${Math.floor(Math.random() * 100000)
+              .toString()
+              .padStart(5, '0')}`;
+
+        const buildAddress = () => {
+          const barangayLabel = formData.barangay === 'sta-rita' ? 'Sta. Rita' : formData.barangay;
+          return [formData.houseNo, formData.purok, formData.street, barangayLabel, formData.city]
+            .map((s) => String(s || '').trim())
+            .filter(Boolean)
+            .join(', ');
+        };
+
+        // Upload the first valid ID file via server (uses service role; avoids Storage policy issues)
+        const validIdFile = validIdFiles?.[0];
+        let validIdPath = existingValidIdPath || null;
+        if (validIdFile) {
+          const form = new FormData();
+          form.append('file', validIdFile);
+          form.append('controlNumber', assistanceControlNumber);
+
+          const uploadRes = await fetch('/api/beneficiary/upload-valid-id', {
+            method: 'POST',
+            body: form,
+            headers: {
+              ...(isEditMode ? { 'x-resident-id': String(residentIdForRequest) } : {}),
+            },
+          });
+
+          const uploadJson = await uploadRes.json().catch(() => ({}));
+          if (!uploadRes.ok || uploadJson?.error) {
+            throw new Error(
+              uploadJson?.error ||
+                'Valid ID upload failed. Ensure your Supabase Storage bucket is named "document" and SUPABASE_SERVICE_ROLE_KEY is configured.',
+            );
+          }
+
+          validIdPath = uploadJson?.data?.path || null;
+          if (!validIdPath) {
+            throw new Error('Valid ID upload failed. Please try again.');
+          }
+        }
+
+        const cleanId = (v) => {
+          const s = String(v ?? '').trim();
+          if (!s || s === 'undefined' || s === 'null') return null;
+          return s;
+        };
+
+        const patchId = isEditMode
+          ? cleanId(editingRequestId) || cleanId(editingAssistanceControlNumber)
+          : null;
+
+        if (isEditMode && !patchId) {
+          throw new Error('Missing request reference. Please go back to History and click Edit again.');
+        }
+
+        const requesterName = `${formData.firstName} ${formData.lastName}`.trim();
+        const requesterContact = formData.contactNumber;
+        const requesterAddress = buildAddress();
+
+        const requestPayload = {
+          control_number: assistanceControlNumber,
+          resident_id: residentIdForRequest,
+          requester_name: requesterName,
+          requester_contact: requesterContact,
+          requester_address: requesterAddress,
+          beneficiary_name: beneficiaryIsRequester ? requesterName : formData.beneficiaryName,
+          beneficiary_contact: beneficiaryIsRequester ? requesterContact : formData.beneficiaryContact,
+          beneficiary_address: beneficiaryIsRequester ? requesterAddress : formData.beneficiaryAddress,
+          assistance_type:
+            formData.assistanceType === 'Others'
+              ? formData.otherAssistanceType
+              : formData.assistanceType,
+          amount: formData.assistanceAmount || 0,
+          request_date: formData.dateOfRequest,
+          valid_id_url: validIdPath,
+        };
+
+        const response = await fetch(
+          isEditMode
+            ? `/api/beneficiary/assistance-requests/${encodeURIComponent(patchId)}`
+            : '/api/assistance-requests',
+          {
+            method: isEditMode ? 'PATCH' : 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(isEditMode ? { 'x-resident-id': String(residentIdForRequest) } : {}),
+            },
+            body: JSON.stringify(requestPayload),
+          },
+        );
 
         const result = await response.json();
         if (!response.ok || result?.error) {
-          throw new Error(result?.error || 'Failed to create assistance request.');
+          throw new Error(result?.error || 'Failed to submit assistance request.');
+        }
+
+        if (isEditMode) {
+          setStatus({
+            type: 'success',
+            message: 'Request updated and resubmitted successfully!',
+          });
+          router.push('/beneficiary/history');
+          return;
         }
       }
 
       // Persist basic beneficiary identity locally for dashboard/profile views
-      if (typeof window !== 'undefined' && residentData) {
+      if (typeof window !== 'undefined' && residentData && !isEditMode) {
         try {
           window.localStorage.setItem('beneficiaryResidentId', String(residentData.id));
           window.localStorage.setItem('beneficiaryContactNumber', formData.contactNumber);
@@ -325,6 +670,7 @@ export default function BeneficiaryRequestPage() {
         firstName: '',
         middleName: '',
         houseNo: '',
+        purok: '',
         street: '',
         barangay: 'sta-rita',
         city: 'Olongapo',
@@ -345,18 +691,23 @@ export default function BeneficiaryRequestPage() {
         otherAssistanceType: '',
         assistanceAmount: '',
         beneficiaryName: '',
+        beneficiaryContact: '',
+        beneficiaryAddress: '',
         dateOfRequest: new Date().toISOString().split('T')[0],
       }));
       setControlNumber(generateControlNumber());
       setStatus({
         type: 'success',
-        message: 'Request submitted successfully! Your reference number has been generated.',
+        message: isEditMode
+          ? 'Request updated and resubmitted successfully!'
+          : 'Request submitted successfully! Your reference number has been generated.',
       });
     } catch (error) {
       console.error('Error:', error);
       setStatus({
         type: 'error',
-        message: 'Failed to submit request. Please review the form and try again.',
+        message:
+          error?.message || 'Failed to submit request. Please review the form and try again.',
       });
     } finally {
       setIsSubmitting(false);
@@ -364,11 +715,17 @@ export default function BeneficiaryRequestPage() {
   };
 
   const handleCancel = () => {
+    if (isEditMode) {
+      router.push('/beneficiary/history');
+      return;
+    }
+
     setFormData({
       lastName: '',
       firstName: '',
       middleName: '',
       houseNo: '',
+      purok: '',
       street: '',
       barangay: 'sta-rita',
       city: 'Olongapo',
@@ -389,6 +746,8 @@ export default function BeneficiaryRequestPage() {
       otherAssistanceType: '',
       assistanceAmount: '',
       beneficiaryName: '',
+      beneficiaryContact: '',
+      beneficiaryAddress: '',
       dateOfRequest: new Date().toISOString().split('T')[0],
     });
     setControlNumber(generateControlNumber());
@@ -397,7 +756,7 @@ export default function BeneficiaryRequestPage() {
 
   return (
     <div className={styles.registrationPage}>
-      <PageHeader title="Request Assistance" />
+      <PageHeader title={isEditMode ? 'Edit Incomplete Request' : 'Request Assistance'} />
       {status && (
         <div
           role="alert"
@@ -410,8 +769,12 @@ export default function BeneficiaryRequestPage() {
       )}
       <form onSubmit={handleSubmit} className={styles.formGrid}>
         <div className={styles.controlNumberBar}>
-          <div className={styles.controlNumberLabel}>Control Number</div>
-          <div className={styles.controlNumberValue}>{controlNumber}</div>
+          <div className={styles.controlNumberLabel}>
+            {isEditMode ? 'Request Reference' : 'Control Number'}
+          </div>
+          <div className={styles.controlNumberValue}>
+            {isEditMode ? editingAssistanceControlNumber || '—' : controlNumber}
+          </div>
         </div>
 
         <Card
@@ -449,7 +812,7 @@ export default function BeneficiaryRequestPage() {
               />
             </div>
 
-            <div className={styles.row}>
+            <div className={styles.row3}>
               <Input
                 label="House No."
                 name="houseNo"
@@ -458,6 +821,14 @@ export default function BeneficiaryRequestPage() {
                 placeholder="House number"
                 error={errors.houseNo}
                 required
+              />
+              <Input
+                label="Purok"
+                name="purok"
+                value={formData.purok}
+                onChange={handleChange}
+                placeholder="Purok"
+                optional
               />
               <Input
                 label="Street"
@@ -603,16 +974,23 @@ export default function BeneficiaryRequestPage() {
           >
             <div className={styles.formFields}>
               <FileUpload
-                label="Required"
+                label={existingValidIdPath ? 'Optional (upload to replace)' : 'Required'}
                 documentType="validId"
                 multiple={false}
                 files={validIdFiles}
                 onChange={setValidIdFiles}
-                required
+                required={!!formData.assistanceType && !existingValidIdPath}
               />
-              {errors.validId && (
-                <p className={styles.errorText}>{errors.validId}</p>
-              )}
+              {existingValidIdPath ? (
+                <p className={styles.muted} style={{ margin: '6px 0 0' }}>
+                  Existing valid ID is already on file. Upload a new one only if you need to replace it.
+                </p>
+              ) : isEditMode ? (
+                <p className={styles.muted} style={{ margin: '6px 0 0' }}>
+                  This request has no valid ID on file. Uploading a valid ID is required to resubmit.
+                </p>
+              ) : null}
+              {errors.validId && <p className={styles.errorText}>{errors.validId}</p>}
             </div>
           </Card>
 
@@ -658,16 +1036,55 @@ export default function BeneficiaryRequestPage() {
                 disabled={!formData.assistanceType}
                 optional
               />
-              <Input
-                label="Beneficiary Name"
-                name="beneficiaryName"
-                value={formData.beneficiaryName}
-                onChange={handleChange}
-                placeholder="Enter beneficiary's full name"
-                error={errors.beneficiaryName}
-                disabled={!formData.assistanceType}
-                optional
-              />
+              <label className={styles.checkbox} style={{ marginTop: 6, opacity: formData.assistanceType ? 1 : 0.6 }}>
+                <input
+                  type="checkbox"
+                  checked={beneficiaryIsRequester}
+                  onChange={(e) => setBeneficiaryIsRequester(e.target.checked)}
+                  disabled={!formData.assistanceType}
+                />
+                <span className={styles.checkmark}></span>
+                <span>Beneficiary is the same as requester</span>
+              </label>
+              {beneficiaryIsRequester ? (
+                <p className={styles.muted} style={{ margin: '6px 0 0' }}>
+                  Beneficiary details will be taken from Personal Information.
+                </p>
+              ) : (
+                <>
+                  <Input
+                    label="Beneficiary Name"
+                    name="beneficiaryName"
+                    value={formData.beneficiaryName}
+                    onChange={handleChange}
+                    placeholder="Enter beneficiary's full name"
+                    error={errors.beneficiaryName}
+                    disabled={!formData.assistanceType}
+                    required={!!formData.assistanceType && !beneficiaryIsRequester}
+                  />
+                  <Input
+                    label="Beneficiary Contact"
+                    name="beneficiaryContact"
+                    value={formData.beneficiaryContact}
+                    onChange={handleChange}
+                    placeholder="09XX XXX XXXX"
+                    maxLength={11}
+                    error={errors.beneficiaryContact}
+                    disabled={!formData.assistanceType}
+                    required={!!formData.assistanceType && !beneficiaryIsRequester}
+                  />
+                  <Input
+                    label="Beneficiary Address"
+                    name="beneficiaryAddress"
+                    value={formData.beneficiaryAddress}
+                    onChange={handleChange}
+                    placeholder="House No., Street, Barangay, City"
+                    error={errors.beneficiaryAddress}
+                    disabled={!formData.assistanceType}
+                    required={!!formData.assistanceType && !beneficiaryIsRequester}
+                  />
+                </>
+              )}
               <Input
                 label="Budget Ceiling"
                 name="assistanceAmount"
@@ -686,8 +1103,8 @@ export default function BeneficiaryRequestPage() {
             <Button type="button" variant="secondary" onClick={handleCancel} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Submitting...' : 'Submit Request'}
+            <Button type="submit" disabled={isSubmitting || isLoadingEdit}>
+              {isSubmitting ? 'Submitting...' : isEditMode ? 'Resubmit Request' : 'Submit Request'}
             </Button>
           </div>
         </div>

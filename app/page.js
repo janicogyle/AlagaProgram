@@ -324,7 +324,7 @@ export default function HomePage() {
                   </div>
                   <div className={styles.illustrationTitle}>
                     <span>Digital Management System</span>
-                    <small>PWD's, Senior Citizens, Solo Parents</small>
+                    <small>PWD&apos;s, Senior Citizens, Solo Parents</small>
                   </div>
                 </div>
                 <div className={styles.illustrationQR}>

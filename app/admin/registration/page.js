@@ -68,6 +68,8 @@ export default function RegistrationPage() {
     otherAssistanceType: '',
     assistanceAmount: '',
     beneficiaryName: '',
+    beneficiaryContact: '',
+    beneficiaryAddress: '',
     dateOfRequest: new Date().toISOString().split('T')[0],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -156,7 +158,7 @@ export default function RegistrationPage() {
       return;
     }
 
-    if (name === 'contactNumber' || name === 'representativeContact') {
+    if (name === 'contactNumber' || name === 'representativeContact' || name === 'beneficiaryContact') {
       const numericValue = value.replace(/\D/g, '');
       if (numericValue.length <= 11) {
         setFormData((prev) => ({
@@ -251,6 +253,14 @@ export default function RegistrationPage() {
       if (!formData.beneficiaryName.trim()) {
         newErrors.beneficiaryName = 'Beneficiary name is required for assistance';
       }
+      if (!formData.beneficiaryContact.trim()) {
+        newErrors.beneficiaryContact = 'Beneficiary contact number is required';
+      } else if (formData.beneficiaryContact.replace(/\D/g, '').length !== 11) {
+        newErrors.beneficiaryContact = 'Beneficiary contact number must be exactly 11 digits';
+      }
+      if (!formData.beneficiaryAddress.trim()) {
+        newErrors.beneficiaryAddress = 'Beneficiary address is required';
+      }
     }
 
     if (formData.assistanceType && !formData.assistanceAmount) {
@@ -308,19 +318,65 @@ export default function RegistrationPage() {
         if (!supabase) {
           throw new Error('Database client not available');
         }
+
         const assistanceControlNumber = `AST-${new Date().getFullYear()}-${Math.floor(Math.random() * 100000).toString().padStart(5, '0')}`;
-        
+
+        const buildAddress = () => {
+          const barangayLabel = formData.barangay === 'sta-rita' ? 'Sta. Rita' : formData.barangay;
+          return [formData.houseNo, formData.street, barangayLabel, formData.city]
+            .map((s) => String(s || '').trim())
+            .filter(Boolean)
+            .join(', ');
+        };
+
+        // Upload the first valid ID file via server (uses service role; avoids Storage policy issues)
+        const validIdFile = validIdFiles?.[0];
+        let validIdPath = null;
+        if (validIdFile) {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData?.session?.access_token;
+          if (!token) throw new Error('Please sign in again.');
+
+          const form = new FormData();
+          form.append('file', validIdFile);
+          form.append('controlNumber', assistanceControlNumber);
+
+          const uploadRes = await fetch('/api/admin/upload-valid-id', {
+            method: 'POST',
+            body: form,
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          const uploadJson = await uploadRes.json().catch(() => ({}));
+          if (!uploadRes.ok || uploadJson?.error) {
+            throw new Error(
+              uploadJson?.error ||
+                'Valid ID upload failed. Ensure your Supabase Storage bucket is named "document" and SUPABASE_SERVICE_ROLE_KEY is configured.',
+            );
+          }
+
+          validIdPath = uploadJson?.data?.path || null;
+          if (!validIdPath) {
+            throw new Error('Valid ID upload failed. Please try again.');
+          }
+        }
+
         const { error: assistanceError } = await supabase.from('assistance_requests').insert({
           control_number: assistanceControlNumber,
           resident_id: residentData.id, // Link to the newly created resident
           requester_name: `${formData.firstName} ${formData.lastName}`,
           requester_contact: formData.contactNumber,
+          requester_address: buildAddress(),
           beneficiary_name: formData.beneficiaryName,
-          assistance_type: formData.assistanceType === 'Others' ? formData.otherAssistanceType : formData.assistanceType,
+          beneficiary_contact: formData.beneficiaryContact,
+          beneficiary_address: formData.beneficiaryAddress,
+          assistance_type:
+            formData.assistanceType === 'Others' ? formData.otherAssistanceType : formData.assistanceType,
           amount: formData.assistanceAmount || 0,
           status: 'Pending', // Default status
           request_date: formData.dateOfRequest,
-        })
+          valid_id_url: validIdPath,
+        });
         if (assistanceError) throw assistanceError;
       }
 
@@ -346,7 +402,12 @@ export default function RegistrationPage() {
         },
         representativeName: '',
         representativeContact: '',
+        assistanceType: '',
+        otherAssistanceType: '',
+        assistanceAmount: '',
         beneficiaryName: '',
+        beneficiaryContact: '',
+        beneficiaryAddress: '',
         dateOfRequest: new Date().toISOString().split('T')[0],
       });
       setControlNumber(generateControlNumber());
@@ -393,8 +454,11 @@ export default function RegistrationPage() {
       representativeName: '',
       representativeContact: '',
       assistanceType: '',
+      otherAssistanceType: '',
       assistanceAmount: '',
       beneficiaryName: '',
+      beneficiaryContact: '',
+      beneficiaryAddress: '',
       dateOfRequest: new Date().toISOString().split('T')[0],
     });
     setControlNumber(generateControlNumber());
@@ -673,6 +737,27 @@ export default function RegistrationPage() {
                 onChange={handleChange}
                 placeholder="Enter beneficiary's full name"
                 error={errors.beneficiaryName}
+                disabled={!formData.assistanceType}
+                optional
+              />
+              <Input
+                label="Beneficiary Contact"
+                name="beneficiaryContact"
+                value={formData.beneficiaryContact}
+                onChange={handleChange}
+                placeholder="09XX XXX XXXX"
+                maxLength={11}
+                error={errors.beneficiaryContact}
+                disabled={!formData.assistanceType}
+                optional
+              />
+              <Input
+                label="Beneficiary Address"
+                name="beneficiaryAddress"
+                value={formData.beneficiaryAddress}
+                onChange={handleChange}
+                placeholder="House No., Street, Barangay, City"
+                error={errors.beneficiaryAddress}
                 disabled={!formData.assistanceType}
                 optional
               />
