@@ -97,6 +97,24 @@ export default function RequestsPage() {
             .filter(Boolean)
             .join(', ');
 
+          const parseRequirements = (value) => {
+            if (!value) return [];
+            if (Array.isArray(value)) return value.filter(Boolean);
+            if (typeof value === 'string') {
+              try {
+                const parsed = JSON.parse(value);
+                if (Array.isArray(parsed)) return parsed.filter(Boolean);
+              } catch {
+                // ignore
+              }
+            }
+            return [];
+          };
+
+          const requirements = parseRequirements(r.requirements_urls);
+          const legacySingle = r.valid_id_url ? [r.valid_id_url] : [];
+          const requirementUrls = requirements.length ? requirements : legacySingle;
+
           const sectors = {
             pwd: !!resident.is_pwd,
             seniorCitizen: !!resident.is_senior_citizen,
@@ -125,11 +143,20 @@ export default function RequestsPage() {
             amount: r.amount,
             rawAmount: r.amount,
             validIdUrl: r.valid_id_url || null,
+            requirementUrls,
             status,
             statusLabel: getStatusLabel(status),
             date: r.request_date ? new Date(r.request_date).toLocaleDateString() : '',
             processedBy: r.processed_by || '',
             decisionRemarks: r.decision_remarks || '',
+            residentControlNumber: resident.control_number || '',
+            residentBirthday: resident.birthday ? new Date(resident.birthday).toLocaleDateString() : '',
+            residentBirthplace: resident.birthplace || '',
+            residentSex: resident.sex || '',
+            residentCitizenship: resident.citizenship || '',
+            residentCivilStatus: resident.civil_status || '',
+            residentRepresentativeName: resident.representative_name || '',
+            residentRepresentativeContact: resident.representative_contact || '',
             sectors,
             sectorText: sectorLabels.length ? sectorLabels.join(', ') : 'None',
           };
@@ -798,6 +825,52 @@ export default function RequestsPage() {
             })()}
 
             <div className={styles.detailSection}>
+              <h4>Resident Profile</h4>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Resident Control No:</span>
+                <span className={styles.detailValue}>
+                  {selectedRequest.residentControlNumber || 'Not provided'}
+                </span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Birthday:</span>
+                <span className={styles.detailValue}>{selectedRequest.residentBirthday || 'Not provided'}</span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Birthplace:</span>
+                <span className={styles.detailValue}>{selectedRequest.residentBirthplace || 'Not provided'}</span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Sex:</span>
+                <span className={styles.detailValue}>{selectedRequest.residentSex || 'Not provided'}</span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Citizenship:</span>
+                <span className={styles.detailValue}>{selectedRequest.residentCitizenship || 'Not provided'}</span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Civil Status:</span>
+                <span className={styles.detailValue}>{selectedRequest.residentCivilStatus || 'Not provided'}</span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Sectors:</span>
+                <span className={styles.detailValue}>{selectedRequest.sectorText || 'None'}</span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Representative Name:</span>
+                <span className={styles.detailValue}>
+                  {selectedRequest.residentRepresentativeName || 'Not provided'}
+                </span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Representative Contact:</span>
+                <span className={styles.detailValue}>
+                  {selectedRequest.residentRepresentativeContact || 'Not provided'}
+                </span>
+              </div>
+            </div>
+
+            <div className={styles.detailSection}>
               <h4>Remarks</h4>
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Decision Remarks:</span>
@@ -825,16 +898,21 @@ export default function RequestsPage() {
                 <span className={styles.infoValue}>{formatProcessedBy(selectedRequest.processedBy)}</span>
               </div>
               <div className={styles.infoCard}>
-                <span className={styles.infoLabel}>Valid ID</span>
+                <span className={styles.infoLabel}>ATTACH REQUIREMENTS</span>
                 <span className={styles.infoValue}>
-                  {selectedRequest.validIdUrl ? (
-                    <button
-                      type="button"
-                      className={styles.validIdLink}
-                      onClick={() => openValidId(selectedRequest.validIdUrl)}
-                    >
-                      View Uploaded ID
-                    </button>
+                  {selectedRequest.requirementUrls?.length ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {selectedRequest.requirementUrls.map((url, idx) => (
+                        <button
+                          key={String(url) + String(idx)}
+                          type="button"
+                          className={styles.validIdLink}
+                          onClick={() => openValidId(url)}
+                        >
+                          View Requirement {idx + 1}
+                        </button>
+                      ))}
+                    </div>
                   ) : (
                     'Not available'
                   )}

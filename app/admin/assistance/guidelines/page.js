@@ -14,8 +14,58 @@ export default function GuidelinesPage() {
   const [editValue, setEditValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [confirmState, setConfirmState] = useState({ open: false, type: null, current: 0, next: 0 });
+
+  const getAuthHeaders = async () => {
+    if (!supabase) throw new Error('Supabase client not initialized.');
+
+    const { data, error } = await supabase.auth.getSession();
+    let session = data?.session;
+
+    const isExpired = session?.expires_at ? session.expires_at * 1000 <= Date.now() + 5000 : false;
+    if (!error && session && !isExpired) {
+      return { Authorization: `Bearer ${session.access_token}` };
+    }
+
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    session = refreshData?.session;
+    if (refreshError || !session) throw new Error('Not authenticated. Please log in again.');
+
+    return { Authorization: `Bearer ${session.access_token}` };
+  };
+
+  const humanizeBudgetError = (err) => {
+    const msg = String(err?.message || err || '');
+    const lower = msg.toLowerCase();
+
+    if (lower.includes('forbidden') || lower.includes('only admin')) {
+      return 'Only Admin accounts can edit budget ceilings.';
+    }
+
+    if (lower.includes('not authenticated') || lower.includes('unauthorized')) {
+      return 'Your session expired. Please log in again.';
+    }
+
+    if (lower.includes('duplicate key value violates unique constraint')) {
+      return 'This assistance type already exists in the budget table. Please refresh and try again.';
+    }
+
+    return msg || 'Something went wrong. Please try again.';
+  };
+
+  const formatPeso = (value) =>
+    new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(value) || 0);
 
   useEffect(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? window.localStorage.getItem('adminUser') : null;
+      const user = raw ? JSON.parse(raw) : null;
+      setIsAdmin(user?.role === 'Admin');
+    } catch {
+      setIsAdmin(false);
+    }
+
     const loadBudgets = async () => {
       try {
         if (!supabase) {
@@ -26,7 +76,7 @@ export default function GuidelinesPage() {
           .select('assistance_type, ceiling');
 
         if (error) {
-          console.error('Error loading assistance budgets', error.message);
+          console.warn('Error loading assistance budgets', error.message);
           setStatus({
             type: 'error',
             message: 'Failed to load assistance budget ceilings. Please refresh the page or try again later.',
@@ -37,8 +87,9 @@ export default function GuidelinesPage() {
         if (data) {
           const map = {};
           data.forEach((row) => {
-            if (row.assistance_type && typeof row.ceiling === 'number') {
-              map[row.assistance_type] = row.ceiling;
+            const ceiling = Number(row.ceiling);
+            if (row.assistance_type && Number.isFinite(ceiling)) {
+              map[row.assistance_type] = ceiling;
             }
           });
           setBudgets(map);
@@ -58,6 +109,11 @@ export default function GuidelinesPage() {
   };
 
   const openEditModal = (title) => {
+    if (!isAdmin) {
+      setStatus({ type: 'error', message: 'Only Admin accounts can edit budget ceilings.' });
+      return;
+    }
+
     const current = getCeilingFor(title);
     setEditingType(title);
     setEditValue(String(current));
@@ -65,12 +121,61 @@ export default function GuidelinesPage() {
 
   const closeEditModal = () => {
     if (saving) return;
+    setConfirmState({ open: false, type: null, current: 0, next: 0 });
     setEditingType(null);
     setEditValue('');
   };
 
+  const applyBudgetChange = async ({ type, current, next }) => {
+    if (!type) return;
+
+    setSaving(true);
+    try {
+      const headers = await getAuthHeaders();
+
+      const response = await fetch('/api/assistance-budgets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({ assistanceType: type, ceiling: next }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.error) {
+        setConfirmState({ open: false, type: null, current: 0, next: 0 });
+        setStatus({
+          type: 'error',
+          message: humanizeBudgetError(payload?.error || `Failed to update budget ceiling for ${type}.`),
+        });
+        return;
+      }
+
+      setBudgets((prev) => ({
+        ...prev,
+        [type]: next,
+      }));
+
+      setStatus({
+        type: 'success',
+        message: `Budget ceiling updated: ${type} (${formatPeso(current)} → ${formatPeso(next)}).`,
+      });
+
+      setConfirmState({ open: false, type: null, current: 0, next: 0 });
+      closeEditModal();
+    } catch (err) {
+      setConfirmState({ open: false, type: null, current: 0, next: 0 });
+      setStatus({ type: 'error', message: humanizeBudgetError(err) });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSaveBudget = async () => {
     if (!editingType) return;
+
+    if (!isAdmin) {
+      setStatus({ type: 'error', message: 'Only Admin accounts can edit budget ceilings.' });
+      return;
+    }
 
     const parsed = Number(editValue);
     if (!Number.isFinite(parsed) || parsed < 0) {
@@ -90,46 +195,7 @@ export default function GuidelinesPage() {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Are you sure you want to change the budget ceiling for "${editingType}" from ₱${current.toLocaleString()} to ₱${parsed.toLocaleString()}?\n\nThis will affect future validations and administrative reports that rely on the current ceilings.`
-    );
-
-    if (!confirmed) return;
-
-    setSaving(true);
-    try {
-      if (!supabase) {
-        throw new Error('Database client not available');
-      }
-      const { error } = await supabase
-        .from('assistance_budgets')
-        .upsert({
-          assistance_type: editingType,
-          ceiling: parsed,
-        });
-
-      if (error) {
-        console.error('Error updating assistance budget', error.message);
-        setStatus({
-          type: 'error',
-          message: 'Failed to update the budget ceiling. Please try again or contact the system administrator.',
-        });
-        return;
-      }
-
-      setBudgets((prev) => ({
-        ...prev,
-        [editingType]: parsed,
-      }));
-
-      setStatus({
-        type: 'success',
-        message: 'Budget ceiling updated successfully.',
-      });
-      closeEditModal();
-    } finally {
-      setSaving(false);
-    }
+    setConfirmState({ open: true, type: editingType, current, next: parsed });
   };
 
   return (
@@ -199,14 +265,18 @@ export default function GuidelinesPage() {
                         }).format(effectiveCeiling)}
                       </span>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="small"
-                      onClick={() => openEditModal(title)}
-                      disabled={loadingBudgets}
-                    >
-                      Edit Budget
-                    </Button>
+                    {isAdmin ? (
+                      <Button
+                        variant="outline"
+                        size="small"
+                        onClick={() => openEditModal(title)}
+                        disabled={loadingBudgets}
+                      >
+                        Edit Budget
+                      </Button>
+                    ) : (
+                      <span style={{ color: '#6b7280', fontSize: 12 }}>Admin only</span>
+                    )}
                   </div>
                 </Card>
               );
@@ -276,7 +346,7 @@ export default function GuidelinesPage() {
             <Button
               variant="secondary"
               onClick={closeEditModal}
-              disabled={saving}
+              disabled={saving || confirmState.open}
             >
               Cancel
             </Button>
@@ -312,6 +382,50 @@ export default function GuidelinesPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={!!confirmState.open}
+        onClose={() => {
+          if (saving) return;
+          setConfirmState({ open: false, type: null, current: 0, next: 0 });
+        }}
+        title="Confirm budget change"
+        size="small"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmState({ open: false, type: null, current: 0, next: 0 })}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => applyBudgetChange(confirmState)}
+              disabled={saving}
+            >
+              {saving ? 'Saving…' : 'Confirm'}
+            </Button>
+          </>
+        }
+      >
+        <div className={styles.editModalBody}>
+          <p style={{ margin: 0, color: '#374151', lineHeight: 1.45 }}>
+            Are you sure you want to change the budget ceiling for <strong>{confirmState.type}</strong>?
+          </p>
+          <div style={{ display: 'grid', gap: 6, fontSize: 14, color: '#374151' }}>
+            <div>
+              Current: <strong>{formatPeso(confirmState.current)}</strong>
+            </div>
+            <div>
+              New: <strong>{formatPeso(confirmState.next)}</strong>
+            </div>
+          </div>
+          <p className={styles.editWarning} style={{ margin: 0 }}>
+            This will affect future validations and administrative reports that rely on the current ceilings.
+          </p>
+        </div>
       </Modal>
     </div>
   );

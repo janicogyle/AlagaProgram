@@ -43,8 +43,8 @@ const serviceTypes = [
 
 const generateControlNumber = () => {
   const year = new Date().getFullYear();
-  const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
-  return `AST-${year}-${random}`;
+  const seq = Math.floor(Math.random() * 999) + 1;
+  return `${year}-${String(seq).padStart(3, '0')}`;
 };
 
 export default function AssistancePage() {
@@ -509,7 +509,7 @@ export default function AssistancePage() {
                 <ul className={styles.docList}>
                   <li>
                     <span className={styles.docCheck}>✓</span>
-                    Valid ID (Government-issued)
+                    ATTACH REQUIREMENTS (Government-issued ID)
                   </li>
                   <li>
                     <span className={styles.docCheck}>✓</span>

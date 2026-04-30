@@ -11,6 +11,7 @@ export default function DashboardLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -18,27 +19,42 @@ export default function DashboardLayout({ children }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    try {
-      const raw = localStorage.getItem('adminUser');
-      if (!raw) {
-        router.replace('/login');
-        return;
-      }
+    const ensureAdminSession = async () => {
+      try {
+        const raw = localStorage.getItem('adminUser');
+        if (!raw) {
+          router.replace('/login');
+          return;
+        }
 
-      const stored = JSON.parse(raw);
-      // Defer state update to avoid cascading render warnings from strict hook lint rules
-      setTimeout(() => {
-        setUser({
-          name: stored.full_name || stored.name || 'User',
-          role: stored.role || 'Staff',
-          email: stored.email,
-          id: stored.id,
-        });
-      }, 0);
-    } catch (e) {
-      console.error('Failed to load adminUser from localStorage:', e);
-      router.replace('/login');
-    }
+        const { data, error } = await supabase.auth.getSession();
+        const session = data?.session;
+        if (error || !session) {
+          localStorage.removeItem('adminUser');
+          router.replace('/login');
+          return;
+        }
+
+        const stored = JSON.parse(raw);
+        // Defer state update to avoid cascading render warnings from strict hook lint rules
+        setTimeout(() => {
+          setUser({
+            name: stored.full_name || stored.name || 'User',
+            role: stored.role || 'Staff',
+            email: stored.email,
+            id: stored.id,
+          });
+        }, 0);
+      } catch (e) {
+        console.error('Failed to validate admin session:', e);
+        localStorage.removeItem('adminUser');
+        router.replace('/login');
+      } finally {
+        setAuthChecked(true);
+      }
+    };
+
+    ensureAdminSession();
   }, [router]);
 
   // Handle window resize for responsive behavior
@@ -100,7 +116,7 @@ export default function DashboardLayout({ children }) {
     }
   };
 
-  if (!user) return null;
+  if (!authChecked || !user) return null;
 
   return (
     <div className={styles.layout}>

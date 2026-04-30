@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { hashPassword } from '@/lib/passwords.server';
+import { requireAdmin } from '@/lib/apiAuth';
 
 export const runtime = 'nodejs';
 
 export async function POST(request, { params }) {
+  const auth = await requireAdmin(request);
+  if (!auth.ok) return auth.response;
+
   try {
     const db = supabaseAdmin ?? supabase;
     if (!db) {

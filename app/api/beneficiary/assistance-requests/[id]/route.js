@@ -83,6 +83,23 @@ export async function PATCH(request, { params }) {
       );
     }
 
+    const parseRequirements = (value) => {
+      if (value === undefined) return undefined;
+      if (!value) return [];
+      if (Array.isArray(value)) return value.filter(Boolean);
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (Array.isArray(parsed)) return parsed.filter(Boolean);
+        } catch {
+          // ignore
+        }
+      }
+      return [];
+    };
+
+    const requirementsUrls = parseRequirements(body.requirements_urls ?? body.requirementsUrls);
+
     const allowed = {
       requester_name: body.requester_name ?? body.requesterName,
       requester_contact: body.requester_contact ?? body.requesterContact,
@@ -93,7 +110,9 @@ export async function PATCH(request, { params }) {
       assistance_type: body.assistance_type ?? body.assistanceType,
       amount: body.amount,
       request_date: body.request_date ?? body.requestDate,
-      valid_id_url: body.valid_id_url ?? body.validIdUrl,
+      // Legacy column: always keep populated
+      valid_id_url: body.valid_id_url ?? body.validIdUrl ?? requirementsUrls?.[0] ?? null,
+      requirements_urls: requirementsUrls,
     };
 
     const update = {
@@ -107,14 +126,28 @@ export async function PATCH(request, { params }) {
       if (val !== undefined) update[key] = val;
     }
 
-    let updateQuery = db.from('assistance_requests').update(update);
-    updateQuery = isUuid ? updateQuery.eq('id', existing.id) : updateQuery.eq('control_number', existing.control_number);
+    const selectFields =
+      'id, control_number, resident_id, requester_name, requester_contact, requester_address, beneficiary_name, beneficiary_contact, beneficiary_address, assistance_type, amount, status, request_date, processed_by, decision_remarks, valid_id_url, created_at';
 
-    const { data: updated, error: updateError } = await updateQuery
-      .select(
-        'id, control_number, resident_id, requester_name, requester_contact, requester_address, beneficiary_name, beneficiary_contact, beneficiary_address, assistance_type, amount, status, request_date, processed_by, decision_remarks, valid_id_url, created_at',
-      )
-      .single();
+    const runUpdate = async (payload) => {
+      let updateQuery = db.from('assistance_requests').update(payload);
+      updateQuery = isUuid
+        ? updateQuery.eq('id', existing.id)
+        : updateQuery.eq('control_number', existing.control_number);
+      return await updateQuery.select(selectFields).single();
+    };
+
+    let { data: updated, error: updateError } = await runUpdate(update);
+
+    if (updateError) {
+      const msg = String(updateError?.message || '').toLowerCase();
+      if (msg.includes("could not find the 'requirements_urls'") || msg.includes('requirements_urls')) {
+        // Backward compatibility: DB may not have requirements_urls yet.
+        const next = { ...update };
+        delete next.requirements_urls;
+        ;({ data: updated, error: updateError } = await runUpdate(next));
+      }
+    }
 
     if (updateError) {
       const msg = String(updateError?.message || '').toLowerCase();

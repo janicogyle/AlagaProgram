@@ -51,6 +51,67 @@
 	gap: 20px;
 }
 
+.muted {
+	color: #6b7280;
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.assistanceRequirementsHint {
+	margin: 0;
+	color: #6b7280;
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.assistanceRequirementsPanel {
+	padding: 12px;
+	border: 1px solid #e5e7eb;
+	background: #f9fafb;
+	border-radius: 10px;
+}
+
+.assistanceRequirementsHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.assistanceRequirementsTitle {
+	font-size: 13px;
+	font-weight: 700;
+	color: #111827;
+}
+
+.assistanceRequirementsCeiling {
+	font-size: 12px;
+	font-weight: 700;
+	color: #1e40af;
+	background: #e0e7ff;
+	padding: 3px 8px;
+	border-radius: 999px;
+	white-space: nowrap;
+}
+
+.assistanceRequirementsList {
+	margin: 10px 0 0 0;
+	padding-left: 18px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	color: #374151;
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.assistanceRequirementItem {
+}
+
+.assistanceRequirementItemEmpty {
+	color: #6b7280;
+}
+
 .statusBanner {
 	margin-bottom: 16px;
 	padding: 12px 16px;

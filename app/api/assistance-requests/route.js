@@ -3,12 +3,62 @@ import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
 
-function generateControlNumber() {
+function stripMissingAssistanceColumn(message, payload) {
+  const msg = String(message || '');
+
+  // PostgREST schema cache error
+  let match = msg.match(
+    /Could not find the '([^']+)' column of 'assistance_requests' in the schema cache/i,
+  );
+
+  // Postgres error surfaced via PostgREST
+  if (!match) {
+    match = msg.match(/column\s+(?:public\.)?assistance_requests\.([a-zA-Z0-9_]+)\s+does\s+not\s+exist/i);
+  }
+
+  if (!match) {
+    match = msg.match(
+      /column\s+"?([a-zA-Z0-9_]+)"?\s+of\s+relation\s+"(?:public\.)?assistance_requests"\s+does\s+not\s+exist/i,
+    );
+  }
+
+  if (!match) return { payload, removed: null };
+
+  const col = match[1];
+  if (!col || typeof payload !== 'object' || payload == null) return { payload, removed: null };
+  if (!(col in payload)) return { payload, removed: null };
+
+  const next = { ...payload };
+  delete next[col];
+  return { payload: next, removed: col };
+}
+
+async function generateNextControlNumber(db) {
   const year = new Date().getFullYear();
-  const random = Math.floor(Math.random() * 100000)
-    .toString()
-    .padStart(5, '0');
-  return `AST-${year}-${random}`;
+  const fallback = `${year}-001`;
+
+  try {
+    const { data, error } = await db
+      .from('assistance_requests')
+      .select('control_number')
+      .like('control_number', `${year}-%`)
+      .order('control_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    const last = String(data?.control_number || '').trim();
+    const match = last.match(new RegExp(`^${year}-(\\d{3})$`));
+    const nextSeq = match ? Number(match[1]) + 1 : 1;
+
+    if (!Number.isFinite(nextSeq) || nextSeq < 1) return fallback;
+
+    return `${year}-${String(nextSeq).padStart(3, '0')}`;
+  } catch (err) {
+    console.warn('[assistance-requests] Failed to compute next control number:', err);
+    return fallback;
+  }
 }
 
 export async function GET(request) {
@@ -24,7 +74,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const residentId = searchParams.get('residentId');
 
-    const requestFields = [
+    const baseRequestFields = [
       'id',
       'control_number',
       'resident_id',
@@ -42,23 +92,42 @@ export async function GET(request) {
       'decision_remarks',
       'valid_id_url',
       'created_at',
-    ].join(',');
+    ];
 
-    let query = db
-      .from('assistance_requests')
-      .select(
-        [
-          requestFields,
-          'residents:resident_id(id, control_number, first_name, middle_name, last_name, birthday, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, representative_name, representative_contact, is_pwd, is_senior_citizen, is_solo_parent)',
-        ].join(','),
-      )
-      .order('request_date', { ascending: false });
+    const requestFields = baseRequestFields.join(',');
+    const requestFieldsWithRequirements = [...baseRequestFields, 'requirements_urls'].join(',');
 
-    if (residentId) {
-      query = query.eq('resident_id', residentId);
+    const residentsJoin =
+      'residents:resident_id(id, control_number, first_name, middle_name, last_name, birthday, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, representative_name, representative_contact, is_pwd, is_senior_citizen, is_solo_parent)';
+
+    const runQuery = async (fields) => {
+      let query = db
+        .from('assistance_requests')
+        .select([fields, residentsJoin].join(','))
+        .order('request_date', { ascending: false });
+
+      if (residentId) {
+        query = query.eq('resident_id', residentId);
+      }
+
+      return await query;
+    };
+
+    const isMissingRequirementsColumn = (message) => {
+      const msg = String(message || '').toLowerCase();
+      return (
+        msg.includes("could not find the 'requirements_urls'") ||
+        msg.includes('assistance_requests.requirements_urls') ||
+        (msg.includes('requirements_urls') && msg.includes('does not exist'))
+      );
+    };
+
+    // Prefer returning requirements_urls when DB supports it; fall back to legacy schema.
+    let { data, error } = await runQuery(requestFieldsWithRequirements);
+    if (error && isMissingRequirementsColumn(error.message)) {
+      ;({ data, error } = await runQuery(requestFields));
     }
 
-    const { data, error } = await query;
     if (error) throw error;
 
     return NextResponse.json({ data: data || [], error: null });
@@ -101,8 +170,28 @@ export async function POST(request) {
     const amount = Number(body.amount || 0);
     const requestDate = body.request_date || body.requestDate || new Date().toISOString().split('T')[0];
 
-    const payload = {
-      control_number: body.control_number || body.controlNumber || generateControlNumber(),
+    const parseRequirements = (value) => {
+      if (!value) return null;
+      if (Array.isArray(value)) return value.filter(Boolean);
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (Array.isArray(parsed)) return parsed.filter(Boolean);
+        } catch {
+          // ignore
+        }
+      }
+      return null;
+    };
+
+    const requirementsUrls = parseRequirements(body.requirements_urls ?? body.requirementsUrls);
+    const legacyValidIdUrl = body.valid_id_url || body.validIdUrl || null;
+    const validIdUrl = legacyValidIdUrl || (requirementsUrls?.[0] ?? null);
+
+    const providedControlNumber = body.control_number || body.controlNumber || null;
+
+    const buildPayload = (controlNumber) => ({
+      control_number: controlNumber,
       resident_id: residentId,
       requester_name: body.requester_name || body.requesterName || null,
       requester_contact: body.requester_contact || body.requesterContact || null,
@@ -114,16 +203,51 @@ export async function POST(request) {
       amount: Number.isFinite(amount) ? amount : 0,
       status: body.status || 'Pending',
       request_date: requestDate,
-      valid_id_url: body.valid_id_url || body.validIdUrl || null,
-    };
+      valid_id_url: validIdUrl,
+      ...(requirementsUrls ? { requirements_urls: requirementsUrls } : {}),
+    });
 
-    const { data, error } = await db
-      .from('assistance_requests')
-      .insert(payload)
-      .select(
-        'id, control_number, resident_id, requester_name, requester_contact, requester_address, beneficiary_name, beneficiary_contact, beneficiary_address, assistance_type, amount, status, request_date, processed_by, decision_remarks, valid_id_url, created_at',
-      )
-      .single();
+    const selectFields =
+      'id, control_number, resident_id, requester_name, requester_contact, requester_address, beneficiary_name, beneficiary_contact, beneficiary_address, assistance_type, amount, status, request_date, processed_by, decision_remarks, valid_id_url, created_at';
+
+    let data;
+    let error;
+
+    // If the client didn't provide a control number, generate a sequential one (YYYY-###).
+    // Retry on unique conflicts (rare, but can happen with concurrent requests).
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const controlNumber =
+        providedControlNumber || (await generateNextControlNumber(db));
+
+      const attemptPayload = buildPayload(controlNumber);
+
+      ({ data, error } = await db
+        .from('assistance_requests')
+        .insert(attemptPayload)
+        .select(selectFields)
+        .single());
+
+      if (error) {
+        // Backward compatibility: older DBs may not have requirements_urls yet.
+        const stripped = stripMissingAssistanceColumn(error.message, attemptPayload);
+        if (stripped.removed) {
+          ;({ data, error } = await db
+            .from('assistance_requests')
+            .insert(stripped.payload)
+            .select(selectFields)
+            .single());
+        }
+      }
+
+      if (!error) break;
+
+      const msg = String(error?.message || '').toLowerCase();
+      const isDuplicate = msg.includes('duplicate') && msg.includes('control_number');
+
+      if (providedControlNumber || !isDuplicate) {
+        break;
+      }
+    }
 
     if (error) throw error;
 

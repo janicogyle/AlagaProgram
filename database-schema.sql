@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS public.assistance_requests (
   
   -- Documents
   valid_id_url TEXT,
+  requirements_urls JSONB DEFAULT '[]'::jsonb,
   
   -- Timestamps
   request_date DATE DEFAULT CURRENT_DATE,
@@ -44,6 +45,9 @@ CREATE TABLE IF NOT EXISTS public.assistance_requests (
 CREATE INDEX IF NOT EXISTS idx_assistance_requests_resident_id ON public.assistance_requests(resident_id);
 CREATE INDEX IF NOT EXISTS idx_assistance_requests_status ON public.assistance_requests(status);
 CREATE INDEX IF NOT EXISTS idx_assistance_requests_request_date ON public.assistance_requests(request_date);
+
+-- Ensure columns exist on older installs
+ALTER TABLE public.assistance_requests ADD COLUMN IF NOT EXISTS requirements_urls JSONB DEFAULT '[]'::jsonb;
 
 -- Add trigger to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -131,6 +135,12 @@ CREATE TABLE IF NOT EXISTS public.account_requests (
   is_pwd BOOLEAN DEFAULT FALSE,
   is_senior_citizen BOOLEAN DEFAULT FALSE,
   is_solo_parent BOOLEAN DEFAULT FALSE,
+  valid_id_url TEXT,
+  age INTEGER,
+  birthplace TEXT,
+  sex TEXT,
+  citizenship TEXT,
+  civil_status TEXT,
   
   -- Request Info
   status TEXT DEFAULT 'Pending' CHECK (status IN ('Pending', 'Approved', 'Archived')),
@@ -144,7 +154,27 @@ CREATE TABLE IF NOT EXISTS public.account_requests (
 );
 
 CREATE INDEX IF NOT EXISTS idx_account_requests_status ON public.account_requests(status);
-CREATE INDEX IF NOT EXISTS idx_account_requests_contact ON public.account_requests(contact_number);
+
+-- Enforce: one contact number can only be used once
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM (
+      SELECT contact_number
+      FROM public.account_requests
+      WHERE contact_number IS NOT NULL AND contact_number <> ''
+      GROUP BY contact_number
+      HAVING COUNT(*) > 1
+    ) d
+  ) THEN
+    RAISE EXCEPTION 'Duplicate contact_number values exist in public.account_requests. Clean them up before adding UNIQUE constraint.';
+  END IF;
+END $$;
+
+DROP INDEX IF EXISTS public.idx_account_requests_contact;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_account_requests_contact ON public.account_requests(contact_number);
+
 CREATE INDEX IF NOT EXISTS idx_account_requests_created ON public.account_requests(created_at);
 
 CREATE TRIGGER update_account_requests_updated_at
@@ -183,15 +213,61 @@ ALTER TABLE public.account_requests
 
 -- Ensure password columns exist (safe to run multiple times)
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS valid_id_url TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS age INTEGER;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS birthplace TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS sex TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS citizenship TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS civil_status TEXT;
 DO $$
 BEGIN
   IF to_regclass('public.residents') IS NOT NULL THEN
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS password_hash TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS account_request_id UUID;
+
+    -- Ensure sign-up fields exist on residents so approved requests can reflect them
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS birthday DATE;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS age INTEGER;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS birthplace TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS sex TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS citizenship TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS civil_status TEXT;
+
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS contact_number TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS house_no TEXT;
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS purok TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS street TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS barangay TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS city TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS valid_id_url TEXT;
+
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS is_pwd BOOLEAN DEFAULT FALSE;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS is_senior_citizen BOOLEAN DEFAULT FALSE;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS is_solo_parent BOOLEAN DEFAULT FALSE;
 
     -- Some existing DBs may not have timestamps on residents yet
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+    -- Enforce: one contact number can only be used once (when present)
+    IF EXISTS (
+      SELECT 1
+      FROM (
+        SELECT contact_number
+        FROM public.residents
+        WHERE contact_number IS NOT NULL AND contact_number <> ''
+        GROUP BY contact_number
+        HAVING COUNT(*) > 1
+      ) d
+    ) THEN
+      RAISE EXCEPTION 'Duplicate contact_number values exist in public.residents. Clean them up before adding UNIQUE constraint.';
+    END IF;
+
+    EXECUTE $$
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_residents_contact_number_unique
+      ON public.residents(contact_number)
+      WHERE contact_number IS NOT NULL AND contact_number <> ''
+    $$;
 
     -- Ensure updated_at auto-refreshes on updates
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_residents_updated_at') THEN
@@ -246,11 +322,31 @@ CREATE POLICY "Authenticated users can update assistance requests" ON public.ass
   FOR UPDATE USING (auth.role() = 'authenticated');
 
 -- Assistance Budgets Policies
+DROP POLICY IF EXISTS "Anyone can view assistance budgets" ON public.assistance_budgets;
+DROP POLICY IF EXISTS "Authenticated users can update budgets" ON public.assistance_budgets;
+DROP POLICY IF EXISTS "Admins can manage assistance budgets" ON public.assistance_budgets;
+
 CREATE POLICY "Anyone can view assistance budgets" ON public.assistance_budgets
   FOR SELECT USING (true);
 
-CREATE POLICY "Authenticated users can update budgets" ON public.assistance_budgets
-  FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Admins can manage assistance budgets" ON public.assistance_budgets
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.users u
+      WHERE u.id = auth.uid()
+        AND u.role = 'Admin'
+        AND u.status = 'Active'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.users u
+      WHERE u.id = auth.uid()
+        AND u.role = 'Admin'
+        AND u.status = 'Active'
+    )
+  );
 
 -- Users Policies
 CREATE POLICY "Users can view all users" ON public.users

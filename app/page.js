@@ -89,8 +89,8 @@ export default function HomePage() {
           <circle cx="12" cy="7" r="4" />
         </svg>
       ),
-      title: 'Resident Profiling',
-      description: 'Complete digital profiles for all registered residents with personal details, documents, and history.',
+      title: 'Faster Assistance',
+      description: 'One digital profile means quicker validation and processing of assistance requests.',
     },
     {
       icon: (
@@ -99,8 +99,8 @@ export default function HomePage() {
           <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
         </svg>
       ),
-      title: 'Assistance Tracking',
-      description: 'Track all forms of assistance provided to beneficiaries with detailed records and reporting.',
+      title: 'Verified Benefits',
+      description: 'Sector classification and documents keep eligibility accurate and benefits fair.',
     },
     {
       icon: (
@@ -113,8 +113,8 @@ export default function HomePage() {
           <rect x="7" y="10" width="10" height="4" />
         </svg>
       ),
-      title: 'QR Identification',
-      description: 'Secure QR-coded IDs for instant verification and quick access to resident information.',
+      title: 'QR ID Convenience',
+      description: 'Present a secure QR-coded ID for instant verification and less repeat paperwork.',
     },
     {
       icon: (
@@ -125,8 +125,8 @@ export default function HomePage() {
           <line x1="16" y1="17" x2="8" y2="17" />
         </svg>
       ),
-      title: 'Report Generation',
-      description: 'Automated generation of compliance reports, statistics, and analytics dashboards.',
+      title: 'Clear Assistance History',
+      description: 'Track support received with transparent records and status updates.',
     },
   ];
 
@@ -370,10 +370,10 @@ export default function HomePage() {
         <div className={styles.sectionContainer}>
           <div className={styles.sectionHeader}>
             <span className={styles.sectionTag}>About the System</span>
-            <h2 className={styles.sectionTitle}>Barangay Services</h2>
+            <h2 className={styles.sectionTitle}>Beneficiary Benefits</h2>
             <p className={styles.sectionDescription}>
-              Our Digital Identification System modernizes how we manage resident records, 
-              track assistance programs, and deliver services to our community.
+              Our Digital Identification System is built to prioritize beneficiaries with faster processing,
+              verified eligibility, and easier access to support.
             </p>
           </div>
           <div className={styles.aboutGrid}>

@@ -10,32 +10,32 @@ import { supabase } from '@/lib/supabaseClient';
 const defaultReportTypes = [
   {
     id: 'pwd',
-    title: 'PWD List',
-    description: 'Generate list of all Persons with Disability',
+    title: 'PWD',
+    description: 'Summary of released assistance for Persons with Disability',
     count: 0,
     color: '#1e40af',
     bgColor: '#dbeafe',
   },
   {
     id: 'senior',
-    title: 'Senior Citizens List',
-    description: 'Generate list of all Senior Citizens',
+    title: 'Senior Citizens',
+    description: 'Summary of released assistance for Senior Citizens',
     count: 0,
     color: '#16a34a',
     bgColor: '#dcfce7',
   },
   {
     id: 'soloparent',
-    title: 'Solo Parent List',
-    description: 'Generate list of all Solo Parents',
+    title: 'Solo Parents',
+    description: 'Summary of released assistance for Solo Parents',
     count: 0,
     color: '#dc2626',
     bgColor: '#fee2e2',
   },
   {
     id: 'all',
-    title: 'All Residents',
-    description: 'Generate complete list of all registered residents',
+    title: 'All Sectors',
+    description: 'Summary of all released assistance',
     count: 0,
     color: '#7c3aed',
     bgColor: '#ede9fe',
@@ -48,10 +48,12 @@ export default function ReportsPage() {
     { label: 'PWD', value: 0 },
     { label: 'Senior Citizens', value: 0 },
     { label: 'Solo Parents', value: 0 },
+    { label: 'All Sectors', value: 0 },
   ]);
   const [selectedReport, setSelectedReport] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState('pdf');
+  const [reportYear, setReportYear] = useState(new Date().getFullYear());
   const [status, setStatus] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -63,35 +65,66 @@ export default function ReportsPage() {
         return;
       }
 
-      try {
-        const { data: residents, error } = await supabase
-          .from('residents')
-          .select('id, is_pwd, is_senior_citizen, is_solo_parent');
+      const start = `${reportYear}-01-01`;
+      const end = `${reportYear + 1}-01-01`;
 
-        if (error) throw error;
+      const fetchCount = async ({ sectorColumn }) => {
+        // Try new schema first (request_date)
+        const baseSelect = sectorColumn
+          ? 'id, residents:resident_id!inner(id)'
+          : 'id';
 
-        const allResidents = residents || [];
-        const pwdCount = allResidents.filter(r => r.is_pwd).length;
-        const seniorCount = allResidents.filter(r => r.is_senior_citizen).length;
-        const soloParentCount = allResidents.filter(r => r.is_solo_parent).length;
-        const totalCount = allResidents.length;
+        const base = supabase
+          .from('assistance_requests')
+          .select(baseSelect, { count: 'exact', head: true })
+          .eq('status', 'Released');
 
-        // Update report types with counts
-        setReportTypes(prev => prev.map(report => {
-          switch (report.id) {
-            case 'pwd': return { ...report, count: pwdCount };
-            case 'senior': return { ...report, count: seniorCount };
-            case 'soloparent': return { ...report, count: soloParentCount };
-            case 'all': return { ...report, count: totalCount };
-            default: return report;
+        const applySector = (q) => (sectorColumn ? q.eq(`residents.${sectorColumn}`, true) : q);
+
+        let q = applySector(base).gte('request_date', start).lt('request_date', end);
+        let res = await q;
+
+        if (res.error) {
+          const msg = String(res.error.message || '').toLowerCase();
+          const missingRequestDate = msg.includes('request_date') && msg.includes('does not exist');
+          if (missingRequestDate) {
+            res = await applySector(base).gte('date', start).lt('date', end);
           }
-        }));
+        }
 
-        // Update summary stats
+        return res?.count || 0;
+      };
+
+      try {
+        const [pwdCount, seniorCount, soloParentCount, allCount] = await Promise.all([
+          fetchCount({ sectorColumn: 'is_pwd' }),
+          fetchCount({ sectorColumn: 'is_senior_citizen' }),
+          fetchCount({ sectorColumn: 'is_solo_parent' }),
+          fetchCount({ sectorColumn: null }),
+        ]);
+
+        setReportTypes((prev) =>
+          prev.map((report) => {
+            switch (report.id) {
+              case 'pwd':
+                return { ...report, count: pwdCount };
+              case 'senior':
+                return { ...report, count: seniorCount };
+              case 'soloparent':
+                return { ...report, count: soloParentCount };
+              case 'all':
+                return { ...report, count: allCount };
+              default:
+                return report;
+            }
+          }),
+        );
+
         setSummaryStats([
           { label: 'PWD', value: pwdCount },
           { label: 'Senior Citizens', value: seniorCount },
           { label: 'Solo Parents', value: soloParentCount },
+          { label: 'All Sectors', value: allCount },
         ]);
       } catch (err) {
         console.error('Failed to fetch report counts:', err);
@@ -99,11 +132,12 @@ export default function ReportsPage() {
     };
 
     fetchCounts();
-  }, []);
+  }, [reportYear]);
 
   const handleReportClick = (report) => {
     setSelectedReport(report);
-    setSelectedFormat('pdf'); // Reset to default
+    setSelectedFormat('pdf');
+    setReportYear(new Date().getFullYear());
     setIsModalOpen(true);
   };
 
@@ -140,6 +174,76 @@ export default function ReportsPage() {
     }));
   };
 
+  const generateCashAssistancePdf = async ({ rows, reportYear: y, total, sectorLabel }) => {
+    const { jsPDF } = await import('jspdf');
+    const autoTableMod = await import('jspdf-autotable');
+    const autoTable = autoTableMod.default ?? autoTableMod;
+
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+
+    doc.setFontSize(14);
+    doc.text(`SUMMARY OF ALAGA PROGRAM ${y}`, doc.internal.pageSize.getWidth() / 2, 40, {
+      align: 'center',
+    });
+    doc.setFontSize(12);
+    doc.text('CASH ASSISTANCE / DONATIONS', doc.internal.pageSize.getWidth() / 2, 60, {
+      align: 'center',
+    });
+
+    if (sectorLabel) {
+      doc.setFontSize(10);
+      doc.text(String(sectorLabel).toUpperCase(), doc.internal.pageSize.getWidth() / 2, 76, {
+        align: 'center',
+      });
+    }
+
+    const head = [['NO.', 'DATE RELEASE', 'NAME', 'CA CONTROL FORM NO.', 'TYPE OF SERVICES', 'AMOUNT']];
+    const body = (rows || []).map((r) => [
+      r.no,
+      r.dateRelease,
+      r.name,
+      r.controlNumber,
+      r.typeOfService,
+      (Number(r.amount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    ]);
+
+    body.push([
+      { content: 'TOTAL', colSpan: 5, styles: { fontStyle: 'bold', halign: 'center' } },
+      {
+        content: (Number(total) || 0).toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }),
+        styles: { fontStyle: 'bold', halign: 'right' },
+      },
+    ]);
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const colWidths = [36, 120, 190, 120, 140, 80];
+    const tableWidth = colWidths.reduce((sum, w) => sum + w, 0);
+    const leftMargin = Math.max(40, (pageWidth - tableWidth) / 2);
+
+    autoTable(doc, {
+      startY: sectorLabel ? 92 : 80,
+      head,
+      body,
+      theme: 'grid',
+      styles: { fontSize: 9, cellPadding: 4, valign: 'middle' },
+      headStyles: { fillColor: [217, 217, 217], textColor: 20 },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 36 },
+        1: { halign: 'left', cellWidth: 120 },
+        2: { halign: 'left', cellWidth: 190 },
+        3: { halign: 'center', cellWidth: 120 },
+        4: { halign: 'left', cellWidth: 140 },
+        5: { halign: 'right', cellWidth: 80 },
+      },
+      margin: { left: leftMargin, right: leftMargin },
+    });
+
+    return doc;
+  };
+
   const handleConfirmGenerate = async () => {
     if (!selectedReport || isGenerating) return;
 
@@ -148,13 +252,16 @@ export default function ReportsPage() {
       const dateStr = new Date().toISOString().split('T')[0];
       const baseName = `${selectedReport.id}_report_${dateStr}`;
 
+      const body = {
+        reportType: selectedReport.id,
+        format: selectedFormat,
+        year: reportYear,
+      };
+
       const response = await fetch('/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reportType: selectedReport.id,
-          format: selectedFormat,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -177,49 +284,21 @@ export default function ReportsPage() {
       if (selectedFormat === 'csv') {
         const blob = await response.blob();
         downloadBlob(blob, `${baseName}.csv`);
-
-        setStatus({
-          type: 'success',
-          message: `CSV report "${selectedReport.title}" downloaded successfully!`,
-        });
+        setStatus({ type: 'success', message: `CSV report "${selectedReport.title}" downloaded successfully!` });
+      } else if (selectedFormat === 'xlsx') {
+        const blob = await response.blob();
+        const filename = `${selectedReport.id}_summary_${reportYear}_${dateStr}.xlsx`;
+        downloadBlob(blob, filename);
+        setStatus({ type: 'success', message: `Excel report "${selectedReport.title}" downloaded successfully!` });
       } else {
         const payload = await response.json();
         if (payload?.error) throw new Error(payload.error);
 
-        const exportRows = toExportRows(payload?.data);
-
         if (selectedFormat === 'pdf') {
-          const { jsPDF } = await import('jspdf');
-          const autoTableMod = await import('jspdf-autotable');
-          const autoTable = autoTableMod.default ?? autoTableMod;
+          const doc = await generateCashAssistancePdf({ ...(payload?.data || {}), sectorLabel: selectedReport.title });
+          doc.save(`${selectedReport.id}_summary_${payload?.data?.reportYear || reportYear}_${dateStr}.pdf`);
 
-          const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-          doc.setFontSize(14);
-          doc.text(`${selectedReport.title} - ${dateStr}`, 40, 40);
-
-          if (exportRows.length === 0) {
-            doc.setFontSize(12);
-            doc.text('No records found.', 40, 70);
-          } else {
-            const head = [Object.keys(exportRows[0])];
-            const body = exportRows.map((r) => Object.values(r));
-
-            autoTable(doc, {
-              startY: 60,
-              head,
-              body,
-              styles: { fontSize: 8 },
-              headStyles: { fillColor: [30, 64, 175] },
-              margin: { left: 40, right: 40 },
-            });
-          }
-
-          doc.save(`${baseName}.pdf`);
-
-          setStatus({
-            type: 'success',
-            message: `PDF report "${selectedReport.title}" downloaded successfully!`,
-          });
+          setStatus({ type: 'success', message: `PDF report "${selectedReport.title}" downloaded successfully!` });
         } else {
           throw new Error('Unsupported format selected.');
         }
@@ -228,10 +307,7 @@ export default function ReportsPage() {
       setIsModalOpen(false);
       setSelectedReport(null);
     } catch (error) {
-      setStatus({
-        type: 'error',
-        message: 'Failed to generate report: ' + error.message,
-      });
+      setStatus({ type: 'error', message: 'Failed to generate report: ' + error.message });
     } finally {
       setIsGenerating(false);
     }
@@ -256,7 +332,7 @@ export default function ReportsPage() {
           {status.message}
         </div>
       )}
-      <Card title="Generate Reports" subtitle="Select a report type to generate and export resident lists">
+      <Card title="Generate Reports" subtitle="Select a report type to generate and export reports (PDF/CSV/Excel)">
         <div className={styles.reportGrid}>
           {reportTypes.map((report) => (
             <button
@@ -322,6 +398,22 @@ export default function ReportsPage() {
               </div>
             </div>
 
+            <div className={styles.confirmDetails}>
+              <div className={styles.confirmDetail}>
+                <span>Report Year:</span>
+                <strong>
+                  <input
+                    type="number"
+                    value={reportYear}
+                    min={2000}
+                    max={2100}
+                    onChange={(e) => setReportYear(Number(e.target.value || new Date().getFullYear()))}
+                    style={{ width: 100, padding: '4px 6px' }}
+                  />
+                </strong>
+              </div>
+            </div>
+
             <div className={styles.formatSection}>
               <span className={styles.formatLabel}>Export Format:</span>
               <div className={styles.formatOptions}>
@@ -338,6 +430,21 @@ export default function ReportsPage() {
                   </svg>
                   PDF
                 </button>
+
+                <button
+                  type="button"
+                  className={`${styles.formatBtn} ${selectedFormat === 'xlsx' ? styles.formatBtnActive : ''}`}
+                  onClick={() => setSelectedFormat('xlsx')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <path d="M8 13h8" />
+                    <path d="M8 17h8" />
+                  </svg>
+                  Excel
+                </button>
+
                 <button
                   type="button"
                   className={`${styles.formatBtn} ${selectedFormat === 'csv' ? styles.formatBtnActive : ''}`}

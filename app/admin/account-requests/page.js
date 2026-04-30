@@ -13,6 +13,7 @@ import {
   Modal,
   Table,
 } from "@/components";
+import { supabase } from "@/lib/supabaseClient";
 import styles from "./page.module.css";
 
 const statusOptions = [
@@ -34,6 +35,28 @@ function formatDate(dateString) {
   });
 }
 
+function formatDateOnly(dateString) {
+  if (!dateString) return "-";
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  });
+}
+
+function calculateAgeFromBirthday(dateString) {
+  if (!dateString) return null;
+  const birthDate = new Date(dateString);
+  if (Number.isNaN(birthDate.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age--;
+  return age;
+}
+
 function buildFullName(request) {
   const parts = [request.first_name || request.firstName, request.middle_name || request.middleName, request.last_name || request.lastName].filter(Boolean);
   return parts.join(" ");
@@ -51,6 +74,8 @@ export default function AccountRequestsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("Pending");
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [requestDetails, setRequestDetails] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
   const [modalMode, setModalMode] = useState("view"); // "view" | "approve" | "reject" | "unarchive"
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,12 +94,15 @@ export default function AccountRequestsPage() {
 
   const fetchRequests = async () => {
     try {
-      const response = await fetch('/api/account-requests');
-      const result = await response.json();
-      
-      if (result.error) {
-        console.error('Error fetching requests:', result.error);
+      const headers = await getAuthHeaders();
+      const response = await fetch('/api/account-requests', { headers });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || result?.error) {
+        const msg = result?.error || 'Failed to fetch account requests.';
+        console.warn('Error fetching requests:', msg);
         setRequests([]);
+        openAlert({ title: 'Fetch failed', message: msg, variant: 'error' });
       } else {
         const normalized = (result.data || []).map((r) =>
           r?.status === "Rejected" ? { ...r, status: "Archived" } : r,
@@ -82,8 +110,10 @@ export default function AccountRequestsPage() {
         setRequests(normalized);
       }
     } catch (error) {
-      console.error('Failed to fetch requests:', error);
+      const msg = error?.message || 'Failed to fetch account requests.';
+      console.warn('Failed to fetch requests:', msg);
       setRequests([]);
+      openAlert({ title: 'Fetch failed', message: msg, variant: 'error' });
     } finally {
       setLoading(false);
     }
@@ -102,13 +132,83 @@ export default function AccountRequestsPage() {
     });
   }, [requests, searchTerm, statusFilter]);
 
+  const fetchRequestDetails = async (requestId) => {
+    if (!requestId) return;
+
+    setDetailsLoading(true);
+    setRequestDetails(null);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/account-requests/${requestId}`, { headers });
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok || json?.error) {
+        throw new Error(json?.error || 'Failed to load signup details.');
+      }
+
+      setRequestDetails(json?.data || null);
+    } catch (err) {
+      console.warn('Failed to load signup details:', err?.message || err);
+      setRequestDetails(null);
+      openAlert({
+        title: 'Load failed',
+        message: err?.message || 'Failed to load signup details.',
+        variant: 'error',
+      });
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
   const handleOpenDetails = (request) => {
     setSelectedRequest(request);
     setModalMode("view");
+    fetchRequestDetails(request?.id);
   };
 
   const openAlert = ({ title, message, variant = 'info' }) => {
     setAlertState({ open: true, title, message, variant });
+  };
+
+  const getAuthHeaders = async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token;
+      return token ? { Authorization: `Bearer ${token}` } : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const openDocument = async (pathOrUrl) => {
+    if (!pathOrUrl) return;
+
+    try {
+      const value = String(pathOrUrl);
+      if (/^https?:\/\//i.test(value)) {
+        window.open(value, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/documents/view?path=${encodeURIComponent(value)}`, { headers });
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok || json?.error) {
+        throw new Error(json?.error || "Unable to open document.");
+      }
+
+      const url = json?.data?.url;
+      if (!url) throw new Error("Unable to open document.");
+
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      openAlert({
+        title: "Unable to open",
+        message: e?.message || "Failed to open document.",
+        variant: "error",
+      });
+    }
   };
 
   const closeAlert = () => {
@@ -134,6 +234,8 @@ export default function AccountRequestsPage() {
 
   const handleCloseModal = () => {
     setSelectedRequest(null);
+    setRequestDetails(null);
+    setDetailsLoading(false);
     setModalMode("view");
     setArchiveNotes('');
   };
@@ -143,9 +245,10 @@ export default function AccountRequestsPage() {
 
     setProcessing(true);
     try {
+      const authHeaders = await getAuthHeaders();
       const response = await fetch(`/api/account-requests/${selectedRequest.id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           action: 'approve',
           processedBy: 'Admin', // TODO: Get from actual user session
@@ -166,7 +269,7 @@ export default function AccountRequestsPage() {
         variant: 'success',
       });
     } catch (error) {
-      console.error('Approve error:', error);
+      console.warn('Approve error:', error?.message || error);
       openAlert({
         title: 'Approve failed',
         message: error.message || 'Unknown error',
@@ -182,7 +285,7 @@ export default function AccountRequestsPage() {
 
     const requestId = selectedRequest.id;
     if (!requestId) {
-      console.error('Selected request has no id:', selectedRequest);
+      console.warn('Selected request has no id:', selectedRequest);
       openAlert({
         title: 'Archive failed',
         message: 'Request ID is missing.',
@@ -193,9 +296,10 @@ export default function AccountRequestsPage() {
 
     setProcessing(true);
     try {
+      const authHeaders = await getAuthHeaders();
       const response = await fetch(`/api/account-requests/${requestId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           action: 'archive',
           processedBy: 'Admin', // TODO: Get from actual user session
@@ -217,7 +321,7 @@ export default function AccountRequestsPage() {
         variant: 'success',
       });
     } catch (error) {
-      console.error('Archive error:', error);
+      console.warn('Archive error:', error?.message || error);
       openAlert({
         title: 'Archive failed',
         message: error.message || 'Unknown error',
@@ -233,7 +337,7 @@ export default function AccountRequestsPage() {
 
     const requestId = selectedRequest.id;
     if (!requestId) {
-      console.error('Selected request has no id:', selectedRequest);
+      console.warn('Selected request has no id:', selectedRequest);
       openAlert({
         title: 'Unarchive failed',
         message: 'Request ID is missing.',
@@ -244,9 +348,10 @@ export default function AccountRequestsPage() {
 
     setProcessing(true);
     try {
+      const authHeaders = await getAuthHeaders();
       const response = await fetch(`/api/account-requests/${requestId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           action: 'unarchive',
           processedBy: 'Admin', // TODO: Get from actual user session
@@ -268,7 +373,7 @@ export default function AccountRequestsPage() {
         variant: 'success',
       });
     } catch (error) {
-      console.error('Unarchive error:', error);
+      console.warn('Unarchive error:', error?.message || error);
       openAlert({
         title: 'Unarchive failed',
         message: error.message || 'Unknown error',
@@ -321,8 +426,8 @@ export default function AccountRequestsPage() {
       label: "Address",
       render: (_, row) => (
         <div className={styles.addressCell}>
-          <span>{`${row.house_no || row.houseNo || ""} ${row.street || ""}`.trim()}</span>
-          <span className={styles.addressMeta}>{`Purok ${row.purok || "-"}, ${row.barangay}`}</span>
+          <span>{`${row.house_no || row.houseNo || ""}`.trim() || "-"}</span>
+          <span className={styles.addressMeta}>{`Purok ${row.purok || "-"}, ${row.barangay || "-"}`}</span>
         </div>
       ),
     },
@@ -402,6 +507,8 @@ export default function AccountRequestsPage() {
   const isUnarchiveModalOpen = !!selectedRequest && modalMode === "unarchive";
   const isAlertModalOpen = !!alertState.open;
 
+  const detailsRequest = requestDetails || selectedRequest;
+
   return (
     <div className={styles.page}>
       <Card padding={false}>
@@ -447,27 +554,28 @@ export default function AccountRequestsPage() {
         onClose={handleCloseModal}
         title="Signup Details"
       >
-        {selectedRequest && (
+        {detailsRequest && (
           <div className={styles.detailsContent}>
             <div className={styles.detailsHeaderRow}>
               <div>
-                <div className={styles.detailsId}>{selectedRequest.id}</div>
+                <div className={styles.detailsId}>{detailsRequest.id}</div>
                 <div className={styles.detailsSubmitted}>
-                  Submitted: {formatDate(selectedRequest.created_at || selectedRequest.createdAt)}
+                  Submitted: {formatDate(detailsRequest.created_at || detailsRequest.createdAt)}
                 </div>
+                {detailsLoading && <div className={styles.subtleText}>Loading full details…</div>}
               </div>
               <Badge
                 variant={
-                  selectedRequest.status === "Approved"
+                  detailsRequest.status === "Approved"
                     ? "success"
-                    : selectedRequest.status === "Archived" || selectedRequest.status === "Rejected"
+                    : detailsRequest.status === "Archived" || detailsRequest.status === "Rejected"
                     ? "secondary"
                     : "warning"
                 }
               >
-                {selectedRequest.status === "Archived" || selectedRequest.status === "Rejected"
+                {detailsRequest.status === "Archived" || detailsRequest.status === "Rejected"
                   ? "Archived"
-                  : selectedRequest.status}
+                  : detailsRequest.status}
               </Badge>
             </div>
 
@@ -476,19 +584,67 @@ export default function AccountRequestsPage() {
               <div className={styles.detailsGrid}>
                 <div>
                   <span className={styles.label}>Full Name</span>
-                  <span className={styles.value}>{buildFullName(selectedRequest)}</span>
+                  <span className={styles.value}>{buildFullName(detailsRequest) || "-"}</span>
                 </div>
                 <div>
                   <span className={styles.label}>Contact Number</span>
-                  <span className={styles.value}>{selectedRequest.contact_number || selectedRequest.contactNumber}</span>
+                  <span className={styles.value}>
+                    {detailsRequest.contact_number || detailsRequest.contactNumber || "-"}
+                  </span>
+                </div>
+                <div>
+                  <span className={styles.label}>Birthday</span>
+                  <span className={styles.value}>
+                    {formatDateOnly(detailsRequest.birthday || detailsRequest.birth_day || detailsRequest.birthDate)}
+                  </span>
+                </div>
+                <div>
+                  <span className={styles.label}>Age</span>
+                  <span className={styles.value}>
+                    {detailsRequest.age ?? calculateAgeFromBirthday(detailsRequest.birthday) ?? "-"}
+                  </span>
+                </div>
+                <div>
+                  <span className={styles.label}>Birthplace</span>
+                  <span className={styles.value}>{detailsRequest.birthplace || "-"}</span>
+                </div>
+                <div>
+                  <span className={styles.label}>Sex</span>
+                  <span className={styles.value}>{detailsRequest.sex || "-"}</span>
+                </div>
+                <div>
+                  <span className={styles.label}>Citizenship</span>
+                  <span className={styles.value}>{detailsRequest.citizenship || "-"}</span>
+                </div>
+                <div>
+                  <span className={styles.label}>Civil Status</span>
+                  <span className={styles.value}>
+                    {detailsRequest.civil_status || detailsRequest.civilStatus || "-"}
+                  </span>
                 </div>
                 <div>
                   <span className={styles.label}>Sector Classification</span>
                   <div className={styles.value}>
-                    {getSectorBadges(selectedRequest).length ? (
-                      getSectorBadges(selectedRequest).join(", ")
+                    {getSectorBadges(detailsRequest).length ? (
+                      getSectorBadges(detailsRequest).join(", ")
                     ) : (
                       <span className={styles.subtleText}>General</span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <span className={styles.label}>Valid ID</span>
+                  <div className={styles.value}>
+                    {detailsRequest.valid_id_url ? (
+                      <Button
+                        variant="outline"
+                        size="small"
+                        onClick={() => openDocument(detailsRequest.valid_id_url)}
+                      >
+                        View Valid ID
+                      </Button>
+                    ) : (
+                      <span className={styles.subtleText}>-</span>
                     )}
                   </div>
                 </div>
@@ -500,51 +656,54 @@ export default function AccountRequestsPage() {
               <div className={styles.detailsGrid}>
                 <div>
                   <span className={styles.label}>House Number</span>
-                  <span className={styles.value}>{selectedRequest.house_no || selectedRequest.houseNo}</span>
+                  <span className={styles.value}>{detailsRequest.house_no || detailsRequest.houseNo || "-"}</span>
                 </div>
                 <div>
                   <span className={styles.label}>Purok</span>
-                  <span className={styles.value}>{selectedRequest.purok}</span>
-                </div>
-                <div>
-                  <span className={styles.label}>Street / Sitio</span>
-                  <span className={styles.value}>{selectedRequest.street}</span>
+                  <span className={styles.value}>{detailsRequest.purok || "-"}</span>
                 </div>
                 <div>
                   <span className={styles.label}>Barangay</span>
-                  <span className={styles.value}>{selectedRequest.barangay}</span>
+                  <span className={styles.value}>{detailsRequest.barangay || "-"}</span>
                 </div>
                 <div>
                   <span className={styles.label}>City / Municipality</span>
-                  <span className={styles.value}>{selectedRequest.city}</span>
+                  <span className={styles.value}>{detailsRequest.city || "-"}</span>
                 </div>
               </div>
             </div>
 
-            {selectedRequest.notes && (
+            {detailsRequest.notes && (
               <div className={styles.detailsSection}>
                 <h3>Remarks</h3>
-                <p className={styles.notes}>{selectedRequest.notes}</p>
+                <p className={styles.notes}>{detailsRequest.notes}</p>
               </div>
             )}
 
-            {selectedRequest.status === "Pending" && (
+            {detailsRequest.status === "Pending" && (
               <div className={styles.detailsActionsRow}>
-                <Button
-                  variant="secondary"
-                  onClick={() => handleOpenReject(selectedRequest)}
-                >
-                  Archive
-                </Button>
-                <Button onClick={() => handleOpenApprove(selectedRequest)}>
-                  Approve & Create Account
-                </Button>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleOpenReject(detailsRequest)}
+                    >
+                      Archive
+                    </Button>
+                    <Button onClick={() => handleOpenApprove(detailsRequest)}>
+                      Approve & Create Account
+                    </Button>
+                  </div>
+                  <div className={styles.subtleText}>
+                    The information provided during sign-up will be automatically reflected in the beneficiary profile after approval.
+                  </div>
+                </div>
               </div>
             )}
 
-            {(selectedRequest.status === "Archived" || selectedRequest.status === "Rejected") && (
+            {(detailsRequest.status === "Archived" || detailsRequest.status === "Rejected") && (
               <div className={styles.detailsActionsRow}>
-                <Button variant="outline" onClick={() => handleOpenUnarchive(selectedRequest)}>
+                <Button variant="outline" onClick={() => handleOpenUnarchive(detailsRequest)}>
                   Unarchive
                 </Button>
               </div>
@@ -570,11 +729,16 @@ export default function AccountRequestsPage() {
         }
       >
         {selectedRequest && (
-          <p className={styles.confirmText}>
-            You are about to approve this signup request and create a beneficiary account for
-            <strong> {buildFullName(selectedRequest)} </strong>
-            in the ALAGA Program. This can be updated later from User Management.
-          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <p className={styles.confirmText} style={{ margin: 0 }}>
+              You are about to approve this signup request and create a beneficiary account for
+              <strong> {buildFullName(selectedRequest)} </strong>
+              in the ALAGA Program. This can be updated later from User Management.
+            </p>
+            <div className={styles.subtleText}>
+              The information provided during sign-up will be automatically reflected in the beneficiary profile after approval.
+            </div>
+          </div>
         )}
       </Modal>
 

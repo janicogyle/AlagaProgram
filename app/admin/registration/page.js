@@ -29,10 +29,42 @@ const barangayOptions = [
   { value: 'sta-rita', label: 'Sta. Rita' },
 ];
 
-const generateControlNumber = () => {
+const CONTROL_NUMBER_PAD = 3;
+
+const formatYearSequenceControlNumber = (year, seq) => {
+  const safeYear = Number(year) || new Date().getFullYear();
+  const safeSeq = Number(seq) || 1;
+  return `${safeYear}-${String(Math.max(1, safeSeq)).padStart(CONTROL_NUMBER_PAD, '0')}`;
+};
+
+const getNextSequentialControlNumber = async (tableName) => {
   const year = new Date().getFullYear();
-  const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
-  return `ALAGA-${year}-${random}`;
+  const fallback = formatYearSequenceControlNumber(year, 1);
+
+  if (!supabase) return fallback;
+
+  try {
+    const { data, error } = await supabase
+      .from(tableName)
+      .select('control_number')
+      .like('control_number', `${year}-%`)
+      .order('control_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    const last = String(data?.control_number || '').trim();
+    const match = last.match(new RegExp(`^${year}-(\\d{${CONTROL_NUMBER_PAD}})$`));
+    const nextSeq = match ? Number(match[1]) + 1 : 1;
+
+    if (!Number.isFinite(nextSeq) || nextSeq < 1) return fallback;
+
+    return formatYearSequenceControlNumber(year, nextSeq);
+  } catch (err) {
+    console.warn('[controlNumber] Failed to compute next control number:', err);
+    return fallback;
+  }
 };
 
 export default function RegistrationPage() {
@@ -77,9 +109,14 @@ export default function RegistrationPage() {
   const [validIdFiles, setValidIdFiles] = useState([]);
   const [status, setStatus] = useState(null);
 
+  const refreshResidentControlNumber = async () => {
+    const next = await getNextSequentialControlNumber('residents');
+    setControlNumber(next);
+  };
+
   // Generate control number on mount
   useEffect(() => {
-    setControlNumber(generateControlNumber());
+    void refreshResidentControlNumber();
   }, []);
 
   useEffect(() => {
@@ -202,13 +239,15 @@ export default function RegistrationPage() {
     if (errors.sectors) {
       setErrors((prev) => ({ ...prev, sectors: '' }));
     }
-    setFormData((prev) => ({
-      ...prev,
-      sectors: {
-        ...prev.sectors,
-        [sector]: !prev.sectors[sector],
-      },
-    }));
+
+    setFormData((prev) => {
+      const cleared = { pwd: false, seniorCitizen: false, soloParent: false };
+      const isSelected = !!prev?.sectors?.[sector];
+      return {
+        ...prev,
+        sectors: isSelected ? cleared : { ...cleared, [sector]: true },
+      };
+    });
   };
 
   const handleAddDocument = () => {
@@ -268,7 +307,7 @@ export default function RegistrationPage() {
     }
 
     if (validIdFiles.length === 0) {
-      newErrors.validId = 'Please upload at least one valid ID';
+      newErrors.validId = 'Please attach at least one requirement file';
     }
 
     setErrors(newErrors);
@@ -287,10 +326,16 @@ export default function RegistrationPage() {
 
     try {
       const age = calculateAge(formData.birthday);
+
+      // Ensure we have a sequential control number (YYYY-###)
+      const residentControlNumber = controlNumber || (await getNextSequentialControlNumber('residents'));
+      if (!controlNumber) {
+        setControlNumber(residentControlNumber);
+      }
       
       // 1. Insert or update resident record
       const residentData = await createOrUpdateResident({
-        control_number: controlNumber,
+        control_number: residentControlNumber,
         last_name: formData.lastName,
         first_name: formData.firstName,
         middle_name: formData.middleName || null,
@@ -319,7 +364,7 @@ export default function RegistrationPage() {
           throw new Error('Database client not available');
         }
 
-        const assistanceControlNumber = `AST-${new Date().getFullYear()}-${Math.floor(Math.random() * 100000).toString().padStart(5, '0')}`;
+        const assistanceControlNumber = await getNextSequentialControlNumber('assistance_requests');
 
         const buildAddress = () => {
           const barangayLabel = formData.barangay === 'sta-rita' ? 'Sta. Rita' : formData.barangay;
@@ -329,35 +374,40 @@ export default function RegistrationPage() {
             .join(', ');
         };
 
-        // Upload the first valid ID file via server (uses service role; avoids Storage policy issues)
-        const validIdFile = validIdFiles?.[0];
-        let validIdPath = null;
-        if (validIdFile) {
+        // Upload requirement files via server (uses service role; avoids Storage policy issues)
+        const requirementFiles = Array.isArray(validIdFiles) ? validIdFiles : [];
+        let requirementPaths = [];
+
+        if (requirementFiles.length) {
           const { data: sessionData } = await supabase.auth.getSession();
           const token = sessionData?.session?.access_token;
           if (!token) throw new Error('Please sign in again.');
 
-          const form = new FormData();
-          form.append('file', validIdFile);
-          form.append('controlNumber', assistanceControlNumber);
+          for (const file of requirementFiles) {
+            const form = new FormData();
+            form.append('file', file);
+            form.append('controlNumber', assistanceControlNumber);
 
-          const uploadRes = await fetch('/api/admin/upload-valid-id', {
-            method: 'POST',
-            body: form,
-            headers: { Authorization: `Bearer ${token}` },
-          });
+            const uploadRes = await fetch('/api/admin/upload-valid-id', {
+              method: 'POST',
+              body: form,
+              headers: { Authorization: `Bearer ${token}` },
+            });
 
-          const uploadJson = await uploadRes.json().catch(() => ({}));
-          if (!uploadRes.ok || uploadJson?.error) {
-            throw new Error(
-              uploadJson?.error ||
-                'Valid ID upload failed. Ensure your Supabase Storage bucket is named "document" and SUPABASE_SERVICE_ROLE_KEY is configured.',
-            );
-          }
+            const uploadJson = await uploadRes.json().catch(() => ({}));
+            if (!uploadRes.ok || uploadJson?.error) {
+              throw new Error(
+                uploadJson?.error ||
+                  'ATTACH REQUIREMENTS upload failed. Ensure your Supabase Storage bucket is named "document" and SUPABASE_SERVICE_ROLE_KEY is configured.',
+              );
+            }
 
-          validIdPath = uploadJson?.data?.path || null;
-          if (!validIdPath) {
-            throw new Error('Valid ID upload failed. Please try again.');
+            const path = uploadJson?.data?.path || null;
+            if (!path) {
+              throw new Error('ATTACH REQUIREMENTS upload failed. Please try again.');
+            }
+
+            requirementPaths.push(path);
           }
         }
 
@@ -375,7 +425,8 @@ export default function RegistrationPage() {
           amount: formData.assistanceAmount || 0,
           status: 'Pending', // Default status
           request_date: formData.dateOfRequest,
-          valid_id_url: validIdPath,
+          valid_id_url: requirementPaths[0] || null,
+          requirements_urls: requirementPaths,
         });
         if (assistanceError) throw assistanceError;
       }
@@ -410,7 +461,7 @@ export default function RegistrationPage() {
         beneficiaryAddress: '',
         dateOfRequest: new Date().toISOString().split('T')[0],
       });
-      setControlNumber(generateControlNumber());
+      void refreshResidentControlNumber();
       setStatus({
         type: 'success',
         message: 'Registration saved successfully.',
@@ -461,9 +512,13 @@ export default function RegistrationPage() {
       beneficiaryAddress: '',
       dateOfRequest: new Date().toISOString().split('T')[0],
     });
-    setControlNumber(generateControlNumber());
+    void refreshResidentControlNumber();
     setValidIdFiles([]);
   };
+
+  const selectedAssistanceRequirements =
+    formData.assistanceType ? assistanceData[formData.assistanceType]?.requirements || [] : [];
+  const selectedAssistanceCeiling = formData.assistanceType ? getCeilingFor(formData.assistanceType) : null;
 
   return (
     <div className={styles.registrationPage}>
@@ -636,50 +691,48 @@ export default function RegistrationPage() {
 
         {/* Side Cards */}
         <div className={styles.sideCards}>
-          {/* Sector Classification */}
-          <Card title="Sector Classification" subtitle="Select applicable sector(s)">
-            <div className={styles.sectorList}>
-              {errors.sectors && <span className={styles.sectorError}>{errors.sectors}</span>}
-              <label className={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  checked={formData.sectors.pwd}
-                  onChange={() => handleSectorChange('pwd')}
-                />
-                <span className={styles.checkmark}></span>
-                <span>PWD (Person with Disability)</span>
-              </label>
-              <label className={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  checked={formData.sectors.seniorCitizen}
-                  onChange={() => handleSectorChange('seniorCitizen')}
-                />
-                <span className={styles.checkmark}></span>
-                <span>Senior Citizen (60 years old and above)</span>
-              </label>
-              <label className={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  checked={formData.sectors.soloParent}
-                  onChange={() => handleSectorChange('soloParent')}
-                />
-                <span className={styles.checkmark}></span>
-                <span>Solo Parent</span>
-              </label>
-            </div>
-          </Card>
-
-            {/* Valid ID Upload */}
+          {/* ATTACH REQUIREMENTS */}
             <Card
-              title="Valid ID"
-              subtitle="Upload a clear photo or scan of the resident's valid ID for verification"
+              title="ATTACH REQUIREMENTS"
+              subtitle="Upload a clear photo or scan of the resident's requirements for verification"
             >
               <div className={styles.formFields}>
+                {formData.assistanceType ? (
+                  <div className={styles.assistanceRequirementsPanel}>
+                    <div className={styles.assistanceRequirementsHeader}>
+                      <span className={styles.assistanceRequirementsTitle}>
+                        Requirements for {formData.assistanceType}
+                      </span>
+                      {typeof selectedAssistanceCeiling === 'number' && (
+                        <span className={styles.assistanceRequirementsCeiling}>
+                          Ceiling: ₱{Number(selectedAssistanceCeiling).toLocaleString('en-PH')}
+                        </span>
+                      )}
+                    </div>
+                    <ul className={styles.assistanceRequirementsList}>
+                      {selectedAssistanceRequirements.length ? (
+                        selectedAssistanceRequirements.map((req, idx) => (
+                          <li key={idx} className={styles.assistanceRequirementItem}>
+                            {req}
+                          </li>
+                        ))
+                      ) : (
+                        <li className={styles.assistanceRequirementItemEmpty}>
+                          No checklist available for this assistance type.
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className={styles.assistanceRequirementsHint}>
+                    Select a Type of Assistance to view the required documents.
+                  </p>
+                )}
+
                 <FileUpload
                   label="Required"
                   documentType="validId"
-                  multiple={false}
+                  multiple={true}
                   files={validIdFiles}
                   onChange={setValidIdFiles}
                   required
@@ -730,6 +783,41 @@ export default function RegistrationPage() {
                 disabled={!formData.assistanceType}
                 optional
               />
+
+              <div>
+                <span className={styles.label}>Sector Classification (choose one)</span>
+                <div className={styles.sectorList}>
+                  {errors.sectors && <span className={styles.sectorError}>{errors.sectors}</span>}
+                  <label className={styles.checkbox}>
+                    <input
+                      type="checkbox"
+                      checked={formData.sectors.pwd}
+                      onChange={() => handleSectorChange('pwd')}
+                    />
+                    <span className={styles.checkmark}></span>
+                    <span>PWD (Person with Disability)</span>
+                  </label>
+                  <label className={styles.checkbox}>
+                    <input
+                      type="checkbox"
+                      checked={formData.sectors.seniorCitizen}
+                      onChange={() => handleSectorChange('seniorCitizen')}
+                    />
+                    <span className={styles.checkmark}></span>
+                    <span>Senior Citizen (60 years old and above)</span>
+                  </label>
+                  <label className={styles.checkbox}>
+                    <input
+                      type="checkbox"
+                      checked={formData.sectors.soloParent}
+                      onChange={() => handleSectorChange('soloParent')}
+                    />
+                    <span className={styles.checkmark}></span>
+                    <span>Solo Parent</span>
+                  </label>
+                </div>
+              </div>
+
               <Input
                 label="Beneficiary Name"
                 name="beneficiaryName"

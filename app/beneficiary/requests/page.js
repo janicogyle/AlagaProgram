@@ -13,27 +13,43 @@ import { createOrUpdateResident } from '@/lib/residents';
 import { assistanceTypeOptions, assistanceData } from '@/lib/assistanceData';
 import { supabase } from '@/lib/supabaseClient';
 
-const sexOptions = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-];
 
-const civilStatusOptions = [
-  { value: 'single', label: 'Single' },
-  { value: 'married', label: 'Married' },
-  { value: 'widowed', label: 'Widowed' },
-  { value: 'separated', label: 'Separated' },
-  { value: 'divorced', label: 'Divorced' },
-];
+const CONTROL_NUMBER_PAD = 3;
 
-const barangayOptions = [
-  { value: 'sta-rita', label: 'Sta. Rita' },
-];
+const formatYearSequenceControlNumber = (year, seq) => {
+  const safeYear = Number(year) || new Date().getFullYear();
+  const safeSeq = Number(seq) || 1;
+  return `${safeYear}-${String(Math.max(1, safeSeq)).padStart(CONTROL_NUMBER_PAD, '0')}`;
+};
 
-const generateControlNumber = () => {
+const getNextSequentialControlNumber = async (tableName) => {
   const year = new Date().getFullYear();
-  const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
-  return `ALAGA-${year}-${random}`;
+  const fallback = formatYearSequenceControlNumber(year, 1);
+
+  if (!supabase) return fallback;
+
+  try {
+    const { data, error } = await supabase
+      .from(tableName)
+      .select('control_number')
+      .like('control_number', `${year}-%`)
+      .order('control_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    const last = String(data?.control_number || '').trim();
+    const match = last.match(new RegExp(`^${year}-(\\d{${CONTROL_NUMBER_PAD}})$`));
+    const nextSeq = match ? Number(match[1]) + 1 : 1;
+
+    if (!Number.isFinite(nextSeq) || nextSeq < 1) return fallback;
+
+    return formatYearSequenceControlNumber(year, nextSeq);
+  } catch (err) {
+    console.warn('[controlNumber] Failed to compute next control number:', err);
+    return fallback;
+  }
 };
 
 export default function BeneficiaryRequestPage() {
@@ -79,10 +95,37 @@ export default function BeneficiaryRequestPage() {
   const [editingRequestId, setEditingRequestId] = useState(null);
   const [editingAssistanceControlNumber, setEditingAssistanceControlNumber] = useState(null);
   const [existingValidIdPath, setExistingValidIdPath] = useState(null);
+  const [existingRequirementPaths, setExistingRequirementPaths] = useState([]);
   const [beneficiaryIsRequester, setBeneficiaryIsRequester] = useState(true);
 
+  const refreshResidentControlNumber = async () => {
+    try {
+      if (typeof window !== 'undefined') {
+        const residentId = window.localStorage.getItem('beneficiaryResidentId');
+        if (residentId && supabase) {
+          const { data } = await supabase
+            .from('residents')
+            .select('control_number')
+            .eq('id', residentId)
+            .maybeSingle();
+
+          const existing = String(data?.control_number || '').trim();
+          if (existing) {
+            setControlNumber(existing);
+            return;
+          }
+        }
+      }
+    } catch {
+      // fall through
+    }
+
+    const next = await getNextSequentialControlNumber('residents');
+    setControlNumber(next);
+  };
+
   useEffect(() => {
-    setControlNumber(generateControlNumber());
+    void refreshResidentControlNumber();
   }, []);
 
   // Auto-fill from beneficiary sign up/profile (still editable)
@@ -99,7 +142,7 @@ export default function BeneficiaryRequestPage() {
         const { data, error } = await supabase
           .from('residents')
           .select(
-            'id, first_name, middle_name, last_name, birthday, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, representative_name, representative_contact, is_pwd, is_senior_citizen, is_solo_parent',
+            'id, control_number, first_name, middle_name, last_name, birthday, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, representative_name, representative_contact, is_pwd, is_senior_citizen, is_solo_parent',
           )
           .eq('id', residentId)
           .single();
@@ -112,6 +155,10 @@ export default function BeneficiaryRequestPage() {
           if (raw === 'sta-rita') return 'sta-rita';
           return 'sta-rita';
         };
+
+        if (data?.control_number) {
+          setControlNumber(String(data.control_number));
+        }
 
         setFormData((prev) => {
           const next = { ...prev };
@@ -195,7 +242,27 @@ export default function BeneficiaryRequestPage() {
 
         setEditingRequestId(match.id);
         setEditingAssistanceControlNumber(match.control_number);
-        setExistingValidIdPath(match.valid_id_url || null);
+
+        const parseRequirements = (value) => {
+          if (!value) return [];
+          if (Array.isArray(value)) return value.filter(Boolean);
+          if (typeof value === 'string') {
+            try {
+              const parsed = JSON.parse(value);
+              if (Array.isArray(parsed)) return parsed.filter(Boolean);
+            } catch {
+              // ignore
+            }
+          }
+          return [];
+        };
+
+        const reqs = parseRequirements(match.requirements_urls);
+        const fallback = match.valid_id_url ? [match.valid_id_url] : [];
+        const merged = reqs.length ? reqs : fallback;
+
+        setExistingRequirementPaths(merged);
+        setExistingValidIdPath(merged[0] || null);
 
         const norm = (v) => String(v || '').trim().toLowerCase();
         const beneficiarySameAsRequester =
@@ -401,31 +468,37 @@ export default function BeneficiaryRequestPage() {
     if (errors.sectors) {
       setErrors((prev) => ({ ...prev, sectors: '' }));
     }
-    setFormData((prev) => ({
-      ...prev,
-      sectors: {
-        ...prev.sectors,
-        [sector]: !prev.sectors[sector],
-      },
-    }));
+
+    setFormData((prev) => {
+      const cleared = { pwd: false, seniorCitizen: false, soloParent: false };
+      const isSelected = !!prev?.sectors?.[sector];
+      return {
+        ...prev,
+        sectors: isSelected ? cleared : { ...cleared, [sector]: true },
+      };
+    });
   };
 
   const validateForm = () => {
     const newErrors = {};
 
+    // Beneficiary request services: simplified Personal Information UI.
+    // Require only name + address fields, and ensure contact number exists (managed in Profile).
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
+
+    // Address is read-only here; validate it based on what exists in profile.
     if (!formData.houseNo.trim()) newErrors.houseNo = 'House number is required';
-    if (!formData.street.trim()) newErrors.street = 'Street is required';
-    if (!formData.birthday) newErrors.birthday = 'Birthday is required';
-    if (!formData.birthplace.trim()) newErrors.birthplace = 'Birthplace is required';
-    if (!formData.sex) newErrors.sex = 'Sex is required';
-    if (!formData.citizenship.trim()) newErrors.citizenship = 'Citizenship is required';
-    if (!formData.civilStatus) newErrors.civilStatus = 'Civil status is required';
+    if (!String(formData.barangay || '').trim()) newErrors.barangay = 'Barangay is required';
+    if (!String(formData.city || '').trim()) newErrors.city = 'City is required';
+    if (!String(formData.street || '').trim() && !String(formData.purok || '').trim()) {
+      newErrors.street = 'Street or Purok is required';
+    }
+
     if (!formData.contactNumber.trim()) {
-      newErrors.contactNumber = 'Contact number is required';
+      newErrors.contactNumber = 'Contact number is missing. Please update your profile.';
     } else if (formData.contactNumber.length !== 11) {
-      newErrors.contactNumber = 'Contact number must be exactly 11 digits';
+      newErrors.contactNumber = 'Contact number must be exactly 11 digits. Please update your profile.';
     }
 
     if (formData.assistanceType && !beneficiaryIsRequester) {
@@ -442,9 +515,9 @@ export default function BeneficiaryRequestPage() {
       }
     }
 
-    const hasExistingValidId = !!existingValidIdPath;
-    if (formData.assistanceType && validIdFiles.length === 0 && !hasExistingValidId) {
-      newErrors.validId = 'Please upload at least one valid ID';
+    const hasExistingRequirements = (existingRequirementPaths?.length || 0) > 0;
+    if (formData.assistanceType && validIdFiles.length === 0 && !hasExistingRequirements) {
+      newErrors.validId = 'Please attach at least one requirement file';
     }
 
     if (formData.assistanceType && !formData.assistanceAmount) {
@@ -507,32 +580,53 @@ export default function BeneficiaryRequestPage() {
         residentData = await createOrUpdateResident(residentPayload);
         residentIdForRequest = residentData?.id || residentIdForRequest;
       } else {
-        const residentPayload = {
-          control_number: controlNumber,
+        let storedResidentId = null;
+        if (typeof window !== 'undefined') {
+          storedResidentId = window.localStorage.getItem('beneficiaryResidentId');
+        }
+
+        const baseResidentPayload = {
           last_name: formData.lastName,
           first_name: formData.firstName,
           middle_name: formData.middleName || null,
           house_no: formData.houseNo,
-          street: formData.street,
+          purok: formData.purok || null,
+          street: formData.street || null,
           barangay: formData.barangay,
           city: formData.city,
-          birthday: formData.birthday,
-          birthplace: formData.birthplace,
-          age: age ? parseInt(age) : null,
-          sex: formData.sex,
-          citizenship: formData.citizenship,
-          civil_status: formData.civilStatus,
-          contact_number: formData.contactNumber,
+          contact_number: formData.contactNumber || null,
           is_pwd: formData.sectors.pwd,
           is_senior_citizen: formData.sectors.seniorCitizen,
           is_solo_parent: formData.sectors.soloParent,
-          representative_name: formData.representativeName,
-          representative_contact: formData.representativeContact,
+          representative_name: formData.representativeName || null,
+          representative_contact: formData.representativeContact || null,
           status: 'Active',
         };
 
-        residentData = await createOrUpdateResident(residentPayload);
-        residentIdForRequest = residentData?.id || null;
+        if (storedResidentId) {
+          // Beneficiary already has an account/profile: update that resident by ID.
+          residentData = await createOrUpdateResident({ id: storedResidentId, ...baseResidentPayload });
+          residentIdForRequest = residentData?.id || storedResidentId;
+        } else {
+          const residentControlNumber = controlNumber || (await getNextSequentialControlNumber('residents'));
+          if (!controlNumber) {
+            setControlNumber(residentControlNumber);
+          }
+
+          const residentPayload = {
+            control_number: residentControlNumber,
+            ...baseResidentPayload,
+            birthday: formData.birthday || null,
+            birthplace: formData.birthplace || null,
+            age: age ? parseInt(age) : null,
+            sex: formData.sex || null,
+            citizenship: formData.citizenship || null,
+            civil_status: formData.civilStatus || null,
+          };
+
+          residentData = await createOrUpdateResident(residentPayload);
+          residentIdForRequest = residentData?.id || null;
+        }
       }
 
       if (formData.assistanceType && residentIdForRequest) {
@@ -546,9 +640,7 @@ export default function BeneficiaryRequestPage() {
 
         const assistanceControlNumber = isEditMode
           ? editingAssistanceControlNumber
-          : `AST-${new Date().getFullYear()}-${Math.floor(Math.random() * 100000)
-              .toString()
-              .padStart(5, '0')}`;
+          : await getNextSequentialControlNumber('assistance_requests');
 
         const buildAddress = () => {
           const barangayLabel = formData.barangay === 'sta-rita' ? 'Sta. Rita' : formData.barangay;
@@ -558,34 +650,45 @@ export default function BeneficiaryRequestPage() {
             .join(', ');
         };
 
-        // Upload the first valid ID file via server (uses service role; avoids Storage policy issues)
-        const validIdFile = validIdFiles?.[0];
-        let validIdPath = existingValidIdPath || null;
-        if (validIdFile) {
-          const form = new FormData();
-          form.append('file', validIdFile);
-          form.append('controlNumber', assistanceControlNumber);
+        // Upload requirement files via server (uses service role; avoids Storage policy issues)
+        const requirementFiles = Array.isArray(validIdFiles) ? validIdFiles : [];
+        let requirementPaths = Array.isArray(existingRequirementPaths)
+          ? existingRequirementPaths.filter(Boolean)
+          : [];
 
-          const uploadRes = await fetch('/api/beneficiary/upload-valid-id', {
-            method: 'POST',
-            body: form,
-            headers: {
-              ...(isEditMode ? { 'x-resident-id': String(residentIdForRequest) } : {}),
-            },
-          });
+        if (requirementFiles.length) {
+          const uploaded = [];
 
-          const uploadJson = await uploadRes.json().catch(() => ({}));
-          if (!uploadRes.ok || uploadJson?.error) {
-            throw new Error(
-              uploadJson?.error ||
-                'Valid ID upload failed. Ensure your Supabase Storage bucket is named "document" and SUPABASE_SERVICE_ROLE_KEY is configured.',
-            );
+          for (const file of requirementFiles) {
+            const form = new FormData();
+            form.append('file', file);
+            form.append('controlNumber', assistanceControlNumber);
+
+            const uploadRes = await fetch('/api/beneficiary/upload-valid-id', {
+              method: 'POST',
+              body: form,
+              headers: {
+                ...(isEditMode ? { 'x-resident-id': String(residentIdForRequest) } : {}),
+              },
+            });
+
+            const uploadJson = await uploadRes.json().catch(() => ({}));
+            if (!uploadRes.ok || uploadJson?.error) {
+              throw new Error(
+                uploadJson?.error ||
+                  'ATTACH REQUIREMENTS upload failed. Ensure your Supabase Storage bucket is named "document" and SUPABASE_SERVICE_ROLE_KEY is configured.',
+              );
+            }
+
+            const path = uploadJson?.data?.path || null;
+            if (!path) {
+              throw new Error('ATTACH REQUIREMENTS upload failed. Please try again.');
+            }
+
+            uploaded.push(path);
           }
 
-          validIdPath = uploadJson?.data?.path || null;
-          if (!validIdPath) {
-            throw new Error('Valid ID upload failed. Please try again.');
-          }
+          requirementPaths = uploaded;
         }
 
         const cleanId = (v) => {
@@ -621,7 +724,9 @@ export default function BeneficiaryRequestPage() {
               : formData.assistanceType,
           amount: formData.assistanceAmount || 0,
           request_date: formData.dateOfRequest,
-          valid_id_url: validIdPath,
+          requirements_urls: requirementPaths,
+          // Keep legacy column populated for older UIs/queries
+          valid_id_url: requirementPaths?.[0] || null,
         };
 
         const response = await fetch(
@@ -695,7 +800,7 @@ export default function BeneficiaryRequestPage() {
         beneficiaryAddress: '',
         dateOfRequest: new Date().toISOString().split('T')[0],
       }));
-      setControlNumber(generateControlNumber());
+      void refreshResidentControlNumber();
       setStatus({
         type: 'success',
         message: isEditMode
@@ -750,9 +855,13 @@ export default function BeneficiaryRequestPage() {
       beneficiaryAddress: '',
       dateOfRequest: new Date().toISOString().split('T')[0],
     });
-    setControlNumber(generateControlNumber());
+    void refreshResidentControlNumber();
     setValidIdFiles([]);
   };
+
+  const selectedAssistanceRequirements =
+    formData.assistanceType ? assistanceData[formData.assistanceType]?.requirements || [] : [];
+  const selectedAssistanceCeiling = formData.assistanceType ? getCeilingFor(formData.assistanceType) : null;
 
   return (
     <div className={styles.registrationPage}>
@@ -777,217 +886,109 @@ export default function BeneficiaryRequestPage() {
           </div>
         </div>
 
-        <Card
-          title="Personal Information"
-          subtitle="Enter your basic information"
-          className={styles.mainCard}
-        >
+        <Card title="Personal Information" className={styles.mainCard}>
           <div className={styles.formFields}>
-            <div className={styles.row3}>
-              <Input
-                label="Last Name"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                placeholder="Enter last name"
-                error={errors.lastName}
-                required
-              />
-              <Input
-                label="First Name"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                placeholder="Enter first name"
-                error={errors.firstName}
-                required
-              />
-              <Input
-                label="Middle Name"
-                name="middleName"
-                value={formData.middleName}
-                onChange={handleChange}
-                placeholder="Enter middle name"
-                optional
-              />
-            </div>
-
-            <div className={styles.row3}>
-              <Input
-                label="House No."
-                name="houseNo"
-                value={formData.houseNo}
-                onChange={handleChange}
-                placeholder="House number"
-                error={errors.houseNo}
-                required
-              />
-              <Input
-                label="Purok"
-                name="purok"
-                value={formData.purok}
-                onChange={handleChange}
-                placeholder="Purok"
-                optional
-              />
-              <Input
-                label="Street"
-                name="street"
-                value={formData.street}
-                onChange={handleChange}
-                placeholder="Street name"
-                error={errors.street}
-                required
-              />
-            </div>
-
             <div className={styles.row}>
-              <Select
-                label="Barangay"
-                name="barangay"
-                value={formData.barangay}
-                onChange={handleChange}
-                options={barangayOptions}
-                placeholder="Select barangay"
-                required
+              <Input
+                label="Full Name"
+                name="fullName"
+                value={[formData.firstName, formData.middleName, formData.lastName]
+                  .map((s) => String(s || '').trim())
+                  .filter(Boolean)
+                  .join(' ')}
+                onChange={() => {}}
                 disabled
+                placeholder="Set this in My Profile"
               />
               <Input
-                label="City/Municipality"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                placeholder="Enter city"
+                label="Address"
+                name="address"
+                value={(() => {
+                  const barangayLabel = formData.barangay === 'sta-rita' ? 'Sta. Rita' : formData.barangay;
+                  return [formData.houseNo, formData.purok, formData.street, barangayLabel, formData.city]
+                    .map((s) => String(s || '').trim())
+                    .filter(Boolean)
+                    .join(', ');
+                })()}
+                onChange={() => {}}
                 disabled
+                placeholder="Set this in My Profile"
               />
             </div>
 
-            <div className={styles.row3}>
-              <Input
-                label="Birthday"
-                type="date"
-                name="birthday"
-                value={formData.birthday}
-                onChange={handleChange}
-                error={errors.birthday}
-                required
-              />
-              <div className={styles.ageField}>
-                <label className={styles.label}>Age</label>
-                <div className={styles.ageDisplay}>{calculateAge(formData.birthday) || 'Auto'}</div>
-              </div>
-              <Input
-                label="Birthplace"
-                name="birthplace"
-                value={formData.birthplace}
-                onChange={handleChange}
-                placeholder="Place of birth"
-                error={errors.birthplace}
-                required
-              />
-            </div>
-
-            <div className={styles.row}>
-              <Select
-                label="Sex"
-                name="sex"
-                value={formData.sex}
-                onChange={handleChange}
-                options={sexOptions}
-                placeholder="Select sex"
-                error={errors.sex}
-                required
-              />
-              <Input
-                label="Citizenship"
-                name="citizenship"
-                value={formData.citizenship}
-                onChange={handleChange}
-                placeholder="Enter citizenship"
-                error={errors.citizenship}
-                required
-              />
-            </div>
-
-            <div className={styles.row}>
-              <Select
-                label="Civil Status"
-                name="civilStatus"
-                value={formData.civilStatus}
-                onChange={handleChange}
-                options={civilStatusOptions}
-                placeholder="Select civil status"
-                error={errors.civilStatus}
-                required
-              />
-              <Input
-                label="Contact Number"
-                type="tel"
-                name="contactNumber"
-                value={formData.contactNumber}
-                onChange={handleChange}
-                placeholder="09XX XXX XXXX"
-                error={errors.contactNumber}
-                maxLength={11}
-              />
-            </div>
+            {(errors.firstName ||
+              errors.lastName ||
+              errors.houseNo ||
+              errors.street ||
+              errors.barangay ||
+              errors.city ||
+              errors.contactNumber) && (
+              <p className={styles.errorText} style={{ marginTop: -6 }}>
+                {errors.contactNumber ||
+                  errors.firstName ||
+                  errors.lastName ||
+                  errors.houseNo ||
+                  errors.street ||
+                  errors.barangay ||
+                  errors.city}
+              </p>
+            )}
           </div>
         </Card>
 
         <div className={styles.sideCards}>
-          <Card title="Sector Classification" subtitle="Select applicable sector(s)">
-            <div className={styles.sectorList}>
-              {errors.sectors && <span className={styles.sectorError}>{errors.sectors}</span>}
-              <label className={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  checked={formData.sectors.pwd}
-                  onChange={() => handleSectorChange('pwd')}
-                />
-                <span className={styles.checkmark}></span>
-                <span>PWD (Person with Disability)</span>
-              </label>
-              <label className={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  checked={formData.sectors.seniorCitizen}
-                  onChange={() => handleSectorChange('seniorCitizen')}
-                />
-                <span className={styles.checkmark}></span>
-                <span>Senior Citizen (60 years old and above)</span>
-              </label>
-              <label className={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  checked={formData.sectors.soloParent}
-                  onChange={() => handleSectorChange('soloParent')}
-                />
-                <span className={styles.checkmark}></span>
-                <span>Solo Parent</span>
-              </label>
-            </div>
-          </Card>
-
           <Card
-            title="Valid ID"
-            subtitle="Upload a clear photo or scan of your valid ID for verification"
+            title="ATTACH REQUIREMENTS"
+            subtitle="Upload a clear photo or scan of your requirements for verification"
           >
             <div className={styles.formFields}>
+              {formData.assistanceType ? (
+                <div className={styles.assistanceRequirementsPanel}>
+                  <div className={styles.assistanceRequirementsHeader}>
+                    <span className={styles.assistanceRequirementsTitle}>
+                      Requirements for {formData.assistanceType}
+                    </span>
+                    {typeof selectedAssistanceCeiling === 'number' && (
+                      <span className={styles.assistanceRequirementsCeiling}>
+                        Ceiling: ₱{Number(selectedAssistanceCeiling).toLocaleString('en-PH')}
+                      </span>
+                    )}
+                  </div>
+                  <ul className={styles.assistanceRequirementsList}>
+                    {selectedAssistanceRequirements.length ? (
+                      selectedAssistanceRequirements.map((req, idx) => (
+                        <li key={idx} className={styles.assistanceRequirementItem}>
+                          {req}
+                        </li>
+                      ))
+                    ) : (
+                      <li className={styles.assistanceRequirementItemEmpty}>
+                        No checklist available for this assistance type.
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              ) : (
+                <p className={styles.assistanceRequirementsHint}>
+                  Select a Type of Assistance to view the required documents.
+                </p>
+              )}
+
               <FileUpload
-                label={existingValidIdPath ? 'Optional (upload to replace)' : 'Required'}
+                label={existingRequirementPaths.length ? 'Optional (upload to replace)' : 'Required'}
                 documentType="validId"
-                multiple={false}
+                multiple={true}
                 files={validIdFiles}
                 onChange={setValidIdFiles}
-                required={!!formData.assistanceType && !existingValidIdPath}
+                required={!!formData.assistanceType && existingRequirementPaths.length === 0}
               />
               {existingValidIdPath ? (
                 <p className={styles.muted} style={{ margin: '6px 0 0' }}>
-                  Existing valid ID is already on file. Upload a new one only if you need to replace it.
+                  Existing uploaded requirements are already on file. Upload a new one only if you need to replace it.
                 </p>
               ) : isEditMode ? (
                 <p className={styles.muted} style={{ margin: '6px 0 0' }}>
-                  This request has no valid ID on file. Uploading a valid ID is required to resubmit.
+                  This request has no requirements on file. Attaching requirements is required to resubmit.
                 </p>
               ) : null}
               {errors.validId && <p className={styles.errorText}>{errors.validId}</p>}
@@ -1036,6 +1037,44 @@ export default function BeneficiaryRequestPage() {
                 disabled={!formData.assistanceType}
                 optional
               />
+
+              <div style={{ opacity: formData.assistanceType ? 1 : 0.6 }}>
+                <span className={styles.label}>Sector Classification (choose one)</span>
+                <div className={styles.sectorList}>
+                  {errors.sectors && <span className={styles.sectorError}>{errors.sectors}</span>}
+                  <label className={styles.checkbox}>
+                    <input
+                      type="checkbox"
+                      checked={formData.sectors.pwd}
+                      onChange={() => handleSectorChange('pwd')}
+                      disabled={!formData.assistanceType}
+                    />
+                    <span className={styles.checkmark}></span>
+                    <span>PWD (Person with Disability)</span>
+                  </label>
+                  <label className={styles.checkbox}>
+                    <input
+                      type="checkbox"
+                      checked={formData.sectors.seniorCitizen}
+                      onChange={() => handleSectorChange('seniorCitizen')}
+                      disabled={!formData.assistanceType}
+                    />
+                    <span className={styles.checkmark}></span>
+                    <span>Senior Citizen (60 years old and above)</span>
+                  </label>
+                  <label className={styles.checkbox}>
+                    <input
+                      type="checkbox"
+                      checked={formData.sectors.soloParent}
+                      onChange={() => handleSectorChange('soloParent')}
+                      disabled={!formData.assistanceType}
+                    />
+                    <span className={styles.checkmark}></span>
+                    <span>Solo Parent</span>
+                  </label>
+                </div>
+              </div>
+
               <label className={styles.checkbox} style={{ marginTop: 6, opacity: formData.assistanceType ? 1 : 0.6 }}>
                 <input
                   type="checkbox"

@@ -67,6 +67,50 @@ export async function POST(request) {
     if (error) throw error;
 
     if (!resident) {
+      // If they already signed up, show a clearer status instead of "not found".
+      try {
+        const { data: requestRow, error: requestError } = await db
+          .from('account_requests')
+          .select('id, status')
+          .eq('contact_number', contactNumber)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!requestError && requestRow) {
+          if (requestRow.status === 'Pending') {
+            return NextResponse.json(
+              {
+                data: null,
+                error:
+                  'PENDING APPROVAL: Your sign-up request is still pending admin approval. Please wait for approval before logging in.',
+              },
+              { status: 403 },
+            );
+          }
+
+          if (requestRow.status === 'Archived') {
+            return NextResponse.json(
+              { data: null, error: 'Your sign-up request was archived. Please contact the administrator.' },
+              { status: 403 },
+            );
+          }
+
+          if (requestRow.status === 'Approved') {
+            return NextResponse.json(
+              {
+                data: null,
+                error:
+                  'Your account was approved but is not available for login yet. Please try again later or contact the administrator.',
+              },
+              { status: 403 },
+            );
+          }
+        }
+      } catch {
+        // Ignore lookup errors; fall back to the generic message
+      }
+
       return NextResponse.json({ data: null, error: 'No beneficiary found with that contact number.' }, { status: 404 });
     }
 

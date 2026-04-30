@@ -30,7 +30,7 @@ export default function ProfilePage() {
         const { data, error } = await supabase
           .from('residents')
           .select(
-            'id, first_name, middle_name, last_name, birthday, contact_number, house_no, purok, street, barangay, city, is_pwd, is_senior_citizen, is_solo_parent',
+            'id, first_name, middle_name, last_name, birthday, age, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, is_pwd, is_senior_citizen, is_solo_parent',
           )
           .eq('id', residentId)
           .single();
@@ -95,6 +95,24 @@ export default function ProfilePage() {
   const formatDate = (value) => {
     if (!value) return '';
     return new Date(value).toLocaleDateString();
+  };
+
+  const formatLabel = (value) => {
+    if (!value) return '';
+    return String(value).replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
+  const calculateAge = (dob) => {
+    if (!dob) return '';
+    const birthDate = new Date(dob);
+    if (Number.isNaN(birthDate.getTime())) return '';
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
   };
 
   const sectors = [];
@@ -204,6 +222,40 @@ export default function ProfilePage() {
                   disabled
                 />
                 <Input
+                  label="Age"
+                  type="text"
+                  value={
+                    resident?.age != null && resident?.age !== ''
+                      ? String(resident.age)
+                      : String(calculateAge(resident?.birthday) || '')
+                  }
+                  disabled
+                />
+                <Input
+                  label="Birthplace"
+                  type="text"
+                  value={resident?.birthplace || ''}
+                  disabled
+                />
+                <Input
+                  label="Sex"
+                  type="text"
+                  value={formatLabel(resident?.sex)}
+                  disabled
+                />
+                <Input
+                  label="Citizenship"
+                  type="text"
+                  value={resident?.citizenship || ''}
+                  disabled
+                />
+                <Input
+                  label="Civil Status"
+                  type="text"
+                  value={formatLabel(resident?.civil_status)}
+                  disabled
+                />
+                <Input
                   label="Contact Number"
                   type="tel"
                   value={resident?.contact_number || ''}
@@ -242,12 +294,6 @@ export default function ProfilePage() {
                   label="Purok"
                   type="text"
                   value={resident?.purok || ''}
-                  disabled
-                />
-                <Input
-                  label="Street / Sitio"
-                  type="text"
-                  value={resident?.street || ''}
                   disabled
                 />
                 <Input

@@ -74,6 +74,14 @@
   gap: 1rem 1.25rem;
 }
 
+.personalGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.addressSection .formGrid {
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+}
+
 .sectorRow {
   margin-top: 0.5rem;
   display: flex;
@@ -85,6 +93,12 @@
   font-size: 0.85rem;
   font-weight: 500;
   color: #4b5563;
+}
+
+.sectorHelper {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #6b7280;
 }
 
 .sectorChips {
@@ -111,6 +125,18 @@
   height: 14px;
 }
 
+.validIdRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.fieldError {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #b91c1c;
+}
+
 .actionsRow {
   display: flex;
   justify-content: flex-end;
@@ -126,6 +152,10 @@
 @media (max-width: 640px) {
   .signupPage {
     padding: 0 1rem 1.75rem;
+  }
+
+  .addressSection .formGrid {
+    grid-template-columns: 1fr;
   }
 
   .actionsRow {

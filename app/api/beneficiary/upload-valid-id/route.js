@@ -85,7 +85,7 @@ export async function POST(request) {
 
     if (uploadError) {
       return NextResponse.json(
-        { data: null, error: uploadError.message || 'Valid ID upload failed.' },
+        { data: null, error: uploadError.message || 'ATTACH REQUIREMENTS upload failed.' },
         { status: 500 },
       );
     }
@@ -94,7 +94,7 @@ export async function POST(request) {
   } catch (error) {
     console.error('Beneficiary valid ID upload error:', error);
     return NextResponse.json(
-      { data: null, error: error?.message || 'Valid ID upload failed.' },
+      { data: null, error: error?.message || 'ATTACH REQUIREMENTS upload failed.' },
       { status: 500 },
     );
   }

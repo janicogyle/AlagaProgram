@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS public.assistance_requests (
   processed_by TEXT,
   decision_remarks TEXT,
   valid_id_url TEXT,
+  requirements_urls JSONB DEFAULT '[]'::jsonb,
   request_date DATE DEFAULT CURRENT_DATE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

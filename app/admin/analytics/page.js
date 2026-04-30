@@ -30,7 +30,7 @@ export default function AnalyticsPage() {
 
   const fetchData = useCallback(async () => {
     if (!supabase) {
-      console.error('Database client not available');
+      console.warn('Database client not available');
       return;
     }
     const periodDays = { '1month': 30, '3months': 90, '6months': 180, '12months': 365 };
@@ -40,7 +40,7 @@ export default function AnalyticsPage() {
     const { data: residents } = await supabase
       .from('residents')
       .select(
-        'id, created_at, last_name, first_name, is_pwd, is_senior_citizen, is_solo_parent, status, sex, age, birthday, street',
+        'id, created_at, last_name, first_name, is_pwd, is_senior_citizen, is_solo_parent, status, sex, age, birthday, purok, street',
       )
       .order('created_at', { ascending: false });
 
@@ -87,7 +87,7 @@ export default function AnalyticsPage() {
         else ageBuckets['60+']++;
       }
 
-      const purokKey = r.street || 'Unknown';
+      const purokKey = r.purok || r.street || 'Unknown';
       purokCounts[purokKey] = (purokCounts[purokKey] || 0) + 1;
     });
 
@@ -148,7 +148,7 @@ export default function AnalyticsPage() {
           r.is_senior_citizen && 'Senior Citizen',
           r.is_solo_parent && 'Solo Parent',
         ].filter(Boolean),
-        purok: r.street,
+        purok: r.purok || r.street || '—',
         date: r.created_at ? new Date(r.created_at).toLocaleDateString() : '',
         status: r.status || 'Active',
       })),
@@ -309,6 +309,33 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
+      {/* Recent Registrations (same as Dashboard) */}
+      <Card title="Recent Registrations" subtitle="Latest residents added to the system">
+        <Table columns={columns} data={recentRegistrations} />
+      </Card>
+
+      <Card title="Staff Recent Activity" subtitle="Latest actions performed by staff/admin accounts">
+        {staffActivityLoading ? (
+          <p style={{ padding: 12, margin: 0, color: '#6b7280' }}>Loading staff activity...</p>
+        ) : staffActivityRows.length === 0 ? (
+          <p style={{ padding: 12, margin: 0, color: '#6b7280' }}>No staff activity yet.</p>
+        ) : (
+          <Table
+            columns={staffActivityColumns.map((c) =>
+              c.key === 'title'
+                ? {
+                    ...c,
+                    render: (value) => (
+                      <div style={{ whiteSpace: 'pre-line' }}>{value}</div>
+                    ),
+                  }
+                : c,
+            )}
+            data={staffActivityRows}
+          />
+        )}
+      </Card>
+
       {/* Charts Section */}
       <div className={styles.chartsGrid}>
         {/* Registration Trends */}
@@ -381,32 +408,6 @@ export default function AnalyticsPage() {
         </Card>
       </div>
 
-      {/* Recent Registrations (same as Dashboard) */}
-      <Card title="Recent Registrations" subtitle="Latest residents added to the system">
-        <Table columns={columns} data={recentRegistrations} />
-      </Card>
-
-      <Card title="Staff Recent Activity" subtitle="Latest actions performed by staff/admin accounts">
-        {staffActivityLoading ? (
-          <p style={{ padding: 12, margin: 0, color: '#6b7280' }}>Loading staff activity...</p>
-        ) : staffActivityRows.length === 0 ? (
-          <p style={{ padding: 12, margin: 0, color: '#6b7280' }}>No staff activity yet.</p>
-        ) : (
-          <Table
-            columns={staffActivityColumns.map((c) =>
-              c.key === 'title'
-                ? {
-                    ...c,
-                    render: (value) => (
-                      <div style={{ whiteSpace: 'pre-line' }}>{value}</div>
-                    ),
-                  }
-                : c,
-            )}
-            data={staffActivityRows}
-          />
-        )}
-      </Card>
     </div>
   );
 }

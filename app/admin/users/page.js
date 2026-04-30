@@ -61,6 +61,13 @@ export default function UsersPage() {
     error: '',
     submitting: false,
   });
+  const [verifyResetState, setVerifyResetState] = useState({
+    open: false,
+    user: null,
+    adminPassword: '',
+    error: '',
+    submitting: false,
+  });
 
   const [detailsState, setDetailsState] = useState({ open: false, user: null });
   const [editState, setEditState] = useState({
@@ -96,9 +103,19 @@ export default function UsersPage() {
     }
 
     const { data, error } = await supabase.auth.getSession();
-    const session = data?.session;
+    let session = data?.session;
 
-    if (error || !session) {
+    const isExpired = session?.expires_at ? session.expires_at * 1000 <= Date.now() + 5000 : false;
+    if (!error && session && !isExpired) {
+      return {
+        Authorization: `Bearer ${session.access_token}`,
+      };
+    }
+
+    // Session can be stale in memory; attempt refresh before failing.
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    session = refreshData?.session;
+    if (refreshError || !session) {
       throw new Error('Not authenticated. Please log in again.');
     }
 
@@ -327,11 +344,76 @@ export default function UsersPage() {
   };
 
   const openResetPassword = (user) => {
-    setResetPwState({ open: true, user, password: '', error: '', submitting: false });
+    setVerifyResetState({
+      open: true,
+      user,
+      adminPassword: '',
+      error: '',
+    });
+  };
+
+  const closeVerifyReset = () => {
+    setVerifyResetState({
+      open: false,
+      user: null,
+      adminPassword: '',
+      error: '',
+      submitting: false,
+    });
+  };
+
+  const continueResetPassword = async () => {
+    if (!verifyResetState.user) return;
+    if (!verifyResetState.adminPassword) {
+      setVerifyResetState((prev) => ({ ...prev, error: 'Your password is required for verification.' }));
+      return;
+    }
+
+    setVerifyResetState((prev) => ({ ...prev, submitting: true, error: '' }));
+    try {
+      const { data: authUserData, error: authUserError } = await supabase.auth.getUser();
+      const adminEmail = authUserData?.user?.email;
+      if (authUserError || !adminEmail) {
+        throw new Error('Not authenticated. Please log in again.');
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: adminEmail,
+        password: verifyResetState.adminPassword,
+      });
+      if (signInError) {
+        throw new Error('Admin password verification failed.');
+      }
+
+      setResetPwState({
+        open: true,
+        user: verifyResetState.user,
+        password: '',
+        error: '',
+        submitting: false,
+      });
+      closeVerifyReset();
+    } catch (error) {
+      const message = error.message || 'Admin password verification failed.';
+      setVerifyResetState((prev) => ({
+        ...prev,
+        submitting: false,
+        error:
+          message === 'Unauthorized.'
+            ? 'Your admin session has expired. Please log in again.'
+            : message,
+      }));
+    }
   };
 
   const closeResetPassword = () => {
-    setResetPwState({ open: false, user: null, password: '', error: '', submitting: false });
+    setResetPwState({
+      open: false,
+      user: null,
+      password: '',
+      error: '',
+      submitting: false,
+    });
   };
 
   const submitResetPassword = async () => {
@@ -425,6 +507,10 @@ export default function UsersPage() {
       variant: user.status === 'Active' ? 'danger' : 'success',
     },
   ];
+
+  const canSubmitResetPassword =
+    resetPwState.password.length >= 6 &&
+    !resetPwState.submitting;
 
   const columns = [
     {
@@ -658,7 +744,7 @@ export default function UsersPage() {
             <Button variant="secondary" onClick={closeResetPassword} disabled={resetPwState.submitting}>
               Cancel
             </Button>
-            <Button onClick={submitResetPassword} disabled={resetPwState.submitting}>
+            <Button onClick={submitResetPassword} disabled={!canSubmitResetPassword}>
               {resetPwState.submitting ? 'Saving...' : 'Reset Password'}
             </Button>
           </>
@@ -678,8 +764,40 @@ export default function UsersPage() {
             error={resetPwState.error}
           />
           <p className={styles.formHelperText} style={{ margin: 0 }}>
-            Minimum 6 characters.
+            Minimum 6 characters. Admin verification was completed before this step.
           </p>
+        </div>
+      </Modal>
+
+      {/* Verify Admin Password Modal */}
+      <Modal
+        isOpen={!!verifyResetState.open}
+        onClose={closeVerifyReset}
+        title={verifyResetState.user ? `Verify Admin Password: ${verifyResetState.user.full_name}` : 'Verify Admin Password'}
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeVerifyReset}>
+              Cancel
+            </Button>
+            <Button onClick={continueResetPassword} disabled={verifyResetState.submitting}>
+              {verifyResetState.submitting ? 'Verifying...' : 'Continue'}
+            </Button>
+          </>
+        }
+      >
+        <div style={{ display: 'grid', gap: 12 }}>
+          <Input
+            label="Your Password"
+            type="password"
+            name="verifyAdminPassword"
+            value={verifyResetState.adminPassword}
+            onChange={(e) =>
+              setVerifyResetState((prev) => ({ ...prev, adminPassword: e.target.value, error: '' }))
+            }
+            placeholder="Enter your password to continue"
+            required
+            error={verifyResetState.error}
+          />
         </div>
       </Modal>
 
