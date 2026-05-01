@@ -2,6 +2,7 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    min-width: 0;
 }
 
 .topSection {
@@ -23,6 +24,7 @@
     justify-content: space-between;
     gap: 1.25rem;
     padding: 1.5rem 1.75rem;
+    min-width: 0;
 }
 
 .nextTitle {
@@ -59,6 +61,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .copyButton {
@@ -177,5 +180,57 @@
 
     .infoRow {
         grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboardPage {
+        gap: 1rem;
+    }
+
+    .statsGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+
+    .nextStepsCard {
+        padding: 1rem;
+    }
+
+    .requestsHeader {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+
+    .quickActions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .quickActions a,
+    .quickActions button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 576px) {
+    .statsGrid,
+    .quickActions {
+        grid-template-columns: 1fr;
+    }
+
+    .nextBody {
+        flex-direction: column;
+    }
+
+    .filters {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .filterButton {
+        width: 100%;
+        min-height: 40px;
     }
 }

@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS public.account_requests (
   is_senior_citizen BOOLEAN DEFAULT FALSE,
   is_solo_parent BOOLEAN DEFAULT FALSE,
   valid_id_url TEXT,
+  valid_id_urls JSONB DEFAULT '[]'::jsonb,
   age INTEGER,
   birthplace TEXT,
   sex TEXT,
@@ -52,6 +53,7 @@ END $$;
 
 DROP INDEX IF EXISTS public.idx_account_requests_contact;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_account_requests_contact ON public.account_requests(contact_number);
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS valid_id_urls JSONB DEFAULT '[]'::jsonb;
 
 -- Ensure residents has password_hash for beneficiary password login (if residents table exists)
 DO $$

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
+import { assistanceData } from '@/lib/assistanceData';
 import {
   Card,
   Select,
@@ -37,6 +38,98 @@ const statusOptions = [
   { value: 'Incomplete', label: 'Incomplete' },
 ];
 
+const isCheckedRequirement = (item) => {
+  if (item === true || item === 'true' || item === 1 || item === '1') return true;
+  const value = item?.checked;
+  const completed = item?.completed;
+  return (
+    value === true ||
+    value === 'true' ||
+    value === 1 ||
+    value === '1' ||
+    completed === true ||
+    completed === 'true' ||
+    completed === 1 ||
+    completed === '1'
+  );
+};
+
+const toBoolean = (value) => {
+  if (value === true || value === 'true' || value === 1 || value === '1') return true;
+  if (value === false || value === 'false' || value === 0 || value === '0') return false;
+  return null;
+};
+
+const getRequirementsCompleted = (checklist, fallbackValue) => {
+  if (Array.isArray(checklist) && checklist.length > 0) {
+    return checklist.every(isCheckedRequirement);
+  }
+
+  return toBoolean(fallbackValue) === true;
+};
+
+const getExpectedChecklist = (assistanceType) => {
+  const expected = assistanceData?.[assistanceType]?.requirements || [];
+
+  return expected.map((label) => ({
+    label,
+    checked: true,
+  }));
+};
+
+const parseRequirementFiles = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.filter(Boolean);
+    } catch {
+      // ignore
+    }
+  }
+  return [];
+};
+
+const getFileNameFromUrl = (fileUrl) => {
+  const raw = String(fileUrl || '').trim();
+  if (!raw) return 'Document';
+  const cleaned = raw.split('?')[0];
+  const parts = cleaned.split('/').filter(Boolean);
+  return parts[parts.length - 1] || 'Document';
+};
+
+const isLikelyImage = (fileUrl) => /\.(png|jpe?g|gif|webp)$/i.test(String(fileUrl || ''));
+
+const parseLegacyRequirementUrls = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => {
+        if (typeof v === 'string') return v.trim();
+        if (v && typeof v === 'object') return String(v.file_url || v.fileUrl || '').trim();
+        return '';
+      })
+      .filter(Boolean);
+  }
+  const raw = String(value).trim();
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((v) => {
+          if (typeof v === 'string') return v.trim();
+          if (v && typeof v === 'object') return String(v.file_url || v.fileUrl || '').trim();
+          return '';
+        })
+        .filter(Boolean);
+    }
+  } catch {
+    // ignore
+  }
+  return [raw];
+};
 
 export default function RequestsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -99,6 +192,38 @@ export default function RequestsPage() {
 
           const parseRequirements = (value) => {
             if (!value) return [];
+            if (Array.isArray(value)) {
+              return value
+                .map((item) => {
+                  if (typeof item === 'string') return item.trim();
+                  if (item && typeof item === 'object') return String(item.file_url || item.fileUrl || '').trim();
+                  return '';
+                })
+                .filter(Boolean);
+            }
+            if (typeof value === 'string') {
+              try {
+                const parsed = JSON.parse(value);
+                if (Array.isArray(parsed)) {
+                  return parsed
+                    .map((item) => {
+                      if (typeof item === 'string') return item.trim();
+                      if (item && typeof item === 'object') {
+                        return String(item.file_url || item.fileUrl || '').trim();
+                      }
+                      return '';
+                    })
+                    .filter(Boolean);
+                }
+              } catch {
+                // ignore
+              }
+            }
+            return [];
+          };
+
+          const parseChecklist = (value) => {
+            if (!value) return [];
             if (Array.isArray(value)) return value.filter(Boolean);
             if (typeof value === 'string') {
               try {
@@ -111,9 +236,54 @@ export default function RequestsPage() {
             return [];
           };
 
+          const savedRequirementsChecklist = parseChecklist(r.requirements_checklist);
+          const requirementsChecklist = savedRequirementsChecklist.length
+            ? savedRequirementsChecklist
+            : getExpectedChecklist(r.assistance_type);
+          // Completed is allowed only when every checklist item is checked.
+          // Missing or partially unchecked verification data is treated as Incomplete.
+          const requirementsCompleted = getRequirementsCompleted(
+            requirementsChecklist,
+            r.requirements_completed,
+          );
+
           const requirements = parseRequirements(r.requirements_urls);
-          const legacySingle = r.valid_id_url ? [r.valid_id_url] : [];
+          const requirementFileRows = parseRequirementFiles(r.requirements_files);
+          const legacySingle = parseLegacyRequirementUrls(r.valid_id_url);
           const requirementUrls = requirements.length ? requirements : legacySingle;
+          const normalizedRequirementFiles = requirementFileRows
+            .map((row) => {
+              const fileUrl = String(row?.file_url || row?.fileUrl || '').trim();
+              if (!fileUrl) return null;
+              return {
+                file_url: fileUrl,
+                file_name: String(row?.file_name || row?.fileName || '').trim() || getFileNameFromUrl(fileUrl),
+                requirement_type: row?.requirement_type || row?.requirementType || null,
+              };
+            })
+            .filter(Boolean);
+
+          // Merge both sources because older records can have partial requirements_files
+          // while requirements_urls/legacy valid_id_url still contains the full set.
+          const requirementMap = new Map();
+          requirementUrls.forEach((url) => {
+            const fileUrl = String(url || '').trim();
+            if (!fileUrl) return;
+            requirementMap.set(fileUrl, {
+              file_url: fileUrl,
+              file_name: getFileNameFromUrl(fileUrl),
+              requirement_type: null,
+            });
+          });
+          normalizedRequirementFiles.forEach((file) => {
+            if (!file?.file_url) return;
+            requirementMap.set(file.file_url, file);
+          });
+          let requirementFiles = Array.from(requirementMap.values());
+          const maxRequirementFiles = requirementsChecklist.length || 0;
+          if (maxRequirementFiles > 0 && requirementFiles.length > maxRequirementFiles) {
+            requirementFiles = requirementFiles.slice(0, maxRequirementFiles);
+          }
 
           const sectors = {
             pwd: !!resident.is_pwd,
@@ -129,21 +299,53 @@ export default function RequestsPage() {
           const status = r.status || 'Pending';
           const requestKey = r.id || r.request_id || r.control_number;
 
+          const norm = (v) => String(v || '').trim().toLowerCase();
+
+          const beneficiary = r.beneficiary_name || residentName || '';
+          const beneficiaryContact = r.beneficiary_contact || resident.contact_number || '';
+          const beneficiaryAddress = r.beneficiary_address || residentAddress || '';
+
+          let representative = r.requester_name || '';
+          let representativeContact = r.requester_contact || '';
+          let representativeAddress = r.requester_address || '';
+
+          // If the request stored the beneficiary as the requester (older behavior), but the resident profile
+          // has a representative, prefer that for display.
+          if (
+            (!representative || norm(representative) === norm(beneficiary)) &&
+            resident.representative_name &&
+            norm(resident.representative_name) !== norm(beneficiary)
+          ) {
+            representative = resident.representative_name;
+            if (!representativeContact || norm(representativeContact) === norm(beneficiaryContact)) {
+              representativeContact = resident.representative_contact || representativeContact;
+            }
+          }
+
+          representative = representative || beneficiary;
+          representativeContact = representativeContact || beneficiaryContact;
+          representativeAddress = representativeAddress || beneficiaryAddress;
+
           return {
             id: requestKey,
-            controlNo: r.control_number,
-            // Prefer submitted fields; fall back to resident profile when request fields are empty (older records).
-            requester: r.requester_name || residentName || '',
-            requesterContact: r.requester_contact || resident.contact_number || '',
-            requesterAddress: r.requester_address || residentAddress || '',
-            beneficiary: r.beneficiary_name || residentName || '',
-            beneficiaryContact: r.beneficiary_contact || resident.contact_number || '',
-            beneficiaryAddress: r.beneficiary_address || residentAddress || '',
+            controlNo: resident.control_number || r.control_number,
+            requestControlNo: r.control_number,
+            requester: representative,
+            requesterContact: representativeContact,
+            requesterAddress: representativeAddress,
+            beneficiary,
+            beneficiaryContact,
+            beneficiaryAddress,
             type: r.assistance_type,
             amount: r.amount,
             rawAmount: r.amount,
             validIdUrl: r.valid_id_url || null,
             requirementUrls,
+            requirementFiles,
+            attachmentCount: requirementFiles.length,
+            requestSource: r.request_source || 'online',
+            requirementsChecklist,
+            requirementsCompleted,
             status,
             statusLabel: getStatusLabel(status),
             date: r.request_date ? new Date(r.request_date).toLocaleDateString() : '',
@@ -194,6 +396,26 @@ export default function RequestsPage() {
   const handleViewRequest = (request) => {
     setSelectedRequest(request);
     setShowViewModal(true);
+  };
+
+  const toggleVerificationRequirement = (index) => {
+    setSelectedRequest((prev) => {
+      if (!prev) return prev;
+      const current = Array.isArray(prev.requirementsChecklist) ? prev.requirementsChecklist : [];
+      const next = current.map((item, idx) =>
+        idx === index
+          ? {
+              ...item,
+              checked: !isCheckedRequirement(item),
+            }
+          : item,
+      );
+      return {
+        ...prev,
+        requirementsChecklist: next,
+        requirementsCompleted: getRequirementsCompleted(next, prev.requirementsCompleted),
+      };
+    });
   };
 
   const handleOpenDecision = (request, type) => {
@@ -293,7 +515,7 @@ export default function RequestsPage() {
         throw new Error('Unauthorized. Please sign in again.');
       }
 
-      const requestKey = selectedRequest?.controlNo || selectedRequest?.id;
+      const requestKey = selectedRequest?.requestControlNo || selectedRequest?.id;
       if (!requestKey || requestKey === 'undefined' || requestKey === 'null') {
         throw new Error('Missing request id. Please refresh the page and try again.');
       }
@@ -307,8 +529,14 @@ export default function RequestsPage() {
         body: JSON.stringify({
           status: newStatus,
           decision_remarks: remarks || null,
-          control_number: selectedRequest?.controlNo || null,
+          control_number: selectedRequest?.requestControlNo || null,
+          resident_control_number: selectedRequest?.controlNo || null,
           request_id: selectedRequest?.id || null,
+          requirements_checklist: selectedRequest?.requirementsChecklist || [],
+          requirements_completed: getRequirementsCompleted(
+            selectedRequest?.requirementsChecklist,
+            selectedRequest?.requirementsCompleted,
+          ),
         }),
       });
 
@@ -319,16 +547,27 @@ export default function RequestsPage() {
 
       const updatedProcessedBy = result?.data?.processed_by;
       const updatedRemarks = result?.data?.decision_remarks;
+      const updatedChecklist = result?.data?.requirements_checklist;
+      const updatedCompleted = result?.data?.requirements_completed;
 
       setRequests((prev) =>
         prev.map((req) =>
-          req.controlNo === selectedRequest.controlNo || req.id === selectedRequest.id
+          req.requestControlNo === selectedRequest.requestControlNo || req.id === selectedRequest.id
             ? {
                 ...req,
                 status: newStatus,
                 statusLabel: getStatusLabel(newStatus),
                 processedBy: updatedProcessedBy ?? req.processedBy,
                 decisionRemarks: updatedRemarks ?? req.decisionRemarks,
+                requirementsChecklist: Array.isArray(updatedChecklist)
+                  ? updatedChecklist
+                  : req.requirementsChecklist,
+                requirementsCompleted: getRequirementsCompleted(
+                  Array.isArray(updatedChecklist)
+                    ? updatedChecklist
+                    : req.requirementsChecklist,
+                  updatedCompleted ?? req.requirementsCompleted,
+                ),
               }
             : req,
         ),
@@ -337,7 +576,7 @@ export default function RequestsPage() {
       const statusLabel = getStatusLabel(newStatus);
       setStatus({
         type: 'success',
-        message: `Request ${selectedRequest.controlNo} has been ${
+        message: `Request ${selectedRequest.requestControlNo || selectedRequest.controlNo} has been ${
           statusLabel === 'Approved'
             ? 'approved'
             : statusLabel === 'Incomplete'
@@ -399,6 +638,18 @@ export default function RequestsPage() {
     },
     { key: 'date', label: 'Date' },
     { key: 'amount', label: 'Amount' },
+    {
+      key: 'attachmentCount',
+      label: 'Files',
+      render: (_, row) =>
+        row.requestSource === 'online' ? (
+          <Badge variant={row.attachmentCount > 0 ? 'blue' : 'secondary'}>
+            {row.attachmentCount > 0 ? `${row.attachmentCount} file${row.attachmentCount > 1 ? 's' : ''}` : 'No files'}
+          </Badge>
+        ) : (
+          <Badge variant="secondary">Walk-in</Badge>
+        ),
+    },
     {
       key: 'status',
       label: 'Status',
@@ -682,6 +933,14 @@ export default function RequestsPage() {
                     <span className={styles.cardLabel}>Date</span>
                     <span className={styles.cardValue}>{request.date}</span>
                   </div>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Files</span>
+                    <span className={styles.cardValue}>
+                      {request.requestSource === 'online'
+                        ? `${request.attachmentCount || 0} file${(request.attachmentCount || 0) > 1 ? 's' : ''}`
+                        : 'Walk-in'}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))
@@ -702,7 +961,7 @@ export default function RequestsPage() {
         title="Request Details"
         size="large"
         footer={
-          selectedRequest?.status === 'Pending' ? (
+          ['Pending', 'Resubmitted'].includes(selectedRequest?.status) ? (
             <div className={styles.modalFooter}>
               <Button variant="secondary" onClick={() => setShowViewModal(false)}>
                 Close
@@ -749,6 +1008,14 @@ export default function RequestsPage() {
       >
         {selectedRequest && (
           <div className={styles.requestDetails}>
+            {(() => {
+              const verificationCompleted = getRequirementsCompleted(
+                selectedRequest.requirementsChecklist,
+                selectedRequest.requirementsCompleted,
+              );
+
+              return (
+                <>
             <div className={styles.detailsHeader}>
               <div className={styles.controlNumber}>{selectedRequest.controlNo}</div>
               {getStatusBadge(selectedRequest.status)}
@@ -765,7 +1032,7 @@ export default function RequestsPage() {
                 return (
                   <div className={styles.detailsGrid}>
                     <div className={styles.detailSection}>
-                      <h4>Requester / Beneficiary Information</h4>
+                      <h4>Beneficiary (Self-request)</h4>
                       <div className={styles.detailRow}>
                         <span className={styles.detailLabel}>Name:</span>
                         <span className={styles.detailValue}>{selectedRequest.requester || 'Not provided'}</span>
@@ -780,7 +1047,7 @@ export default function RequestsPage() {
                       </div>
                       <div className={styles.detailRow}>
                         <span className={styles.detailLabel}>Note:</span>
-                        <span className={styles.detailValue}>Beneficiary is the same as requester.</span>
+                        <span className={styles.detailValue}>No representative. The beneficiary requested directly.</span>
                       </div>
                     </div>
                   </div>
@@ -790,7 +1057,7 @@ export default function RequestsPage() {
               return (
                 <div className={styles.detailsGrid}>
                   <div className={styles.detailSection}>
-                    <h4>Requester Information</h4>
+                    <h4>Representative Information</h4>
                     <div className={styles.detailRow}>
                       <span className={styles.detailLabel}>Name:</span>
                       <span className={styles.detailValue}>{selectedRequest.requester || 'Not provided'}</span>
@@ -825,9 +1092,9 @@ export default function RequestsPage() {
             })()}
 
             <div className={styles.detailSection}>
-              <h4>Resident Profile</h4>
+              <h4>Beneficiary Personal Information</h4>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Resident Control No:</span>
+                <span className={styles.detailLabel}>Control No:</span>
                 <span className={styles.detailValue}>
                   {selectedRequest.residentControlNumber || 'Not provided'}
                 </span>
@@ -856,19 +1123,9 @@ export default function RequestsPage() {
                 <span className={styles.detailLabel}>Sectors:</span>
                 <span className={styles.detailValue}>{selectedRequest.sectorText || 'None'}</span>
               </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Representative Name:</span>
-                <span className={styles.detailValue}>
-                  {selectedRequest.residentRepresentativeName || 'Not provided'}
-                </span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Representative Contact:</span>
-                <span className={styles.detailValue}>
-                  {selectedRequest.residentRepresentativeContact || 'Not provided'}
-                </span>
-              </div>
             </div>
+
+
 
             <div className={styles.detailSection}>
               <h4>Remarks</h4>
@@ -897,28 +1154,72 @@ export default function RequestsPage() {
                 <span className={styles.infoLabel}>Processed By</span>
                 <span className={styles.infoValue}>{formatProcessedBy(selectedRequest.processedBy)}</span>
               </div>
-              <div className={styles.infoCard}>
-                <span className={styles.infoLabel}>ATTACH REQUIREMENTS</span>
-                <span className={styles.infoValue}>
-                  {selectedRequest.requirementUrls?.length ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {selectedRequest.requirementUrls.map((url, idx) => (
-                        <button
-                          key={String(url) + String(idx)}
-                          type="button"
-                          className={styles.validIdLink}
-                          onClick={() => openValidId(url)}
-                        >
-                          View Requirement {idx + 1}
-                        </button>
-                      ))}
+              <div className={`${styles.infoCard} ${styles.wideInfoCard}`}>
+                <span className={styles.infoLabel}>Requirements Verification</span>
+                <div className={`${styles.infoValue} ${styles.requirementsContent}`}>
+                  <div className={styles.verificationPanel}>
+                    <p className={styles.verificationHeading}>Requirements Verification Checklist</p>
+                    <div className={styles.verificationChecklist}>
+                      {selectedRequest.requirementsChecklist?.length ? (
+                        selectedRequest.requirementsChecklist.map((item, idx) => (
+                          <label key={String(item?.label || idx)} className={styles.verificationRow}>
+                            <input
+                              type="checkbox"
+                              checked={isCheckedRequirement(item)}
+                              onChange={() => toggleVerificationRequirement(idx)}
+                            />
+                            <span>{item?.label || `Requirement ${idx + 1}`}</span>
+                          </label>
+                        ))
+                      ) : (
+                        <span className={styles.verificationEmpty}>No checklist available for this request.</span>
+                      )}
+                    </div>
+                    <div className={styles.verificationStatus}>
+                      Status: {verificationCompleted ? 'COMPLETED' : 'INCOMPLETE'}
+                    </div>
+                  </div>
+
+                  {selectedRequest.requestSource === 'online' ? (
+                    <div className={styles.uploadedDocsSection}>
+                      <p className={styles.uploadedDocsHeading}>
+                        Attached Documents: View all submitted files for verification.
+                      </p>
+                      {selectedRequest.requirementFiles?.length ? (
+                        <div className={styles.uploadedDocsList}>
+                          {selectedRequest.requirementFiles.map((file, idx) => (
+                            <div key={`${file.file_url}-${idx}`} className={styles.uploadedDocItem}>
+                              <div className={styles.uploadedDocMeta}>
+                                <span className={styles.uploadedDocName}>{file.file_name || `Document ${idx + 1}`}</span>
+                                <span className={styles.uploadedDocType}>
+                                  {isLikelyImage(file.file_url) ? 'Image' : 'Document'}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                className={styles.validIdLink}
+                                onClick={() => openValidId(file.file_url)}
+                              >
+                                View Document {idx + 1}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className={styles.verificationEmpty}>No uploaded files found for this online request.</span>
+                      )}
                     </div>
                   ) : (
-                    'Not available'
+                    <p className={styles.walkInNotice}>
+                      Requirements submitted physically (walk-in). Please verify each item.
+                    </p>
                   )}
-                </span>
+                </div>
               </div>
             </div>
+                </>
+              );
+            })()}
           </div>
         )}
       </Modal>

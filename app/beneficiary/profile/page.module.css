@@ -1,4 +1,5 @@
 .profilePage {
+    width: 100%;
     max-width: 760px;
     margin: 0 auto;
     display: flex;
@@ -6,6 +7,7 @@
     gap: 1.5rem;
     padding-top: 1rem;
     padding-bottom: 2rem;
+    min-width: 0;
 }
 
 .profileForm {
@@ -81,11 +83,13 @@
     gap: 16px;
     align-items: flex-start;
     flex-wrap: wrap;
+    min-width: 0;
 }
 
 .qrImage {
-    width: 220px;
-    height: 220px;
+    width: min(220px, 100%);
+    height: auto;
+    aspect-ratio: 1 / 1;
     border-radius: 12px;
     border: 1px solid #e5e7eb;
     background: white;
@@ -95,6 +99,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    min-width: min(220px, 100%);
 }
 
 .qrRow {
@@ -116,6 +121,20 @@
 
 @media (max-width: 640px) {
     .profilePage {
-        padding: 0 1rem 1.75rem;
+        padding: 0 0 1.75rem;
+    }
+
+    .formGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .qrWrap {
+        justify-content: center;
+    }
+
+    .qrMeta,
+    .qrButtons,
+    .qrButtons button {
+        width: 100%;
     }
 }

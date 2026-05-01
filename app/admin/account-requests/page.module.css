@@ -2,12 +2,14 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
 .applicantCell {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .avatar {
@@ -26,11 +28,13 @@
 .applicantInfo {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .applicantName {
   font-weight: 600;
   color: #111827;
+  overflow-wrap: anywhere;
 }
 
 .applicantMeta {
@@ -64,6 +68,7 @@
   display: flex;
   gap: 6px;
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .filterGroup {
@@ -148,6 +153,12 @@
   color: #111827;
 }
 
+.validIdList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .notes {
   font-size: 14px;
   color: #4b5563;
@@ -158,6 +169,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .confirmText {
@@ -170,6 +182,10 @@
 }
 
 @media (max-width: 640px) {
+  .applicantCell {
+    align-items: flex-start;
+  }
+
   .actionsCell {
     flex-wrap: wrap;
     justify-content: flex-start;
@@ -178,5 +194,10 @@
   .detailsHeaderRow {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .detailsActionsRow,
+  .detailsActionsRow button {
+    width: 100%;
   }
 }

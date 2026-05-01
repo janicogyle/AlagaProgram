@@ -82,7 +82,11 @@ export default function BeneficiaryDashboardPage() {
           throw new Error(result?.error || 'Failed to load assistance requests.');
         }
 
-        const safeData = result.data || [];
+        const safeData = (result.data || []).map((row) => ({
+          ...row,
+          request_control_number: row.control_number,
+          control_number: row.residents?.control_number || row.control_number,
+        }));
         setRequests(safeData);
 
         if (safeData.length > 0) {

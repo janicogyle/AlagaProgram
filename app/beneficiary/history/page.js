@@ -82,7 +82,13 @@ export default function BeneficiaryHistoryPage() {
           throw new Error(result?.error || 'Failed to load assistance history.');
         }
 
-        setRequests(result.data || []);
+        const mapped = (result.data || []).map((row) => ({
+          ...row,
+          request_control_number: row.control_number,
+          control_number: row.residents?.control_number || row.control_number,
+        }));
+
+        setRequests(mapped);
       } catch (err) {
         console.error('Failed to load assistance history:', err);
         setRequests([]);

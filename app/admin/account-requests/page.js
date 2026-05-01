@@ -70,6 +70,30 @@ function getSectorBadges(request) {
   return sectors;
 }
 
+function parseValidIdUrls(value, fallbackValue) {
+  const list = [];
+
+  if (Array.isArray(value)) {
+    list.push(...value);
+  } else if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        list.push(...parsed);
+      }
+    } catch {
+      const trimmed = value.trim();
+      if (trimmed) list.push(trimmed);
+    }
+  }
+
+  if (!list.length && fallbackValue) {
+    list.push(fallbackValue);
+  }
+
+  return list.map((item) => String(item || "").trim()).filter(Boolean);
+}
+
 export default function AccountRequestsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("Pending");
@@ -635,14 +659,19 @@ export default function AccountRequestsPage() {
                 <div>
                   <span className={styles.label}>Valid ID</span>
                   <div className={styles.value}>
-                    {detailsRequest.valid_id_url ? (
-                      <Button
-                        variant="outline"
-                        size="small"
-                        onClick={() => openDocument(detailsRequest.valid_id_url)}
-                      >
-                        View Valid ID
-                      </Button>
+                    {parseValidIdUrls(detailsRequest.valid_id_urls, detailsRequest.valid_id_url).length ? (
+                      <div className={styles.validIdList}>
+                        {parseValidIdUrls(detailsRequest.valid_id_urls, detailsRequest.valid_id_url).map((file, idx) => (
+                          <Button
+                            key={`${file}-${idx}`}
+                            variant="outline"
+                            size="small"
+                            onClick={() => openDocument(file)}
+                          >
+                            {`View Valid ID ${idx + 1}`}
+                          </Button>
+                        ))}
+                      </div>
                     ) : (
                       <span className={styles.subtleText}>-</span>
                     )}

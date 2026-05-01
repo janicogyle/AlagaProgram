@@ -67,16 +67,24 @@ CREATE TABLE IF NOT EXISTS public.assistance_requests (
   approver_name       TEXT,
   date                DATE,
   status              TEXT DEFAULT 'Pending',
+  request_source      TEXT DEFAULT 'online',
   remarks             TEXT,
   created_at          TIMESTAMPTZ DEFAULT NOW(),
   -- Documents (new installs)
   valid_id_url        TEXT,
-  requirements_urls   JSONB DEFAULT '[]'::jsonb
+  requirements_urls   JSONB DEFAULT '[]'::jsonb,
+  requirements_files  JSONB DEFAULT '[]'::jsonb,
+  requirements_checklist JSONB DEFAULT '[]'::jsonb,
+  requirements_completed BOOLEAN DEFAULT FALSE
 );
 
 -- Ensure columns exist on older installs
 ALTER TABLE public.assistance_requests ADD COLUMN IF NOT EXISTS valid_id_url TEXT;
 ALTER TABLE public.assistance_requests ADD COLUMN IF NOT EXISTS requirements_urls JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.assistance_requests ADD COLUMN IF NOT EXISTS requirements_files JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.assistance_requests ADD COLUMN IF NOT EXISTS requirements_checklist JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.assistance_requests ADD COLUMN IF NOT EXISTS requirements_completed BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.assistance_requests ADD COLUMN IF NOT EXISTS request_source TEXT DEFAULT 'online';
 
 -- ─── ROW LEVEL SECURITY ─────────────────────────────────────
 -- Enable RLS

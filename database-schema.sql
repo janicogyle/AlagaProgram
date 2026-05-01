@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS public.assistance_requests (
   assistance_type TEXT NOT NULL,
   amount DECIMAL(10, 2) DEFAULT 0,
   status TEXT DEFAULT 'Pending' CHECK (status IN ('Pending', 'Resubmitted', 'Approved', 'Released', 'Rejected')),
+  request_source TEXT DEFAULT 'online' CHECK (request_source IN ('online', 'walk-in')),
   
   -- Processing Info
   processed_by TEXT,
@@ -34,6 +35,11 @@ CREATE TABLE IF NOT EXISTS public.assistance_requests (
   -- Documents
   valid_id_url TEXT,
   requirements_urls JSONB DEFAULT '[]'::jsonb,
+  requirements_files JSONB DEFAULT '[]'::jsonb,
+
+  -- Admin/Staff verification (no file uploads)
+  requirements_checklist JSONB DEFAULT '[]'::jsonb,
+  requirements_completed BOOLEAN DEFAULT FALSE,
   
   -- Timestamps
   request_date DATE DEFAULT CURRENT_DATE,
@@ -48,6 +54,10 @@ CREATE INDEX IF NOT EXISTS idx_assistance_requests_request_date ON public.assist
 
 -- Ensure columns exist on older installs
 ALTER TABLE public.assistance_requests ADD COLUMN IF NOT EXISTS requirements_urls JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.assistance_requests ADD COLUMN IF NOT EXISTS requirements_files JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.assistance_requests ADD COLUMN IF NOT EXISTS requirements_checklist JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.assistance_requests ADD COLUMN IF NOT EXISTS requirements_completed BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.assistance_requests ADD COLUMN IF NOT EXISTS request_source TEXT DEFAULT 'online';
 
 -- Add trigger to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -136,6 +146,7 @@ CREATE TABLE IF NOT EXISTS public.account_requests (
   is_senior_citizen BOOLEAN DEFAULT FALSE,
   is_solo_parent BOOLEAN DEFAULT FALSE,
   valid_id_url TEXT,
+  valid_id_urls JSONB DEFAULT '[]'::jsonb,
   age INTEGER,
   birthplace TEXT,
   sex TEXT,
@@ -214,6 +225,7 @@ ALTER TABLE public.account_requests
 -- Ensure password columns exist (safe to run multiple times)
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS password_hash TEXT;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS valid_id_url TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS valid_id_urls JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS age INTEGER;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS birthplace TEXT;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS sex TEXT;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
@@ -68,6 +68,7 @@ export default function BeneficiarySignupPage() {
   const [fieldErrors, setFieldErrors] = useState({
     contactNumber: '',
   });
+  const [toast, setToast] = useState({ open: false, message: '' });
 
   const [form, setForm] = useState({
     firstName: '',
@@ -134,6 +135,14 @@ export default function BeneficiarySignupPage() {
     if (validIdError) setValidIdError('');
   };
 
+  useEffect(() => {
+    if (!toast.open) return;
+    const timer = setTimeout(() => {
+      setToast({ open: false, message: '' });
+    }, 2800);
+    return () => clearTimeout(timer);
+  }, [toast.open]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -158,27 +167,40 @@ export default function BeneficiarySignupPage() {
         return;
       }
 
-      let validIdPath = null;
+      let validIdPaths = [];
       if (validIdFiles.length > 0) {
-        const uploadForm = new FormData();
-        uploadForm.append('file', validIdFiles[0]);
-        uploadForm.append('contactNumber', form.contactNumber);
+        const uploaded = [];
 
-        const uploadResponse = await fetch('/api/account-requests/upload-valid-id', {
-          method: 'POST',
-          body: uploadForm,
-        });
+        for (const file of validIdFiles) {
+          const uploadForm = new FormData();
+          uploadForm.append('file', file);
+          uploadForm.append('contactNumber', form.contactNumber);
 
-        const uploadJson = await uploadResponse.json().catch(() => ({}));
-        if (!uploadResponse.ok) {
-          const msg = uploadJson.error || 'Valid ID upload failed.';
-          setValidIdError(msg);
-          setStatus({ type: 'error', message: msg });
-          return;
+          const uploadResponse = await fetch('/api/account-requests/upload-valid-id', {
+            method: 'POST',
+            body: uploadForm,
+          });
+
+          const uploadJson = await uploadResponse.json().catch(() => ({}));
+          if (!uploadResponse.ok) {
+            const msg = uploadJson.error || 'Valid ID upload failed.';
+            setValidIdError(msg);
+            setStatus({ type: 'error', message: msg });
+            return;
+          }
+
+          const path = uploadJson?.data?.path || null;
+          if (!path) {
+            const msg = 'Valid ID upload failed.';
+            setValidIdError(msg);
+            setStatus({ type: 'error', message: msg });
+            return;
+          }
+          uploaded.push(path);
         }
 
-        validIdPath = uploadJson?.data?.path || null;
-        if (hasSectorSelected && !validIdPath) {
+        validIdPaths = uploaded.filter(Boolean);
+        if (hasSectorSelected && validIdPaths.length === 0) {
           const msg = 'Valid ID upload failed.';
           setValidIdError(msg);
           setStatus({ type: 'error', message: msg });
@@ -204,7 +226,8 @@ export default function BeneficiarySignupPage() {
           sex: form.sex,
           citizenship: form.citizenship,
           civilStatus: form.civilStatus,
-          validIdUrl: validIdPath,
+          validIdUrl: validIdPaths[0] || null,
+          validIdUrls: validIdPaths,
           houseNo: form.houseNo,
           purok: form.purok,
           barangay: form.barangay,
@@ -228,6 +251,10 @@ export default function BeneficiarySignupPage() {
           message ||
           'PENDING APPROVAL: Your sign-up request has been submitted successfully! Please wait for admin approval before you can log in.',
       });
+      setToast({
+        open: true,
+        message: 'Your account request is currently on process.',
+      });
       
       // Redirect to login after 3 seconds
       setTimeout(() => {
@@ -250,6 +277,11 @@ export default function BeneficiarySignupPage() {
 
   return (
     <div className={styles.signupPage}>
+      {toast.open && (
+        <div className={styles.toast} role="status" aria-live="polite">
+          {toast.message}
+        </div>
+      )}
       <PageHeader
         title="ALAGA Program – Beneficiary Sign Up"
         subtitle="Submit your information to request assistance under the Barangay Sta. Rita ALAGA Program."
@@ -420,9 +452,9 @@ export default function BeneficiarySignupPage() {
 
             <div className={styles.validIdRow}>
               <FileUpload
-                label="Valid ID"
+                label="Valid ID(s)"
                 documentType="validId"
-                multiple={false}
+                multiple={true}
                 files={validIdFiles}
                 onChange={handleValidIdChange}
                 required={hasSectorSelected}

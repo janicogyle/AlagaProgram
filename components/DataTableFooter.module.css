@@ -7,3 +7,19 @@
   font-size: 13px;
   color: #6b7280;
 }
+
+@media (max-width: 768px) {
+  .footer {
+    padding: 12px 16px;
+  }
+}
+
+@media (max-width: 576px) {
+  .footer {
+    padding: 10px 14px;
+  }
+
+  .count {
+    font-size: 12px;
+  }
+}

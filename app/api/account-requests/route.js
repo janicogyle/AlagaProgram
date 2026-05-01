@@ -39,6 +39,26 @@ function calculateAge(dob) {
   return age;
 }
 
+function parseValidIdUrls(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.map((v) => String(v || '').trim()).filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map((v) => String(v || '').trim()).filter(Boolean);
+      }
+    } catch {
+      // ignore
+    }
+    const single = value.trim();
+    return single ? [single] : [];
+  }
+  return [];
+}
+
 function getMissingAccountRequestsColumn(message) {
   const msg = String(message || '');
 
@@ -166,6 +186,7 @@ export async function GET(request) {
       'is_senior_citizen',
       'is_solo_parent',
       'valid_id_url',
+      'valid_id_urls',
       'status',
       'notes',
       'processed_by',
@@ -252,7 +273,11 @@ export async function POST(request) {
     }
 
     const validIdUrl = body.validIdUrl || body.valid_id_url || null;
-    if (sectorCount > 0 && !validIdUrl) {
+    const validIdUrls = parseValidIdUrls(body.validIdUrls ?? body.valid_id_urls);
+    const effectiveValidIdUrls = validIdUrls.length
+      ? validIdUrls
+      : (validIdUrl ? [String(validIdUrl)] : []);
+    if (sectorCount > 0 && effectiveValidIdUrls.length === 0) {
       return NextResponse.json(
         { data: null, error: 'Valid ID is required to verify your sector classification.' },
         { status: 400 },
@@ -319,7 +344,8 @@ export async function POST(request) {
       is_pwd: !!body.isPwd,
       is_senior_citizen: !!body.isSeniorCitizen,
       is_solo_parent: !!body.isSoloParent,
-      valid_id_url: validIdUrl,
+      valid_id_url: effectiveValidIdUrls[0] || null,
+      valid_id_urls: effectiveValidIdUrls,
       status: 'Pending',
       password_hash: passwordHash,
     };

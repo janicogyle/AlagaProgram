@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0;
 }
 
 .statusBanner {
@@ -40,6 +41,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
+  min-width: 0;
 }
 
 .reportCard:hover {
@@ -59,6 +61,7 @@
 
 .reportInfo {
   flex: 1;
+  min-width: 0;
 }
 
 .reportTitle {
@@ -66,6 +69,7 @@
   font-weight: 600;
   color: #1f2937;
   margin-bottom: 4px;
+  overflow-wrap: anywhere;
 }
 
 .reportDesc {
@@ -96,6 +100,7 @@
   background: #f8fafc;
   border-radius: 12px;
   text-align: center;
+  min-width: 0;
 }
 
 .summaryIcon {
@@ -260,7 +265,7 @@
   }
 
   .summaryGrid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
     gap: 10px;
   }
 
@@ -314,6 +319,7 @@
   display: flex;
   gap: 12px;
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .confirmContent {
@@ -398,6 +404,7 @@
 .formatOptions {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .formatBtn {
@@ -416,6 +423,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
+  min-height: 44px;
 }
 
 .formatBtn:hover {

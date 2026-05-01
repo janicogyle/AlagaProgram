@@ -9,6 +9,10 @@
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: inherit;
+  min-height: 40px;
+  max-width: 100%;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .button:disabled {
@@ -116,14 +120,18 @@
 }
 
 @media (max-width: 576px) {
+  .button {
+    white-space: normal;
+  }
+
   .small {
-    padding: 5px 8px;
-    font-size: 10px;
+    padding: 8px 10px;
+    font-size: 12px;
   }
 
   .medium {
-    padding: 8px 14px;
-    font-size: 12px;
+    padding: 10px 14px;
+    font-size: 13px;
   }
 
   .large {

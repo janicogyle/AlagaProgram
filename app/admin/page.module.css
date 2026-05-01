@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0;
 }
 
 /* Header */
@@ -35,6 +36,7 @@
   padding: 24px;
   border: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  min-width: 0;
 }
 
 .kpiHeader {
@@ -113,6 +115,7 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 24px;
+  min-width: 0;
 }
 
 .chartCard {
@@ -287,6 +290,7 @@
   background: #f9fafb;
   border-radius: 8px;
   border: 1px solid #e5e7eb;
+  min-width: 0;
 }
 
 .insightIcon {
@@ -383,8 +387,13 @@
 
   .kpiGrid,
   .statsGrid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
+  }
+
+  .chartsGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
 
   .kpiCard {
@@ -475,8 +484,8 @@
 
   .kpiCard {
     padding: 16px;
-    display: flex;
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: auto 1fr;
     align-items: center;
     gap: 16px;
   }

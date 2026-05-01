@@ -6,6 +6,11 @@ export const runtime = 'nodejs';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const isCheckedRequirement = (row) => {
+  const value = row?.checked;
+  return value === true || value === 'true' || value === 1 || value === '1';
+};
+
 function getResidentIdFromRequest(request, body) {
   const session = readBeneficiarySession(request);
   if (session.ok) return { ok: true, residentId: session.residentId, source: 'cookie' };
@@ -99,6 +104,78 @@ export async function PATCH(request, { params }) {
     };
 
     const requirementsUrls = parseRequirements(body.requirements_urls ?? body.requirementsUrls);
+    const parseRequirementFiles = (value) => {
+      if (value === undefined) return undefined;
+      if (!value) return [];
+      let list = [];
+      if (Array.isArray(value)) {
+        list = value;
+      } else if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (Array.isArray(parsed)) list = parsed;
+        } catch {
+          // ignore
+        }
+      }
+      return list
+        .map((item) => {
+          if (!item || typeof item !== 'object') return null;
+          const fileUrl = String(item.file_url || item.fileUrl || '').trim();
+          if (!fileUrl) return null;
+          return {
+            file_url: fileUrl,
+            file_name: String(item.file_name || item.fileName || '').trim() || fileUrl.split('/').pop() || 'Document',
+            requirement_type: item.requirement_type || item.requirementType || null,
+          };
+        })
+        .filter(Boolean);
+    };
+    const requirementsFiles = parseRequirementFiles(body.requirements_files ?? body.requirementsFiles);
+    const urlsFromFiles = Array.isArray(requirementsFiles) ? requirementsFiles.map((x) => x.file_url).filter(Boolean) : [];
+    const allRequirementUrls = (Array.isArray(requirementsUrls) ? requirementsUrls.filter(Boolean) : []).length
+      ? requirementsUrls.filter(Boolean)
+      : urlsFromFiles;
+
+    const parseChecklist = (value) => {
+      if (value === undefined) return undefined;
+      if (!value) return [];
+      if (Array.isArray(value)) return value.filter(Boolean);
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (Array.isArray(parsed)) return parsed.filter(Boolean);
+        } catch {
+          // ignore
+        }
+      }
+      return [];
+    };
+
+    const requirementsChecklist = parseChecklist(body.requirements_checklist ?? body.requirementsChecklist);
+    const requirementsCompletedRaw = body.requirements_completed ?? body.requirementsCompleted;
+    const legacyRequirementsCompleted =
+      requirementsCompletedRaw === true || requirementsCompletedRaw === false ? requirementsCompletedRaw : undefined;
+    const requirementsCompleted = requirementsChecklist !== undefined
+      ? requirementsChecklist.length > 0 && requirementsChecklist.every(isCheckedRequirement)
+      : legacyRequirementsCompleted;
+    const maxRequiredFiles = Array.isArray(requirementsChecklist) ? requirementsChecklist.length : 0;
+    const limitedRequirementUrls =
+      maxRequiredFiles > 0 ? allRequirementUrls.slice(0, maxRequiredFiles) : allRequirementUrls;
+    const limitedRequirementFiles =
+      Array.isArray(requirementsFiles) && maxRequiredFiles > 0
+        ? requirementsFiles.slice(0, maxRequiredFiles)
+        : requirementsFiles;
+    if (
+      (body.request_source ?? body.requestSource ?? 'online') === 'online' &&
+      maxRequiredFiles > 0 &&
+      limitedRequirementUrls.length < maxRequiredFiles
+    ) {
+      return NextResponse.json(
+        { data: null, error: `Please upload exactly ${maxRequiredFiles} requirement file(s).` },
+        { status: 400 },
+      );
+    }
 
     const allowed = {
       requester_name: body.requester_name ?? body.requesterName,
@@ -111,8 +188,17 @@ export async function PATCH(request, { params }) {
       amount: body.amount,
       request_date: body.request_date ?? body.requestDate,
       // Legacy column: always keep populated
-      valid_id_url: body.valid_id_url ?? body.validIdUrl ?? requirementsUrls?.[0] ?? null,
-      requirements_urls: requirementsUrls,
+      valid_id_url:
+        body.valid_id_url ??
+        body.validIdUrl ??
+        (limitedRequirementUrls.length > 1
+          ? JSON.stringify(limitedRequirementUrls)
+          : limitedRequirementUrls?.[0] ?? null),
+      requirements_urls: limitedRequirementUrls,
+      requirements_files: limitedRequirementFiles,
+      requirements_checklist: requirementsChecklist,
+      requirements_completed: requirementsCompleted,
+      request_source: body.request_source ?? body.requestSource ?? 'online',
     };
 
     const update = {
@@ -127,7 +213,7 @@ export async function PATCH(request, { params }) {
     }
 
     const selectFields =
-      'id, control_number, resident_id, requester_name, requester_contact, requester_address, beneficiary_name, beneficiary_contact, beneficiary_address, assistance_type, amount, status, request_date, processed_by, decision_remarks, valid_id_url, created_at';
+      'id, control_number, resident_id, requester_name, requester_contact, requester_address, beneficiary_name, beneficiary_contact, beneficiary_address, assistance_type, amount, status, request_date, request_source, processed_by, decision_remarks, valid_id_url, requirements_urls, requirements_files, requirements_checklist, requirements_completed, created_at';
 
     const runUpdate = async (payload) => {
       let updateQuery = db.from('assistance_requests').update(payload);
@@ -141,13 +227,34 @@ export async function PATCH(request, { params }) {
 
     if (updateError) {
       const msg = String(updateError?.message || '').toLowerCase();
-      if (msg.includes("could not find the 'requirements_urls'") || msg.includes('requirements_urls')) {
-        // Backward compatibility: DB may not have requirements_urls yet.
-        const next = { ...update };
-        delete next.requirements_urls;
-        ;({ data: updated, error: updateError } = await runUpdate(next));
+      if (msg.includes('requirements_') || msg.includes('column "requirements_') || msg.includes('request_source')) {
+        // Fallback: Strip requirements columns and retry if the DB schema hasn't been updated yet
+        const fallbackUpdate = { ...update };
+        delete fallbackUpdate.requirements_urls;
+        delete fallbackUpdate.requirements_files;
+        delete fallbackUpdate.requirements_checklist;
+        delete fallbackUpdate.requirements_completed;
+        delete fallbackUpdate.request_source;
+        if (limitedRequirementUrls.length > 1 && typeof fallbackUpdate.valid_id_url === 'string') {
+          fallbackUpdate.valid_id_url = JSON.stringify(limitedRequirementUrls);
+        }
+
+        // Build a select without the requirements columns
+        const selectCols = selectFields.split(',').map((s) => s.trim()).filter(Boolean);
+        const selectWithoutReq = selectCols
+          .filter((c) => !['requirements_urls', 'requirements_files', 'requirements_checklist', 'requirements_completed', 'request_source'].includes(c))
+          .join(', ');
+
+        let updateQuery = db.from('assistance_requests').update(fallbackUpdate);
+        updateQuery = isUuid
+          ? updateQuery.eq('id', existing.id)
+          : updateQuery.eq('control_number', existing.control_number);
+        const retryResult = await updateQuery.select(selectWithoutReq).single();
+        updated = retryResult.data;
+        updateError = retryResult.error;
       }
     }
+
 
     if (updateError) {
       const msg = String(updateError?.message || '').toLowerCase();

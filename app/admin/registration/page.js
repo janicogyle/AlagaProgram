@@ -6,7 +6,6 @@ import Card from '@/components/Card';
 import Input from '@/components/Input';
 import Select from '@/components/Select';
 import Button from '@/components/Button';
-import FileUpload from '@/components/FileUpload';
 import styles from './page.module.css';
 import { supabase } from '@/lib/supabaseClient';
 import { assistanceTypeOptions, assistanceData } from '@/lib/assistanceData';
@@ -27,6 +26,40 @@ const civilStatusOptions = [
 
 const barangayOptions = [
   { value: 'sta-rita', label: 'Sta. Rita' },
+];
+
+const purokOptions = [
+  { value: '1A', label: '1A' },
+  { value: '1B', label: '1B' },
+  { value: '2', label: '2' },
+  { value: '3A', label: '3A' },
+  { value: '3B', label: '3B' },
+  { value: '3C', label: '3C' },
+  { value: '3D', label: '3D' },
+  { value: '3E', label: '3E' },
+  { value: '3F', label: '3F' },
+  { value: '4A', label: '4A' },
+  { value: '4B', label: '4B' },
+  { value: '4C', label: '4C' },
+  { value: '4D', label: '4D' },
+  { value: '4E', label: '4E' },
+  { value: '5A', label: '5A' },
+  { value: '5A1', label: '5A1' },
+  { value: '5A2', label: '5A2' },
+  { value: '5B', label: '5B' },
+  { value: '5C', label: '5C' },
+  { value: '5D', label: '5D' },
+  { value: '5E', label: '5E' },
+  { value: '5F', label: '5F' },
+  { value: '6A', label: '6A' },
+  { value: '6A EXT.', label: '6A EXT.' },
+  { value: '6B1', label: '6B1' },
+  { value: '6B2', label: '6B2' },
+  { value: '6C1', label: '6C1' },
+  { value: '6C2', label: '6C2' },
+  { value: '6D', label: '6D' },
+  { value: '6E', label: '6E' },
+  { value: '7', label: '7' },
 ];
 
 const CONTROL_NUMBER_PAD = 3;
@@ -77,7 +110,7 @@ export default function RegistrationPage() {
     firstName: '',
     middleName: '',
     houseNo: '',
-    street: '',
+    purok: '',
     barangay: 'sta-rita',
     city: 'Olongapo',
     birthday: '',
@@ -103,10 +136,11 @@ export default function RegistrationPage() {
     beneficiaryContact: '',
     beneficiaryAddress: '',
     dateOfRequest: new Date().toISOString().split('T')[0],
+    requirementsChecklist: {},
+    requirementsCompleted: false, // fallback when no checklist is defined
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
-  const [validIdFiles, setValidIdFiles] = useState([]);
   const [status, setStatus] = useState(null);
 
   const refreshResidentControlNumber = async () => {
@@ -174,41 +208,54 @@ export default function RegistrationPage() {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+    const nextValue = type === 'checkbox' ? checked : value;
 
-    // Clear error when user starts typing
+    // Clear error when user starts changing the field
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
 
     if (name === 'assistanceType') {
       const ceiling = getCeilingFor(value);
+      const reqs = value ? assistanceData[value]?.requirements || [] : [];
+
       setErrors((prev) => ({
         ...prev,
         assistanceAmount: '',
+        requirementsChecklist: '',
+        requirementsCompleted: '',
       }));
+
       setFormData((prev) => ({
         ...prev,
         assistanceType: value,
         assistanceAmount: ceiling != null ? String(ceiling) : '',
+        requirementsChecklist: reqs.reduce((acc, _req, idx) => {
+          acc[idx] = false;
+          return acc;
+        }, {}),
+        // Fallback confirmation when no checklist exists (e.g., Others)
+        requirementsCompleted: false,
       }));
       return;
     }
 
     if (name === 'contactNumber' || name === 'representativeContact' || name === 'beneficiaryContact') {
-      const numericValue = value.replace(/\D/g, '');
+      const numericValue = String(value || '').replace(/\D/g, '');
       if (numericValue.length <= 11) {
         setFormData((prev) => ({
           ...prev,
           [name]: numericValue,
         }));
       }
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
+      return;
     }
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: nextValue,
+    }));
   };
 
   const handleAmountChange = (e) => {
@@ -250,6 +297,20 @@ export default function RegistrationPage() {
     });
   };
 
+  const toggleRequirement = (index) => {
+    if (errors.requirementsChecklist) {
+      setErrors((prev) => ({ ...prev, requirementsChecklist: '' }));
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      requirementsChecklist: {
+        ...(prev.requirementsChecklist || {}),
+        [index]: !prev?.requirementsChecklist?.[index],
+      },
+    }));
+  };
+
   const handleAddDocument = () => {
     const trimmed = newDocument.trim();
     if (trimmed && !requiredDocuments.includes(trimmed)) {
@@ -275,7 +336,7 @@ export default function RegistrationPage() {
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!formData.houseNo.trim()) newErrors.houseNo = 'House number is required';
-    if (!formData.street.trim()) newErrors.street = 'Street is required';
+    if (!String(formData.purok || '').trim()) newErrors.purok = 'Purok is required';
     if (!formData.birthday) newErrors.birthday = 'Birthday is required';
     if (!formData.birthplace.trim()) newErrors.birthplace = 'Birthplace is required';
     if (!formData.sex) newErrors.sex = 'Sex is required';
@@ -300,14 +361,39 @@ export default function RegistrationPage() {
       if (!formData.beneficiaryAddress.trim()) {
         newErrors.beneficiaryAddress = 'Beneficiary address is required';
       }
+
+      // Representative must not match beneficiary when provided
+      const norm = (v) => String(v || '').trim().toLowerCase();
+      if (formData.representativeName && norm(formData.representativeName) === norm(formData.beneficiaryName)) {
+        newErrors.representativeName = 'Representative must be different from beneficiary.';
+      }
+      if (formData.representativeContact) {
+        if (String(formData.representativeContact).replace(/\D/g, '').length !== 11) {
+          newErrors.representativeContact = 'Representative contact number must be exactly 11 digits.';
+        } else if (
+          String(formData.representativeContact || '').trim() === String(formData.beneficiaryContact || '').trim()
+        ) {
+          newErrors.representativeContact = 'Representative contact must be different from beneficiary contact.';
+        }
+      }
     }
 
     if (formData.assistanceType && !formData.assistanceAmount) {
       newErrors.assistanceAmount = 'Budget ceiling is not configured for this assistance type. Please update the assistance guidelines.';
     }
 
-    if (validIdFiles.length === 0) {
-      newErrors.validId = 'Please attach at least one requirement file';
+    if (formData.assistanceType) {
+      if (selectedAssistanceRequirements.length) {
+        const allChecked = selectedAssistanceRequirements.every(
+          (_req, idx) => !!formData?.requirementsChecklist?.[idx],
+        );
+
+        if (!allChecked) {
+          newErrors.requirementsChecklist = 'Please verify each requirement by checking all boxes.';
+        }
+      } else if (!formData.requirementsCompleted) {
+        newErrors.requirementsCompleted = 'Please confirm that the requirements are complete.';
+      }
     }
 
     setErrors(newErrors);
@@ -340,7 +426,7 @@ export default function RegistrationPage() {
         first_name: formData.firstName,
         middle_name: formData.middleName || null,
         house_no: formData.houseNo,
-        street: formData.street,
+        purok: formData.purok,
         barangay: formData.barangay,
         city: formData.city,
         birthday: formData.birthday,
@@ -368,67 +454,122 @@ export default function RegistrationPage() {
 
         const buildAddress = () => {
           const barangayLabel = formData.barangay === 'sta-rita' ? 'Sta. Rita' : formData.barangay;
-          return [formData.houseNo, formData.street, barangayLabel, formData.city]
+          const purokPart = formData.purok ? `Purok ${formData.purok}` : '';
+          return [formData.houseNo, purokPart, barangayLabel, formData.city]
             .map((s) => String(s || '').trim())
             .filter(Boolean)
             .join(', ');
         };
 
-        // Upload requirement files via server (uses service role; avoids Storage policy issues)
-        const requirementFiles = Array.isArray(validIdFiles) ? validIdFiles : [];
-        let requirementPaths = [];
+        // Admin/Staff: requirements are verified via checklist (no file uploads).
 
-        if (requirementFiles.length) {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const token = sessionData?.session?.access_token;
-          if (!token) throw new Error('Please sign in again.');
+        const requirementsChecklist = selectedAssistanceRequirements.map((label, idx) => ({
+          label,
+          checked: !!formData?.requirementsChecklist?.[idx],
+        }));
 
-          for (const file of requirementFiles) {
-            const form = new FormData();
-            form.append('file', file);
-            form.append('controlNumber', assistanceControlNumber);
+        const requirementsCompleted = requirementsChecklist.length
+          ? requirementsChecklist.every((row) => !!row?.checked)
+          : !!formData.requirementsCompleted;
 
-            const uploadRes = await fetch('/api/admin/upload-valid-id', {
-              method: 'POST',
-              body: form,
-              headers: { Authorization: `Bearer ${token}` },
-            });
+        const residentFullName = `${formData.firstName} ${formData.lastName}`.trim();
 
-            const uploadJson = await uploadRes.json().catch(() => ({}));
-            if (!uploadRes.ok || uploadJson?.error) {
-              throw new Error(
-                uploadJson?.error ||
-                  'ATTACH REQUIREMENTS upload failed. Ensure your Supabase Storage bucket is named "document" and SUPABASE_SERVICE_ROLE_KEY is configured.',
-              );
-            }
+        const beneficiaryName = String(formData.beneficiaryName || '').trim() || residentFullName;
+        const beneficiaryContact = String(formData.beneficiaryContact || '').trim() || String(formData.contactNumber || '').trim();
+        const beneficiaryAddress = String(formData.beneficiaryAddress || '').trim() || buildAddress();
 
-            const path = uploadJson?.data?.path || null;
-            if (!path) {
-              throw new Error('ATTACH REQUIREMENTS upload failed. Please try again.');
-            }
+        const representativeName = String(formData.representativeName || '').trim();
+        const representativeContact = String(formData.representativeContact || '').trim();
 
-            requirementPaths.push(path);
-          }
-        }
-
-        const { error: assistanceError } = await supabase.from('assistance_requests').insert({
+        const payload = {
           control_number: assistanceControlNumber,
           resident_id: residentData.id, // Link to the newly created resident
-          requester_name: `${formData.firstName} ${formData.lastName}`,
-          requester_contact: formData.contactNumber,
-          requester_address: buildAddress(),
-          beneficiary_name: formData.beneficiaryName,
-          beneficiary_contact: formData.beneficiaryContact,
-          beneficiary_address: formData.beneficiaryAddress,
+
+          // Representative = person requesting on behalf of the beneficiary.
+          // If blank, treat this as a self-request by the beneficiary.
+          requester_name: representativeName || beneficiaryName,
+          requester_contact: representativeContact || beneficiaryContact,
+          requester_address: beneficiaryAddress,
+
+          beneficiary_name: beneficiaryName,
+          beneficiary_contact: beneficiaryContact,
+          beneficiary_address: beneficiaryAddress,
+
           assistance_type:
             formData.assistanceType === 'Others' ? formData.otherAssistanceType : formData.assistanceType,
           amount: formData.assistanceAmount || 0,
           status: 'Pending', // Default status
           request_date: formData.dateOfRequest,
-          valid_id_url: requirementPaths[0] || null,
-          requirements_urls: requirementPaths,
-        });
+          requirements_completed: requirementsCompleted,
+          requirements_checklist: requirementsChecklist,
+        };
+
+        const stripMissingAssistanceColumn = (message, attemptPayload) => {
+          const msg = String(message || '');
+
+          let match = msg.match(/Could not find the '([^']+)' column of 'assistance_requests' in the schema cache/i);
+          if (!match) {
+            match = msg.match(/column\s+(?:public\.)?assistance_requests\.([a-zA-Z0-9_]+)\s+does\s+not\s+exist/i);
+          }
+          if (!match) {
+            match = msg.match(
+              /column\s+"?([a-zA-Z0-9_]+)"?\s+of\s+relation\s+"(?:public\.)?assistance_requests"\s+does\s+not\s+exist/i,
+            );
+          }
+
+          const col = match?.[1];
+          if (!col || !attemptPayload || typeof attemptPayload !== 'object') {
+            return { payload: attemptPayload, removed: null };
+          }
+          if (!(col in attemptPayload)) return { payload: attemptPayload, removed: null };
+
+          const next = { ...attemptPayload };
+          delete next[col];
+          return { payload: next, removed: col };
+        };
+
+        let attemptPayload = payload;
+        let savedAssistance = null;
+        let assistanceError;
+
+        for (let attempt = 0; attempt < 3; attempt++) {
+          ;({ data: savedAssistance, error: assistanceError } = await supabase
+            .from('assistance_requests')
+            .insert(attemptPayload)
+            .select('id, requirements_checklist, requirements_completed')
+            .single());
+          if (!assistanceError) break;
+
+          const stripped = stripMissingAssistanceColumn(assistanceError.message, attemptPayload);
+          if (!stripped.removed) break;
+          if (['requirements_checklist', 'requirements_completed'].includes(stripped.removed)) {
+            throw new Error(
+              'Database is missing requirements verification columns. Run the Supabase migration before saving registrations.',
+            );
+          }
+
+          attemptPayload = stripped.payload;
+        }
+
         if (assistanceError) throw assistanceError;
+
+        const savedChecklist = Array.isArray(savedAssistance?.requirements_checklist)
+          ? savedAssistance.requirements_checklist
+          : [];
+        const savedCompleted = savedAssistance?.requirements_completed === true;
+        const savedChecklistCompleted = savedChecklist.length
+          ? savedChecklist.every((row) => row?.checked === true)
+          : savedCompleted;
+
+        if (
+          savedChecklist.length !== requirementsChecklist.length ||
+          savedChecklistCompleted !== requirementsCompleted ||
+          savedCompleted !== requirementsCompleted
+        ) {
+          throw new Error(
+            'Requirements verification was not saved correctly. Please refresh the page and try again.',
+          );
+        }
       }
 
       // Reset form after successful submission
@@ -437,7 +578,7 @@ export default function RegistrationPage() {
         firstName: '',
         middleName: '',
         houseNo: '',
-        street: '',
+        purok: '',
         barangay: 'sta-rita',
         city: 'Olongapo',
         birthday: '',
@@ -460,6 +601,8 @@ export default function RegistrationPage() {
         beneficiaryContact: '',
         beneficiaryAddress: '',
         dateOfRequest: new Date().toISOString().split('T')[0],
+        requirementsChecklist: {},
+        requirementsCompleted: false,
       });
       void refreshResidentControlNumber();
       setStatus({
@@ -488,7 +631,7 @@ export default function RegistrationPage() {
       firstName: '',
       middleName: '',
       houseNo: '',
-      street: '',
+      purok: '',
       barangay: 'sta-rita',
       city: 'Olongapo',
       birthday: '',
@@ -511,9 +654,10 @@ export default function RegistrationPage() {
       beneficiaryContact: '',
       beneficiaryAddress: '',
       dateOfRequest: new Date().toISOString().split('T')[0],
+      requirementsChecklist: {},
+      requirementsCompleted: false,
     });
     void refreshResidentControlNumber();
-    setValidIdFiles([]);
   };
 
   const selectedAssistanceRequirements =
@@ -583,13 +727,14 @@ export default function RegistrationPage() {
                 error={errors.houseNo}
                 required
               />
-              <Input
-                label="Street"
-                name="street"
-                value={formData.street}
+              <Select
+                label="Purok"
+                name="purok"
+                value={formData.purok}
                 onChange={handleChange}
-                placeholder="Street name"
-                error={errors.street}
+                options={purokOptions}
+                placeholder="Select purok"
+                error={errors.purok}
                 required
               />
             </div>
@@ -694,7 +839,7 @@ export default function RegistrationPage() {
           {/* ATTACH REQUIREMENTS */}
             <Card
               title="ATTACH REQUIREMENTS"
-              subtitle="Upload a clear photo or scan of the resident's requirements for verification"
+              subtitle="Confirm that the resident's requirements have been completed"
             >
               <div className={styles.formFields}>
                 {formData.assistanceType ? (
@@ -713,7 +858,15 @@ export default function RegistrationPage() {
                       {selectedAssistanceRequirements.length ? (
                         selectedAssistanceRequirements.map((req, idx) => (
                           <li key={idx} className={styles.assistanceRequirementItem}>
-                            {req}
+                            <label className={styles.checkbox}>
+                              <input
+                                type="checkbox"
+                                checked={!!formData?.requirementsChecklist?.[idx]}
+                                onChange={() => toggleRequirement(idx)}
+                              />
+                              <span className={styles.checkmark}></span>
+                              <span>{req}</span>
+                            </label>
                           </li>
                         ))
                       ) : (
@@ -722,23 +875,31 @@ export default function RegistrationPage() {
                         </li>
                       )}
                     </ul>
+
+                    {!selectedAssistanceRequirements.length && (
+                      <label className={styles.checkbox}>
+                        <input
+                          type="checkbox"
+                          name="requirementsCompleted"
+                          checked={!!formData.requirementsCompleted}
+                          onChange={handleChange}
+                        />
+                        <span className={styles.checkmark}></span>
+                        <span>I confirm that the requirements are complete.</span>
+                      </label>
+                    )}
+
+                    {errors.requirementsChecklist && (
+                      <p className={styles.errorText}>{errors.requirementsChecklist}</p>
+                    )}
+                    {errors.requirementsCompleted && (
+                      <p className={styles.errorText}>{errors.requirementsCompleted}</p>
+                    )}
                   </div>
                 ) : (
                   <p className={styles.assistanceRequirementsHint}>
                     Select a Type of Assistance to view the required documents.
                   </p>
-                )}
-
-                <FileUpload
-                  label="Required"
-                  documentType="validId"
-                  multiple={true}
-                  files={validIdFiles}
-                  onChange={setValidIdFiles}
-                  required
-                />
-                {errors.validId && (
-                  <p className={styles.errorText}>{errors.validId}</p>
                 )}
               </div>
             </Card>
@@ -844,7 +1005,7 @@ export default function RegistrationPage() {
                 name="beneficiaryAddress"
                 value={formData.beneficiaryAddress}
                 onChange={handleChange}
-                placeholder="House No., Street, Barangay, City"
+                placeholder="House No., Purok, Barangay, City"
                 error={errors.beneficiaryAddress}
                 disabled={!formData.assistanceType}
                 optional

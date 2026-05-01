@@ -1,11 +1,14 @@
 .tableWrapper {
   width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 8px;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 720px;
 }
 
 .th {
@@ -31,6 +34,7 @@
   font-size: 14px;
   color: #374151;
   border-bottom: 1px solid #e5e7eb;
+  vertical-align: top;
 }
 
 .emptyCell {
@@ -103,10 +107,10 @@
 @media (max-width: 768px) {
   .th:last-child,
   .td:last-child {
-    position: sticky;
-    right: 0;
+    position: static;
+    right: auto;
     background: white;
-    box-shadow: -2px 0 4px rgba(0, 0, 0, 0.05);
+    box-shadow: none;
   }
 
   .th:last-child {

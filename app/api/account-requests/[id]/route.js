@@ -56,6 +56,7 @@ async function fetchAccountRequestWithRetry(db, requestId) {
     'is_senior_citizen',
     'is_solo_parent',
     'valid_id_url',
+    'valid_id_urls',
     'notes',
     'processed_by',
     'processed_at',
@@ -117,6 +118,21 @@ function mergeIfBlank(base, fallback, fields) {
   return merged;
 }
 
+function parseValidIdUrls(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.map((v) => String(v || '').trim()).filter(Boolean);
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.map((v) => String(v || '').trim()).filter(Boolean);
+    } catch {
+      const single = value.trim();
+      return single ? [single] : [];
+    }
+  }
+  return [];
+}
+
 export async function GET(request, { params }) {
   try {
     const auth = await requireStaffOrAdmin(request);
@@ -162,6 +178,7 @@ export async function GET(request, { params }) {
           'barangay',
           'city',
           'valid_id_url',
+          'valid_id_urls',
         ].join(', ');
 
         const residentSelectNoLink = [
@@ -176,6 +193,7 @@ export async function GET(request, { params }) {
           'barangay',
           'city',
           'valid_id_url',
+          'valid_id_urls',
         ].join(', ');
 
         let resident = null;
@@ -236,6 +254,7 @@ export async function GET(request, { params }) {
           'barangay',
           'city',
           'valid_id_url',
+          'valid_id_urls',
         ]);
 
         // Best-effort: backfill missing signup fields from the resident profile so the modal shows complete info.
@@ -253,6 +272,7 @@ export async function GET(request, { params }) {
             'barangay',
             'city',
             'valid_id_url',
+            'valid_id_urls',
           ]) {
             if (isBlank(accountRequest?.[f]) && !isBlank(resident?.[f])) backfill[f] = resident[f];
           }
@@ -429,7 +449,7 @@ export async function POST(request, { params }) {
           street: accountRequest.street,
           barangay: accountRequest.barangay || 'Sta. Rita',
           city: accountRequest.city || 'Olongapo City',
-          valid_id_url: accountRequest.valid_id_url || null,
+          valid_id_url: accountRequest.valid_id_url || parseValidIdUrls(accountRequest.valid_id_urls)[0] || null,
           is_pwd: accountRequest.is_pwd,
           is_senior_citizen: accountRequest.is_senior_citizen,
           is_solo_parent: accountRequest.is_solo_parent,

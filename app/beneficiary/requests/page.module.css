@@ -2,6 +2,22 @@
 	display: flex;
 	flex-direction: column;
 	gap: 24px;
+	min-width: 0;
+}
+
+.toast {
+	position: fixed;
+	top: 1rem;
+	right: 1rem;
+	z-index: 9999;
+	max-width: min(92vw, 360px);
+	background: #166534;
+	color: #ffffff;
+	padding: 0.75rem 1rem;
+	border-radius: 10px;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+	font-size: 0.9rem;
+	line-height: 1.35;
 }
 
 .controlNumberBar {
@@ -13,6 +29,7 @@
 	padding: 16px 24px;
 	border-radius: 12px;
 	color: white;
+	min-width: 0;
 }
 
 .controlNumberLabel {
@@ -26,6 +43,7 @@
 	font-weight: 700;
 	letter-spacing: 1px;
 	font-family: 'Courier New', monospace;
+	overflow-wrap: anywhere;
 }
 
 .formGrid {
@@ -33,6 +51,7 @@
 	grid-template-columns: 1.5fr 1fr;
 	gap: 24px;
 	align-items: start;
+	min-width: 0;
 }
 
 .mainCard {
@@ -43,6 +62,7 @@
 	display: flex;
 	flex-direction: column;
 	gap: 20px;
+	min-width: 0;
 }
 
 .formFields {
@@ -76,6 +96,7 @@
 	align-items: center;
 	justify-content: space-between;
 	gap: 10px;
+	flex-wrap: wrap;
 }
 
 .assistanceRequirementsTitle {
@@ -96,7 +117,8 @@
 
 .assistanceRequirementsList {
 	margin: 10px 0 0 0;
-	padding-left: 18px;
+	padding-left: 0;
+	list-style: none;
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
@@ -110,6 +132,71 @@
 
 .assistanceRequirementItemEmpty {
 	color: #6b7280;
+}
+
+.requirementUploads {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.requirementUploadItem {
+	border: 1px solid #e5e7eb;
+	border-radius: 10px;
+	padding: 12px;
+	background: #ffffff;
+}
+
+.requirementUploadHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.requirementUploadLabel {
+	font-size: 13px;
+	font-weight: 600;
+	color: #111827;
+}
+
+.requirementUploadLimit {
+	font-size: 11px;
+	color: #6b7280;
+}
+
+.existingFileRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 8px 10px;
+	border-radius: 8px;
+	background: #f9fafb;
+	border: 1px solid #e5e7eb;
+	margin-bottom: 8px;
+}
+
+.existingFileName {
+	font-size: 12px;
+	color: #374151;
+	overflow-wrap: anywhere;
+}
+
+.removeExistingFileBtn {
+	border: 1px solid #fecaca;
+	background: #fff1f2;
+	color: #b91c1c;
+	padding: 4px 10px;
+	border-radius: 8px;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.removeExistingFileBtn:hover {
+	background: #ffe4e6;
 }
 
 .statusBanner {
@@ -195,6 +282,8 @@
 	color: #374151;
 	position: relative;
 	padding-left: 28px;
+	min-width: 0;
+	line-height: 1.35;
 }
 
 .checkbox input {
@@ -315,7 +404,7 @@
 	}
 
 	.row {
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: 1fr;
 		gap: 12px;
 	}
 
@@ -353,6 +442,13 @@
 		gap: 14px;
 	}
 
+	.toast {
+		top: 0.75rem;
+		left: 0.75rem;
+		right: 0.75rem;
+		max-width: none;
+	}
+
 	.row {
 		grid-template-columns: 1fr;
 		gap: 12px;
@@ -364,9 +460,26 @@
 
 	.controlNumberBar {
 		flex-direction: column;
-		text-align: center;
+		text-align: left;
+		align-items: flex-start;
 		gap: 4px;
 		padding: 12px 14px;
+	}
+
+	.checkbox {
+		font-size: 13px;
+		padding: 10px;
+		padding-left: 40px;
+		background: #f9fafb;
+		border: 1px solid #e5e7eb;
+		border-radius: 10px;
+		align-items: flex-start;
+	}
+
+	.checkmark {
+		left: 10px;
+		top: 10px;
+		transform: none;
 	}
 }
 

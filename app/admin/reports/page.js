@@ -164,7 +164,7 @@ export default function ReportsPage() {
       Age: row.age || '',
       Sex: row.sex || '',
       'Contact Number': row.contact_number || '',
-      Address: `${row.house_no || ''} ${row.street || ''}`.trim(),
+      Address: `${row.house_no || ''} ${row.purok ? `Purok ${row.purok}` : ''}`.trim(),
       Barangay: row.barangay || '',
       City: row.city || '',
       PWD: row.is_pwd ? 'Yes' : 'No',

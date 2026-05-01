@@ -3,6 +3,126 @@ import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
 
+const isCheckedRequirement = (row) => {
+  const value = row?.checked;
+  return value === true || value === 'true' || value === 1 || value === '1';
+};
+
+const ALLOWED_REQUEST_SOURCES = new Set(['online', 'walk-in']);
+
+const getFileNameFromUrl = (fileUrl) => {
+  const raw = String(fileUrl || '').trim();
+  if (!raw) return 'Document';
+  const cleaned = raw.split('?')[0];
+  const parts = cleaned.split('/').filter(Boolean);
+  return parts[parts.length - 1] || 'Document';
+};
+
+const normalizeRequirementFiles = (value) => {
+  if (!value) return [];
+
+  let list = [];
+  if (Array.isArray(value)) {
+    list = value;
+  } else if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        list = parsed;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return list
+    .map((item) => {
+      if (typeof item === 'string') {
+        const fileUrl = item.trim();
+        if (!fileUrl) return null;
+        return {
+          file_url: fileUrl,
+          file_name: getFileNameFromUrl(fileUrl),
+          requirement_type: null,
+        };
+      }
+
+      if (!item || typeof item !== 'object') return null;
+
+      const fileUrl = String(item.file_url || item.fileUrl || item.path || '').trim();
+      if (!fileUrl) return null;
+
+      const fileName = String(item.file_name || item.fileName || '').trim() || getFileNameFromUrl(fileUrl);
+      const requirementTypeRaw = item.requirement_type ?? item.requirementType ?? null;
+      const requirementType = requirementTypeRaw == null ? null : String(requirementTypeRaw).trim() || null;
+
+      return {
+        file_url: fileUrl,
+        file_name: fileName,
+        requirement_type: requirementType,
+      };
+    })
+    .filter(Boolean);
+};
+
+const parsePathArray = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.map((v) => String(v || '').trim()).filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map((v) => String(v || '').trim()).filter(Boolean);
+      }
+    } catch {
+      const single = value.trim();
+      return single ? [single] : [];
+    }
+  }
+  return [];
+};
+
+const parseArrayValue = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      // ignore
+    }
+  }
+  return [];
+};
+
+const listRequirementPathsFromStorage = async (controlNumber, limitCount = 0) => {
+  const folder = `assistance-requests/${String(controlNumber || '').trim()}`;
+  if (!folder || folder.endsWith('/')) return [];
+
+  if (!supabaseAdmin) return [];
+  const bucketsToTry = ['document', 'documents'];
+
+  for (const bucket of bucketsToTry) {
+    const { data, error } = await supabaseAdmin.storage.from(bucket).list(folder, { limit: 200 });
+    if (error) continue;
+    const sorted = (data || [])
+      .filter((item) => !item?.id?.endsWith('/') && !!item?.name)
+      .sort((a, b) => {
+        const aTime = Date.parse(String(a?.created_at || '')) || 0;
+        const bTime = Date.parse(String(b?.created_at || '')) || 0;
+        return bTime - aTime;
+      });
+    const trimmed = limitCount > 0 ? sorted.slice(0, limitCount) : sorted;
+    const paths = trimmed.map((item) => `${folder}/${item.name}`);
+    if (paths.length) return paths;
+  }
+
+  return [];
+};
+
 function stripMissingAssistanceColumn(message, payload) {
   const msg = String(message || '');
 
@@ -94,8 +214,30 @@ export async function GET(request) {
       'created_at',
     ];
 
-    const requestFields = baseRequestFields.join(',');
-    const requestFieldsWithRequirements = [...baseRequestFields, 'requirements_urls'].join(',');
+    const optionalRequestFields = [
+      'requirements_urls',
+      'requirements_completed',
+      'requirements_checklist',
+      'requirements_files',
+      'request_source',
+    ];
+
+    const getMissingAssistanceColumn = (message) => {
+      const msg = String(message || '');
+
+      let match = msg.match(/Could not find the '([^']+)' column of 'assistance_requests' in the schema cache/i);
+      if (match?.[1]) return match[1];
+
+      match = msg.match(/column\s+(?:public\.)?assistance_requests\.([a-zA-Z0-9_]+)\s+does\s+not\s+exist/i);
+      if (match?.[1]) return match[1];
+
+      match = msg.match(
+        /column\s+"?([a-zA-Z0-9_]+)"?\s+of\s+relation\s+"(?:public\.)?assistance_requests"\s+does\s+not\s+exist/i,
+      );
+      if (match?.[1]) return match[1];
+
+      return null;
+    };
 
     const residentsJoin =
       'residents:resident_id(id, control_number, first_name, middle_name, last_name, birthday, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, representative_name, representative_contact, is_pwd, is_senior_citizen, is_solo_parent)';
@@ -113,24 +255,52 @@ export async function GET(request) {
       return await query;
     };
 
-    const isMissingRequirementsColumn = (message) => {
-      const msg = String(message || '').toLowerCase();
-      return (
-        msg.includes("could not find the 'requirements_urls'") ||
-        msg.includes('assistance_requests.requirements_urls') ||
-        (msg.includes('requirements_urls') && msg.includes('does not exist'))
-      );
-    };
+    // Try selecting optional columns (requirements_urls + requirements_completed), then gracefully fall back
+    // when running against older schemas.
+    let cols = [...baseRequestFields, ...optionalRequestFields];
+    let data;
+    let error;
 
-    // Prefer returning requirements_urls when DB supports it; fall back to legacy schema.
-    let { data, error } = await runQuery(requestFieldsWithRequirements);
-    if (error && isMissingRequirementsColumn(error.message)) {
-      ;({ data, error } = await runQuery(requestFields));
+    for (let attempt = 0; attempt < optionalRequestFields.length + 1; attempt++) {
+      ;({ data, error } = await runQuery(cols.join(',')));
+      if (!error) break;
+
+      const missing = getMissingAssistanceColumn(error.message);
+      if (!missing || !optionalRequestFields.includes(missing)) break;
+
+      cols = cols.filter((c) => c !== missing);
     }
 
     if (error) throw error;
 
-    return NextResponse.json({ data: data || [], error: null });
+    const rows = Array.isArray(data) ? data : [];
+    const enriched = await Promise.all(
+      rows.map(async (row) => {
+        const reqFromColumn = parsePathArray(row?.requirements_urls);
+        const checklist = parseArrayValue(row?.requirements_checklist);
+        const maxCount = Array.isArray(checklist) && checklist.length > 0 ? checklist.length : 0;
+        const reqFromLegacy = parsePathArray(row?.valid_id_url);
+        let requirementUrls = reqFromColumn.length ? reqFromColumn : reqFromLegacy;
+
+        if (!requirementUrls.length && row?.control_number) {
+          const fromStorage = await listRequirementPathsFromStorage(row.control_number, maxCount);
+          if (fromStorage.length) {
+            requirementUrls = fromStorage;
+          }
+        }
+
+        if (maxCount > 0 && requirementUrls.length > maxCount) {
+          requirementUrls = requirementUrls.slice(0, maxCount);
+        }
+
+        return {
+          ...row,
+          requirements_urls: requirementUrls,
+        };
+      }),
+    );
+
+    return NextResponse.json({ data: enriched, error: null });
   } catch (error) {
     console.error('Fetch assistance requests error:', error);
     return NextResponse.json(
@@ -185,10 +355,57 @@ export async function POST(request) {
     };
 
     const requirementsUrls = parseRequirements(body.requirements_urls ?? body.requirementsUrls);
+    const requirementsFilesInput = body.requirements_files ?? body.requirementsFiles;
+    const requirementsFiles = normalizeRequirementFiles(requirementsFilesInput);
+    const effectiveRequirementFiles = requirementsFiles.length
+      ? requirementsFiles
+      : (requirementsUrls || []).map((fileUrl) => ({
+          file_url: fileUrl,
+          file_name: getFileNameFromUrl(fileUrl),
+          requirement_type: null,
+        }));
+    const allRequirementUrls = effectiveRequirementFiles.map((file) => file.file_url).filter(Boolean);
     const legacyValidIdUrl = body.valid_id_url || body.validIdUrl || null;
-    const validIdUrl = legacyValidIdUrl || (requirementsUrls?.[0] ?? null);
+    const validIdUrl =
+      legacyValidIdUrl || (allRequirementUrls.length > 1 ? JSON.stringify(allRequirementUrls) : allRequirementUrls?.[0] ?? null);
+    const requestSourceRaw = String(body.request_source || body.requestSource || 'online').trim().toLowerCase();
+    const requestSource = ALLOWED_REQUEST_SOURCES.has(requestSourceRaw) ? requestSourceRaw : 'online';
 
     const providedControlNumber = body.control_number || body.controlNumber || null;
+
+    const parseChecklist = (value) => {
+      if (!value) return null;
+      if (Array.isArray(value)) return value;
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {
+          // ignore
+        }
+      }
+      return null;
+    };
+
+    const requirementsChecklist = parseChecklist(body.requirements_checklist ?? body.requirementsChecklist);
+
+    const requirementsCompletedRaw = body.requirements_completed ?? body.requirementsCompleted;
+    const legacyRequirementsCompleted =
+      requirementsCompletedRaw === true || requirementsCompletedRaw === false ? requirementsCompletedRaw : null;
+    const maxRequiredFiles = Array.isArray(requirementsChecklist) ? requirementsChecklist.length : 0;
+    const limitedRequirementUrls =
+      maxRequiredFiles > 0 ? allRequirementUrls.slice(0, maxRequiredFiles) : allRequirementUrls;
+    const limitedRequirementFiles =
+      maxRequiredFiles > 0 ? effectiveRequirementFiles.slice(0, maxRequiredFiles) : effectiveRequirementFiles;
+    if (requestSource === 'online' && maxRequiredFiles > 0 && limitedRequirementUrls.length < maxRequiredFiles) {
+      return NextResponse.json(
+        { data: null, error: `Please upload exactly ${maxRequiredFiles} requirement file(s).` },
+        { status: 400 },
+      );
+    }
+    const requirementsCompleted = requirementsChecklist?.length
+      ? requirementsChecklist.every(isCheckedRequirement)
+      : legacyRequirementsCompleted;
 
     const buildPayload = (controlNumber) => ({
       control_number: controlNumber,
@@ -203,12 +420,17 @@ export async function POST(request) {
       amount: Number.isFinite(amount) ? amount : 0,
       status: body.status || 'Pending',
       request_date: requestDate,
-      valid_id_url: validIdUrl,
-      ...(requirementsUrls ? { requirements_urls: requirementsUrls } : {}),
+      request_source: requestSource,
+      valid_id_url:
+        limitedRequirementUrls.length > 1 ? JSON.stringify(limitedRequirementUrls) : validIdUrl,
+      ...(limitedRequirementUrls.length ? { requirements_urls: limitedRequirementUrls } : {}),
+      ...(limitedRequirementFiles.length ? { requirements_files: limitedRequirementFiles } : {}),
+      ...(requirementsChecklist ? { requirements_checklist: requirementsChecklist } : {}),
+      ...(requirementsCompleted != null ? { requirements_completed: requirementsCompleted } : {}),
     });
 
     const selectFields =
-      'id, control_number, resident_id, requester_name, requester_contact, requester_address, beneficiary_name, beneficiary_contact, beneficiary_address, assistance_type, amount, status, request_date, processed_by, decision_remarks, valid_id_url, created_at';
+      'id, control_number, resident_id, requester_name, requester_contact, requester_address, beneficiary_name, beneficiary_contact, beneficiary_address, assistance_type, amount, status, request_date, request_source, processed_by, decision_remarks, valid_id_url, requirements_urls, requirements_files, requirements_checklist, requirements_completed, created_at';
 
     let data;
     let error;
@@ -221,22 +443,33 @@ export async function POST(request) {
 
       const attemptPayload = buildPayload(controlNumber);
 
-      ({ data, error } = await db
-        .from('assistance_requests')
-        .insert(attemptPayload)
-        .select(selectFields)
-        .single());
+      let insertPayload = { ...attemptPayload };
+      let selectCols = selectFields.split(',').map((s) => s.trim()).filter(Boolean);
 
-      if (error) {
-        // Backward compatibility: older DBs may not have requirements_urls yet.
-        const stripped = stripMissingAssistanceColumn(error.message, attemptPayload);
-        if (stripped.removed) {
-          ;({ data, error } = await db
-            .from('assistance_requests')
-            .insert(stripped.payload)
-            .select(selectFields)
-            .single());
+      for (let stripAttempt = 0; stripAttempt < 8; stripAttempt++) {
+        ;({ data, error } = await db
+          .from('assistance_requests')
+          .insert(insertPayload)
+          .select(selectCols.join(', '))
+          .single());
+
+        if (!error) break;
+
+        // Backward compatibility: remove only the exact missing column
+        // instead of dropping all requirement-related fields.
+        const stripped = stripMissingAssistanceColumn(error.message, insertPayload);
+        if (!stripped.removed) break;
+
+        insertPayload = stripped.payload;
+        // If older schemas are missing multi-file columns, preserve all file paths in valid_id_url as JSON text.
+        if (
+          ['requirements_urls', 'requirements_files'].includes(stripped.removed) &&
+          allRequirementUrls.length > 1 &&
+          typeof insertPayload.valid_id_url === 'string'
+        ) {
+          insertPayload.valid_id_url = JSON.stringify(allRequirementUrls);
         }
+        selectCols = selectCols.filter((c) => c !== stripped.removed);
       }
 
       if (!error) break;

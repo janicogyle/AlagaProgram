@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0;
 }
 
 .statusBanner {
@@ -39,6 +40,7 @@
   background: white;
   border-radius: 12px;
   border: 1px solid #e5e7eb;
+  min-width: 0;
 }
 
 .summaryIcon {
@@ -53,6 +55,7 @@
 .summaryInfo {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .summaryValue {
@@ -64,6 +67,7 @@
 .summaryLabel {
   font-size: 13px;
   color: #6b7280;
+  overflow-wrap: anywhere;
 }
 
 /* Action Buttons */
@@ -156,12 +160,14 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
+  min-width: 0;
 }
 
 .detailSection {
   background: #f9fafb;
   padding: 20px;
   border-radius: 12px;
+  min-width: 0;
 }
 
 .detailSection h4 {
@@ -189,12 +195,14 @@
   font-weight: 500;
   color: #1f2937;
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .assistanceInfo {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
+  min-width: 0;
 }
 
 .infoCard {
@@ -205,6 +213,7 @@
   background: #eff6ff;
   border-radius: 10px;
   text-align: center;
+  min-width: 0;
 }
 
 .infoLabel {
@@ -219,15 +228,138 @@
   font-size: 14px;
   font-weight: 600;
   color: #1e40af;
+  overflow-wrap: anywhere;
+}
+
+.wideInfoCard {
+  grid-column: 1 / -1;
+  text-align: left;
+}
+
+.requirementsContent {
+  width: 100%;
+  color: #1f2937;
 }
 
 .validIdLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
   color: #1d4ed8;
   text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .validIdLink:hover {
-  text-decoration: underline;
+  background: #dbeafe;
+}
+
+.verificationPanel {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.verificationHeading {
+  margin: 0 0 10px 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e3a8a;
+  text-transform: uppercase;
+}
+
+.verificationChecklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.verificationRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #1f2937;
+  line-height: 1.45;
+}
+
+.verificationRow input {
+  margin-top: 2px;
+}
+
+.verificationStatus {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e3a8a;
+}
+
+.verificationEmpty {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.uploadedDocsSection {
+  margin-top: 12px;
+}
+
+.uploadedDocsHeading {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: #374151;
+}
+
+.uploadedDocsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.uploadedDocItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.uploadedDocMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.uploadedDocName {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f2937;
+  overflow-wrap: anywhere;
+}
+
+.uploadedDocType {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.walkInNotice {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #374151;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
 }
 
 /* Decision Modal */
@@ -602,12 +734,22 @@
   }
 
   .assistanceInfo {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 8px;
   }
 
   .infoCard {
     padding: 12px;
+    text-align: left;
+  }
+
+  .uploadedDocItem {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .validIdLink {
+    width: 100%;
   }
 
   .infoLabel {

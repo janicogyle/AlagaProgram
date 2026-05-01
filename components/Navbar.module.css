@@ -8,12 +8,14 @@
   position: sticky;
   top: 0;
   z-index: 50;
+  min-width: 0;
 }
 
 .left {
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 0;
 }
 
 .menuToggle {
@@ -38,12 +40,17 @@
   font-size: 15px;
   color: #374151;
   font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .right {
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 0;
 }
 
 .searchBox {
@@ -196,7 +203,7 @@
 /* Mobile */
 @media (max-width: 576px) {
   .navbar {
-    padding: 10px 12px;
+    padding: 10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left));
   }
 
   .searchBox {

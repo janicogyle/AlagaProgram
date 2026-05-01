@@ -52,6 +52,95 @@ const getNextSequentialControlNumber = async (tableName) => {
   }
 };
 
+const parseLegacyRequirementUrls = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => {
+        if (typeof v === 'string') return v.trim();
+        if (v && typeof v === 'object') return String(v.file_url || v.fileUrl || '').trim();
+        return '';
+      })
+      .filter(Boolean);
+  }
+  const raw = String(value).trim();
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((v) => {
+          if (typeof v === 'string') return v.trim();
+          if (v && typeof v === 'object') return String(v.file_url || v.fileUrl || '').trim();
+          return '';
+        })
+        .filter(Boolean);
+    }
+  } catch {
+    // ignore
+  }
+  return [raw];
+};
+
+const normalizeRequirementFiles = (requirementsFilesValue, requirementsUrlsValue, fallbackValidIdValue) => {
+  const rows = [];
+
+  const parseRows = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        // ignore
+      }
+    }
+    return [];
+  };
+
+  const rawRows = parseRows(requirementsFilesValue);
+  rawRows.forEach((row) => {
+    if (!row) return;
+    if (typeof row === 'string') {
+      const fileUrl = row.trim();
+      if (!fileUrl) return;
+      rows.push({
+        file_url: fileUrl,
+        file_name: fileUrl.split('/').pop() || 'Document',
+        requirement_type: null,
+      });
+      return;
+    }
+    const fileUrl = String(row.file_url || row.fileUrl || '').trim();
+    if (!fileUrl) return;
+    rows.push({
+      file_url: fileUrl,
+      file_name: String(row.file_name || row.fileName || '').trim() || fileUrl.split('/').pop() || 'Document',
+      requirement_type: row.requirement_type || row.requirementType || null,
+    });
+  });
+
+  const urlList = [
+    ...parseLegacyRequirementUrls(requirementsUrlsValue),
+    ...parseLegacyRequirementUrls(fallbackValidIdValue),
+  ];
+  urlList.forEach((fileUrl) => {
+    rows.push({
+      file_url: fileUrl,
+      file_name: fileUrl.split('/').pop() || 'Document',
+      requirement_type: null,
+    });
+  });
+
+  const map = new Map();
+  rows.forEach((row) => {
+    if (!row?.file_url) return;
+    map.set(row.file_url, row);
+  });
+  return Array.from(map.values());
+};
+
 export default function BeneficiaryRequestPage() {
   const router = useRouter();
   const [controlNumber, setControlNumber] = useState('');
@@ -84,19 +173,29 @@ export default function BeneficiaryRequestPage() {
     beneficiaryName: '',
     beneficiaryContact: '',
     beneficiaryAddress: '',
+    requirementsChecklist: {},
     dateOfRequest: new Date().toISOString().split('T')[0],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
-  const [validIdFiles, setValidIdFiles] = useState([]);
+  const [requirementUploadFiles, setRequirementUploadFiles] = useState({});
   const [status, setStatus] = useState(null); // { type: 'success' | 'error', message: string }
   const [isEditMode, setIsEditMode] = useState(false);
   const [isLoadingEdit, setIsLoadingEdit] = useState(false);
   const [editingRequestId, setEditingRequestId] = useState(null);
   const [editingAssistanceControlNumber, setEditingAssistanceControlNumber] = useState(null);
-  const [existingValidIdPath, setExistingValidIdPath] = useState(null);
-  const [existingRequirementPaths, setExistingRequirementPaths] = useState([]);
+  const [existingRequirementFilesByIndex, setExistingRequirementFilesByIndex] = useState({});
+  const [removedRequirementIndex, setRemovedRequirementIndex] = useState({});
   const [beneficiaryIsRequester, setBeneficiaryIsRequester] = useState(true);
+  const [toast, setToast] = useState({ open: false, message: '' });
+
+  useEffect(() => {
+    if (!toast.open) return;
+    const timer = setTimeout(() => {
+      setToast({ open: false, message: '' });
+    }, 2600);
+    return () => clearTimeout(timer);
+  }, [toast.open]);
 
   const refreshResidentControlNumber = async () => {
     try {
@@ -245,6 +344,35 @@ export default function BeneficiaryRequestPage() {
 
         const parseRequirements = (value) => {
           if (!value) return [];
+          if (Array.isArray(value)) {
+            return value
+              .map((item) => {
+                if (typeof item === 'string') return item.trim();
+                if (item && typeof item === 'object') return String(item.file_url || item.fileUrl || '').trim();
+                return '';
+              })
+              .filter(Boolean);
+          }
+          if (typeof value === 'string') {
+            try {
+              const parsed = JSON.parse(value);
+              if (Array.isArray(parsed)) {
+                return parsed
+                  .map((item) => {
+                    if (typeof item === 'string') return item.trim();
+                    if (item && typeof item === 'object') return String(item.file_url || item.fileUrl || '').trim();
+                    return '';
+                  })
+                  .filter(Boolean);
+              }
+            } catch {
+              // ignore
+            }
+          }
+          return [];
+        };
+        const parseChecklistRows = (value) => {
+          if (!value) return [];
           if (Array.isArray(value)) return value.filter(Boolean);
           if (typeof value === 'string') {
             try {
@@ -256,24 +384,6 @@ export default function BeneficiaryRequestPage() {
           }
           return [];
         };
-
-        const reqs = parseRequirements(match.requirements_urls);
-        const fallback = match.valid_id_url ? [match.valid_id_url] : [];
-        const merged = reqs.length ? reqs : fallback;
-
-        setExistingRequirementPaths(merged);
-        setExistingValidIdPath(merged[0] || null);
-
-        const norm = (v) => String(v || '').trim().toLowerCase();
-        const beneficiarySameAsRequester =
-          !match.beneficiary_name && !match.beneficiary_contact && !match.beneficiary_address
-            ? true
-            : norm(match.beneficiary_name) === norm(match.requester_name) &&
-              norm(match.beneficiary_contact) === norm(match.requester_contact) &&
-              norm(match.beneficiary_address) === norm(match.requester_address);
-        setBeneficiaryIsRequester(beneficiarySameAsRequester);
-
-        const resident = match.residents || {};
 
         const normalizeBarangay = (value) => {
           const raw = String(value || '').toLowerCase();
@@ -290,7 +400,59 @@ export default function BeneficiaryRequestPage() {
           return { assistanceType: 'Others', otherAssistanceType: v };
         };
 
-        const assistance = normalizeAssistanceType(match.assistance_type);
+        const reqs = parseRequirements(match.requirements_urls);
+        const normalizedAssistanceType = normalizeAssistanceType(match.assistance_type);
+        const requirementLabels =
+          normalizedAssistanceType.assistanceType
+            ? assistanceData[normalizedAssistanceType.assistanceType]?.requirements || []
+            : [];
+        const mergedRequirementFiles = normalizeRequirementFiles(
+          match.requirements_files,
+          reqs,
+          match.valid_id_url,
+        );
+
+        const byIndex = {};
+        const unassigned = [...mergedRequirementFiles];
+        requirementLabels.forEach((label, idx) => {
+          const typed = mergedRequirementFiles.find((file) => String(file.requirement_type || '') === String(label));
+          if (typed) {
+            byIndex[idx] = [typed];
+            const pos = unassigned.findIndex((x) => x.file_url === typed.file_url);
+            if (pos >= 0) unassigned.splice(pos, 1);
+          }
+        });
+        requirementLabels.forEach((_, idx) => {
+          if (!byIndex[idx] && unassigned.length) {
+            byIndex[idx] = [unassigned.shift()];
+          }
+        });
+        setExistingRequirementFilesByIndex(byIndex);
+        setRemovedRequirementIndex({});
+        setRequirementUploadFiles({});
+
+        const savedChecklist = parseChecklistRows(match.requirements_checklist);
+        const savedChecklistState = savedChecklist.reduce((acc, item, idx) => {
+          const checked = item?.checked;
+          acc[idx] = checked === true || checked === 'true' || checked === 1 || checked === '1';
+          return acc;
+        }, {});
+
+        const norm = (v) => String(v || '').trim().toLowerCase();
+        const beneficiarySameAsRequester =
+          !match.beneficiary_name && !match.beneficiary_contact && !match.beneficiary_address
+            ? true
+            : norm(match.beneficiary_name) === norm(match.requester_name) &&
+              norm(match.beneficiary_contact) === norm(match.requester_contact) &&
+              norm(match.beneficiary_address) === norm(match.requester_address);
+        setBeneficiaryIsRequester(beneficiarySameAsRequester);
+
+        const resident = match.residents || {};
+        if (resident.control_number) {
+          setControlNumber(String(resident.control_number));
+        }
+
+        const assistance = normalizedAssistanceType;
 
         setFormData((prev) => ({
           ...prev,
@@ -321,10 +483,11 @@ export default function BeneficiaryRequestPage() {
           beneficiaryName: beneficiarySameAsRequester ? '' : match.beneficiary_name || '',
           beneficiaryContact: beneficiarySameAsRequester ? '' : match.beneficiary_contact || '',
           beneficiaryAddress: beneficiarySameAsRequester ? '' : match.beneficiary_address || '',
+          requirementsChecklist: savedChecklistState,
           dateOfRequest: match.request_date || new Date().toISOString().split('T')[0],
         }));
 
-        setValidIdFiles([]);
+        setRequirementUploadFiles({});
         setErrors({});
         setStatus({
           type: 'success',
@@ -336,7 +499,9 @@ export default function BeneficiaryRequestPage() {
         setIsEditMode(false);
         setEditingRequestId(null);
         setEditingAssistanceControlNumber(null);
-        setExistingValidIdPath(null);
+        setExistingRequirementFilesByIndex({});
+        setRemovedRequirementIndex({});
+        setRequirementUploadFiles({});
         setStatus({
           type: 'error',
           message: err?.message || 'Failed to load request for editing.',
@@ -417,10 +582,16 @@ export default function BeneficiaryRequestPage() {
         ...prev,
         assistanceAmount: '',
       }));
+      setRequirementUploadFiles({});
+      setRemovedRequirementIndex({});
+      if (!isEditMode) {
+        setExistingRequirementFilesByIndex({});
+      }
       setFormData((prev) => ({
         ...prev,
         assistanceType: value,
         assistanceAmount: ceiling != null ? String(ceiling) : '',
+        requirementsChecklist: {},
       }));
       return;
     }
@@ -479,6 +650,38 @@ export default function BeneficiaryRequestPage() {
     });
   };
 
+  const toggleRequirement = (index) => {
+    if (errors.requirementsChecklist) {
+      setErrors((prev) => ({ ...prev, requirementsChecklist: '' }));
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      requirementsChecklist: {
+        ...(prev.requirementsChecklist || {}),
+        [index]: !prev?.requirementsChecklist?.[index],
+      },
+    }));
+  };
+
+  const handleRequirementUploadChange = (index, files) => {
+    const file = Array.isArray(files) ? files[0] || null : null;
+    setRequirementUploadFiles((prev) => ({ ...prev, [index]: file }));
+    if (file) {
+      setRemovedRequirementIndex((prev) => ({ ...prev, [index]: false }));
+    }
+    if (errors.validId) {
+      setErrors((prev) => ({ ...prev, validId: '' }));
+    }
+  };
+
+  const getExistingFilesForRequirement = (index) => {
+    if (removedRequirementIndex?.[index]) return [];
+    return Array.isArray(existingRequirementFilesByIndex?.[index])
+      ? existingRequirementFilesByIndex[index].filter(Boolean)
+      : [];
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
@@ -515,9 +718,24 @@ export default function BeneficiaryRequestPage() {
       }
     }
 
-    const hasExistingRequirements = (existingRequirementPaths?.length || 0) > 0;
-    if (formData.assistanceType && validIdFiles.length === 0 && !hasExistingRequirements) {
-      newErrors.validId = 'Please attach at least one requirement file';
+    const assistanceReqs = formData.assistanceType
+      ? assistanceData[formData.assistanceType]?.requirements || []
+      : [];
+    if (
+      assistanceReqs.length &&
+      !assistanceReqs.every((_req, idx) => !!formData?.requirementsChecklist?.[idx])
+    ) {
+      newErrors.requirementsChecklist = 'Please check all requirements before submitting.';
+    }
+    if (assistanceReqs.length) {
+      const missingDocs = assistanceReqs.some((_req, idx) => {
+        const hasNew = !!requirementUploadFiles?.[idx];
+        const hasExisting = getExistingFilesForRequirement(idx).length > 0;
+        return !hasNew && !hasExisting;
+      });
+      if (missingDocs) {
+        newErrors.validId = 'Please upload one file for each requirement item.';
+      }
     }
 
     if (formData.assistanceType && !formData.assistanceAmount) {
@@ -650,18 +868,17 @@ export default function BeneficiaryRequestPage() {
             .join(', ');
         };
 
-        // Upload requirement files via server (uses service role; avoids Storage policy issues)
-        const requirementFiles = Array.isArray(validIdFiles) ? validIdFiles : [];
-        let requirementPaths = Array.isArray(existingRequirementPaths)
-          ? existingRequirementPaths.filter(Boolean)
+        const assistanceReqs = formData.assistanceType
+          ? assistanceData[formData.assistanceType]?.requirements || []
           : [];
+        const requirementFileDetails = [];
 
-        if (requirementFiles.length) {
-          const uploaded = [];
-
-          for (const file of requirementFiles) {
+        for (let idx = 0; idx < assistanceReqs.length; idx++) {
+          const requirementLabel = assistanceReqs[idx];
+          const replacementFile = requirementUploadFiles?.[idx];
+          if (replacementFile) {
             const form = new FormData();
-            form.append('file', file);
+            form.append('file', replacementFile);
             form.append('controlNumber', assistanceControlNumber);
 
             const uploadRes = await fetch('/api/beneficiary/upload-valid-id', {
@@ -684,12 +901,25 @@ export default function BeneficiaryRequestPage() {
             if (!path) {
               throw new Error('ATTACH REQUIREMENTS upload failed. Please try again.');
             }
-
-            uploaded.push(path);
+            requirementFileDetails.push({
+              file_url: path,
+              file_name: replacementFile.name || String(path).split('/').pop() || `Document ${idx + 1}`,
+              requirement_type: requirementLabel,
+            });
+            continue;
           }
 
-          requirementPaths = uploaded;
+          const existingForIndex = getExistingFilesForRequirement(idx);
+          if (existingForIndex.length) {
+            const kept = existingForIndex[0];
+            requirementFileDetails.push({
+              file_url: kept.file_url,
+              file_name: kept.file_name || String(kept.file_url).split('/').pop() || `Document ${idx + 1}`,
+              requirement_type: requirementLabel,
+            });
+          }
         }
+        const requirementPaths = requirementFileDetails.map((x) => x.file_url).filter(Boolean);
 
         const cleanId = (v) => {
           const s = String(v ?? '').trim();
@@ -709,6 +939,16 @@ export default function BeneficiaryRequestPage() {
         const requesterContact = formData.contactNumber;
         const requesterAddress = buildAddress();
 
+        // Build requirements checklist from the assistance type definition.
+        // Preserve checked requirements when this form provides checkbox state.
+        const requirementsChecklist = assistanceReqs.map((label, idx) => ({
+          label,
+          checked: !!formData?.requirementsChecklist?.[idx],
+        }));
+        const requirementsCompleted = requirementsChecklist.length
+          ? requirementsChecklist.every((row) => !!row?.checked)
+          : false;
+
         const requestPayload = {
           control_number: assistanceControlNumber,
           resident_id: residentIdForRequest,
@@ -724,9 +964,15 @@ export default function BeneficiaryRequestPage() {
               : formData.assistanceType,
           amount: formData.assistanceAmount || 0,
           request_date: formData.dateOfRequest,
+          request_source: 'online',
           requirements_urls: requirementPaths,
+          requirements_files: requirementFileDetails,
           // Keep legacy column populated for older UIs/queries
-          valid_id_url: requirementPaths?.[0] || null,
+          valid_id_url:
+            requirementPaths.length > 1 ? JSON.stringify(requirementPaths) : requirementPaths?.[0] || null,
+          // Checklist for admin verification
+          requirements_checklist: requirementsChecklist,
+          requirements_completed: requirementsCompleted,
         };
 
         const response = await fetch(
@@ -749,11 +995,17 @@ export default function BeneficiaryRequestPage() {
         }
 
         if (isEditMode) {
+          setToast({
+            open: true,
+            message: 'Request resubmitted successfully.',
+          });
           setStatus({
             type: 'success',
             message: 'Request updated and resubmitted successfully!',
           });
-          router.push('/beneficiary/history');
+          setTimeout(() => {
+            router.push('/beneficiary/history');
+          }, 1200);
           return;
         }
       }
@@ -798,6 +1050,7 @@ export default function BeneficiaryRequestPage() {
         beneficiaryName: '',
         beneficiaryContact: '',
         beneficiaryAddress: '',
+        requirementsChecklist: {},
         dateOfRequest: new Date().toISOString().split('T')[0],
       }));
       void refreshResidentControlNumber();
@@ -807,6 +1060,12 @@ export default function BeneficiaryRequestPage() {
           ? 'Request updated and resubmitted successfully!'
           : 'Request submitted successfully! Your reference number has been generated.',
       });
+      if (!isEditMode) {
+        setToast({
+          open: true,
+          message: 'Request submitted successfully.',
+        });
+      }
     } catch (error) {
       console.error('Error:', error);
       setStatus({
@@ -853,10 +1112,13 @@ export default function BeneficiaryRequestPage() {
       beneficiaryName: '',
       beneficiaryContact: '',
       beneficiaryAddress: '',
+      requirementsChecklist: {},
       dateOfRequest: new Date().toISOString().split('T')[0],
     });
     void refreshResidentControlNumber();
-    setValidIdFiles([]);
+    setRequirementUploadFiles({});
+    setExistingRequirementFilesByIndex({});
+    setRemovedRequirementIndex({});
   };
 
   const selectedAssistanceRequirements =
@@ -865,6 +1127,11 @@ export default function BeneficiaryRequestPage() {
 
   return (
     <div className={styles.registrationPage}>
+      {toast.open && (
+        <div className={styles.toast} role="status" aria-live="polite">
+          {toast.message}
+        </div>
+      )}
       <PageHeader title={isEditMode ? 'Edit Incomplete Request' : 'Request Assistance'} />
       {status && (
         <div
@@ -878,11 +1145,9 @@ export default function BeneficiaryRequestPage() {
       )}
       <form onSubmit={handleSubmit} className={styles.formGrid}>
         <div className={styles.controlNumberBar}>
-          <div className={styles.controlNumberLabel}>
-            {isEditMode ? 'Request Reference' : 'Control Number'}
-          </div>
+          <div className={styles.controlNumberLabel}>Control Number</div>
           <div className={styles.controlNumberValue}>
-            {isEditMode ? editingAssistanceControlNumber || '—' : controlNumber}
+            {controlNumber || editingAssistanceControlNumber || '—'}
           </div>
         </div>
 
@@ -958,7 +1223,15 @@ export default function BeneficiaryRequestPage() {
                     {selectedAssistanceRequirements.length ? (
                       selectedAssistanceRequirements.map((req, idx) => (
                         <li key={idx} className={styles.assistanceRequirementItem}>
-                          {req}
+                          <label className={styles.checkbox}>
+                            <input
+                              type="checkbox"
+                              checked={!!formData?.requirementsChecklist?.[idx]}
+                              onChange={() => toggleRequirement(idx)}
+                            />
+                            <span className={styles.checkmark}></span>
+                            <span>{req}</span>
+                          </label>
                         </li>
                       ))
                     ) : (
@@ -967,6 +1240,9 @@ export default function BeneficiaryRequestPage() {
                       </li>
                     )}
                   </ul>
+                  {errors.requirementsChecklist && (
+                    <p className={styles.errorText}>{errors.requirementsChecklist}</p>
+                  )}
                 </div>
               ) : (
                 <p className={styles.assistanceRequirementsHint}>
@@ -974,22 +1250,43 @@ export default function BeneficiaryRequestPage() {
                 </p>
               )}
 
-              <FileUpload
-                label={existingRequirementPaths.length ? 'Optional (upload to replace)' : 'Required'}
-                documentType="validId"
-                multiple={true}
-                files={validIdFiles}
-                onChange={setValidIdFiles}
-                required={!!formData.assistanceType && existingRequirementPaths.length === 0}
-              />
-              {existingValidIdPath ? (
-                <p className={styles.muted} style={{ margin: '6px 0 0' }}>
-                  Existing uploaded requirements are already on file. Upload a new one only if you need to replace it.
-                </p>
-              ) : isEditMode ? (
-                <p className={styles.muted} style={{ margin: '6px 0 0' }}>
-                  This request has no requirements on file. Attaching requirements is required to resubmit.
-                </p>
+              {selectedAssistanceRequirements.length ? (
+                <div className={styles.requirementUploads}>
+                  {selectedAssistanceRequirements.map((req, idx) => {
+                    const existingFiles = getExistingFilesForRequirement(idx);
+                    const uploadedFile = requirementUploadFiles?.[idx] || null;
+                    return (
+                      <div key={`${req}-${idx}`} className={styles.requirementUploadItem}>
+                        <div className={styles.requirementUploadHeader}>
+                          <span className={styles.requirementUploadLabel}>{req}</span>
+                          <span className={styles.requirementUploadLimit}>Upload limit: 1 file</span>
+                        </div>
+                        {existingFiles.length > 0 && !uploadedFile && (
+                          <div className={styles.existingFileRow}>
+                            <span className={styles.existingFileName}>
+                              Existing: {existingFiles[0]?.file_name || `Document ${idx + 1}`}
+                            </span>
+                            <button
+                              type="button"
+                              className={styles.removeExistingFileBtn}
+                              onClick={() => setRemovedRequirementIndex((prev) => ({ ...prev, [idx]: true }))}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        )}
+                        <FileUpload
+                          label={existingFiles.length ? 'Replace file (optional)' : 'Required'}
+                          documentType="validId"
+                          multiple={false}
+                          files={uploadedFile ? [uploadedFile] : []}
+                          onChange={(files) => handleRequirementUploadChange(idx, files)}
+                          required={!existingFiles.length}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
               ) : null}
               {errors.validId && <p className={styles.errorText}>{errors.validId}</p>}
             </div>

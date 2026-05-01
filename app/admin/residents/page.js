@@ -36,6 +36,40 @@ const civilStatusOptions = [
   { value: "divorced", label: "Divorced" },
 ];
 
+const purokOptions = [
+  { value: '1A', label: '1A' },
+  { value: '1B', label: '1B' },
+  { value: '2', label: '2' },
+  { value: '3A', label: '3A' },
+  { value: '3B', label: '3B' },
+  { value: '3C', label: '3C' },
+  { value: '3D', label: '3D' },
+  { value: '3E', label: '3E' },
+  { value: '3F', label: '3F' },
+  { value: '4A', label: '4A' },
+  { value: '4B', label: '4B' },
+  { value: '4C', label: '4C' },
+  { value: '4D', label: '4D' },
+  { value: '4E', label: '4E' },
+  { value: '5A', label: '5A' },
+  { value: '5A1', label: '5A1' },
+  { value: '5A2', label: '5A2' },
+  { value: '5B', label: '5B' },
+  { value: '5C', label: '5C' },
+  { value: '5D', label: '5D' },
+  { value: '5E', label: '5E' },
+  { value: '5F', label: '5F' },
+  { value: '6A', label: '6A' },
+  { value: '6A EXT.', label: '6A EXT.' },
+  { value: '6B1', label: '6B1' },
+  { value: '6B2', label: '6B2' },
+  { value: '6C1', label: '6C1' },
+  { value: '6C2', label: '6C2' },
+  { value: '6D', label: '6D' },
+  { value: '6E', label: '6E' },
+  { value: '7', label: '7' },
+];
+
 function formatDate(dateString) {
   if (!dateString) return "-";
   const date = new Date(dateString);
@@ -1062,12 +1096,13 @@ export default function ResidentsPage() {
               onChange={handleEditChange}
               optional
             />
-            <Input
+            <Select
               label="Purok"
               name="purok"
               value={editForm.purok}
               onChange={handleEditChange}
-              optional
+              options={purokOptions}
+              placeholder="Select purok"
             />
           </div>
 

@@ -12,6 +12,7 @@
   transition: margin-left 0.2s ease;
   height: 100vh;
   overflow: hidden;
+  min-width: 0;
 }
 
 .mainContent.sidebarMinimized {
@@ -22,6 +23,8 @@
   flex: 1;
   padding: 24px;
   overflow-y: auto;
+  min-width: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Overlay for mobile sidebar */
@@ -73,7 +76,7 @@
   }
 
   .pageContent {
-    padding: 20px 16px;
+    padding: 18px 16px 24px;
   }
 
   .overlay {
@@ -89,6 +92,6 @@
 /* Mobile */
 @media (max-width: 576px) {
   .pageContent {
-    padding: 16px 12px;
+    padding: 14px 10px 22px;
   }
 }

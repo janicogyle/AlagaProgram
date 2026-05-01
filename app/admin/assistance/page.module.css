@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0;
 }
 
 .statusBanner {
@@ -36,6 +37,7 @@
   max-height: 70vh;
   overflow-y: auto;
   padding-right: 8px;
+  min-width: 0;
 }
 
 .formSection {
@@ -275,6 +277,7 @@
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 12px;
+  min-width: 0;
 }
 
 .recordCard:last-child {
@@ -319,6 +322,7 @@
   font-weight: 500;
   color: #374151;
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .emptyCard {
@@ -493,7 +497,17 @@
 
   .assistanceForm {
     gap: 20px;
-    max-height: 50vh;
+    max-height: 62dvh;
+  }
+
+  .cardRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .cardValue {
+    text-align: left;
   }
 
   .sectionTitle::before {

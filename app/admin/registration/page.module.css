@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0;
 }
 
 .statusBanner {
@@ -32,6 +33,7 @@
   padding: 16px 24px;
   border-radius: 12px;
   color: white;
+  min-width: 0;
 }
 
 .controlNumberLabel {
@@ -45,6 +47,7 @@
   font-weight: 700;
   letter-spacing: 1px;
   font-family: 'Courier New', monospace;
+  overflow-wrap: anywhere;
 }
 
 .formGrid {
@@ -52,6 +55,7 @@
   grid-template-columns: 1.5fr 1fr;
   gap: 24px;
   align-items: start;
+  min-width: 0;
 }
 
 .mainCard {
@@ -62,6 +66,7 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-width: 0;
 }
 
 .formFields {
@@ -95,6 +100,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .assistanceRequirementsTitle {
@@ -115,7 +121,8 @@
 
 .assistanceRequirementsList {
   margin: 10px 0 0 0;
-  padding-left: 18px;
+  padding-left: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -125,6 +132,7 @@
 }
 
 .assistanceRequirementItem {
+  min-width: 0;
 }
 
 .assistanceRequirementItemEmpty {
@@ -195,6 +203,8 @@
   color: #374151;
   position: relative;
   padding-left: 28px;
+  min-width: 0;
+  line-height: 1.35;
 }
 
 .checkbox input {
@@ -452,7 +462,7 @@
   }
 
   .row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 12px;
   }
 
@@ -495,6 +505,7 @@
     border-radius: 10px;
     border: 1px solid #e5e7eb;
     margin: 0;
+    align-items: flex-start;
   }
 
   .checkbox:has(input:checked) {
@@ -504,6 +515,8 @@
 
   .checkmark {
     left: 12px;
+    top: 12px;
+    transform: none;
     width: 20px;
     height: 20px;
   }
@@ -532,7 +545,8 @@
 
   .controlNumberBar {
     flex-direction: column;
-    text-align: center;
+    text-align: left;
+    align-items: flex-start;
     gap: 4px;
     padding: 12px 14px;
   }
@@ -549,6 +563,7 @@
 
   .checkmark {
     left: 10px;
+    top: 10px;
     height: 18px;
     width: 18px;
   }
