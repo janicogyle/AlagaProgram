@@ -14,9 +14,9 @@ import { supabase } from '@/lib/supabaseClient';
 export default function AnalyticsPage() {
   const [timePeriod, setTimePeriod] = useState('3months');
   const [kpiData, setKpiData] = useState([
-    { title: 'Total Residents', current: 0, previous: 0, growth: 0, icon: 'users', color: 'blue' },
+    { title: 'Total Beneficiaries', current: 0, previous: 0, growth: 0, icon: 'users', color: 'blue' },
     { title: 'New Registrations', current: 0, previous: 0, growth: 0, icon: 'registration', color: 'green' },
-    { title: 'Active Cases', current: 0, previous: 0, growth: 0, icon: 'assistance', color: 'orange' },
+    { title: 'Active Request', current: 0, previous: 0, growth: 0, icon: 'assistance', color: 'orange' },
     { title: 'Completion Rate', current: 0, previous: 0, growth: 0, icon: 'completion', format: '%', color: 'purple' },
   ]);
   const [monthlyRegistrations, setMonthlyRegistrations] = useState([]);
@@ -46,13 +46,22 @@ export default function AnalyticsPage() {
 
     if (!residents) return;
 
+    const { data: assistanceRequests } = await supabase
+      .from('assistance_requests')
+      .select('status, created_at');
+
     const total = residents.length;
+    const requestRows = assistanceRequests || [];
+    const totalRequests = requestRows.length;
+    const releasedRequests = requestRows.filter((r) => r.status === 'Released').length;
+    const activeRequests = requestRows.filter((r) =>
+      ['Pending', 'Resubmitted', 'Approved'].includes(r.status),
+    ).length;
 
     let inPeriodCount = 0;
     let pwd = 0;
     let senior = 0;
     let soloParent = 0;
-    let active = 0;
     let male = 0;
     let female = 0;
 
@@ -67,8 +76,6 @@ export default function AnalyticsPage() {
       if (r.is_pwd) pwd++;
       if (r.is_senior_citizen) senior++;
       if (r.is_solo_parent) soloParent++;
-      if (r.status === 'Active') active++;
-
       if (r.sex === 'male') male++;
       if (r.sex === 'female') female++;
 
@@ -91,10 +98,11 @@ export default function AnalyticsPage() {
       purokCounts[purokKey] = (purokCounts[purokKey] || 0) + 1;
     });
 
-    const completionRate = total > 0 ? Math.round((active / total) * 100) : 0;
+    const completionRate =
+      totalRequests > 0 ? Math.round((releasedRequests / totalRequests) * 100) : 0;
 
     setKpiData([
-      { title: 'Total Residents', current: total, previous: 0, growth: 0, icon: 'users', color: 'blue' },
+      { title: 'Total Beneficiaries', current: total, previous: 0, growth: 0, icon: 'users', color: 'blue' },
       {
         title: 'New Registrations',
         current: inPeriodCount,
@@ -103,7 +111,7 @@ export default function AnalyticsPage() {
         icon: 'registration',
         color: 'green',
       },
-      { title: 'Active Cases', current: active, previous: 0, growth: 0, icon: 'assistance', color: 'orange' },
+      { title: 'Active Request', current: activeRequests, previous: 0, growth: 0, icon: 'assistance', color: 'orange' },
       {
         title: 'Completion Rate',
         current: completionRate,
@@ -278,12 +286,6 @@ export default function AnalyticsPage() {
           <h2>Alaga Dashboard</h2>
           <p>Comprehensive insights into resident data and assistance programs</p>
         </div>
-        <Select
-          value={timePeriod}
-          onChange={(e) => setTimePeriod(e.target.value)}
-          options={timePeriodOptions}
-          className={styles.periodSelect}
-        />
       </div>
 
       {/* KPI Cards */}
@@ -298,12 +300,6 @@ export default function AnalyticsPage() {
             </div>
             <div className={styles.kpiValue}>
               {kpi.current}{kpi.format || ''}
-            </div>
-            <div className={styles.kpiGrowth}>
-              <span className={kpi.growth >= 0 ? styles.positive : styles.negative}>
-                {kpi.growth >= 0 ? '+' : ''}{kpi.growth.toFixed(1)}%
-              </span>
-              <span className={styles.kpiPrevious}>vs previous period</span>
             </div>
           </div>
         ))}

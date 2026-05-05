@@ -1,6 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import {
+  formatPhContactNumber,
+  normalizePhContactNumber,
+  PH_CONTACT_PLACEHOLDER,
+  PH_CONTACT_PREFIX,
+} from '@/lib/contactNumber';
 import styles from './UnifiedLoginForm.module.css';
 
 export function UnifiedLoginForm({ role, onLogin }) {
@@ -9,6 +15,11 @@ export function UnifiedLoginForm({ role, onLogin }) {
   const [showPassword, setShowPassword] = useState(false);
 
   const isBeneficiary = role === 'beneficiary';
+  const displayUsername = isBeneficiary
+    ? username
+      ? formatPhContactNumber(username)
+      : PH_CONTACT_PREFIX
+    : username;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -18,8 +29,7 @@ export function UnifiedLoginForm({ role, onLogin }) {
   const handleUsernameChange = (e) => {
     const value = e.target.value;
     if (isBeneficiary) {
-      const digitsOnly = value.replace(/\D/g, '').slice(0, 11);
-      setUsername(digitsOnly);
+      setUsername(normalizePhContactNumber(value));
     } else {
       setUsername(value);
     }
@@ -36,10 +46,12 @@ export function UnifiedLoginForm({ role, onLogin }) {
           <input
             type={isBeneficiary ? 'tel' : 'text'}
             id="username"
-            value={username}
+            value={displayUsername}
             onChange={handleUsernameChange}
             inputMode={isBeneficiary ? 'numeric' : undefined}
-            maxLength={isBeneficiary ? 11 : undefined}
+            autoComplete={isBeneficiary ? 'tel' : undefined}
+            maxLength={isBeneficiary ? 16 : undefined}
+            placeholder={isBeneficiary ? PH_CONTACT_PLACEHOLDER : undefined}
             required
           />
         </div>

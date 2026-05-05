@@ -16,11 +16,35 @@ import {
 } from "@/components";
 import styles from "./page.module.css";
 import { supabase } from '@/lib/supabaseClient';
+import { getCooldownInfo, parseDateInput } from '@/lib/requestCooldown';
 
 const statusOptions = [
   { value: "", label: "All Status" },
   { value: "Active", label: "Active" },
   { value: "Inactive", label: "Inactive" },
+];
+
+const sectorOptions = [
+  { value: "", label: "All Sectors" },
+  { value: "PWD", label: "PWD" },
+  { value: "Senior Citizen", label: "Senior Citizen" },
+  { value: "Solo Parent", label: "Solo Parent" },
+];
+
+const qrOptions = [
+  { value: "", label: "All QR" },
+  { value: "Valid", label: "Valid" },
+  { value: "Expired", label: "Expired" },
+  { value: "No QR", label: "No QR" },
+];
+
+const sortOptions = [
+  { value: "name_asc", label: "Name (A–Z)" },
+  { value: "name_desc", label: "Name (Z–A)" },
+  { value: "control_desc", label: "Control No. (Newest–Oldest)" },
+  { value: "control_asc", label: "Control No. (Oldest–Newest)" },
+  { value: "created_desc", label: "Date Created (Newest First)" },
+  { value: "created_asc", label: "Date Created (Oldest First)" },
 ];
 
 const sexOptions = [
@@ -117,6 +141,19 @@ function buildFullName(resident) {
   return name || "-";
 }
 
+function parseControlNumber(value) {
+  const raw = String(value || "").trim();
+  const match = raw.match(/^(\d{4})-(\d+)$/);
+  if (!match) {
+    return { year: 0, seq: 0, raw };
+  }
+  return {
+    year: Number(match[1]) || 0,
+    seq: Number(match[2]) || 0,
+    raw,
+  };
+}
+
 function displayValue(v) {
   const s = String(v ?? '').trim();
   return s || '-';
@@ -164,7 +201,10 @@ function getSectorBadges(resident) {
 
 export default function ResidentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("Active");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [sectorFilter, setSectorFilter] = useState("");
+  const [qrFilter, setQrFilter] = useState("");
+  const [sortBy, setSortBy] = useState("created_desc");
   const [residents, setResidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedResident, setSelectedResident] = useState(null);
@@ -175,6 +215,9 @@ export default function ResidentsPage() {
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [verifyResetOpen, setVerifyResetOpen] = useState(false);
   const [verifyResetProcessing, setVerifyResetProcessing] = useState(false);
+  const [editVerifyOpen, setEditVerifyOpen] = useState(false);
+  const [editVerifyProcessing, setEditVerifyProcessing] = useState(false);
+  const [editAdminPassword, setEditAdminPassword] = useState('');
   const [issuingCard, setIssuingCard] = useState(false);
   const [issuedCard, setIssuedCard] = useState(null); // { token, card, qrUrl }
   const [cardModalOpen, setCardModalOpen] = useState(false);
@@ -183,6 +226,9 @@ export default function ResidentsPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [residentDetails, setResidentDetails] = useState(null); // { resident, signup }
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyRequests, setHistoryRequests] = useState([]);
 
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -213,6 +259,54 @@ export default function ResidentsPage() {
 
   const closeAlert = () => {
     setAlertState((prev) => ({ ...prev, open: false }));
+  };
+
+  const formatHistoryDate = (value) => {
+    if (!value) return '-';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '-';
+    return d.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: '2-digit' });
+  };
+
+  const formatAmount = (value) =>
+    (Number(value) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const getAssistanceTypeLabel = (row) => {
+    const value = row?.assistance_type || row?.service_type || row?.other_service || '';
+    const label = String(value || '').trim();
+    return label || 'Assistance';
+  };
+
+  const getHistoryTypeBadge = (type) => {
+    const variants = {
+      'Medicine Assistance': 'green',
+      'Confinement Assistance': 'blue',
+      'Burial Assistance': 'purple',
+      Others: 'secondary',
+    };
+    return <Badge variant={variants[type] || 'default'}>{type}</Badge>;
+  };
+
+  const formatEligibilityDate = (value) => {
+    const parsed = parseDateInput(value);
+    if (!parsed) return null;
+    return parsed.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: '2-digit' });
+  };
+
+  const getEligibilityBadge = (info) => {
+    if (!info) return <Badge variant="secondary">—</Badge>;
+
+    const variant =
+      info.status === 'Eligible' ? 'success' : info.status === 'Almost Eligible' ? 'warning' : 'danger';
+
+    const daysSuffix = info.isEligible
+      ? ''
+      : ` • ${info.daysRemaining} day${info.daysRemaining === 1 ? '' : 's'}`;
+
+    const eligibleOn = info.isEligible ? null : formatEligibilityDate(info.nextEligibleDate);
+    const dateSuffix = eligibleOn ? ` • Eligible on ${eligibleOn}` : '';
+
+    return <Badge variant={variant}>{`${info.status}${daysSuffix}${dateSuffix}`}</Badge>;
   };
 
   useEffect(() => {
@@ -312,6 +406,54 @@ export default function ResidentsPage() {
     }
   };
 
+  const loadHistory = async (residentId) => {
+    if (!residentId) return;
+    setHistoryLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(
+        `/api/assistance-requests?residentId=${encodeURIComponent(residentId)}&status=Released`,
+        { headers },
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.error) {
+        throw new Error(json?.error || 'Failed to load assistance history.');
+      }
+      const rows = Array.isArray(json?.data) ? json.data : [];
+      const released = rows.filter(
+        (row) => String(row?.status || '').toLowerCase() === 'released',
+      );
+      const normalized = released
+        .map((row) => ({
+          ...row,
+          _historyTime: new Date(row?.request_date || row?.created_at || 0).getTime() || 0,
+        }))
+        .sort((a, b) => b._historyTime - a._historyTime);
+      setHistoryRequests(normalized);
+    } catch (err) {
+      console.warn('Failed to load assistance history:', err?.message || err);
+      setHistoryRequests([]);
+      openAlert({
+        title: 'Load failed',
+        message: err?.message || 'Failed to load assistance history.',
+      });
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const handleOpenHistory = () => {
+    if (!selectedResident) return;
+    setHistoryOpen(true);
+    loadHistory(selectedResident.id);
+  };
+
+  const handleCloseHistory = () => {
+    setHistoryOpen(false);
+    setHistoryRequests([]);
+    setHistoryLoading(false);
+  };
+
   const openDocument = async (pathOrUrl) => {
     if (!pathOrUrl) return;
 
@@ -350,11 +492,21 @@ export default function ResidentsPage() {
     if (!selectedResident) {
       setResidentDetails(null);
       setDetailsLoading(false);
+      setHistoryRequests([]);
+      setHistoryLoading(false);
       return;
     }
 
     fetchResidentDetails(selectedResident.id);
+    setHistoryRequests([]);
+    loadHistory(selectedResident.id);
   }, [selectedResident, isAdmin]);
+
+  const cooldownInfo = useMemo(() => {
+    const latestReleased = historyRequests[0];
+    const lastRequestDate = latestReleased?.request_date || latestReleased?.created_at || null;
+    return getCooldownInfo(lastRequestDate);
+  }, [historyRequests]);
 
   const openEditProfile = () => {
     if (!isAdmin || !selectedResident) {
@@ -499,17 +651,101 @@ export default function ResidentsPage() {
   const filteredResidents = useMemo(() => {
     const query = searchTerm.toLowerCase();
 
-    return residents.filter((r) => {
+    const matchesSector = (resident) => {
+      if (!sectorFilter) return true;
+      if (sectorFilter === 'PWD') return !!resident.is_pwd;
+      if (sectorFilter === 'Senior Citizen') return !!resident.is_senior_citizen;
+      if (sectorFilter === 'Solo Parent') return !!resident.is_solo_parent;
+      return true;
+    };
+
+    const matchesQr = (resident) => {
+      if (!qrFilter) return true;
+      const status = String(resident?.qr_validity || 'Not Setup');
+      if (qrFilter === 'No QR') {
+        return status === 'No QR' || status === 'Not Setup' || status === 'Unavailable';
+      }
+      return status === qrFilter;
+    };
+
+    const filtered = residents.filter((r) => {
       const fullName = buildFullName(r).toLowerCase();
       const contact = String(r.contact_number || "").toLowerCase();
       const control = String(r.control_number || "").toLowerCase();
 
-      const matchesSearch = !query || fullName.includes(query) || contact.includes(query) || control.includes(query);
+      const matchesSearch =
+        !query || fullName.includes(query) || contact.includes(query) || control.includes(query);
       const matchesStatus = !statusFilter || r.status === statusFilter;
 
-      return matchesSearch && matchesStatus;
+      return matchesSearch && matchesStatus && matchesSector(r) && matchesQr(r);
     });
-  }, [residents, searchTerm, statusFilter]);
+
+    const sorted = [...filtered].sort((a, b) => {
+      if (sortBy === 'name_asc' || sortBy === 'name_desc') {
+        const aName = buildFullName(a).toLowerCase();
+        const bName = buildFullName(b).toLowerCase();
+        const cmp = aName.localeCompare(bName);
+        return sortBy === 'name_asc' ? cmp : -cmp;
+      }
+
+      if (sortBy === 'control_asc' || sortBy === 'control_desc') {
+        const aControl = parseControlNumber(a.control_number);
+        const bControl = parseControlNumber(b.control_number);
+        const yearCmp = aControl.year - bControl.year;
+        const seqCmp = aControl.seq - bControl.seq;
+        const cmp = yearCmp !== 0 ? yearCmp : seqCmp !== 0 ? seqCmp : aControl.raw.localeCompare(bControl.raw);
+        return sortBy === 'control_asc' ? cmp : -cmp;
+      }
+
+      if (sortBy === 'created_asc' || sortBy === 'created_desc') {
+        const aDate = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
+        const cmp = aDate - bDate;
+        return sortBy === 'created_asc' ? cmp : -cmp;
+      }
+
+      return 0;
+    });
+
+    return sorted;
+  }, [residents, searchTerm, statusFilter, sectorFilter, qrFilter, sortBy]);
+
+  const historySummary = useMemo(() => {
+    const totalCount = historyRequests.length;
+    const totalAmount = historyRequests.reduce((sum, row) => sum + (Number(row?.amount) || 0), 0);
+    const latest = historyRequests[0] || null;
+    return {
+      totalCount,
+      totalAmount,
+      lastDate: latest ? formatHistoryDate(latest.request_date || latest.created_at) : '-',
+    };
+  }, [historyRequests]);
+
+  const historyColumns = [
+    {
+      key: 'controlNo',
+      label: 'Control No.',
+      render: (value) => <span className={styles.historyControlNo}>{value}</span>,
+    },
+    { key: 'requester', label: 'Requester' },
+    { key: 'beneficiary', label: 'Beneficiary' },
+    {
+      key: 'type',
+      label: 'Type',
+      render: (value) => getHistoryTypeBadge(value),
+    },
+    { key: 'date', label: 'Date' },
+    {
+      key: 'amount',
+      label: 'Amount',
+      render: (value) => <span style={{ fontWeight: 600 }}>{value}</span>,
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (value) => <Badge variant="success">{value}</Badge>,
+    },
+  ];
 
   const columns = [
     {
@@ -619,6 +855,16 @@ export default function ResidentsPage() {
     setVerifyResetOpen(true);
   };
 
+  const handleOpenEditVerify = () => {
+    setEditVerifyOpen(true);
+  };
+
+  const handleCloseEditVerify = () => {
+    if (editVerifyProcessing) return;
+    setEditVerifyOpen(false);
+    setEditAdminPassword('');
+  };
+
   const handleContinueReset = async () => {
     if (!resetAdminPassword) {
       openAlert({ title: 'Verification required', message: 'Enter your admin password first.' });
@@ -655,6 +901,44 @@ export default function ResidentsPage() {
       });
     } finally {
       setVerifyResetProcessing(false);
+    }
+  };
+
+  const handleContinueEditVerify = async () => {
+    if (!editAdminPassword) {
+      openAlert({ title: 'Verification required', message: 'Enter your admin password first.' });
+      return;
+    }
+
+    setEditVerifyProcessing(true);
+    try {
+      const { data: authUserData, error: authUserError } = await supabase.auth.getUser();
+      const adminEmail = authUserData?.user?.email;
+      if (authUserError || !adminEmail) {
+        throw new Error('Not authenticated. Please log in again.');
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: adminEmail,
+        password: editAdminPassword,
+      });
+      if (signInError) {
+        throw new Error('Admin password verification failed.');
+      }
+
+      setEditVerifyOpen(false);
+      setEditAdminPassword('');
+      openEditProfile();
+    } catch (error) {
+      const message = error.message || 'Invalid admin password.';
+      openAlert({
+        title: 'Verification failed',
+        message: message === 'Unauthorized.'
+          ? 'Your admin session has expired. Please log in again.'
+          : message,
+      });
+    } finally {
+      setEditVerifyProcessing(false);
     }
   };
 
@@ -758,6 +1042,17 @@ export default function ResidentsPage() {
 
   const effectiveResident = residentDetails?.resident || selectedResident;
   const signupInfo = residentDetails?.signup || null;
+  const residentControlNo = effectiveResident?.control_number || '-';
+  const historyTableData = historyRequests.map((row) => ({
+    id: row?.id || row?.control_number,
+    controlNo: residentControlNo,
+    requester: row?.requester_name || '-',
+    beneficiary: row?.beneficiary_name || '-',
+    type: getAssistanceTypeLabel(row),
+    date: formatHistoryDate(row?.request_date || row?.created_at),
+    amount: `₱${formatAmount(row?.amount)}`,
+    status: 'Released',
+  }));
 
   return (
     <div className={styles.residentsPage}>
@@ -773,19 +1068,63 @@ export default function ResidentsPage() {
             onChange={setSearchTerm}
             placeholder="Search by name, contact number, or control number..."
           />
-          <div className={styles.filterGroup}>
-            <label className={styles.filterLabel}>Status</label>
-            <select
-              className={styles.select}
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              {statusOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+          <div className={styles.filterControls}>
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel}>Sort By</label>
+              <select
+                className={styles.select}
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                {sortOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel}>Status</label>
+              <select
+                className={styles.select}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                {statusOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel}>Sector</label>
+              <select
+                className={styles.select}
+                value={sectorFilter}
+                onChange={(e) => setSectorFilter(e.target.value)}
+              >
+                {sectorOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel}>QR Validity</label>
+              <select
+                className={styles.select}
+                value={qrFilter}
+                onChange={(e) => setQrFilter(e.target.value)}
+              >
+                {qrOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </FilterBar>
 
@@ -806,30 +1145,53 @@ export default function ResidentsPage() {
           setResidentDetails(null);
           setEditProfileOpen(false);
           handleCloseReset();
+          handleCloseEditVerify();
+          handleCloseHistory();
         }}
         title="Beneficiary Details"
+        size="xlarge"
         footer={
           selectedResident ? (
-            <>
+            <div className={styles.residentDetailsFooter}>
               {isAdmin ? (
                 <Button
                   variant="secondary"
-                  onClick={openEditProfile}
+                  size="small"
+                  onClick={handleOpenEditVerify}
                   disabled={processing || issuingCard || detailsLoading}
                 >
                   Edit Profile
                 </Button>
               ) : null}
-              <Button variant="secondary" onClick={handleOpenReset} disabled={processing || issuingCard}>
-                Reset Password
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={handleOpenHistory}
+                disabled={detailsLoading || historyLoading}
+              >
+                History
               </Button>
-              <Button variant="secondary" onClick={handleIssueCard} disabled={processing || issuingCard}>
-                {issuingCard ? 'Issuing…' : 'Issue ID QR'}
-              </Button>
-              <Button onClick={() => setSelectedResident(null)} disabled={processing || issuingCard}>
-                Close
-              </Button>
-            </>
+              {isAdmin ? (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={handleOpenReset}
+                    disabled={processing || issuingCard}
+                  >
+                    Reset Password
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={handleIssueCard}
+                    disabled={processing || issuingCard}
+                  >
+                    {issuingCard ? 'Issuing…' : 'Issue ID QR'}
+                  </Button>
+                </>
+              ) : null}
+            </div>
           ) : null
         }
       >
@@ -849,6 +1211,11 @@ export default function ResidentsPage() {
                     </span>
                     <span className={styles.assistanceResidentDetail}>
                       Control: {effectiveResident?.control_number || "-"}
+                    </span>
+                    <span
+                      className={`${styles.assistanceResidentDetail} ${styles.assistanceResidentDetailBreak}`}
+                    >
+                      Eligibility: {getEligibilityBadge(cooldownInfo)}
                     </span>
                   </div>
                 </div>
@@ -990,6 +1357,99 @@ export default function ResidentsPage() {
         )}
       </Modal>
 
+      <Modal
+        isOpen={historyOpen}
+        onClose={handleCloseHistory}
+        title="Assistance History"
+        size="large"
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <Button onClick={handleCloseHistory}>Close</Button>
+          </div>
+        }
+      >
+        <div className={styles.assistanceModalContent}>
+          <div className={styles.assistanceResidentInfo}>
+            <div className={styles.assistanceResidentHeader}>
+              <div>
+                <p className={styles.assistanceResidentName}>
+                  {buildFullName(effectiveResident)}
+                </p>
+                <div className={styles.assistanceResidentMeta}>
+                  <span className={styles.assistanceResidentDetail}>
+                    Contact: {effectiveResident?.contact_number || '-'}
+                  </span>
+                  <span className={styles.assistanceResidentDetail}>
+                    Control: {effectiveResident?.control_number || '-'}
+                  </span>
+                  <span
+                    className={`${styles.assistanceResidentDetail} ${styles.assistanceResidentDetailBreak}`}
+                  >
+                    Eligibility: {getEligibilityBadge(cooldownInfo)}
+                  </span>
+                </div>
+              </div>
+              <Badge variant={effectiveResident?.status === 'Active' ? 'success' : 'secondary'}>
+                {effectiveResident?.status || '-'}
+              </Badge>
+            </div>
+          </div>
+
+          <div className={styles.assistanceSummaryRow}>
+            <div className={styles.assistanceSummaryStat}>
+              <span className={styles.assistanceSummaryValue}>{historySummary.totalCount}</span>
+              <span className={styles.assistanceSummaryLabel}>Released Requests</span>
+            </div>
+            <div className={styles.assistanceSummaryStat}>
+              <span className={styles.assistanceSummaryValue}>₱{formatAmount(historySummary.totalAmount)}</span>
+              <span className={styles.assistanceSummaryLabel}>Total Amount</span>
+            </div>
+            <div className={styles.assistanceSummaryStat}>
+              <span className={styles.assistanceSummaryValue}>{historySummary.lastDate}</span>
+              <span className={styles.assistanceSummaryLabel}>Last Released</span>
+            </div>
+          </div>
+
+          {historyLoading ? (
+            <div className={styles.assistanceEmpty}>
+              <p>Loading released requests...</p>
+            </div>
+          ) : historyRequests.length === 0 ? (
+            <div className={styles.assistanceEmpty}>
+              <p>No released assistance requests found.</p>
+            </div>
+          ) : (
+            <Table columns={historyColumns} data={historyTableData} />
+          )}
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!selectedResident && editVerifyOpen}
+        onClose={handleCloseEditVerify}
+        title="Verify Admin Password"
+        footer={
+          <>
+            <Button variant="secondary" onClick={handleCloseEditVerify}>
+              Cancel
+            </Button>
+            <Button onClick={handleContinueEditVerify} disabled={editVerifyProcessing}>
+              {editVerifyProcessing ? 'Verifying...' : 'Continue'}
+            </Button>
+          </>
+        }
+      >
+        <Input
+          label="Your Password"
+          name="verifyEditAdminPassword"
+          type="password"
+          value={editAdminPassword}
+          onChange={(e) => setEditAdminPassword(e.target.value)}
+          placeholder="Enter your password to continue"
+          required
+        />
+      </Modal>
+
       {/* Edit Beneficiary Profile Modal (Admin only) */}
       <Modal
         isOpen={!!selectedResident && editProfileOpen}
@@ -1081,10 +1541,12 @@ export default function ResidentsPage() {
 
           <Input
             label="Contact Number"
+            type="tel"
             name="contact_number"
             value={editForm.contact_number}
             onChange={handleEditChange}
-            placeholder="09XXXXXXXXX"
+            placeholder="+63 XXX XXX XXXX"
+            mask="ph-contact"
             error={editErrors.contact_number}
           />
 

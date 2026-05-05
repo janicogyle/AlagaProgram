@@ -8,6 +8,7 @@ import Badge from '../../../components/Badge';
 import Button from '../../../components/Button';
 import styles from './page.module.css';
 import Modal from '../../../components/Modal';
+import { getCooldownInfo } from '@/lib/requestCooldown';
 
 const columns = [
   { key: 'control_number', label: 'Control No.' },
@@ -52,6 +53,7 @@ export default function BeneficiaryHistoryPage() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [alertState, setAlertState] = useState({ open: false, title: '', message: '' });
+  const [cooldownInfo, setCooldownInfo] = useState(() => getCooldownInfo(null));
 
   const openAlert = ({ title, message }) => {
     setAlertState({ open: true, title, message });
@@ -89,6 +91,11 @@ export default function BeneficiaryHistoryPage() {
         }));
 
         setRequests(mapped);
+        const lastReleased = mapped.find(
+          (row) => String(row?.status || '').toLowerCase() === 'released',
+        );
+        const lastDate = lastReleased?.request_date || lastReleased?.created_at || null;
+        setCooldownInfo(getCooldownInfo(lastDate));
       } catch (err) {
         console.error('Failed to load assistance history:', err);
         setRequests([]);
@@ -120,6 +127,25 @@ export default function BeneficiaryHistoryPage() {
         <div className={styles.headerRow}>
           <h2>Requests</h2>
           <Button href="/beneficiary/requests">New Request</Button>
+        </div>
+        <div className={styles.cooldownRow}>
+          <span className={styles.cooldownLabel}>Request Eligibility</span>
+          <Badge
+            variant={
+              cooldownInfo.status === 'Eligible'
+                ? 'success'
+                : cooldownInfo.status === 'Almost Eligible'
+                  ? 'warning'
+                  : 'danger'
+            }
+          >
+            {cooldownInfo.status}
+          </Badge>
+          {!cooldownInfo.isEligible && (
+            <span className={styles.cooldownMeta}>
+              {cooldownInfo.daysRemaining} day(s) remaining
+            </span>
+          )}
         </div>
 
         {loading ? (

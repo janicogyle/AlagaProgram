@@ -181,18 +181,36 @@ export default function ReportsPage() {
 
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
 
+    // Try to fetch site logo from public folder and add to PDF (best-effort)
+    try {
+      const resp = await fetch('/Brand.png');
+      if (resp.ok) {
+        const blob = await resp.blob();
+        const dataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+        // Place logo at top-left (smaller size to not interfere with text)
+        doc.addImage(dataUrl, 'PNG', 20, 10, 50, 50);
+      }
+    } catch (e) {
+      // ignore if logo can't be loaded
+      console.warn('Could not add logo to PDF:', e?.message || e);
+    }
+
     doc.setFontSize(14);
     doc.text(`SUMMARY OF ALAGA PROGRAM ${y}`, doc.internal.pageSize.getWidth() / 2, 40, {
       align: 'center',
     });
     doc.setFontSize(12);
-    doc.text('CASH ASSISTANCE / DONATIONS', doc.internal.pageSize.getWidth() / 2, 60, {
+    doc.text('CASH ASSISTANCE / DONATIONS', doc.internal.pageSize.getWidth() / 2, 58, {
       align: 'center',
     });
 
     if (sectorLabel) {
       doc.setFontSize(10);
-      doc.text(String(sectorLabel).toUpperCase(), doc.internal.pageSize.getWidth() / 2, 76, {
+      doc.text(String(sectorLabel).toUpperCase(), doc.internal.pageSize.getWidth() / 2, 72, {
         align: 'center',
       });
     }
@@ -224,7 +242,7 @@ export default function ReportsPage() {
     const leftMargin = Math.max(40, (pageWidth - tableWidth) / 2);
 
     autoTable(doc, {
-      startY: sectorLabel ? 92 : 80,
+      startY: sectorLabel ? 88 : 80,
       head,
       body,
       theme: 'grid',

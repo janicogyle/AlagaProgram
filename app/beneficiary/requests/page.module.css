@@ -219,6 +219,35 @@
 	color: #b91c1c;
 }
 
+.cooldownBanner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 12px 16px;
+	border-radius: 12px;
+	border: 1px solid #e5e7eb;
+	background: #f8fafc;
+	font-size: 14px;
+	color: #111827;
+}
+
+.cooldownContent {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+}
+
+.cooldownTitle {
+	font-weight: 600;
+	color: #1f2937;
+}
+
+.cooldownMessage {
+	color: #4b5563;
+}
+
 .row {
 	display: grid;
 	grid-template-columns: 1fr 1fr;

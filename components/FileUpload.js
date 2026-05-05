@@ -21,8 +21,10 @@ export default function FileUpload({
   required = false,
 }) {
   const [isDragging, setIsDragging] = useState(false);
+  const [sizeErrors, setSizeErrors] = useState({});
   const inputRef = useRef(null);
   const docConfig = documentTypes[documentType] || documentTypes.other;
+  const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -47,10 +49,25 @@ export default function FileUpload({
   };
 
   const handleFiles = (newFiles) => {
-    if (multiple) {
-      onChange([...files, ...newFiles]);
-    } else {
-      onChange(newFiles.slice(0, 1));
+    const errors = {};
+    const validFiles = [];
+    
+    for (const file of newFiles) {
+      if (file.size > MAX_FILE_SIZE) {
+        errors[file.name] = `File exceeds 2MB limit (${formatFileSize(file.size)})`;
+      } else {
+        validFiles.push(file);
+      }
+    }
+    
+    setSizeErrors(errors);
+    
+    if (validFiles.length > 0) {
+      if (multiple) {
+        onChange([...files, ...validFiles]);
+      } else {
+        onChange(validFiles.slice(0, 1));
+      }
     }
   };
 
@@ -101,6 +118,19 @@ export default function FileUpload({
         </label>
       )}
       
+      {Object.keys(sizeErrors).length > 0 && (
+        <div className={styles.sizeWarning}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+          </svg>
+          <div className={styles.sizeWarningText}>
+            {Object.entries(sizeErrors).map(([name, error]) => (
+              <div key={name}>{error}</div>
+            ))}
+          </div>
+        </div>
+      )}
+      
       <div
         className={`${styles.dropZone} ${isDragging ? styles.dragging : ''}`}
         onDragOver={handleDragOver}
@@ -126,7 +156,8 @@ export default function FileUpload({
             <span>Drag and drop files here, or </span>
             <span className={styles.browseLink}>browse</span>
           </p>
-          <p className={styles.hint}>Supported: PDF, JPG, PNG</p>
+          <p className={styles.hint}>Supported: PDF, JPG, PNG · Max 2MB</p>
+          <p className={styles.hint}>Please upload files up to 2MB only.</p>
         </div>
       </div>
 

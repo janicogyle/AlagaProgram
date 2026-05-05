@@ -12,6 +12,11 @@ function isMissingAssistanceBudgetsTable(err) {
   );
 }
 
+function isMissingRequirementsColumn(err) {
+  const msg = String(err?.message || err || '').toLowerCase();
+  return msg.includes('assistance_budgets') && msg.includes('requirements') && msg.includes('column');
+}
+
 export async function POST(request) {
   try {
     const auth = await requireAdmin(request);
@@ -37,25 +42,95 @@ export async function POST(request) {
 
     const assistanceType = String(body?.assistanceType || body?.assistance_type || '').trim();
     const ceiling = Number(body?.ceiling);
+    const rawRequirements = body?.requirements;
+    const hasRequirements = rawRequirements !== undefined;
+    const requirements = hasRequirements
+      ? Array.isArray(rawRequirements)
+        ? rawRequirements.map((item) => String(item || '').trim()).filter(Boolean)
+        : null
+      : undefined;
 
     if (!assistanceType) {
       return NextResponse.json({ data: null, error: 'assistanceType is required.' }, { status: 400 });
     }
 
-    if (!Number.isFinite(ceiling) || ceiling < 0) {
+    const hasCeiling = Number.isFinite(ceiling);
+
+    if (!hasCeiling && !hasRequirements) {
+      return NextResponse.json(
+        { data: null, error: 'Provide at least one of: ceiling, requirements.' },
+        { status: 400 },
+      );
+    }
+
+    if (hasRequirements && requirements === null) {
+      return NextResponse.json(
+        { data: null, error: 'requirements must be an array of strings.' },
+        { status: 400 },
+      );
+    }
+
+    if (hasCeiling && ceiling < 0) {
       return NextResponse.json(
         { data: null, error: 'ceiling must be a valid non-negative number.' },
         { status: 400 },
       );
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('assistance_budgets')
-      .upsert({ assistance_type: assistanceType, ceiling }, { onConflict: 'assistance_type' })
-      .select('assistance_type, ceiling')
-      .single();
+    const payload = {
+      assistance_type: assistanceType,
+      ...(hasCeiling ? { ceiling } : {}),
+      ...(hasRequirements ? { requirements } : {}),
+    };
 
-    if (error) throw error;
+    const query = hasCeiling
+      ? supabaseAdmin
+          .from('assistance_budgets')
+          .upsert(payload, { onConflict: 'assistance_type' })
+          .select('assistance_type, ceiling, requirements')
+          .single()
+      : supabaseAdmin
+          .from('assistance_budgets')
+          .update(payload)
+          .eq('assistance_type', assistanceType)
+          .select('assistance_type, ceiling, requirements')
+          .single();
+
+    const { data, error } = await query;
+
+    if (error) {
+      if (isMissingRequirementsColumn(error)) {
+        if (hasRequirements) {
+          return NextResponse.json(
+            {
+              data: null,
+              error:
+                'assistance_budgets requirements column is not set up yet. Run database-schema.sql (or at least setup-step2.sql) in Supabase SQL Editor, then reload PostgREST: NOTIFY pgrst, \'reload schema\';',
+              code: 'ASSISTANCE_REQUIREMENTS_COLUMN_MISSING',
+            },
+            { status: 503 },
+          );
+        }
+
+        const retryQuery = hasCeiling
+          ? supabaseAdmin
+              .from('assistance_budgets')
+              .upsert(payload, { onConflict: 'assistance_type' })
+              .select('assistance_type, ceiling')
+              .single()
+          : supabaseAdmin
+              .from('assistance_budgets')
+              .update(payload)
+              .eq('assistance_type', assistanceType)
+              .select('assistance_type, ceiling')
+              .single();
+
+        const retry = await retryQuery;
+        if (retry.error) throw retry.error;
+        return NextResponse.json({ data: retry.data, error: null });
+      }
+      throw error;
+    }
 
     return NextResponse.json({ data, error: null });
   } catch (err) {

@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS public.assistance_budgets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   assistance_type TEXT UNIQUE NOT NULL,
   ceiling DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  requirements JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -96,6 +97,8 @@ CREATE TRIGGER update_assistance_budgets_updated_at
   BEFORE UPDATE ON public.assistance_budgets
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
+
+ALTER TABLE public.assistance_budgets ADD COLUMN IF NOT EXISTS requirements JSONB DEFAULT '[]'::jsonb;
 
 -- =====================================================
 -- 3. ADMIN USERS TABLE

@@ -5,10 +5,20 @@ import Link from 'next/link';
 import { Card, Button, Modal } from '@/components';
 import styles from './page.module.css';
 import { assistanceData } from '@/lib/assistanceData';
+import {
+  buildRequirementsMap,
+  getRequirementsForType,
+  getLocalBudgetsMap,
+  getLocalRequirementsMap,
+  isMissingRequirementsColumn,
+  saveLocalBudget,
+  saveLocalRequirements,
+} from '@/lib/assistanceRequirements';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function GuidelinesPage() {
   const [budgets, setBudgets] = useState({});
+  const [requirementsByType, setRequirementsByType] = useState({});
   const [loadingBudgets, setLoadingBudgets] = useState(true);
   const [editingType, setEditingType] = useState(null);
   const [editValue, setEditValue] = useState('');
@@ -16,6 +26,9 @@ export default function GuidelinesPage() {
   const [status, setStatus] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [confirmState, setConfirmState] = useState({ open: false, type: null, current: 0, next: 0 });
+  const [editingRequirementsType, setEditingRequirementsType] = useState(null);
+  const [requirementsDraft, setRequirementsDraft] = useState([]);
+  const [requirementsSaving, setRequirementsSaving] = useState(false);
 
   const getAuthHeaders = async () => {
     if (!supabase) throw new Error('Supabase client not initialized.');
@@ -71,12 +84,27 @@ export default function GuidelinesPage() {
         if (!supabase) {
           throw new Error('Database client not available');
         }
-        const { data, error } = await supabase
+        let usedFallback = false;
+        let { data, error } = await supabase
           .from('assistance_budgets')
-          .select('assistance_type, ceiling');
+          .select('assistance_type, ceiling, requirements');
+
+        if (error && isMissingRequirementsColumn(error)) {
+          const fallback = await supabase
+            .from('assistance_budgets')
+            .select('assistance_type, ceiling');
+          data = fallback.data;
+          error = fallback.error;
+          usedFallback = true;
+        }
 
         if (error) {
           console.warn('Error loading assistance budgets', error.message);
+          if (isBudgetsUnavailable(error)) {
+            setBudgets(getLocalBudgetsMap());
+            setRequirementsByType(getLocalRequirementsMap());
+            return;
+          }
           setStatus({
             type: 'error',
             message: 'Failed to load assistance budget ceilings. Please refresh the page or try again later.',
@@ -93,6 +121,20 @@ export default function GuidelinesPage() {
             }
           });
           setBudgets(map);
+          setRequirementsByType(
+            usedFallback ? getLocalRequirementsMap() : buildRequirementsMap(data),
+          );
+        }
+      } catch (err) {
+        if (isBudgetsUnavailable(err)) {
+          setBudgets(getLocalBudgetsMap());
+          setRequirementsByType(getLocalRequirementsMap());
+        } else {
+          console.warn('Unexpected error loading assistance budgets', err);
+          setStatus({
+            type: 'error',
+            message: 'Failed to load assistance budget ceilings. Please refresh the page or try again later.',
+          });
         }
       } finally {
         setLoadingBudgets(false);
@@ -108,6 +150,8 @@ export default function GuidelinesPage() {
     return assistanceData[title]?.ceiling ?? 0;
   };
 
+  const getRequirementsFor = (title) => getRequirementsForType(title, requirementsByType);
+
   const openEditModal = (title) => {
     if (!isAdmin) {
       setStatus({ type: 'error', message: 'Only Admin accounts can edit budget ceilings.' });
@@ -117,6 +161,23 @@ export default function GuidelinesPage() {
     const current = getCeilingFor(title);
     setEditingType(title);
     setEditValue(String(current));
+  };
+
+  const openRequirementsModal = (title) => {
+    if (!isAdmin) {
+      setStatus({ type: 'error', message: 'Only Admin accounts can edit requirements.' });
+      return;
+    }
+
+    const requirements = getRequirementsFor(title);
+    setEditingRequirementsType(title);
+    setRequirementsDraft(requirements.length ? requirements : ['']);
+  };
+
+  const closeRequirementsModal = () => {
+    if (requirementsSaving) return;
+    setEditingRequirementsType(null);
+    setRequirementsDraft([]);
   };
 
   const closeEditModal = () => {
@@ -141,10 +202,25 @@ export default function GuidelinesPage() {
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || payload?.error) {
+        const errorMessage = payload?.error || `Failed to update budget ceiling for ${type}.`;
+        if (payload?.code === 'ASSISTANCE_BUDGETS_TABLE_MISSING' || isBudgetsUnavailable(errorMessage)) {
+          saveLocalBudget(type, next);
+          setBudgets((prev) => ({
+            ...prev,
+            [type]: next,
+          }));
+          setStatus({
+            type: 'success',
+            message: `Budget ceiling saved locally: ${type} (${formatPeso(current)} → ${formatPeso(next)}).`,
+          });
+          setConfirmState({ open: false, type: null, current: 0, next: 0 });
+          closeEditModal();
+          return;
+        }
         setConfirmState({ open: false, type: null, current: 0, next: 0 });
         setStatus({
           type: 'error',
-          message: humanizeBudgetError(payload?.error || `Failed to update budget ceiling for ${type}.`),
+          message: humanizeBudgetError(errorMessage),
         });
         return;
       }
@@ -198,6 +274,84 @@ export default function GuidelinesPage() {
     setConfirmState({ open: true, type: editingType, current, next: parsed });
   };
 
+  const handleSaveRequirements = async () => {
+    if (!editingRequirementsType) return;
+
+    if (!isAdmin) {
+      setStatus({ type: 'error', message: 'Only Admin accounts can edit requirements.' });
+      return;
+    }
+
+    const nextRequirements = requirementsDraft.map((item) => String(item || '').trim()).filter(Boolean);
+    const currentCeiling = getCeilingFor(editingRequirementsType);
+
+    setRequirementsSaving(true);
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch('/api/assistance-budgets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({
+          assistanceType: editingRequirementsType,
+          ceiling: currentCeiling,
+          requirements: nextRequirements,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.error) {
+        const errorMessage = payload?.error || 'Failed to update requirements.';
+        if (payload?.code === 'ASSISTANCE_BUDGETS_TABLE_MISSING' || isBudgetsUnavailable(errorMessage)) {
+          saveLocalRequirements(editingRequirementsType, nextRequirements);
+          setRequirementsByType((prev) => ({
+            ...prev,
+            [editingRequirementsType]: nextRequirements,
+          }));
+          setStatus({
+            type: 'success',
+            message: `Requirements saved locally for ${editingRequirementsType}.`,
+          });
+          closeRequirementsModal();
+          return;
+        }
+        setStatus({
+          type: 'error',
+          message: humanizeBudgetError(errorMessage),
+        });
+        return;
+      }
+
+      setRequirementsByType((prev) => ({
+        ...prev,
+        [editingRequirementsType]: nextRequirements,
+      }));
+      setStatus({
+        type: 'success',
+        message: `Requirements updated for ${editingRequirementsType}.`,
+      });
+      closeRequirementsModal();
+    } catch (err) {
+      setStatus({ type: 'error', message: humanizeBudgetError(err) });
+    } finally {
+      setRequirementsSaving(false);
+    }
+  };
+
+  const updateRequirementLine = (index, value) => {
+    setRequirementsDraft((prev) => prev.map((item, idx) => (idx === index ? value : item)));
+  };
+
+  const addRequirementLine = () => {
+    setRequirementsDraft((prev) => [...prev, '']);
+  };
+
+  const removeRequirementLine = (index) => {
+    setRequirementsDraft((prev) => {
+      const next = prev.filter((_, idx) => idx !== index);
+      return next.length ? next : [''];
+    });
+  };
+
   return (
     <div className={styles.guidelinesPage}>
       {/* Header */}
@@ -236,6 +390,8 @@ export default function GuidelinesPage() {
               .map(([title, data]) => {
               const effectiveCeiling = getCeilingFor(title);
 
+              const requirements = getRequirementsFor(title);
+
               return (
                 <Card key={title} className={styles.requirementCard}>
                   <div className={styles.cardHeader}>
@@ -248,12 +404,15 @@ export default function GuidelinesPage() {
                     <h3 className={styles.cardTitle}>{title}</h3>
                   </div>
                   <ul className={styles.checkList}>
-                    {data.requirements.map((req, i) => (
-                      <li key={i}>
-                        <span className={styles.checkIcon}>✓</span>
-                        {req}
-                      </li>
-                    ))}
+                    {requirements.length ? (
+                      requirements.map((req, i) => (
+                        <li key={i}>
+                          <span>{req}</span>
+                        </li>
+                      ))
+                    ) : (
+                      <li className={styles.emptyRequirement}>No requirements set.</li>
+                    )}
                   </ul>
                   <div className={styles.cardFooter}>
                     <div className={styles.ceilingInfo}>
@@ -266,14 +425,24 @@ export default function GuidelinesPage() {
                       </span>
                     </div>
                     {isAdmin ? (
-                      <Button
-                        variant="outline"
-                        size="small"
-                        onClick={() => openEditModal(title)}
-                        disabled={loadingBudgets}
-                      >
-                        Edit Budget
-                      </Button>
+                      <div className={styles.cardActions}>
+                        <Button
+                          variant="secondary"
+                          size="small"
+                          onClick={() => openRequirementsModal(title)}
+                          disabled={loadingBudgets || requirementsSaving}
+                        >
+                          Edit Requirements
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="small"
+                          onClick={() => openEditModal(title)}
+                          disabled={loadingBudgets}
+                        >
+                          Edit Budget
+                        </Button>
+                      </div>
                     ) : (
                       <span style={{ color: '#6b7280', fontSize: 12 }}>Admin only</span>
                     )}
@@ -385,6 +554,74 @@ export default function GuidelinesPage() {
       </Modal>
 
       <Modal
+        isOpen={Boolean(editingRequirementsType)}
+        onClose={closeRequirementsModal}
+        title={editingRequirementsType ? `Edit Requirements – ${editingRequirementsType}` : ''}
+        size="medium"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={closeRequirementsModal}
+              disabled={requirementsSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveRequirements}
+              disabled={requirementsSaving}
+            >
+              {requirementsSaving ? 'Saving…' : 'Save Requirements'}
+            </Button>
+          </>
+        }
+      >
+        {editingRequirementsType && (
+          <div className={styles.editModalBody}>
+            <p className={styles.editWarning}>
+              Update the requirements list below. Each field is saved as a separate checklist item.
+            </p>
+            <div className={styles.editField}>
+              <label className={styles.editLabel}>
+                Requirements
+              </label>
+              <div className={styles.requirementsEditor}>
+                {requirementsDraft.map((value, index) => (
+                  <div key={`${index}-${editingRequirementsType}`} className={styles.requirementRow}>
+                    <input
+                      type="text"
+                      className={styles.requirementInput}
+                      value={value}
+                      onChange={(e) => updateRequirementLine(index, e.target.value)}
+                      placeholder={`Requirement ${index + 1}`}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="small"
+                      onClick={() => removeRequirementLine(index)}
+                      disabled={requirementsDraft.length <= 1}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="small"
+                  onClick={addRequirementLine}
+                  className={styles.addRequirementBtn}
+                >
+                  Add Requirement
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
         isOpen={!!confirmState.open}
         onClose={() => {
           if (saving) return;
@@ -430,3 +667,14 @@ export default function GuidelinesPage() {
     </div>
   );
 }
+  const isBudgetsUnavailable = (err) => {
+    const msg = String(err?.message || err || '').toLowerCase();
+    return (
+      msg.includes('assistance_budgets') &&
+      (msg.includes('schema cache') ||
+        msg.includes('does not exist') ||
+        msg.includes('could not find the table') ||
+        msg.includes('column') ||
+        msg.includes('relation'))
+    );
+  };

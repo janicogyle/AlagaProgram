@@ -1,6 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import {
+  formatPhContactNumber,
+  normalizePhContactNumber,
+  PH_CONTACT_PLACEHOLDER,
+  PH_CONTACT_PREFIX,
+} from '@/lib/contactNumber';
 import styles from './Input.module.css';
 
 export default function Input({
@@ -10,17 +16,50 @@ export default function Input({
   value,
   onChange,
   placeholder = '',
+  inputMode,
+  autoComplete,
   required = false,
   optional = false,
   disabled = false,
   error = '',
   icon = null,
   className = '',
+  mask = null,
   ...props
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = type === 'password';
-  const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
+  const isContactMask = mask === 'ph-contact';
+  const resolvedType = isContactMask && type === 'text' ? 'tel' : type;
+  const inputType = isPassword ? (showPassword ? 'text' : 'password') : resolvedType;
+  const resolvedPlaceholder = isContactMask && !placeholder ? PH_CONTACT_PLACEHOLDER : placeholder;
+  const resolvedInputMode = isContactMask ? inputMode || 'numeric' : inputMode;
+  const resolvedAutoComplete = isContactMask ? autoComplete || 'tel' : autoComplete;
+  const normalizedContactValue = isContactMask ? normalizePhContactNumber(value) : value;
+  const displayValue = isContactMask
+    ? normalizedContactValue
+      ? formatPhContactNumber(normalizedContactValue)
+      : PH_CONTACT_PREFIX
+    : value ?? '';
+
+  const handleChange = (event) => {
+    if (!onChange) return;
+    if (!isContactMask) {
+      onChange(event);
+      return;
+    }
+
+    const normalized = normalizePhContactNumber(event.target.value);
+    onChange({
+      ...event,
+      target: {
+        name: event.target.name,
+        type: event.target.type,
+        checked: event.target.checked,
+        value: normalized,
+      },
+    });
+  };
 
   return (
     <div className={`${styles.inputGroup} ${className}`}>
@@ -37,9 +76,11 @@ export default function Input({
           id={name}
           type={inputType}
           name={name}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
+          value={displayValue}
+          onChange={handleChange}
+          placeholder={resolvedPlaceholder}
+          inputMode={resolvedInputMode}
+          autoComplete={resolvedAutoComplete}
           required={required}
           disabled={disabled}
           className={`${styles.input} ${icon ? styles.withIcon : ''} ${error ? styles.inputError : ''}`}

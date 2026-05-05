@@ -162,6 +162,18 @@ export default function BeneficiarySignupPage() {
       }
 
       const ageValue = calculateAge(form.birthday);
+      if (ageValue === '' || Number.isNaN(ageValue) || ageValue < 0) {
+        setStatus({ type: 'error', message: 'Please provide a valid birthday.' });
+        return;
+      }
+      if (ageValue < 18) {
+        setStatus({ type: 'error', message: 'You must be at least 18 years old to sign up.' });
+        return;
+      }
+      if (form.isSeniorCitizen && ageValue < 60) {
+        setStatus({ type: 'error', message: 'Senior Citizen selection requires age 60 or above.' });
+        return;
+      }
       if (hasSectorSelected && validIdFiles.length === 0) {
         setValidIdError('Please upload a valid ID to verify your sector classification.');
         return;
@@ -306,6 +318,45 @@ export default function BeneficiarySignupPage() {
         )}
 
         <form onSubmit={handleSubmit} className={styles.form}>
+          <section className={styles.section} aria-labelledby="sector-classification-heading">
+            <div className={styles.sectorRow}>
+              <span id="sector-classification-heading" className={styles.sectorLabel}>Sector classification</span>
+              <p className={styles.sectorHelper}>
+                Select only one: PWD, Solo Parent, or Senior Citizen.
+              </p>
+              <div className={styles.sectorChips}>
+                <label className={styles.sectorChip}>
+                  <input
+                    type="checkbox"
+                    name="isPwd"
+                    checked={form.isPwd}
+                    onChange={() => handleSectorChange('isPwd')}
+                  />
+                  <span>PWD</span>
+                </label>
+                <label className={styles.sectorChip}>
+                  <input
+                    type="checkbox"
+                    name="isSeniorCitizen"
+                    checked={form.isSeniorCitizen}
+                    onChange={() => handleSectorChange('isSeniorCitizen')}
+                  />
+                  <span>Senior Citizen</span>
+                </label>
+                <label className={styles.sectorChip}>
+                  <input
+                    type="checkbox"
+                    name="isSoloParent"
+                    checked={form.isSoloParent}
+                    onChange={() => handleSectorChange('isSoloParent')}
+                  />
+                  <span>Solo Parent</span>
+                </label>
+              </div>
+            </div>
+
+          </section>
+
           <section className={`${styles.section} ${styles.personalSection}`} aria-labelledby="personal-info-heading">
             <SectionHeader
               id="personal-info-heading"
@@ -371,6 +422,8 @@ export default function BeneficiarySignupPage() {
                 name="citizenship"
                 value={form.citizenship}
                 onChange={handleChange}
+                readOnly
+                disabled
                 required
               />
               <Select
@@ -384,10 +437,12 @@ export default function BeneficiarySignupPage() {
               />
               <Input
                 label="Contact Number"
+                type="tel"
                 name="contactNumber"
                 value={form.contactNumber}
                 onChange={handleChange}
-                placeholder="09XX XXX XXXX"
+                placeholder="+63 XXX XXX XXXX"
+                mask="ph-contact"
                 error={fieldErrors.contactNumber}
                 required
               />
@@ -411,55 +466,6 @@ export default function BeneficiarySignupPage() {
                 minLength={8}
                 required
               />
-            </div>
-
-            <div className={styles.sectorRow}>
-              <span className={styles.sectorLabel}>Sector classification</span>
-              <p className={styles.sectorHelper}>
-                Upload a valid ID to verify your sector classification. Select only one: PWD, Solo Parent, or Senior
-                Citizen.
-              </p>
-              <div className={styles.sectorChips}>
-                <label className={styles.sectorChip}>
-                  <input
-                    type="checkbox"
-                    name="isPwd"
-                    checked={form.isPwd}
-                    onChange={() => handleSectorChange('isPwd')}
-                  />
-                  <span>PWD</span>
-                </label>
-                <label className={styles.sectorChip}>
-                  <input
-                    type="checkbox"
-                    name="isSeniorCitizen"
-                    checked={form.isSeniorCitizen}
-                    onChange={() => handleSectorChange('isSeniorCitizen')}
-                  />
-                  <span>Senior Citizen</span>
-                </label>
-                <label className={styles.sectorChip}>
-                  <input
-                    type="checkbox"
-                    name="isSoloParent"
-                    checked={form.isSoloParent}
-                    onChange={() => handleSectorChange('isSoloParent')}
-                  />
-                  <span>Solo Parent</span>
-                </label>
-              </div>
-            </div>
-
-            <div className={styles.validIdRow}>
-              <FileUpload
-                label="Valid ID(s)"
-                documentType="validId"
-                multiple={true}
-                files={validIdFiles}
-                onChange={handleValidIdChange}
-                required={hasSectorSelected}
-              />
-              {validIdError && <p className={styles.fieldError}>{validIdError}</p>}
             </div>
           </section>
 
@@ -502,6 +508,18 @@ export default function BeneficiarySignupPage() {
                 disabled
                 required
               />
+            </div>
+
+            <div className={styles.validIdRow}>
+              <FileUpload
+                label="Valid ID(s)"
+                documentType="validId"
+                multiple={true}
+                files={validIdFiles}
+                onChange={handleValidIdChange}
+                required={hasSectorSelected}
+              />
+              {validIdError && <p className={styles.fieldError}>{validIdError}</p>}
             </div>
           </section>
 

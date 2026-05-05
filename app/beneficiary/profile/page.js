@@ -259,6 +259,8 @@ export default function ProfilePage() {
                   label="Contact Number"
                   type="tel"
                   value={resident?.contact_number || ''}
+                  placeholder="+63 XXX XXX XXXX"
+                  mask="ph-contact"
                   disabled
                 />
               </div>

@@ -15,6 +15,30 @@
   margin-left: 2px;
 }
 
+.sizeWarning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background-color: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #92400e;
+}
+
+.sizeWarning svg {
+  color: #f59e0b;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.sizeWarningText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .dropZone {
   border: 2px dashed #d1d5db;
   border-radius: 12px;

@@ -710,10 +710,12 @@ export default function UsersPage() {
           <div className={styles.formGrid}>
             <Input
               label="Contact Number"
+              type="tel"
               name="contactNumber"
               value={editState.contactNumber}
               onChange={handleEditFieldChange}
-              placeholder="e.g. 0917 123 4567"
+              placeholder="+63 XXX XXX XXXX"
+              mask="ph-contact"
               error={editState.errors.contactNumber}
             />
             <Select
@@ -833,10 +835,12 @@ export default function UsersPage() {
           <div className={styles.formGrid}>
             <Input
               label="Contact Number"
+              type="tel"
               name="contactNumber"
               value={form.contactNumber}
               onChange={handleFieldChange}
-              placeholder="e.g. 0917 123 4567"
+              placeholder="+63 XXX XXX XXXX"
+              mask="ph-contact"
             />
             <Select
               label="Role"

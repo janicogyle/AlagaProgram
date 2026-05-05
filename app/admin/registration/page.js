@@ -9,7 +9,15 @@ import Button from '@/components/Button';
 import styles from './page.module.css';
 import { supabase } from '@/lib/supabaseClient';
 import { assistanceTypeOptions, assistanceData } from '@/lib/assistanceData';
+import {
+  buildRequirementsMap,
+  getLocalBudgetsMap,
+  getLocalRequirementsMap,
+  getRequirementsForType,
+  isMissingRequirementsColumn,
+} from '@/lib/assistanceRequirements';
 import { createOrUpdateResident } from '@/lib/residents';
+import { getCooldownInfo } from '@/lib/requestCooldown';
 
 const sexOptions = [
   { value: 'male', label: 'Male' },
@@ -104,6 +112,7 @@ export default function RegistrationPage() {
   const router = useRouter();
   const [controlNumber, setControlNumber] = useState('');
   const [budgets, setBudgets] = useState({});
+  const [requirementsByType, setRequirementsByType] = useState({});
   const [formData, setFormData] = useState({
     // Personal Information
     lastName: '',
@@ -158,14 +167,29 @@ export default function RegistrationPage() {
       try {
         if (!supabase) {
           console.error('Database client not available');
+          setBudgets(getLocalBudgetsMap());
+          setRequirementsByType(getLocalRequirementsMap());
           return;
         }
-        const { data, error } = await supabase
+        
+        let usedFallback = false;
+        let { data, error } = await supabase
           .from('assistance_budgets')
-          .select('assistance_type, ceiling');
+          .select('assistance_type, ceiling, requirements');
+
+        if (error && isMissingRequirementsColumn(error)) {
+          const fallback = await supabase
+            .from('assistance_budgets')
+            .select('assistance_type, ceiling');
+          data = fallback.data;
+          error = fallback.error;
+          usedFallback = true;
+        }
 
         if (error) {
           console.error('Error loading assistance budgets', error.message);
+          setBudgets(getLocalBudgetsMap());
+          setRequirementsByType(getLocalRequirementsMap());
           return;
         }
 
@@ -177,9 +201,14 @@ export default function RegistrationPage() {
             }
           });
           setBudgets(map);
+          setRequirementsByType(
+            usedFallback ? getLocalRequirementsMap() : buildRequirementsMap(data),
+          );
         }
       } catch (err) {
         console.error('Unexpected error loading assistance budgets', err);
+        setBudgets(getLocalBudgetsMap());
+        setRequirementsByType(getLocalRequirementsMap());
       }
     };
 
@@ -193,6 +222,8 @@ export default function RegistrationPage() {
     const base = assistanceData[type]?.ceiling;
     return typeof base === 'number' ? base : null;
   };
+
+  const getRequirementsFor = (type) => getRequirementsForType(type, requirementsByType);
 
   // Calculate age from date of birth
   const calculateAge = (dob) => {
@@ -218,7 +249,7 @@ export default function RegistrationPage() {
 
     if (name === 'assistanceType') {
       const ceiling = getCeilingFor(value);
-      const reqs = value ? assistanceData[value]?.requirements || [] : [];
+      const reqs = value ? getRequirementsFor(value) : [];
 
       setErrors((prev) => ({
         ...prev,
@@ -348,6 +379,17 @@ export default function RegistrationPage() {
       newErrors.contactNumber = 'Contact number must be exactly 11 digits';
     }
 
+    if (!newErrors.birthday) {
+      const ageValue = calculateAge(formData.birthday);
+      if (ageValue === '' || Number.isNaN(ageValue) || ageValue < 0) {
+        newErrors.birthday = 'Please provide a valid birthday.';
+      } else if (ageValue < 18) {
+        newErrors.birthday = 'Registrant must be at least 18 years old.';
+      } else if (formData.sectors.seniorCitizen && ageValue < 60) {
+        newErrors.sectors = 'Senior Citizen requires age 60 or above.';
+      }
+    }
+
     // Validate assistance fields if a type is selected
     if (formData.assistanceType) {
       if (!formData.beneficiaryName.trim()) {
@@ -448,6 +490,30 @@ export default function RegistrationPage() {
       if (formData.assistanceType && residentData) {
         if (!supabase) {
           throw new Error('Database client not available');
+        }
+
+        const { data: lastRequest, error: lastRequestError } = await supabase
+          .from('assistance_requests')
+          .select('request_date, created_at')
+          .eq('resident_id', residentData.id)
+          .eq('status', 'Released')
+          .order('request_date', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (lastRequestError) {
+          throw lastRequestError;
+        }
+
+        const lastRequestDate = lastRequest?.request_date || lastRequest?.created_at || null;
+        const cooldownInfo = getCooldownInfo(lastRequestDate);
+        if (!cooldownInfo.isEligible) {
+          setStatus({
+            type: 'error',
+            message: `Request blocked. Beneficiary can submit again on ${cooldownInfo.nextEligibleDate} (${cooldownInfo.daysRemaining} day(s) remaining).`,
+          });
+          return;
         }
 
         const assistanceControlNumber = await getNextSequentialControlNumber('assistance_requests');
@@ -660,8 +726,9 @@ export default function RegistrationPage() {
     void refreshResidentControlNumber();
   };
 
-  const selectedAssistanceRequirements =
-    formData.assistanceType ? assistanceData[formData.assistanceType]?.requirements || [] : [];
+  const selectedAssistanceRequirements = formData.assistanceType
+    ? getRequirementsFor(formData.assistanceType)
+    : [];
   const selectedAssistanceCeiling = formData.assistanceType ? getCeilingFor(formData.assistanceType) : null;
 
   return (
@@ -826,9 +893,9 @@ export default function RegistrationPage() {
                 name="contactNumber"
                 value={formData.contactNumber}
                 onChange={handleChange}
-                placeholder="09XX XXX XXXX"
+                placeholder="+63 XXX XXX XXXX"
+                mask="ph-contact"
                 error={errors.contactNumber}
-                maxLength={11}
               />
             </div>
           </div>
@@ -936,11 +1003,12 @@ export default function RegistrationPage() {
               />
               <Input
                 label="Representative Contact"
+                type="tel"
                 name="representativeContact"
                 value={formData.representativeContact}
                 onChange={handleChange}
-                placeholder="09XX XXX XXXX"
-                maxLength={11}
+                placeholder="+63 XXX XXX XXXX"
+                mask="ph-contact"
                 disabled={!formData.assistanceType}
                 optional
               />
@@ -991,11 +1059,12 @@ export default function RegistrationPage() {
               />
               <Input
                 label="Beneficiary Contact"
+                type="tel"
                 name="beneficiaryContact"
                 value={formData.beneficiaryContact}
                 onChange={handleChange}
-                placeholder="09XX XXX XXXX"
-                maxLength={11}
+                placeholder="+63 XXX XXX XXXX"
+                mask="ph-contact"
                 error={errors.beneficiaryContact}
                 disabled={!formData.assistanceType}
                 optional

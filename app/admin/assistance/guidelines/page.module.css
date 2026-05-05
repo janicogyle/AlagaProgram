@@ -144,9 +144,11 @@
   gap: 8px;
 }
 
-.checkIcon {
-  color: #16a34a;
-  margin-top: 2px;
+
+.emptyRequirement {
+  color: #9ca3af;
+  font-style: italic;
+  padding-left: 24px;
 }
 
 /* Card Footer */
@@ -157,6 +159,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .ceilingInfo {
@@ -220,6 +230,38 @@
   outline: none;
   border-color: #1e40af;
   box-shadow: 0 0 0 1px #1e40af33;
+}
+
+
+.requirementsEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.requirementRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.requirementInput {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.requirementInput:focus {
+  outline: none;
+  border-color: #1e40af;
+  box-shadow: 0 0 0 1px #1e40af33;
+}
+
+.addRequirementBtn {
+  align-self: flex-start;
 }
 
 /* Process Flow */

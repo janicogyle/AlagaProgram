@@ -7,11 +7,20 @@ import Card from '../../../components/Card';
 import Input from '../../../components/Input';
 import Select from '../../../components/Select';
 import Button from '../../../components/Button';
+import Badge from '../../../components/Badge';
 import FileUpload from '../../../components/FileUpload';
 import styles from './page.module.css';
 import { createOrUpdateResident } from '@/lib/residents';
 import { assistanceTypeOptions, assistanceData } from '@/lib/assistanceData';
+import {
+  buildRequirementsMap,
+  getLocalBudgetsMap,
+  getLocalRequirementsMap,
+  getRequirementsForType,
+  isMissingRequirementsColumn,
+} from '@/lib/assistanceRequirements';
 import { supabase } from '@/lib/supabaseClient';
+import { getCooldownInfo } from '@/lib/requestCooldown';
 
 
 const CONTROL_NUMBER_PAD = 3;
@@ -145,6 +154,7 @@ export default function BeneficiaryRequestPage() {
   const router = useRouter();
   const [controlNumber, setControlNumber] = useState('');
   const [budgets, setBudgets] = useState({});
+  const [requirementsByType, setRequirementsByType] = useState(null);
   const [formData, setFormData] = useState({
     lastName: '',
     firstName: '',
@@ -188,6 +198,8 @@ export default function BeneficiaryRequestPage() {
   const [removedRequirementIndex, setRemovedRequirementIndex] = useState({});
   const [beneficiaryIsRequester, setBeneficiaryIsRequester] = useState(true);
   const [toast, setToast] = useState({ open: false, message: '' });
+  const [cooldownInfo, setCooldownInfo] = useState(() => getCooldownInfo(null));
+  const [cooldownLoading, setCooldownLoading] = useState(true);
 
   useEffect(() => {
     if (!toast.open) return;
@@ -226,6 +238,48 @@ export default function BeneficiaryRequestPage() {
   useEffect(() => {
     void refreshResidentControlNumber();
   }, []);
+
+  useEffect(() => {
+    const loadCooldownInfo = async () => {
+      if (isEditMode) {
+        setCooldownInfo(getCooldownInfo(null));
+        setCooldownLoading(false);
+        return;
+      }
+
+      setCooldownLoading(true);
+      try {
+        let residentId = null;
+        if (typeof window !== 'undefined') {
+          residentId = window.localStorage.getItem('beneficiaryResidentId');
+        }
+
+        if (!residentId) {
+          setCooldownInfo(getCooldownInfo(null));
+          return;
+        }
+
+        const response = await fetch(`/api/assistance-requests?residentId=${encodeURIComponent(residentId)}`);
+        const result = await response.json();
+
+        if (!response.ok || result?.error) {
+          throw new Error(result?.error || 'Failed to load request eligibility.');
+        }
+
+        const rows = Array.isArray(result.data) ? result.data : [];
+        const released = rows.find((row) => String(row?.status || '').toLowerCase() === 'released');
+        const lastDate = released?.request_date || released?.created_at || null;
+        setCooldownInfo(getCooldownInfo(lastDate));
+      } catch (err) {
+        console.warn('Failed to load request eligibility:', err);
+        setCooldownInfo(getCooldownInfo(null));
+      } finally {
+        setCooldownLoading(false);
+      }
+    };
+
+    loadCooldownInfo();
+  }, [isEditMode]);
 
   // Auto-fill from beneficiary sign up/profile (still editable)
   useEffect(() => {
@@ -304,6 +358,8 @@ export default function BeneficiaryRequestPage() {
   }, []);
 
   useEffect(() => {
+    if (requirementsByType === null) return;
+
     const loadEditRequest = async () => {
       if (typeof window === 'undefined') return;
       const params = new URLSearchParams(window.location.search);
@@ -402,10 +458,9 @@ export default function BeneficiaryRequestPage() {
 
         const reqs = parseRequirements(match.requirements_urls);
         const normalizedAssistanceType = normalizeAssistanceType(match.assistance_type);
-        const requirementLabels =
-          normalizedAssistanceType.assistanceType
-            ? assistanceData[normalizedAssistanceType.assistanceType]?.requirements || []
-            : [];
+        const requirementLabels = normalizedAssistanceType.assistanceType
+          ? getRequirementsForType(normalizedAssistanceType.assistanceType, requirementsByType || {})
+          : [];
         const mergedRequirementFiles = normalizeRequirementFiles(
           match.requirements_files,
           reqs,
@@ -512,22 +567,36 @@ export default function BeneficiaryRequestPage() {
     };
 
     void loadEditRequest();
-  }, []);
+  }, [requirementsByType]);
 
   useEffect(() => {
     const loadBudgets = async () => {
       try {
         if (!supabase) {
           console.error('Supabase client not initialized');
+          setBudgets(getLocalBudgetsMap());
+          setRequirementsByType(getLocalRequirementsMap());
           return;
         }
 
-        const { data, error } = await supabase
+        let usedFallback = false;
+        let { data, error } = await supabase
           .from('assistance_budgets')
-          .select('assistance_type, ceiling');
+          .select('assistance_type, ceiling, requirements');
+
+        if (error && isMissingRequirementsColumn(error)) {
+          const fallback = await supabase
+            .from('assistance_budgets')
+            .select('assistance_type, ceiling');
+          data = fallback.data;
+          error = fallback.error;
+          usedFallback = true;
+        }
 
         if (error) {
           console.error('Error loading assistance budgets', error.message);
+          setBudgets(getLocalBudgetsMap());
+          setRequirementsByType(getLocalRequirementsMap());
           return;
         }
 
@@ -540,9 +609,14 @@ export default function BeneficiaryRequestPage() {
             }
           });
           setBudgets(map);
+          setRequirementsByType(
+            usedFallback ? getLocalRequirementsMap() : buildRequirementsMap(data),
+          );
         }
       } catch (err) {
         console.error('Unexpected error loading assistance budgets', err);
+        setBudgets(getLocalBudgetsMap());
+        setRequirementsByType(getLocalRequirementsMap());
       }
     };
 
@@ -555,6 +629,23 @@ export default function BeneficiaryRequestPage() {
     if (typeof override === 'number') return override;
     const base = assistanceData[type]?.ceiling;
     return typeof base === 'number' ? base : null;
+  };
+
+  const getRequirementsFor = (type) => getRequirementsForType(type, requirementsByType || {});
+
+  const getCooldownVariant = (statusLabel) => {
+    if (statusLabel === 'Eligible') return 'success';
+    if (statusLabel === 'Almost Eligible') return 'warning';
+    return 'danger';
+  };
+
+  const getCooldownMessage = (info) => {
+    if (!info) return 'Checking request eligibility...';
+    if (info.isEligible) return 'You can submit a new request now.';
+    if (info.nextEligibleDate) {
+      return `Please wait ${info.daysRemaining} day(s). Next eligible on ${info.nextEligibleDate}.`;
+    }
+    return `Please wait ${info.daysRemaining} day(s) before submitting another request.`;
   };
 
   const calculateAge = (dob) => {
@@ -666,10 +757,14 @@ export default function BeneficiaryRequestPage() {
 
   const handleRequirementUploadChange = (index, files) => {
     const file = Array.isArray(files) ? files[0] || null : null;
+    // Save uploaded file
     setRequirementUploadFiles((prev) => ({ ...prev, [index]: file }));
+
+    // If a file was uploaded, mark existing as not-removed so it will be used on submit
     if (file) {
       setRemovedRequirementIndex((prev) => ({ ...prev, [index]: false }));
     }
+
     if (errors.validId) {
       setErrors((prev) => ({ ...prev, validId: '' }));
     }
@@ -719,14 +814,10 @@ export default function BeneficiaryRequestPage() {
     }
 
     const assistanceReqs = formData.assistanceType
-      ? assistanceData[formData.assistanceType]?.requirements || []
+      ? getRequirementsFor(formData.assistanceType)
       : [];
-    if (
-      assistanceReqs.length &&
-      !assistanceReqs.every((_req, idx) => !!formData?.requirementsChecklist?.[idx])
-    ) {
-      newErrors.requirementsChecklist = 'Please check all requirements before submitting.';
-    }
+
+    // Instead of requiring the user to check boxes, infer checklist from uploaded/new/existing files.
     if (assistanceReqs.length) {
       const missingDocs = assistanceReqs.some((_req, idx) => {
         const hasNew = !!requirementUploadFiles?.[idx];
@@ -750,6 +841,14 @@ export default function BeneficiaryRequestPage() {
     e.preventDefault();
 
     if (!validateForm()) {
+      return;
+    }
+
+    if (!isEditMode && (cooldownLoading || (cooldownInfo && !cooldownInfo.isEligible))) {
+      setStatus({
+        type: 'error',
+        message: cooldownLoading ? 'Checking request eligibility. Please wait.' : getCooldownMessage(cooldownInfo),
+      });
       return;
     }
 
@@ -869,7 +968,7 @@ export default function BeneficiaryRequestPage() {
         };
 
         const assistanceReqs = formData.assistanceType
-          ? assistanceData[formData.assistanceType]?.requirements || []
+          ? getRequirementsFor(formData.assistanceType)
           : [];
         const requirementFileDetails = [];
 
@@ -939,11 +1038,11 @@ export default function BeneficiaryRequestPage() {
         const requesterContact = formData.contactNumber;
         const requesterAddress = buildAddress();
 
-        // Build requirements checklist from the assistance type definition.
-        // Preserve checked requirements when this form provides checkbox state.
-        const requirementsChecklist = assistanceReqs.map((label, idx) => ({
+        // Build requirements checklist from actual uploaded/existing files (locked for user).
+        const presentLabels = new Set(requirementFileDetails.map((r) => String(r.requirement_type || '').trim()));
+        const requirementsChecklist = assistanceReqs.map((label) => ({
           label,
-          checked: !!formData?.requirementsChecklist?.[idx],
+          checked: presentLabels.has(String(label)),
         }));
         const requirementsCompleted = requirementsChecklist.length
           ? requirementsChecklist.every((row) => !!row?.checked)
@@ -991,6 +1090,9 @@ export default function BeneficiaryRequestPage() {
 
         const result = await response.json();
         if (!response.ok || result?.error) {
+          if (result?.code === 'REQUEST_COOLDOWN' && result?.cooldown) {
+            setCooldownInfo(result.cooldown);
+          }
           throw new Error(result?.error || 'Failed to submit assistance request.');
         }
 
@@ -1008,6 +1110,7 @@ export default function BeneficiaryRequestPage() {
           }, 1200);
           return;
         }
+
       }
 
       // Persist basic beneficiary identity locally for dashboard/profile views
@@ -1121,9 +1224,14 @@ export default function BeneficiaryRequestPage() {
     setRemovedRequirementIndex({});
   };
 
-  const selectedAssistanceRequirements =
-    formData.assistanceType ? assistanceData[formData.assistanceType]?.requirements || [] : [];
+  const selectedAssistanceRequirements = formData.assistanceType
+    ? getRequirementsFor(formData.assistanceType)
+    : [];
   const selectedAssistanceCeiling = formData.assistanceType ? getCeilingFor(formData.assistanceType) : null;
+  const cooldownVariant = cooldownLoading ? 'secondary' : getCooldownVariant(cooldownInfo?.status);
+  const isCooldownBlocked = !isEditMode && !cooldownLoading && cooldownInfo && !cooldownInfo.isEligible;
+  const isSubmitDisabled =
+    isSubmitting || isLoadingEdit || (!isEditMode && (cooldownLoading || isCooldownBlocked));
 
   return (
     <div className={styles.registrationPage}>
@@ -1141,6 +1249,19 @@ export default function BeneficiaryRequestPage() {
           }`}
         >
           {status.message}
+        </div>
+      )}
+      {!isEditMode && (
+        <div className={styles.cooldownBanner} role="status" aria-live="polite">
+          <div className={styles.cooldownContent}>
+            <div className={styles.cooldownTitle}>Request Eligibility</div>
+            <div className={styles.cooldownMessage}>
+              {cooldownLoading ? 'Checking request eligibility...' : getCooldownMessage(cooldownInfo)}
+            </div>
+          </div>
+          <Badge variant={cooldownVariant}>
+            {cooldownLoading ? 'Checking' : cooldownInfo?.status || 'Eligible'}
+          </Badge>
         </div>
       )}
       <form onSubmit={handleSubmit} className={styles.formGrid}>
@@ -1226,8 +1347,8 @@ export default function BeneficiaryRequestPage() {
                           <label className={styles.checkbox}>
                             <input
                               type="checkbox"
-                              checked={!!formData?.requirementsChecklist?.[idx]}
-                              onChange={() => toggleRequirement(idx)}
+                              checked={!!requirementUploadFiles?.[idx] || getExistingFilesForRequirement(idx).length > 0}
+                              disabled
                             />
                             <span className={styles.checkmark}></span>
                             <span>{req}</span>
@@ -1269,7 +1390,7 @@ export default function BeneficiaryRequestPage() {
                             <button
                               type="button"
                               className={styles.removeExistingFileBtn}
-                              onClick={() => setRemovedRequirementIndex((prev) => ({ ...prev, [idx]: true }))}
+                              onClick={() => setRemovedRequirementIndex((prev) => ({ ...prev, [idx]: true })) }
                             >
                               Remove
                             </button>
@@ -1326,11 +1447,12 @@ export default function BeneficiaryRequestPage() {
               />
               <Input
                 label="Representative Contact"
+                type="tel"
                 name="representativeContact"
                 value={formData.representativeContact}
                 onChange={handleChange}
-                placeholder="09XX XXX XXXX"
-                maxLength={11}
+                placeholder="+63 XXX XXX XXXX"
+                mask="ph-contact"
                 disabled={!formData.assistanceType}
                 optional
               />
@@ -1400,11 +1522,12 @@ export default function BeneficiaryRequestPage() {
                   />
                   <Input
                     label="Beneficiary Contact"
+                    type="tel"
                     name="beneficiaryContact"
                     value={formData.beneficiaryContact}
                     onChange={handleChange}
-                    placeholder="09XX XXX XXXX"
-                    maxLength={11}
+                    placeholder="+63 XXX XXX XXXX"
+                    mask="ph-contact"
                     error={errors.beneficiaryContact}
                     disabled={!formData.assistanceType}
                     required={!!formData.assistanceType && !beneficiaryIsRequester}
@@ -1430,7 +1553,6 @@ export default function BeneficiaryRequestPage() {
                 error={errors.assistanceAmount}
                 disabled={!formData.assistanceType}
                 readOnly
-                optional
               />
             </div>
           </Card>
@@ -1439,7 +1561,7 @@ export default function BeneficiaryRequestPage() {
             <Button type="button" variant="secondary" onClick={handleCancel} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || isLoadingEdit}>
+            <Button type="submit" disabled={isSubmitDisabled}>
               {isSubmitting ? 'Submitting...' : isEditMode ? 'Resubmit Request' : 'Submit Request'}
             </Button>
           </div>

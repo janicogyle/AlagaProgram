@@ -85,48 +85,35 @@ export default function HomePage() {
     {
       icon: (
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
         </svg>
       ),
-      title: 'Faster Assistance',
-      description: 'One digital profile means quicker validation and processing of assistance requests.',
+      title: 'Medicine Assistance',
+      description: 'Financial support for outpatient medical expenses and medication reimbursements.',
     },
     {
       icon: (
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M9 11l3 3L22 4" />
-          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+          <path d="M3 7h18" />
+          <path d="M7 7v10a5 5 0 0 0 10 0V7" />
+          <path d="M12 3v4" />
         </svg>
       ),
-      title: 'Verified Benefits',
-      description: 'Sector classification and documents keep eligibility accurate and benefits fair.',
+      title: 'Confinement Assistance',
+      description: 'Coverage for hospital confinement costs and related medical services.',
     },
     {
       icon: (
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="3" y="3" width="18" height="18" rx="2" />
-          <path d="M7 7h.01" />
-          <path d="M17 7h.01" />
-          <path d="M7 17h.01" />
-          <path d="M17 17h.01" />
-          <rect x="7" y="10" width="10" height="4" />
+          <path d="M3 21h18" />
+          <path d="M12 3v12" />
+          <path d="M8 7h8" />
         </svg>
       ),
-      title: 'QR ID Convenience',
-      description: 'Present a secure QR-coded ID for instant verification and less repeat paperwork.',
-    },
-    {
-      icon: (
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-          <line x1="16" y1="13" x2="8" y2="13" />
-          <line x1="16" y1="17" x2="8" y2="17" />
-        </svg>
-      ),
-      title: 'Clear Assistance History',
-      description: 'Track support received with transparent records and status updates.',
+      title: 'Burial Assistance',
+      description: 'Assistance to help cover funeral and burial expenses for eligible beneficiaries.',
     },
   ];
 
@@ -291,7 +278,7 @@ export default function HomePage() {
             </div>
             <h1 className={styles.heroTitle}>
               Welcome to Barangay Sta. Rita
-              <span className={styles.heroTitleHighlight}>Digital Identification System</span>
+              <span className={styles.heroTitleHighlight}>Alaga Programs</span>
             </h1>
             <p className={styles.heroDescription}>
               A digital platform for managing resident profiles, tracking assistance programs, 
@@ -323,7 +310,7 @@ export default function HomePage() {
                     <img src="/Brand.png" alt="Logo" />
                   </div>
                   <div className={styles.illustrationTitle}>
-                    <span>Digital Management System</span>
+                    <span>Alaga Program</span>
                     <small>PWD&apos;s, Senior Citizens, Solo Parents</small>
                   </div>
                 </div>
@@ -372,7 +359,7 @@ export default function HomePage() {
             <span className={styles.sectionTag}>About the System</span>
             <h2 className={styles.sectionTitle}>Beneficiary Benefits</h2>
             <p className={styles.sectionDescription}>
-              Our Digital Identification System is built to prioritize beneficiaries with faster processing,
+              Our Alaga Program System is built to prioritize beneficiaries with faster processing,
               verified eligibility, and easier access to support.
             </p>
           </div>
@@ -395,7 +382,7 @@ export default function HomePage() {
             <span className={styles.sectionTag}>Our Services</span>
             <h2 className={styles.sectionTitle}>Management Features</h2>
             <p className={styles.sectionDescription}>
-              Explore the full range of services available in our digital identification system 
+              Explore the full range of services available in our Alaga Program system 
               designed for efficient barangay operations.
             </p>
           </div>
@@ -418,7 +405,7 @@ export default function HomePage() {
             <span className={styles.sectionTag}>How It Works</span>
             <h2 className={styles.sectionTitle}>Simple Registration Process</h2>
             <p className={styles.sectionDescription}>
-              Follow these easy steps to register residents and issue digital identification cards.
+              Follow these easy steps to register residents and issue Alaga Program cards.
             </p>
           </div>
           <div className={styles.processGrid}>
@@ -472,7 +459,7 @@ export default function HomePage() {
               <span className={styles.sectionTag}>Contact Us</span>
               <h2 className={styles.sectionTitle}>Get in Touch</h2>
               <p className={styles.contactDescription}>
-                Have questions about the Digital Identification System? 
+                Have questions about the Alaga Program System? 
                 Visit us at the Barangay Hall or reach out through the following channels.
               </p>
               <div className={styles.contactDetails}>
@@ -553,7 +540,7 @@ export default function HomePage() {
               </div>
               <div className={styles.footerBrandText}>
                 <strong>Barangay Sta. Rita</strong>
-                <span>Digital Identification System</span>
+                <span>Alaga Program</span>
               </div>
             </div>
             <div className={styles.footerLinks}>

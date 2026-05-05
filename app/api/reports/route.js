@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
+import fs from 'fs';
+import path from 'path';
 
 export const runtime = 'nodejs';
 
@@ -295,24 +297,46 @@ async function generateCashAssistanceXLSX({ rows, reportYear, total, sectorLabel
     { key: 'amount', width: 12 },
   ];
 
-  sheet.mergeCells('A1:F1');
-  sheet.getCell('A1').value = `SUMMARY OF ALAGA PROGRAM ${reportYear}`;
-  sheet.getCell('A1').font = { bold: true, size: 14 };
-  sheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
+  // Try to add logo from public/Brand.png (server-side)
+  let logoAdded = false;
+  try {
+    const logoPath = path.join(process.cwd(), 'public', 'Brand.png');
+    if (fs.existsSync(logoPath)) {
+      const imgBuffer = fs.readFileSync(logoPath);
+      const imageId = workbook.addImage({ buffer: imgBuffer, extension: 'png' });
+      // place at top-left (columns measure approx 8.43 per unit; using ext width/height in points)
+      sheet.addImage(imageId, {
+        tl: { col: 0, row: 0 },
+        ext: { width: 120, height: 60 },
+      });
+      logoAdded = true;
+    }
+  } catch (e) {
+    console.warn('Could not add logo to XLSX:', e?.message || e);
+  }
 
-  sheet.mergeCells('A2:F2');
-  sheet.getCell('A2').value = 'CASH ASSISTANCE / DONATIONS';
-  sheet.getCell('A2').font = { bold: true, size: 12 };
-  sheet.getCell('A2').alignment = { horizontal: 'center', vertical: 'middle' };
+  const titleRowIndex = logoAdded ? 2 : 1;
+  const subtitleRowIndex = logoAdded ? 3 : 2;
+  const sectorRowIndex = logoAdded ? 4 : 3;
 
-  let freezeSplit = 4;
+  sheet.mergeCells(`A${titleRowIndex}:F${titleRowIndex}`);
+  sheet.getCell(`A${titleRowIndex}`).value = `SUMMARY OF ALAGA PROGRAM ${reportYear}`;
+  sheet.getCell(`A${titleRowIndex}`).font = { bold: true, size: 14 };
+  sheet.getCell(`A${titleRowIndex}`).alignment = { horizontal: 'center', vertical: 'middle' };
+
+  sheet.mergeCells(`A${subtitleRowIndex}:F${subtitleRowIndex}`);
+  sheet.getCell(`A${subtitleRowIndex}`).value = 'CASH ASSISTANCE / DONATIONS';
+  sheet.getCell(`A${subtitleRowIndex}`).font = { bold: true, size: 12 };
+  sheet.getCell(`A${subtitleRowIndex}`).alignment = { horizontal: 'center', vertical: 'middle' };
+
+  let freezeSplit = logoAdded ? 5 : 4;
 
   if (sectorLabel) {
-    sheet.mergeCells('A3:F3');
-    sheet.getCell('A3').value = String(sectorLabel).toUpperCase();
-    sheet.getCell('A3').font = { bold: true, size: 10 };
-    sheet.getCell('A3').alignment = { horizontal: 'center', vertical: 'middle' };
-    freezeSplit = 5;
+    sheet.mergeCells(`A${sectorRowIndex}:F${sectorRowIndex}`);
+    sheet.getCell(`A${sectorRowIndex}`).value = String(sectorLabel).toUpperCase();
+    sheet.getCell(`A${sectorRowIndex}`).font = { bold: true, size: 10 };
+    sheet.getCell(`A${sectorRowIndex}`).alignment = { horizontal: 'center', vertical: 'middle' };
+    freezeSplit = logoAdded ? 6 : 5;
   }
 
   sheet.addRow([]);

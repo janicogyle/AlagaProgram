@@ -3,7 +3,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
-import { assistanceData } from '@/lib/assistanceData';
+import {
+  buildRequirementsMap,
+  getLocalRequirementsMap,
+  getRequirementsForType,
+  isMissingRequirementsColumn,
+} from '@/lib/assistanceRequirements';
 import {
   Card,
   Select,
@@ -68,8 +73,8 @@ const getRequirementsCompleted = (checklist, fallbackValue) => {
   return toBoolean(fallbackValue) === true;
 };
 
-const getExpectedChecklist = (assistanceType) => {
-  const expected = assistanceData?.[assistanceType]?.requirements || [];
+const getExpectedChecklist = (assistanceType, requirementsByType) => {
+  const expected = getRequirementsForType(assistanceType, requirementsByType);
 
   return expected.map((label) => ({
     label,
@@ -150,6 +155,34 @@ export default function RequestsPage() {
   const [remarks, setRemarks] = useState('');
   const [status, setStatus] = useState(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [requirementsByType, setRequirementsByType] = useState({});
+
+  useEffect(() => {
+    const loadRequirements = async () => {
+      try {
+        if (!supabase) return;
+        const { data, error } = await supabase
+          .from('assistance_budgets')
+          .select('assistance_type, requirements');
+
+        if (error) {
+          if (isMissingRequirementsColumn(error)) {
+            setRequirementsByType(getLocalRequirementsMap());
+            return;
+          }
+          console.warn('Error loading assistance requirements', error.message);
+          setRequirementsByType(getLocalRequirementsMap());
+          return;
+        }
+        setRequirementsByType(buildRequirementsMap(data || []));
+      } catch (err) {
+        console.warn('Unexpected error loading assistance requirements', err);
+        setRequirementsByType(getLocalRequirementsMap());
+      }
+    };
+
+    loadRequirements();
+  }, []);
 
   const openAlert = ({ title, message, variant = 'info' }) => {
     setAlertState({ open: true, title, message, variant });
@@ -171,7 +204,9 @@ export default function RequestsPage() {
           throw new Error(result?.error || 'Failed to load assistance requests.');
         }
 
-        const mapped = (result.data || []).map((r) => {
+        const rows = Array.isArray(result.data) ? result.data : [];
+
+        const mapped = rows.map((r) => {
           const resident = r.residents || {};
 
           const residentName = [resident.first_name, resident.middle_name, resident.last_name]
@@ -237,9 +272,10 @@ export default function RequestsPage() {
           };
 
           const savedRequirementsChecklist = parseChecklist(r.requirements_checklist);
+          const requirementsChecklistSource = savedRequirementsChecklist.length ? 'saved' : 'expected';
           const requirementsChecklist = savedRequirementsChecklist.length
             ? savedRequirementsChecklist
-            : getExpectedChecklist(r.assistance_type);
+            : getExpectedChecklist(r.assistance_type, requirementsByType);
           // Completed is allowed only when every checklist item is checked.
           // Missing or partially unchecked verification data is treated as Incomplete.
           const requirementsCompleted = getRequirementsCompleted(
@@ -339,6 +375,7 @@ export default function RequestsPage() {
             type: r.assistance_type,
             amount: r.amount,
             rawAmount: r.amount,
+            requestDateRaw: r.request_date || r.created_at || null,
             validIdUrl: r.valid_id_url || null,
             requirementUrls,
             requirementFiles,
@@ -346,6 +383,7 @@ export default function RequestsPage() {
             requestSource: r.request_source || 'online',
             requirementsChecklist,
             requirementsCompleted,
+            requirementsChecklistSource,
             status,
             statusLabel: getStatusLabel(status),
             date: r.request_date ? new Date(r.request_date).toLocaleDateString() : '',
@@ -380,6 +418,21 @@ export default function RequestsPage() {
 
     loadRequests();
   }, []);
+
+  useEffect(() => {
+    if (!requirementsByType || Object.keys(requirementsByType).length === 0) return;
+    setRequests((prev) =>
+      prev.map((req) => {
+        if (req.requirementsChecklistSource !== 'expected') return req;
+        const expected = getExpectedChecklist(req.type, requirementsByType);
+        return {
+          ...req,
+          requirementsChecklist: expected,
+          requirementsCompleted: getRequirementsCompleted(expected, req.requirementsCompleted),
+        };
+      }),
+    );
+  }, [requirementsByType]);
 
   // Filter requests
   const filteredRequests = requests.filter((record) => {
@@ -621,6 +674,8 @@ export default function RequestsPage() {
     return <Badge variant={variants[type] || 'default'}>{type}</Badge>;
   };
 
+
+
   const formatProcessedBy = (value) => {
     const raw = String(value || '').trim();
     if (!raw) return '-';
@@ -637,6 +692,7 @@ export default function RequestsPage() {
       render: (type) => getTypeBadge(type),
     },
     { key: 'date', label: 'Date' },
+
     { key: 'amount', label: 'Amount' },
     {
       key: 'attachmentCount',

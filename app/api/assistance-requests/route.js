@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
+import { getCooldownInfo } from '@/lib/requestCooldown';
 
 export const runtime = 'nodejs';
 
@@ -193,6 +194,8 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const residentId = searchParams.get('residentId');
+    const statusParam = searchParams.get('status');
+    const statusFilter = statusParam ? String(statusParam).trim() : '';
 
     const baseRequestFields = [
       'id',
@@ -250,6 +253,10 @@ export async function GET(request) {
 
       if (residentId) {
         query = query.eq('resident_id', residentId);
+      }
+
+      if (statusFilter) {
+        query = query.eq('status', statusFilter);
       }
 
       return await query;
@@ -335,6 +342,35 @@ export async function POST(request) {
     const assistanceType = body.assistance_type || body.assistanceType;
     if (!assistanceType) {
       return NextResponse.json({ data: null, error: 'assistance_type is required.' }, { status: 400 });
+    }
+
+    const { data: lastRequest, error: lastRequestError } = await db
+      .from('assistance_requests')
+      .select('request_date, created_at')
+      .eq('resident_id', residentId)
+      .eq('status', 'Released')
+      .order('request_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lastRequestError) {
+      throw lastRequestError;
+    }
+
+    const lastRequestDate = lastRequest?.request_date || lastRequest?.created_at || null;
+    const cooldownInfo = getCooldownInfo(lastRequestDate);
+
+    if (!cooldownInfo.isEligible) {
+      return NextResponse.json(
+        {
+          data: null,
+          error: `Please wait ${cooldownInfo.daysRemaining} day(s) before submitting another request. Next eligible on ${cooldownInfo.nextEligibleDate}.`,
+          code: 'REQUEST_COOLDOWN',
+          cooldown: cooldownInfo,
+        },
+        { status: 429 },
+      );
     }
 
     const amount = Number(body.amount || 0);

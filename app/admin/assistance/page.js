@@ -17,6 +17,13 @@ import {
 } from '@/components';
 import styles from './page.module.css';
 import { supabase } from '@/lib/supabaseClient';
+import {
+  buildRequirementsMap,
+  getLocalRequirementsMap,
+  getRequirementsForType,
+  isMissingRequirementsColumn,
+} from '@/lib/assistanceRequirements';
+import { getCooldownInfo, parseDateInput } from '@/lib/requestCooldown';
 
 const typeOptions = [
   { value: '', label: 'All Types' },
@@ -26,13 +33,7 @@ const typeOptions = [
   { value: 'Others', label: 'Others' },
 ];
 
-const statusOptions = [
-  { value: '', label: 'All Status' },
-  { value: 'Pending', label: 'Pending' },
-  { value: 'Approved', label: 'Approved' },
-  { value: 'Released', label: 'Released' },
-  { value: 'Rejected', label: 'Incomplete' },
-];
+
 
 const serviceTypes = [
   { value: 'medicine', label: 'Medicine Assistance', ceiling: '₱500' },
@@ -48,15 +49,18 @@ const generateControlNumber = () => {
 };
 
 export default function AssistancePage() {
+const statusOptions = [{ value: 'Released', label: 'Released' }];
+
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('Released');
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState(null);
+  const [requirementsByType, setRequirementsByType] = useState({});
   
   // Form state
   const [formData, setFormData] = useState({
@@ -81,20 +85,38 @@ export default function AssistancePage() {
         }
         const { data, error } = await supabase
           .from('assistance_requests')
-          .select('id, control_number, requester_name, beneficiary_name, assistance_type, amount, status, request_date')
+          .select(
+            'id, control_number, resident_id, requester_name, beneficiary_name, assistance_type, amount, status, request_date, created_at',
+          )
+          .eq('status', 'Released')
           .order('request_date', { ascending: false });
 
         if (error) throw error;
 
-        const mapped = (data || []).map((r) => ({
+        const rows = Array.isArray(data) ? data : [];
+        const latestByResident = new Map();
+
+        rows.forEach((row) => {
+          const residentId = row?.resident_id;
+          if (!residentId) return;
+          const candidate = parseDateInput(row?.request_date || row?.created_at);
+          if (!candidate) return;
+          const existing = latestByResident.get(residentId);
+          if (!existing || candidate > existing) {
+            latestByResident.set(residentId, candidate);
+          }
+        });
+
+        const mapped = rows.map((r) => ({
           id: r.id,
           controlNo: r.control_number,
           requester: r.requester_name,
           beneficiary: r.beneficiary_name,
           type: r.assistance_type,
           amount: r.amount,
-          status: r.status || 'Pending',
+          status: r.status || 'Released',
           date: r.request_date ? new Date(r.request_date).toLocaleDateString() : '',
+          cooldownInfo: getCooldownInfo(latestByResident.get(r.resident_id) || null),
         }));
 
         setRecords(mapped);
@@ -108,6 +130,45 @@ export default function AssistancePage() {
 
     loadAssistance();
   }, []);
+
+  useEffect(() => {
+    const loadRequirements = async () => {
+      try {
+        if (!supabase) return;
+        const { data, error } = await supabase
+          .from('assistance_budgets')
+          .select('assistance_type, requirements');
+
+        if (error) {
+          if (isMissingRequirementsColumn(error)) {
+            setRequirementsByType(getLocalRequirementsMap());
+            return;
+          }
+          console.warn('Error loading assistance requirements', error.message);
+          setRequirementsByType(getLocalRequirementsMap());
+          return;
+        }
+        setRequirementsByType(buildRequirementsMap(data || []));
+      } catch (err) {
+        console.warn('Unexpected error loading assistance requirements', err);
+        setRequirementsByType(getLocalRequirementsMap());
+      }
+    };
+
+    loadRequirements();
+  }, []);
+
+  const serviceTypeToAssistance = {
+    medicine: 'Medicine Assistance',
+    confinement: 'Confinement Assistance',
+    burial: 'Burial Assistance',
+    others: 'Others',
+  };
+
+  const getRequirementsForServiceType = (serviceType) => {
+    const assistanceType = serviceTypeToAssistance[serviceType];
+    return getRequirementsForType(assistanceType, requirementsByType);
+  };
 
   // Filter assistance records
   const filteredAssistance = records.filter((record) => {
@@ -230,6 +291,26 @@ export default function AssistancePage() {
     return <Badge variant={variants[status]}>{label}</Badge>;
   };
 
+  const getEligibilityBadge = (info) => {
+    if (!info) return <Badge variant="secondary">—</Badge>;
+    const variant =
+      info.status === 'Eligible'
+        ? 'success'
+        : info.status === 'Almost Eligible'
+          ? 'warning'
+          : 'danger';
+    const daysSuffix = info.isEligible
+      ? ''
+      : ` • ${info.daysRemaining} day${info.daysRemaining === 1 ? '' : 's'}`;
+    const dateSuffix = info.nextEligibleDate
+      ? ` • ${new Date(info.nextEligibleDate).toLocaleDateString()}`
+      : '';
+
+    // Show both days remaining (if any) and the specific date when eligibility occurs
+    const content = `${info.status}${daysSuffix}${dateSuffix}`;
+    return <Badge variant={variant}>{content}</Badge>;
+  };
+
   const columns = [
     { key: 'controlNo', label: 'Control No.' },
     { key: 'requester', label: 'Requester' },
@@ -240,6 +321,11 @@ export default function AssistancePage() {
       render: (type) => <Badge>{type}</Badge>,
     },
     { key: 'date', label: 'Date' },
+    {
+      key: 'eligibility',
+      label: 'Eligibility',
+      render: (_, row) => getEligibilityBadge(row.cooldownInfo),
+    },
     { key: 'amount', label: 'Amount' },
     {
       key: 'status',
@@ -309,13 +395,6 @@ export default function AssistancePage() {
             options={typeOptions}
             placeholder="All Types"
           />
-          <Select
-            name="status"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            options={statusOptions}
-            placeholder="All Status"
-          />
         </FilterBar>
 
         {/* Desktop Table View */}
@@ -361,6 +440,12 @@ export default function AssistancePage() {
                     <span className={styles.cardLabel}>Date</span>
                     <span className={styles.cardValue}>{record.date}</span>
                   </div>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Eligibility</span>
+                    <span className={styles.cardValue}>
+                      {getEligibilityBadge(record.cooldownInfo)}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))
@@ -397,13 +482,14 @@ export default function AssistancePage() {
               />
               <Input
                 label="Contact Number"
+                type="tel"
                 name="requesterContact"
                 value={formData.requesterContact}
                 onChange={handleChange}
-                placeholder="09XX XXX XXXX"
+                placeholder="+63 XXX XXX XXXX"
+                mask="ph-contact"
                 error={errors.requesterContact}
                 required
-                maxLength={11}
               />
               <div className={styles.fullWidth}>
                 <Input
@@ -470,12 +556,13 @@ export default function AssistancePage() {
               />
               <Input
                 label="Contact Number"
+                type="tel"
                 name="beneficiaryContact"
                 value={formData.beneficiaryContact}
                 onChange={handleChange}
-                placeholder="09XX XXX XXXX"
+                placeholder="+63 XXX XXX XXXX"
+                mask="ph-contact"
                 error={errors.beneficiaryContact}
-                maxLength={11}
                 optional
               />
               <div className={styles.fullWidth}>
@@ -527,14 +614,16 @@ export default function AssistancePage() {
                     Medicine Assistance Requirements
                   </h5>
                   <ul className={styles.docList}>
-                    <li>
-                      <span className={styles.docCheck}>✓</span>
-                      Doctor's Prescription
-                    </li>
-                    <li>
-                      <span className={styles.docCheck}>✓</span>
-                      Official Receipt from Pharmacy
-                    </li>
+                    {getRequirementsForServiceType('medicine').length ? (
+                      getRequirementsForServiceType('medicine').map((req, idx) => (
+                        <li key={idx}>
+                          <span className={styles.docCheck}>✓</span>
+                          {req}
+                        </li>
+                      ))
+                    ) : (
+                      <li className={styles.emptyRequirement}>No requirements set.</li>
+                    )}
                   </ul>
                 </div>
               )}
@@ -548,14 +637,16 @@ export default function AssistancePage() {
                     Confinement Assistance Requirements
                   </h5>
                   <ul className={styles.docList}>
-                    <li>
-                      <span className={styles.docCheck}>✓</span>
-                      Certificate of Confinement / Medical Abstract
-                    </li>
-                    <li>
-                      <span className={styles.docCheck}>✓</span>
-                      Hospital Statement of Account / Official Receipt
-                    </li>
+                    {getRequirementsForServiceType('confinement').length ? (
+                      getRequirementsForServiceType('confinement').map((req, idx) => (
+                        <li key={idx}>
+                          <span className={styles.docCheck}>✓</span>
+                          {req}
+                        </li>
+                      ))
+                    ) : (
+                      <li className={styles.emptyRequirement}>No requirements set.</li>
+                    )}
                   </ul>
                 </div>
               )}
@@ -570,14 +661,16 @@ export default function AssistancePage() {
                     Burial Assistance Requirements
                   </h5>
                   <ul className={styles.docList}>
-                    <li>
-                      <span className={styles.docCheck}>✓</span>
-                      Death Certificate
-                    </li>
-                    <li>
-                      <span className={styles.docCheck}>✓</span>
-                      Funeral Contract / Official Receipt
-                    </li>
+                    {getRequirementsForServiceType('burial').length ? (
+                      getRequirementsForServiceType('burial').map((req, idx) => (
+                        <li key={idx}>
+                          <span className={styles.docCheck}>✓</span>
+                          {req}
+                        </li>
+                      ))
+                    ) : (
+                      <li className={styles.emptyRequirement}>No requirements set.</li>
+                    )}
                   </ul>
                 </div>
               )}
@@ -593,14 +686,16 @@ export default function AssistancePage() {
                     Other Assistance Requirements
                   </h5>
                   <ul className={styles.docList}>
-                    <li>
-                      <span className={styles.docCheck}>✓</span>
-                      Supporting documents related to the request
-                    </li>
-                    <li>
-                      <span className={styles.docCheck}>✓</span>
-                      Official Receipt (if applicable)
-                    </li>
+                    {getRequirementsForServiceType('others').length ? (
+                      getRequirementsForServiceType('others').map((req, idx) => (
+                        <li key={idx}>
+                          <span className={styles.docCheck}>✓</span>
+                          {req}
+                        </li>
+                      ))
+                    ) : (
+                      <li className={styles.emptyRequirement}>No requirements set.</li>
+                    )}
                   </ul>
                 </div>
               )}
