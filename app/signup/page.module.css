@@ -167,6 +167,85 @@
   color: #6b7280;
 }
 
+.legalConsent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.85rem;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.legalConsent input {
+  width: 16px;
+  height: 16px;
+  margin-top: 0.2rem;
+  accent-color: #2563eb;
+}
+
+.legalConsentLabel {
+  line-height: 1.5;
+}
+
+.legalInlineLink {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #2563eb;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.legalInlineLink:hover {
+  color: #1d4ed8;
+}
+
+.legalContent {
+  line-height: 1.6;
+  color: #4b5563;
+}
+
+.legalIntro {
+  margin: 0 0 0.4rem;
+  color: #111827;
+}
+
+.legalParagraph {
+  margin: 0.25rem 0 0.6rem;
+}
+
+.legalHeading {
+  display: block;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.25rem;
+}
+
+.legalSubHeading {
+  margin: 0.75rem 0 0.5rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.legalList {
+  padding-left: 1.2rem;
+  margin: 0.35rem 0 0.75rem;
+}
+
+.legalList li {
+  margin-bottom: 0.5rem;
+}
+
+.legalSubList {
+  padding-left: 1.1rem;
+  margin: 0.35rem 0 0.5rem;
+  list-style: disc;
+}
+
 @media (max-width: 640px) {
   .signupPage {
     padding: 0 0 1.75rem;

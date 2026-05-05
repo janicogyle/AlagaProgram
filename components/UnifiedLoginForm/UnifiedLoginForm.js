@@ -9,7 +9,7 @@ import {
 } from '@/lib/contactNumber';
 import styles from './UnifiedLoginForm.module.css';
 
-export function UnifiedLoginForm({ role, onLogin }) {
+export function UnifiedLoginForm({ role, onLogin, submitDisabled = false, extraContent = null }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,6 +23,9 @@ export function UnifiedLoginForm({ role, onLogin }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (submitDisabled) {
+      return;
+    }
     onLogin({ username, password });
   };
 
@@ -75,8 +78,11 @@ export function UnifiedLoginForm({ role, onLogin }) {
             </button>
           </div>
         </div>
+        {extraContent ? <div className={styles.formExtras}>{extraContent}</div> : null}
       </>
-      <button type="submit" className={styles.loginButton}>Sign In</button>
+      <button type="submit" className={styles.loginButton} disabled={submitDisabled}>
+        Sign In
+      </button>
     </form>
   );
 }
