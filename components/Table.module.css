@@ -1,0 +1,123 @@
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 8px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tr {
+  transition: background-color 0.2s ease;
+}
+
+.tr:hover {
+  background-color: #f9fafb;
+}
+
+.td {
+  padding: 14px 16px;
+  font-size: 14px;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: top;
+}
+
+.emptyCell {
+  padding: 40px 16px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* ======================= */
+/* RESPONSIVE STYLES       */
+/* ======================= */
+@media (max-width: 900px) {
+  .th {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .td {
+    padding: 12px;
+    font-size: 13px;
+  }
+
+  .emptyCell {
+    padding: 32px 12px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 768px) {
+  .tableWrapper {
+    margin: 0 -12px;
+    padding: 0 12px;
+  }
+
+  .th {
+    padding: 10px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .td {
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  .emptyCell {
+    padding: 28px 10px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 576px) {
+  .th {
+    padding: 8px;
+    font-size: 10px;
+  }
+
+  .td {
+    padding: 8px;
+    font-size: 11px;
+  }
+
+  .emptyCell {
+    padding: 24px 8px;
+  }
+}
+
+/* Make last column (actions) sticky on mobile */
+@media (max-width: 768px) {
+  .th:last-child,
+  .td:last-child {
+    position: static;
+    right: auto;
+    background: white;
+    box-shadow: none;
+  }
+
+  .th:last-child {
+    background: #f9fafb;
+  }
+
+  .tr:hover .td:last-child {
+    background: #f9fafb;
+  }
+}

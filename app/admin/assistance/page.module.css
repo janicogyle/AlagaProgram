@@ -1,0 +1,539 @@
+.assistancePage {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.statusBanner {
+  margin: 0 24px 16px 24px;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
+  border: 1px solid transparent;
+}
+
+.statusBannerSuccess {
+  background: #ecfdf3;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.statusBannerError {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.guidelinesLink {
+  text-decoration: none;
+}
+
+/* Assistance Form Styles */
+.assistanceForm {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 8px;
+  min-width: 0;
+}
+
+.formSection {
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.formSection:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e40af;
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionTitle::before {
+  content: '';
+  width: 4px;
+  height: 16px;
+  background: #1e40af;
+  border-radius: 2px;
+}
+
+.sectionHint {
+  font-size: 13px;
+  color: #6b7280;
+  margin: -8px 0 16px 0;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+/* Service Type Radio Cards */
+.serviceTypeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.radioCard {
+  cursor: pointer;
+}
+
+.radioCard input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.radioCardContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fafafa;
+  transition: all 0.2s ease;
+}
+
+.radioCard input:checked + .radioCardContent {
+  border-color: #1e40af;
+  background: #eff6ff;
+}
+
+.radioCard:hover .radioCardContent {
+  border-color: #93c5fd;
+}
+
+.radioMark {
+  position: absolute;
+  opacity: 0;
+}
+
+.radioLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.radioCeiling {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.radioCard input:checked + .radioCardContent .radioLabel {
+  color: #1e40af;
+}
+
+.otherInput {
+  margin-top: 16px;
+}
+
+/* Documents List */
+.documentsList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.documentsCategory {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.categoryTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 12px 0;
+}
+
+.categoryTitle svg {
+  color: #1e40af;
+}
+
+.docList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.docList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #4b5563;
+  padding: 8px 12px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.emptyRequirement {
+  font-style: italic;
+  color: #9ca3af;
+  background: #ffffff;
+}
+
+.docCheck {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: #dcfce7;
+  color: #16a34a;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.selectServiceHint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  background: #f3f4f6;
+  border-radius: 12px;
+  font-size: 14px;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* Acknowledgement Box */
+.acknowledgementBox {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.ackRow {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px dashed #e5e7eb;
+}
+
+.ackRow:last-of-type {
+  border-bottom: none;
+}
+
+.ackLabel {
+  font-size: 14px;
+  color: #6b7280;
+  min-width: 140px;
+}
+
+.ackValue {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  flex: 1;
+}
+
+.amountInput {
+  max-width: 150px;
+}
+
+.approverInput {
+  max-width: 250px;
+}
+
+/* Responsive */
+
+/* Table/Card View Toggle */
+.tableView {
+  display: block;
+}
+
+.mobileCardView {
+  display: none;
+}
+
+.recordCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+
+.recordCard:last-child {
+  margin-bottom: 0;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.controlNo {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e40af;
+  font-family: 'Courier New', monospace;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cardRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cardLabel {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.cardValue {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.emptyCard {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .formGrid,
+  .serviceTypeGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .assistanceForm {
+    max-height: 60vh;
+  }
+
+  .formSection {
+    padding-bottom: 16px;
+  }
+
+  .sectionTitle {
+    font-size: 14px;
+  }
+
+  .radioCardContent {
+    padding: 14px;
+  }
+
+  .documentsCategory {
+    padding: 14px 16px;
+  }
+
+  .ackRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .ackLabel {
+    min-width: auto;
+  }
+
+  .amountInput,
+  .approverInput {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .assistancePage {
+    gap: 20px;
+  }
+
+  /* Switch to card view on mobile */
+  .tableView {
+    display: none;
+  }
+
+  .mobileCardView {
+    display: block;
+    padding: 0 16px 16px;
+  }
+
+  .recordCard {
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .cardHeader {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+  }
+
+  .controlNo {
+    font-size: 12px;
+  }
+
+  .cardBody {
+    gap: 8px;
+  }
+
+  .cardLabel {
+    font-size: 12px;
+  }
+
+  .cardValue {
+    font-size: 12px;
+  }
+
+  .formGrid,
+  .serviceTypeGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .assistanceForm {
+    max-height: 55vh;
+    padding-right: 4px;
+  }
+
+  .sectionTitle {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  .sectionHint {
+    font-size: 12px;
+    margin: -6px 0 12px 0;
+  }
+
+  .radioCardContent {
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .radioLabel {
+    font-size: 13px;
+  }
+
+  .radioCeiling {
+    font-size: 11px;
+  }
+
+  .documentsCategory {
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
+
+  .categoryTitle {
+    font-size: 13px;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .docList li {
+    font-size: 13px;
+    padding: 6px 10px;
+  }
+
+  .docCheck {
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+  }
+
+  .selectServiceHint {
+    padding: 20px;
+    font-size: 13px;
+  }
+
+  .acknowledgementBox {
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  .ackLabel {
+    font-size: 13px;
+  }
+
+  .ackValue {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 576px) {
+  .assistancePage {
+    gap: 16px;
+  }
+
+  .assistanceForm {
+    gap: 20px;
+    max-height: 62dvh;
+  }
+
+  .cardRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .cardValue {
+    text-align: left;
+  }
+
+  .sectionTitle::before {
+    width: 3px;
+    height: 14px;
+  }
+
+  .radioCardContent {
+    padding: 10px 12px;
+  }
+
+  .documentsCategory {
+    padding: 10px 12px;
+  }
+
+  .acknowledgementBox {
+    padding: 14px;
+  }
+
+  .ackRow {
+    padding: 10px 0;
+  }
+}

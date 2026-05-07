@@ -1,0 +1,451 @@
+.guidelinesPage {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.statusBanner {
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
+  border: 1px solid transparent;
+}
+
+.statusBannerSuccess {
+  background: #ecfdf3;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.statusBannerError {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+/* Page Header */
+.pageHeader {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.pageTitle {
+  font-size: 28px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0;
+}
+
+.pageSubtitle {
+  font-size: 16px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+/* Content */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+/* Sections */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.sectionTitle svg {
+  color: #1e40af;
+}
+
+.sectionDescription {
+  font-size: 16px;
+  color: #4b5563;
+  max-width: 800px;
+}
+
+/* Requirements Grid */
+.requirementsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 24px;
+}
+
+.requirementCard {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease-in-out;
+}
+
+.requirementCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  min-width: 0;
+}
+
+.cardIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cardTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Checklist */
+.checkList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.checkList li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.checkList li::before {
+  content: '•';
+  color: #9ca3af;
+  line-height: 1.4;
+  margin-top: 1px;
+}
+
+
+.emptyRequirement {
+  color: #9ca3af;
+  font-style: italic;
+  padding-left: 24px;
+}
+
+/* Card Footer */
+.cardFooter {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #f3f4f6;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.cardActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.ceilingInfo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.cardActions :global(button),
+.cardActions :global(a) {
+  width: 100%;
+  justify-content: center;
+}
+
+.ceilingLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.ceilingAmount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e40af;
+  background-color: #e0e7ff;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+/* Edit Budget Modal */
+.editModalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.editWarning {
+  font-size: 14px;
+  color: #b45309;
+  background-color: #fffbeb;
+  border: 1px solid #f97316;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.editField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.editLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.editInput {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.editInput:focus {
+  outline: none;
+  border-color: #1e40af;
+  box-shadow: 0 0 0 1px #1e40af33;
+}
+
+
+.requirementsEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.requirementRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.requirementInput {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  font-family: inherit;
+  min-width: 0;
+}
+
+.requirementInput:focus {
+  outline: none;
+  border-color: #1e40af;
+  box-shadow: 0 0 0 1px #1e40af33;
+}
+
+.addRequirementBtn {
+  align-self: flex-start;
+}
+
+/* ======================= */
+/* RESPONSIVE STYLES       */
+/* ======================= */
+
+@media (max-width: 1024px) {
+  .guidelinesPage {
+    padding: 20px;
+    gap: 28px;
+  }
+
+  .requirementsGrid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .guidelinesPage {
+    padding: 16px;
+    gap: 24px;
+  }
+
+  .pageTitle {
+    font-size: 24px;
+  }
+
+  .pageSubtitle {
+    font-size: 14px;
+  }
+
+  .content {
+    gap: 36px;
+  }
+
+  .sectionTitle {
+    font-size: 20px;
+  }
+
+  .requirementsGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  /* Footer already uses grid; keep defaults */
+
+  .flow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .flowConnector {
+    display: none;
+  }
+}
+
+@media (max-width: 576px) {
+  .guidelinesPage {
+    padding: 12px;
+  }
+
+  .section {
+    gap: 18px;
+  }
+
+  .cardHeader {
+    gap: 12px;
+  }
+
+  .cardIcon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .cardTitle {
+    font-size: 16px;
+  }
+
+  .checkList {
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  .cardActions {
+    grid-template-columns: 1fr;
+  }
+
+  .requirementRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .addRequirementBtn {
+    width: 100%;
+    align-self: stretch;
+  }
+}
+
+/* Process Flow */
+.flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.flowStep {
+  flex: 1;
+  min-width: 200px;
+  text-align: center;
+  padding: 20px;
+  background-color: #f9fafb;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.stepNumber {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #1e40af;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px auto;
+}
+
+.stepTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.stepDescription {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.flowConnector {
+  display: none;
+  font-size: 24px;
+  color: #9ca3af;
+}
+
+@media (min-width: 768px) {
+  .flowConnector {
+    display: block;
+  }
+}
+
+.link {
+  color: #1e40af;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}

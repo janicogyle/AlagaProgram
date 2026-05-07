@@ -1,0 +1,607 @@
+.residentsPage {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.filterControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filterLabel {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.select {
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: #111827;
+  background-color: #ffffff;
+}
+
+.select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.1);
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* QR Modal Styles */
+.qrModalContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 0;
+}
+
+.residentInfo {
+  text-align: center;
+}
+
+.residentName {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 4px 0;
+}
+
+.controlNumber {
+  font-size: 14px;
+  color: #6b7280;
+  font-family: 'Courier New', monospace;
+  margin: 0 0 12px 0;
+}
+
+.residentBadges {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.qrPreview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.qrPlaceholder {
+  width: 180px;
+  height: 180px;
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #9ca3af;
+}
+
+.qrPlaceholderText {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.qrHint {
+  font-size: 12px;
+  color: #9ca3af;
+  text-align: center;
+  margin: 0;
+}
+
+/* Table/Card View Toggle */
+.tableView {
+  display: block;
+}
+
+.mobileCardView {
+  display: none;
+}
+
+.residentCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+
+.residentCard:last-child {
+  margin-bottom: 0;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.cardNameSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cardName {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  overflow-wrap: anywhere;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cardBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cardDetails {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.cardDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detailLabel {
+  font-size: 11px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detailValue {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  overflow-wrap: anywhere;
+}
+
+.emptyCard {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .filterControls {
+    gap: 10px;
+  }
+
+  .residentName {
+    font-size: 16px;
+  }
+
+  .controlNumber {
+    font-size: 13px;
+  }
+
+  .qrPlaceholder {
+    width: 160px;
+    height: 160px;
+  }
+}
+
+@media (max-width: 768px) {
+  .residentsPage {
+    gap: 20px;
+  }
+
+  .filterControls {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    justify-content: stretch;
+  }
+
+  .filterGroup {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .select {
+    width: 100%;
+  }
+
+  /* Switch to card view on mobile */
+  .tableView {
+    display: none;
+  }
+
+  .mobileCardView {
+    display: block;
+    padding: 0 16px 16px;
+  }
+
+  .residentCard {
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .cardName {
+    font-size: 14px;
+  }
+
+  .cardBadges {
+    gap: 4px;
+  }
+
+  .cardDetails {
+    gap: 20px;
+  }
+
+  .detailLabel {
+    font-size: 10px;
+  }
+
+  .detailValue {
+    font-size: 13px;
+  }
+
+  .badges {
+    gap: 4px;
+  }
+
+  .qrModalContent {
+    gap: 20px;
+    padding: 12px 0;
+  }
+
+  .residentName {
+    font-size: 16px;
+  }
+
+  .qrPlaceholder {
+    width: 150px;
+    height: 150px;
+  }
+}
+
+@media (max-width: 576px) {
+  .residentsPage {
+    gap: 16px;
+  }
+
+  .filterControls {
+    grid-template-columns: 1fr;
+  }
+
+  .filterGroup {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .residentBadges {
+    flex-wrap: wrap;
+  }
+
+  .cardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cardDetails {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .qrPlaceholder {
+    width: 140px;
+    height: 140px;
+  }
+
+  .qrPlaceholderText {
+    font-size: 11px;
+  }
+
+  .qrHint {
+    font-size: 11px;
+  }
+}
+
+/* Assistance History Modal */
+.assistanceModalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.assistanceResidentInfo {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+}
+
+.assistanceResidentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.assistanceResidentName {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.assistanceResidentMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.assistanceResidentDetail {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.assistanceResidentDetailBreak {
+  flex-basis: 100%;
+}
+
+.historyControlNo {
+  white-space: nowrap;
+  font-family: 'Courier New', monospace;
+}
+
+.residentDetailsFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.residentDetailsFooter > * {
+  flex: 0 0 auto;
+}
+
+.residentDetailsFooter :global(button) {
+  width: auto;
+  white-space: nowrap;
+}
+
+.assistanceSummaryRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.assistanceSummaryStat {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+.assistanceSummaryValue {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.assistanceSummaryLabel {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.assistanceEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.assistanceEmpty p {
+  margin: 0;
+}
+
+.assistanceList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.assistanceCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 18px;
+  transition: border-color 0.15s, box-shadow 0.2s, transform 0.2s;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.assistanceCard:hover {
+  border-color: #c7d2fe;
+  box-shadow: 0 10px 24px rgba(30, 64, 175, 0.12);
+  transform: translateY(-1px);
+}
+
+.assistanceCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  gap: 12px;
+}
+
+.assistanceCardTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.assistanceType {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.assistanceControlNo {
+  font-size: 12px;
+  color: #94a3b8;
+  font-family: 'Courier New', monospace;
+}
+
+.assistanceCardBody {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 16px;
+  align-items: start;
+}
+
+.assistanceDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #6b7280;
+  min-width: 0;
+}
+
+.assistanceDetailLabel {
+  font-size: 10px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.assistanceDetailValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  overflow-wrap: anywhere;
+}
+
+.assistanceAmount {
+  text-align: right;
+}
+
+.assistanceAmount .assistanceDetailValue {
+  font-weight: 700;
+  color: #111827;
+}
+
+.assistanceRemarks {
+  width: 100%;
+  font-size: 13px;
+  color: #6b7280;
+  padding-top: 8px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.remarksLabel {
+  font-weight: 500;
+  color: #374151;
+}
+
+@media (max-width: 768px) {
+  .assistanceSummaryRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .assistanceSummaryValue {
+    font-size: 18px;
+  }
+
+  .assistanceList {
+    max-height: 300px;
+  }
+
+  .assistanceCardBody {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+  }
+}
+
+@media (max-width: 576px) {
+  .assistanceSummaryRow {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .assistanceSummaryStat {
+    padding: 10px;
+  }
+
+  .assistanceSummaryValue {
+    font-size: 16px;
+  }
+
+  .assistanceResidentName {
+    font-size: 15px;
+  }
+
+  .assistanceResidentHeader,
+  .assistanceCardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .assistanceCardBody {
+    grid-template-columns: 1fr;
+  }
+
+  .assistanceAmount {
+    text-align: left;
+  }
+}

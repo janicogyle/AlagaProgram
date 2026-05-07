@@ -1,0 +1,140 @@
+.profilePage {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+    min-width: 0;
+}
+
+.profileForm {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.sectionHeader {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.sectionTitle {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.sectionSubtitle {
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.formGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem 1.25rem;
+}
+
+.muted {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.helperText {
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.fieldLabel {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.35rem;
+}
+
+.chipRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.chip {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    background-color: #eef2ff;
+    color: #3730a3;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.qrWrap {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.qrImage {
+    width: min(220px, 100%);
+    height: auto;
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    background: white;
+}
+
+.qrMeta {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: min(220px, 100%);
+}
+
+.qrRow {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+}
+
+.qrLabel {
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.qrButtons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+    .profilePage {
+        padding: 0 0 1.75rem;
+    }
+
+    .formGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .qrWrap {
+        justify-content: center;
+    }
+
+    .qrMeta,
+    .qrButtons,
+    .qrButtons button {
+        width: 100%;
+    }
+}
