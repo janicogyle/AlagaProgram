@@ -5,7 +5,6 @@ import {
   formatPhContactNumber,
   normalizePhContactNumber,
   PH_CONTACT_PLACEHOLDER,
-  PH_CONTACT_PREFIX,
 } from '@/lib/contactNumber';
 import styles from './Input.module.css';
 
@@ -39,7 +38,7 @@ export default function Input({
   const displayValue = isContactMask
     ? normalizedContactValue
       ? formatPhContactNumber(normalizedContactValue)
-      : PH_CONTACT_PREFIX
+      : ''
     : value ?? '';
 
   const handleChange = (event) => {

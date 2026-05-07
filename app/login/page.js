@@ -106,6 +106,10 @@ export default function LoginPage() {
 
           <div className={styles.legalSection}>
             <p className={styles.legalInlineText}>
+              By clicking the Sign In, you acknowledge and agree to the Data Privacy Notice and Terms and Conditions of the
+              Barangay Sta. Rita Alaga Program.
+            </p>
+            <p className={styles.legalInlineText}>
               <button
                 type="button"
                 className={styles.legalInlineLink}
