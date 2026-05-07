@@ -16,6 +16,18 @@ import {
 } from '@/lib/assistanceRequirements';
 import { supabase } from '@/lib/supabaseClient';
 
+const isBudgetsUnavailable = (err) => {
+  const msg = String(err?.message || err || '').toLowerCase();
+  return (
+    msg.includes('assistance_budgets') &&
+    (msg.includes('schema cache') ||
+      msg.includes('does not exist') ||
+      msg.includes('could not find the table') ||
+      msg.includes('column') ||
+      msg.includes('relation'))
+  );
+};
+
 export default function GuidelinesPage() {
   const [budgets, setBudgets] = useState({});
   const [requirementsByType, setRequirementsByType] = useState({});
@@ -667,14 +679,3 @@ export default function GuidelinesPage() {
     </div>
   );
 }
-  const isBudgetsUnavailable = (err) => {
-    const msg = String(err?.message || err || '').toLowerCase();
-    return (
-      msg.includes('assistance_budgets') &&
-      (msg.includes('schema cache') ||
-        msg.includes('does not exist') ||
-        msg.includes('could not find the table') ||
-        msg.includes('column') ||
-        msg.includes('relation'))
-    );
-  };

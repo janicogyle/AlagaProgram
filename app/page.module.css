@@ -143,6 +143,31 @@
   min-height: 100vh;
   background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 50%, #172554 100%);
   padding-top: 72px;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('/dashimage.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(circle at 20% 25%, rgba(96, 165, 250, 0.28) 0%, rgba(30, 64, 175, 0) 55%),
+    radial-gradient(circle at 82% 18%, rgba(147, 197, 253, 0.18) 0%, rgba(30, 58, 138, 0) 50%),
+    radial-gradient(circle at 70% 85%, rgba(255, 255, 255, 0.08) 0%, rgba(23, 37, 84, 0) 55%);
+  filter: blur(28px);
+  pointer-events: none;
 }
 
 .heroContainer {
@@ -154,6 +179,8 @@
   gap: 60px;
   align-items: center;
   min-height: calc(100vh - 72px);
+  position: relative;
+  z-index: 1;
 }
 
 .heroContent {
@@ -252,6 +279,25 @@
   position: relative;
   width: 100%;
   max-width: 400px;
+  isolation: isolate;
+}
+
+.heroIllustration::before,
+.heroIllustration::after {
+  content: '';
+  position: absolute;
+  inset: -40px;
+  border-radius: 32px;
+  background: radial-gradient(circle at 35% 30%, rgba(96, 165, 250, 0.28) 0%, rgba(30, 64, 175, 0) 60%);
+  filter: blur(18px);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.heroIllustration::after {
+  inset: -24px;
+  background: radial-gradient(circle at 70% 75%, rgba(255, 255, 255, 0.10) 0%, rgba(23, 37, 84, 0) 58%);
+  filter: blur(22px);
 }
 
 .illustrationCard {
@@ -260,6 +306,14 @@
   padding: 32px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   transform: rotate(3deg);
+  transform-origin: center;
+  transition: transform 0.45s ease, box-shadow 0.45s ease;
+  will-change: transform;
+}
+
+.heroIllustration:hover .illustrationCard {
+  transform: rotate(0deg) translateY(-6px);
+  box-shadow: 0 30px 60px -16px rgba(0, 0, 0, 0.28);
 }
 
 .illustrationHeader {

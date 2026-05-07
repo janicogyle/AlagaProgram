@@ -1,83 +1,66 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import styles from './page.module.css';
 
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [liveStats, setLiveStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadStats() {
+      try {
+        setStatsLoading(true);
+        const res = await fetch('/api/public/stats');
+        if (!res.ok) throw new Error('Failed to fetch stats');
+        const data = await res.json();
+        if (!cancelled) setLiveStats(data);
+      } catch {
+        if (!cancelled) setLiveStats(null);
+      } finally {
+        if (!cancelled) setStatsLoading(false);
+      }
+    }
+
+    loadStats();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const formatCount = (value) => {
+    if (typeof value !== 'number' || Number.isNaN(value)) return '—';
+    return new Intl.NumberFormat('en-PH').format(value);
+  };
 
   const services = [
     {
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 16v-4" />
-          <path d="M12 8h.01" />
-          <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-        </svg>
-      ),
-      title: 'PWD Management',
-      description: 'Register and manage Persons with Disabilities records with comprehensive profiling and assistance tracking.',
+      title: 'PWD Beneficiary Support',
+      description: 'Apply as a PWD beneficiary, submit requirements, and track assistance updates linked to your account.',
     },
     {
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-      ),
-      title: 'Senior Citizen Management',
-      description: 'Maintain senior citizen profiles with benefits tracking and automated eligibility verification.',
+      title: 'Senior Citizen Support',
+      description: 'Register as a senior citizen beneficiary and keep your profile and assistance requests up to date.',
     },
     {
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-      ),
-      title: 'Solo Parent Management',
-      description: 'Track solo parent registrations, supporting documents, and assistance program participation.',
+      title: 'Solo Parent Support',
+      description: 'Apply as a solo parent beneficiary, upload supporting documents, and monitor request progress.',
     },
     {
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M12 2L2 7l10 5 10-5-10-5z" />
-          <path d="M2 17l10 5 10-5" />
-          <path d="M2 12l10 5 10-5" />
-        </svg>
-      ),
-      title: 'Assistance Tracking',
-      description: 'Monitor and record all assistance given to residents with complete audit trail capabilities.',
+      title: 'Assistance Requests',
+      description: 'Submit assistance requests and track real-time status updates from review to release.',
     },
     {
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="3" y="3" width="18" height="18" rx="2" />
-          <path d="M7 7h.01" />
-          <path d="M17 7h.01" />
-          <path d="M7 17h.01" />
-          <path d="M17 17h.01" />
-          <rect x="7" y="10" width="10" height="4" />
-        </svg>
-      ),
-      title: 'QR ID Generation',
-      description: 'Generate unique QR-coded identification cards for quick verification and record access.',
+      title: 'Beneficiary ID / QR',
+      description: 'Access your beneficiary ID/QR for quick verification and easier record lookup.',
     },
     {
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
-      ),
-      title: 'Reports & Analytics',
-      description: 'Generate comprehensive reports and analytics for decision-making and compliance requirements.',
+      title: 'Assistance History',
+      description: 'Review your assistance history and records tied to your beneficiary account.',
     },
   ];
 
@@ -85,9 +68,11 @@ export default function HomePage() {
     {
       icon: (
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
+          <path d="M10 4h4" />
+          <path d="M12 4v2" />
+          <rect x="7" y="6" width="10" height="16" rx="2" />
+          <path d="M10 13h4" />
+          <path d="M12 11v4" />
         </svg>
       ),
       title: 'Medicine Assistance',
@@ -96,9 +81,11 @@ export default function HomePage() {
     {
       icon: (
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M3 7h18" />
-          <path d="M7 7v10a5 5 0 0 0 10 0V7" />
-          <path d="M12 3v4" />
+          <path d="M3 22h18" />
+          <path d="M4 22V9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v13" />
+          <path d="M9 22V12h6v10" />
+          <path d="M12 2v3" />
+          <path d="M10.5 3.5h3" />
         </svg>
       ),
       title: 'Confinement Assistance',
@@ -107,9 +94,10 @@ export default function HomePage() {
     {
       icon: (
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M3 21h18" />
-          <path d="M12 3v12" />
-          <path d="M8 7h8" />
+          <path d="M12 2v14" />
+          <path d="M9 6h6" />
+          <path d="M5 22h14" />
+          <path d="M7 22v-3a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v3" />
         </svg>
       ),
       title: 'Burial Assistance',
@@ -120,8 +108,8 @@ export default function HomePage() {
   const processSteps = [
     {
       step: '01',
-      title: 'Register Resident',
-      description: 'Encode personal information and supporting documents into the system.',
+      title: 'Register Beneficiary Account',
+      description: 'Encode personal information and supporting documents in the Alaga Program system.',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -133,8 +121,8 @@ export default function HomePage() {
     },
     {
       step: '02',
-      title: 'Verify Documents',
-      description: 'Review and validate submitted documents for eligibility requirements.',
+      title: 'Upload Documents',
+      description: 'Submit required documents for eligibility verification.',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -145,21 +133,19 @@ export default function HomePage() {
     },
     {
       step: '03',
-      title: 'Generate ID / QR',
-      description: 'Create unique QR-coded identification card for the registered resident.',
+      title: 'Eligibility Confirmation',
+      description: 'Wait for your application to be reviewed and verified by barangay staff.',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="3" y="3" width="7" height="7" />
-          <rect x="14" y="3" width="7" height="7" />
-          <rect x="14" y="14" width="7" height="7" />
-          <rect x="3" y="14" width="7" height="7" />
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+          <polyline points="22 4 12 14.01 9 11.01" />
         </svg>
       ),
     },
     {
       step: '04',
       title: 'Track Assistance',
-      description: 'Record and monitor all assistance provided to the beneficiary.',
+      description: 'Monitor assistance updates and records linked to your account.',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -170,51 +156,20 @@ export default function HomePage() {
 
   const statistics = [
     {
-      label: 'Total Residents',
-      value: '12,847',
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-      ),
+      label: 'Total beneficiaries',
+      value: statsLoading ? '—' : formatCount(liveStats?.totalResidents),
     },
     {
       label: 'Registered PWD',
-      value: '423',
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="4" r="2" />
-          <path d="M19 13v-2a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v2" />
-          <circle cx="12" cy="19" r="4" />
-          <path d="M12 15v-4" />
-        </svg>
-      ),
+      value: statsLoading ? '—' : formatCount(liveStats?.pwdCount),
     },
     {
       label: 'Senior Citizens',
-      value: '1,856',
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
-          <path d="M12 14v3" />
-        </svg>
-      ),
+      value: statsLoading ? '—' : formatCount(liveStats?.seniorCount),
     },
     {
       label: 'Solo Parents',
-      value: '634',
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-          <circle cx="19" cy="7" r="2" />
-        </svg>
-      ),
+      value: statsLoading ? '—' : formatCount(liveStats?.soloParentCount),
     },
   ];
 
@@ -278,7 +233,7 @@ export default function HomePage() {
             </div>
             <h1 className={styles.heroTitle}>
               Welcome to Barangay Sta. Rita
-              <span className={styles.heroTitleHighlight}>Alaga Programs</span>
+              <span className={styles.heroTitleHighlight}>Alaga Program</span>
             </h1>
             <p className={styles.heroDescription}>
               A digital platform for managing resident profiles, tracking assistance programs, 
@@ -380,16 +335,15 @@ export default function HomePage() {
         <div className={styles.sectionContainer}>
           <div className={styles.sectionHeader}>
             <span className={styles.sectionTag}>Our Services</span>
-            <h2 className={styles.sectionTitle}>Management Features</h2>
+            <h2 className={styles.sectionTitle}>Beneficiary Services</h2>
             <p className={styles.sectionDescription}>
-              Explore the full range of services available in our Alaga Program system 
-              designed for efficient barangay operations.
+              Explore services available for beneficiaries—registration, verification, and assistance tracking 
+              in the Alaga Program system.
             </p>
           </div>
           <div className={styles.servicesGrid}>
             {services.map((service, index) => (
               <div key={index} className={styles.serviceCard}>
-                <div className={styles.serviceIcon}>{service.icon}</div>
                 <h3 className={styles.serviceTitle}>{service.title}</h3>
                 <p className={styles.serviceDescription}>{service.description}</p>
               </div>
@@ -442,7 +396,6 @@ export default function HomePage() {
           <div className={styles.statsGrid}>
             {statistics.map((stat, index) => (
               <div key={index} className={styles.statCard}>
-                <span className={styles.statIcon}>{stat.icon}</span>
                 <span className={styles.statValue}>{stat.value}</span>
                 <span className={styles.statLabel}>{stat.label}</span>
               </div>
@@ -472,7 +425,7 @@ export default function HomePage() {
                   </div>
                   <div>
                     <strong>Address</strong>
-                    <p>Barangay Hall, Sta. Rita, Olongapo City</p>
+                    <p>Horseshoe Drive, Olongapo City, Zambales, Philippines</p>
                   </div>
                 </div>
                 <div className={styles.contactItem}>
@@ -483,7 +436,7 @@ export default function HomePage() {
                   </div>
                   <div>
                     <strong>Phone</strong>
-                    <p>(02) 1234-5678</p>
+                    <p> 047 222 9225</p>
                   </div>
                 </div>
                 <div className={styles.contactItem}>
@@ -495,7 +448,7 @@ export default function HomePage() {
                   </div>
                   <div>
                     <strong>Email</strong>
-                    <p>barangay.starita@email.gov.ph</p>
+                    <p>barangaystarita2023@gmail.com</p>
                   </div>
                 </div>
                 <div className={styles.contactItem}>

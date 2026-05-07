@@ -67,6 +67,71 @@
   color: #6b7280;
 }
 
+/* Table/Card View Toggle */
+.tableView {
+  display: block;
+}
+
+.mobileCardView {
+  display: none;
+}
+
+.userCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.userCard:last-child {
+  margin-bottom: 0;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.cardHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cardActions {
+  display: flex;
+  gap: 6px;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cardRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cardLabel {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.cardValue {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  text-align: right;
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .usersPage {
@@ -91,6 +156,37 @@
 @media (max-width: 768px) {
   .usersPage {
     gap: 16px;
+  }
+
+  .tableView {
+    display: none;
+  }
+
+  .mobileCardView {
+    display: block;
+    padding: 0 16px 16px;
+  }
+
+  .userCard {
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .cardHeader {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+  }
+
+  .cardBody {
+    gap: 8px;
+  }
+
+  .cardLabel {
+    font-size: 12px;
+  }
+
+  .cardValue {
+    font-size: 12px;
   }
 
   .userCell {

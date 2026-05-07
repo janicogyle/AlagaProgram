@@ -5,6 +5,19 @@
   min-width: 0;
 }
 
+/* Prevent horizontal page scrolling caused by long table rows */
+.page {
+  overflow-x: hidden;
+}
+
+/* Improve overall page padding on small devices for comfortable touch targets */
+@media (max-width: 900px) {
+  .page {
+    padding: 12px;
+    gap: 18px;
+  }
+}
+
 .applicantCell {
   display: flex;
   align-items: center;
@@ -25,10 +38,19 @@
   font-weight: 600;
 }
 
+@media (max-width: 640px) {
+  .avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+  }
+}
+
 .applicantInfo {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  overflow: hidden;
 }
 
 .applicantName {
@@ -52,6 +74,8 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .addressMeta {
@@ -66,9 +90,54 @@
 
 .actionsCell {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   justify-content: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  flex: 0 0 auto; /* don't grow, don't shrink */
+  align-items: center;
+  min-width: 0;
+}
+
+/* Make action buttons easier to tap on touch devices and align vertically */
+.actionsCell button,
+.actionsCell a {
+  min-width: 96px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .actionsCell {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+
+  .actionsCell button,
+  .actionsCell a {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* Make sure long text in name/address wraps and doesn't force horizontal scroll */
+.applicantName,
+.applicantMeta,
+.addressMeta,
+.value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Sticky actions on wider screens so buttons are always visible */
+@media (min-width: 900px) {
+  .actionsCell {
+    position: sticky;
+    right: 12px;
+    z-index: 3;
+    background: transparent;
+  }
 }
 
 .filterGroup {
@@ -181,14 +250,191 @@
   font-weight: 600;
 }
 
+/* Table/Card View Toggle */
+.tableView {
+  display: block;
+}
+
+.mobileCardView {
+  display: none;
+}
+
+.requestCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.requestCard:last-child {
+  margin-bottom: 0;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.cardHeaderLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardControlNo {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  font-family: 'Courier New', monospace;
+}
+
+.cardActions {
+  display: flex;
+  gap: 6px;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cardRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cardLabel {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.cardValue {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.emptyCard {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.viewBtn,
+.approveBtn,
+.rejectBtn,
+.releaseBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.viewBtn {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.viewBtn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.approveBtn {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.approveBtn:hover {
+  background: #bbf7d0;
+}
+
+.rejectBtn {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.rejectBtn:hover {
+  background: #fecaca;
+}
+
+.releaseBtn {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.releaseBtn:hover {
+  background: #bae6fd;
+}
+
+@media (max-width: 768px) {
+  .tableView {
+    display: none;
+  }
+
+  .mobileCardView {
+    display: block;
+    padding: 0 16px 16px;
+  }
+
+  .requestCard {
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .cardHeader {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+  }
+
+  .cardControlNo {
+    font-size: 12px;
+  }
+
+  .cardBody {
+    gap: 8px;
+  }
+
+  .cardLabel {
+    font-size: 12px;
+  }
+
+  .cardValue {
+    font-size: 12px;
+  }
+
+  .cardActions .viewBtn,
+  .cardActions .approveBtn,
+  .cardActions .rejectBtn,
+  .cardActions .releaseBtn {
+    width: 36px;
+    height: 36px;
+  }
+}
+
 @media (max-width: 640px) {
   .applicantCell {
     align-items: flex-start;
   }
 
   .actionsCell {
-    flex-wrap: wrap;
-    justify-content: flex-start;
+    flex-wrap: nowrap;
   }
 
   .detailsHeaderRow {
@@ -199,5 +445,13 @@
   .detailsActionsRow,
   .detailsActionsRow button {
     width: 100%;
+  }
+
+  .applicantName {
+    font-size: 15px;
+  }
+
+  .applicantMeta {
+    font-size: 13px;
   }
 }

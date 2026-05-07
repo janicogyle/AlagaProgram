@@ -588,7 +588,52 @@ export default function UsersPage() {
           />
         </FilterBar>
 
-        <Table columns={columns} data={filteredUsers} />
+        {/* Desktop Table View */}
+        <div className={styles.tableView}>
+          <Table columns={columns} data={filteredUsers} />
+        </div>
+
+        {/* Mobile Card View */}
+        <div className={styles.mobileCardView}>
+          {filteredUsers.map((user) => (
+            <div key={user.id} className={styles.userCard}>
+              <div className={styles.cardHeader}>
+                <div className={styles.cardHeaderLeft}>
+                  <div className={styles.avatar}>
+                    {user.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                  </div>
+                  <div className={styles.userInfo}>
+                    <span className={styles.userName}>{user.full_name}</span>
+                    <span className={styles.userEmail}>{user.email}</span>
+                  </div>
+                </div>
+                <div className={styles.cardActions}>
+                  <ActionMenu actions={getUserActions(user)} />
+                </div>
+              </div>
+              <div className={styles.cardBody}>
+                <div className={styles.cardRow}>
+                  <span className={styles.cardLabel}>Role</span>
+                  <span className={styles.cardValue}>
+                    <Badge variant={user.role === 'Admin' ? 'primary' : 'secondary'}>{user.role}</Badge>
+                  </span>
+                </div>
+                <div className={styles.cardRow}>
+                  <span className={styles.cardLabel}>Status</span>
+                  <span className={styles.cardValue}>
+                    <Badge variant={user.status === 'Active' ? 'success' : 'danger'}>{user.status}</Badge>
+                  </span>
+                </div>
+                <div className={styles.cardRow}>
+                  <span className={styles.cardLabel}>Last Login</span>
+                  <span className={styles.cardValue}>
+                    {user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
 
         {loading && <p style={{ padding: '20px', textAlign: 'center' }}>Loading users...</p>}
         {!loading && filteredUsers.length === 0 && (

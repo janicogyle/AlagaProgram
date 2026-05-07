@@ -44,18 +44,21 @@ const defaultReportTypes = [
 
 export default function ReportsPage() {
   const [reportTypes, setReportTypes] = useState(defaultReportTypes);
-  const [summaryStats, setSummaryStats] = useState([
-    { label: 'PWD', value: 0 },
-    { label: 'Senior Citizens', value: 0 },
-    { label: 'Solo Parents', value: 0 },
-    { label: 'All Sectors', value: 0 },
-  ]);
   const [selectedReport, setSelectedReport] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState('pdf');
   const [reportYear, setReportYear] = useState(new Date().getFullYear());
   const [status, setStatus] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const getReportBadge = (report) => {
+    if (!report) return '';
+    if (report.id === 'pwd') return 'PWD';
+    if (report.id === 'senior') return 'SC';
+    if (report.id === 'soloparent') return 'SP';
+    if (report.id === 'all') return 'ALL';
+    return String(report.title || '').slice(0, 3).toUpperCase();
+  };
 
   // Fetch counts from Supabase
   useEffect(() => {
@@ -120,12 +123,6 @@ export default function ReportsPage() {
           }),
         );
 
-        setSummaryStats([
-          { label: 'PWD', value: pwdCount },
-          { label: 'Senior Citizens', value: seniorCount },
-          { label: 'Solo Parents', value: soloParentCount },
-          { label: 'All Sectors', value: allCount },
-        ]);
       } catch (err) {
         console.error('Failed to fetch report counts:', err);
       }
@@ -137,7 +134,6 @@ export default function ReportsPage() {
   const handleReportClick = (report) => {
     setSelectedReport(report);
     setSelectedFormat('pdf');
-    setReportYear(new Date().getFullYear());
     setIsModalOpen(true);
   };
 
@@ -358,21 +354,19 @@ export default function ReportsPage() {
               className={styles.reportCard}
               onClick={() => handleReportClick(report)}
             >
+              <div
+                className={styles.reportIcon}
+                style={{ background: report.bgColor, color: report.color }}
+                aria-hidden="true"
+              >
+                {getReportBadge(report)}
+              </div>
               <div className={styles.reportInfo}>
                 <h3 className={styles.reportTitle}>{report.title}</h3>
                 <p className={styles.reportDesc}>{report.description}</p>
               </div>
               <span className={styles.reportCount}>{report.count} records</span>
             </button>
-          ))}
-        </div>
-
-        <div className={styles.summaryGrid}>
-          {summaryStats.map((stat, index) => (
-            <div key={index} className={styles.summaryCard}>
-              <span className={styles.summaryLabel}>{stat.label}</span>
-              <span className={styles.summaryValue}>{stat.value}</span>
-            </div>
           ))}
         </div>
       </Card>
@@ -426,7 +420,8 @@ export default function ReportsPage() {
                     min={2000}
                     max={2100}
                     onChange={(e) => setReportYear(Number(e.target.value || new Date().getFullYear()))}
-                    style={{ width: 100, padding: '4px 6px' }}
+                    className={styles.yearInput}
+                    inputMode="numeric"
                   />
                 </strong>
               </div>

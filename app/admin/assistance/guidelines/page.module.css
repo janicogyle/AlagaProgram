@@ -108,6 +108,7 @@
   align-items: center;
   gap: 16px;
   margin-bottom: 20px;
+  min-width: 0;
 }
 
 .cardIcon {
@@ -124,6 +125,8 @@
   font-weight: 700;
   color: #1f2937;
   margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* Checklist */
@@ -144,6 +147,13 @@
   gap: 8px;
 }
 
+.checkList li::before {
+  content: '•';
+  color: #9ca3af;
+  line-height: 1.4;
+  margin-top: 1px;
+}
+
 
 .emptyRequirement {
   color: #9ca3af;
@@ -156,23 +166,31 @@
   margin-top: 20px;
   padding-top: 16px;
   border-top: 1px solid #f3f4f6;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  align-items: stretch;
 }
 
 .cardActions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
 }
 
 .ceilingInfo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.cardActions :global(button),
+.cardActions :global(a) {
+  width: 100%;
+  justify-content: center;
 }
 
 .ceilingLabel {
@@ -243,6 +261,7 @@
   display: flex;
   gap: 10px;
   align-items: center;
+  min-width: 0;
 }
 
 .requirementInput {
@@ -252,6 +271,7 @@
   border: 1px solid #d1d5db;
   font-size: 14px;
   font-family: inherit;
+  min-width: 0;
 }
 
 .requirementInput:focus {
@@ -262,6 +282,104 @@
 
 .addRequirementBtn {
   align-self: flex-start;
+}
+
+/* ======================= */
+/* RESPONSIVE STYLES       */
+/* ======================= */
+
+@media (max-width: 1024px) {
+  .guidelinesPage {
+    padding: 20px;
+    gap: 28px;
+  }
+
+  .requirementsGrid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .guidelinesPage {
+    padding: 16px;
+    gap: 24px;
+  }
+
+  .pageTitle {
+    font-size: 24px;
+  }
+
+  .pageSubtitle {
+    font-size: 14px;
+  }
+
+  .content {
+    gap: 36px;
+  }
+
+  .sectionTitle {
+    font-size: 20px;
+  }
+
+  .requirementsGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  /* Footer already uses grid; keep defaults */
+
+  .flow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .flowConnector {
+    display: none;
+  }
+}
+
+@media (max-width: 576px) {
+  .guidelinesPage {
+    padding: 12px;
+  }
+
+  .section {
+    gap: 18px;
+  }
+
+  .cardHeader {
+    gap: 12px;
+  }
+
+  .cardIcon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .cardTitle {
+    font-size: 16px;
+  }
+
+  .checkList {
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  .cardActions {
+    grid-template-columns: 1fr;
+  }
+
+  .requirementRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .addRequirementBtn {
+    width: 100%;
+    align-self: stretch;
+  }
 }
 
 /* Process Flow */

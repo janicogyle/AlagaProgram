@@ -563,7 +563,132 @@ export default function AccountRequestsPage() {
           </div>
         </FilterBar>
 
-        <Table columns={columns} data={filteredRequests} />
+        {/* Desktop Table View */}
+        <div className={styles.tableView}>
+          {loading ? (
+            <div className={styles.emptyCard}>Loading requests...</div>
+          ) : (
+            <Table columns={columns} data={filteredRequests} />
+          )}
+        </div>
+
+        {/* Mobile Card View */}
+        <div className={styles.mobileCardView}>
+          {loading ? (
+            <div className={styles.emptyCard}>Loading requests...</div>
+          ) : filteredRequests.length === 0 ? (
+            <div className={styles.emptyCard}>No requests found</div>
+          ) : (
+            filteredRequests.map((request) => (
+              <div key={request.id} className={styles.requestCard}>
+                <div className={styles.cardHeader}>
+                  <div className={styles.cardHeaderLeft}>
+                    <span className={styles.cardControlNo}>REQ-{request.id.split('-')[0].toUpperCase()}</span>
+                    <Badge
+                      variant={
+                        request.status === "Approved"
+                          ? "success"
+                          : request.status === "Archived" || request.status === "Rejected"
+                          ? "secondary"
+                          : "warning"
+                      }
+                    >
+                      {request.status === "Archived" || request.status === "Rejected" ? "Archived" : request.status}
+                    </Badge>
+                  </div>
+                  <div className={styles.cardActions}>
+                    <button 
+                      className={styles.viewBtn}
+                      onClick={() => handleOpenDetails(request)}
+                      title="View Details"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    </button>
+                    {request.status === 'Pending' && (
+                      <>
+                        <button 
+                          className={styles.approveBtn}
+                          onClick={() => handleOpenApprove(request)}
+                          title="Approve"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </button>
+                        <button 
+                          className={styles.rejectBtn}
+                          onClick={() => handleOpenReject(request)}
+                          title="Archive"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 8v13H3V8" />
+                            <path d="M1 3h22v5H1z" />
+                            <path d="M10 12h4" />
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                    {(request.status === "Archived" || request.status === "Rejected") && (
+                      <button
+                        className={styles.releaseBtn}
+                        onClick={() => handleOpenUnarchive(request)}
+                        title="Unarchive"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M21 8v13H3V8" />
+                          <path d="M1 3h22v5H1z" />
+                          <path d="M12 12v5" />
+                          <path d="M9 15l3 3 3-3" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className={styles.cardBody}>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Applicant</span>
+                    <span className={styles.cardValue}>{buildFullName(request)}</span>
+                  </div>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Contact</span>
+                    <span className={styles.cardValue}>{request.contact_number || request.contactNumber}</span>
+                  </div>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Sector</span>
+                    <div className={styles.cardValue}>
+                      <div className={styles.sectorBadges} style={{ justifyContent: 'flex-end' }}>
+                        {getSectorBadges(request).length ? (
+                          getSectorBadges(request).map((sector) => (
+                            <Badge key={sector} variant="secondary">
+                              {sector}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className={styles.subtleText}>General</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Address</span>
+                    <span className={styles.cardValue}>
+                      {`${request.house_no || request.houseNo || ""}`.trim() || "-"}
+                      <br/>
+                      <span className={styles.addressMeta}>{`Purok ${request.purok || "-"}, ${request.barangay || "-"}`}</span>
+                    </span>
+                  </div>
+                  <div className={styles.cardRow}>
+                    <span className={styles.cardLabel}>Submitted</span>
+                    <span className={styles.cardValue}>{formatDate(request.created_at || request.createdAt)}</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
 
         <DataTableFooter
           showing={showing}

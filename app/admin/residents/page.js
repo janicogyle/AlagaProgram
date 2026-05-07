@@ -1129,7 +1129,68 @@ export default function ResidentsPage() {
         </FilterBar>
 
         {loading && <p style={{ padding: 16 }}>Loading beneficiaries…</p>}
-        {!loading && <Table columns={columns} data={filteredResidents} />}
+        {!loading && (
+          <>
+            <div className={styles.tableView}>
+              <Table columns={columns} data={filteredResidents} />
+            </div>
+
+            <div className={styles.mobileCardView}>
+              {filteredResidents.length === 0 ? (
+                <div className={styles.emptyCard}>No beneficiaries found.</div>
+              ) : (
+                filteredResidents.map((row) => (
+                  <div key={row.id} className={styles.residentCard}>
+                    <div className={styles.cardHeader}>
+                      <div className={styles.cardNameSection}>
+                        <div className={styles.cardName}>{buildFullName(row)}</div>
+                        <div style={{ color: '#6b7280', fontSize: 13 }}>
+                          {row.contact_number || '-'}
+                        </div>
+                        <div className={styles.cardBadges}>
+                          {getSectorBadges(row).map((sector) => (
+                            <Badge key={sector}>{sector}</Badge>
+                          ))}
+                          <Badge variant={row.status === 'Active' ? 'success' : 'secondary'}>
+                            {row.status || '-'}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <Button variant="secondary" size="small" onClick={() => setSelectedResident(row)}>
+                        View
+                      </Button>
+                    </div>
+
+                    <div className={styles.cardBody}>
+                      <div className={styles.cardDetails}>
+                        <div className={styles.cardDetail}>
+                          <span className={styles.detailLabel}>Control No.</span>
+                          <span
+                            className={styles.detailValue}
+                            style={{ fontFamily: "'Courier New', monospace" }}
+                          >
+                            {row.control_number || '-'}
+                          </span>
+                        </div>
+
+                        <div className={styles.cardDetail}>
+                          <span className={styles.detailLabel}>Address</span>
+                          <span className={styles.detailValue}>{formatAddressLine(row)}</span>
+                        </div>
+
+                        <div className={styles.cardDetail}>
+                          <span className={styles.detailLabel}>Created</span>
+                          <span className={styles.detailValue}>{formatDate(row.created_at)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
 
         <DataTableFooter
           showing={filteredResidents.length}
