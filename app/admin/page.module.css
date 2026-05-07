@@ -1,0 +1,529 @@
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+/* Header */
+.header {
+  margin-bottom: 8px;
+}
+
+.header h2 {
+  margin: 0 0 4px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 16px;
+}
+
+/* KPI Cards */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.kpiCard {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  min-width: 0;
+}
+
+.kpiHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.kpiTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kpiIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.kpiIcon.blue { background: #3b82f6; }
+.kpiIcon.green { background: #10b981; }
+.kpiIcon.orange { background: #f59e0b; }
+.kpiIcon.purple { background: #8b5cf6; }
+
+.kpiValue {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.kpiGrowth {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.kpiGrowth .positive {
+  color: #059669;
+  font-weight: 600;
+}
+
+.kpiGrowth .negative {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.kpiPrevious {
+  color: #6b7280;
+}
+
+/* Legacy stats grid for backward compatibility */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.chartsSection {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 20px;
+}
+
+/* Charts Grid - matching analytics page */
+.chartsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  min-width: 0;
+}
+
+.chartCard {
+  min-height: 320px;
+}
+
+/* Line Chart */
+.lineChart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 200px;
+  padding: 20px 0;
+}
+
+.linePoint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  gap: 8px;
+}
+
+.lineBar {
+  background: linear-gradient(180deg, #3b82f6 0%, #1e40af 100%);
+  width: 24px;
+  margin-bottom: 8px;
+  border-radius: 4px 4px 0 0;
+  min-height: 20px;
+}
+
+.lineLabel {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.lineValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* Pie Chart */
+.pieChart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 20px;
+}
+
+.pieContainer {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: conic-gradient(
+    #7c3aed 0deg 133deg,
+    #1e40af 133deg 266deg,
+    #16a34a 266deg 360deg
+  );
+  position: relative;
+}
+
+.pieContainer::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 60px;
+  height: 60px;
+  background: white;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.pieLegend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.legendColor {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+/* Legacy styles for backward compatibility */
+.barChartCard {
+  min-height: 280px;
+}
+
+.chartPlaceholder {
+  height: 220px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 20px;
+}
+
+.barChart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 16px;
+  width: 100%;
+  height: 100%;
+}
+
+.barGroup {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+}
+
+.bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s ease;
+}
+
+/* Legacy pie chart styles for backward compatibility */
+.pieChartContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 0;
+}
+
+.pieSvg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.legendDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.legendLabel {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* Insights Section */
+.insightsCard {
+  margin-top: 8px;
+}
+
+.insights {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.insight {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  min-width: 0;
+}
+
+.insightIcon {
+  font-size: 32px;
+  margin-top: 4px;
+}
+
+.insightContent h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.insightContent p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .kpiGrid,
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .chartsSection {
+    grid-template-columns: 1fr;
+  }
+  
+  .insights {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .chartsSection {
+    grid-template-columns: 1fr;
+  }
+
+  .header h2 {
+    font-size: 24px;
+  }
+
+  .header p {
+    font-size: 14px;
+  }
+
+  .kpiCard {
+    padding: 20px;
+  }
+
+  .kpiValue {
+    font-size: 28px;
+  }
+
+  .kpiTitle {
+    font-size: 12px;
+  }
+
+  .kpiIcon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .insight {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .insightIcon {
+    font-size: 28px;
+  }
+
+  .insightContent h4 {
+    font-size: 15px;
+  }
+
+  .insightContent p {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard {
+    gap: 20px;
+  }
+
+  .header h2 {
+    font-size: 22px;
+  }
+
+  .kpiGrid,
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .chartsGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .kpiCard {
+    padding: 16px;
+  }
+
+  .kpiValue {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+
+  .kpiTitle {
+    font-size: 11px;
+  }
+
+  .kpiIcon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .kpiGrowth {
+    font-size: 12px;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .lineChart {
+    height: 160px;
+    padding: 16px 0;
+  }
+
+  .lineBar {
+    width: 20px;
+  }
+
+  .lineLabel {
+    font-size: 10px;
+  }
+
+  .lineValue {
+    font-size: 12px;
+  }
+
+  .pieContainer {
+    width: 120px;
+    height: 120px;
+  }
+
+  .pieContainer::after {
+    width: 50px;
+    height: 50px;
+  }
+
+  .legendItem {
+    font-size: 12px;
+  }
+
+  .pieChartContainer {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .pieChart {
+    width: 140px;
+    height: 140px;
+  }
+}
+
+@media (max-width: 576px) {
+  .dashboard {
+    gap: 16px;
+  }
+
+  .header h2 {
+    font-size: 20px;
+  }
+
+  .header p {
+    font-size: 13px;
+  }
+
+  .kpiGrid,
+  .statsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .kpiCard {
+    padding: 16px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .kpiHeader {
+    flex-direction: row-reverse;
+    margin-bottom: 0;
+    gap: 12px;
+    flex: 1;
+  }
+
+  .kpiValue {
+    font-size: 22px;
+    margin-bottom: 2px;
+  }
+
+  .insight {
+    flex-direction: column;
+    text-align: center;
+    padding: 16px;
+  }
+
+  .insightIcon {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 375px) {
+  .kpiCard {
+    padding: 14px;
+  }
+
+  .kpiValue {
+    font-size: 20px;
+  }
+
+  .kpiIcon {
+    width: 28px;
+    height: 28px;
+  }
+}

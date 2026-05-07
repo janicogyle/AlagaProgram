@@ -1,0 +1,152 @@
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.required {
+  color: #dc2626;
+  margin-left: 2px;
+}
+
+.optional {
+  color: #9ca3af;
+  font-weight: 400;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  background-color: white;
+  min-height: 44px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #1e40af;
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+}
+
+.input:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.input::placeholder {
+  color: #9ca3af;
+}
+
+.withIcon {
+  padding-left: 44px;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 14px;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.passwordToggle {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+}
+
+.passwordToggle:hover {
+  color: #374151;
+}
+
+.inputError {
+  border-color: #dc2626;
+}
+
+.inputError:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.errorMessage {
+  font-size: 12px;
+  color: #dc2626;
+}
+
+/* ======================= */
+/* RESPONSIVE STYLES       */
+/* ======================= */
+@media (max-width: 768px) {
+  .label {
+    font-size: 13px;
+  }
+
+  .input {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .withIcon {
+    padding-left: 40px;
+  }
+
+  .inputIcon {
+    left: 12px;
+  }
+
+  .errorMessage {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 576px) {
+  .inputGroup {
+    gap: 4px;
+  }
+
+  .label {
+    font-size: 12px;
+  }
+
+  .input {
+    padding: 11px 12px;
+    font-size: 16px;
+    border-radius: 6px;
+  }
+
+  .withIcon {
+    padding-left: 36px;
+  }
+
+  .inputIcon {
+    left: 10px;
+  }
+}

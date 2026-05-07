@@ -1,0 +1,236 @@
+.dashboardPage {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    min-width: 0;
+}
+
+.topSection {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    gap: 1.5rem;
+    align-items: stretch;
+}
+
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.nextStepsCard {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1.25rem;
+    padding: 1.5rem 1.75rem;
+    min-width: 0;
+}
+
+.nextTitle {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.nextBody {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.nextLabel {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-bottom: 0.25rem;
+}
+
+.nextPrimary {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.nextMeta {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.controlNumberRow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.copyButton {
+    border: none;
+    background: #e5e7eb;
+    color: #374151;
+    border-radius: 9999px;
+    padding: 0.1rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.copyButton:hover {
+    background: #d1d5db;
+}
+
+.statusHint {
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.quickActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.infoRow {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 1.25rem;
+}
+
+.infoCard,
+.supportCard {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.infoTitle {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem 0;
+}
+
+.infoList {
+    margin: 0;
+    padding-left: 1.25rem;
+    font-size: 0.9rem;
+    color: #4b5563;
+}
+
+.infoList li + li {
+    margin-top: 0.25rem;
+}
+
+.requestsCard {
+    margin-top: 0.5rem;
+}
+
+.requestsHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.75rem;
+}
+
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.filterButton {
+    border-radius: 9999px;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+    color: #4b5563;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.filterButton:hover {
+    background: #f3f4f6;
+    color: black;
+}
+
+.filterButtonActive {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+}
+
+.lastUpdated {
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.muted {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+@media (max-width: 900px) {
+    .topSection {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .infoRow {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboardPage {
+        gap: 1rem;
+    }
+
+    .statsGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+
+    .nextStepsCard {
+        padding: 1rem;
+    }
+
+    .requestsHeader {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+
+    .quickActions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .quickActions a,
+    .quickActions button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 576px) {
+    .statsGrid,
+    .quickActions {
+        grid-template-columns: 1fr;
+    }
+
+    .nextBody {
+        flex-direction: column;
+    }
+
+    .filters {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .filterButton {
+        width: 100%;
+        min-height: 40px;
+    }
+}

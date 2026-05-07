@@ -1,0 +1,800 @@
+.requestsPage {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.statusBanner {
+  margin: 0 24px 16px 24px;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
+  border: 1px solid transparent;
+}
+
+.statusBannerSuccess {
+  background: #ecfdf3;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.statusBannerError {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+/* Summary Cards */
+.summaryCards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.summaryCard {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  min-width: 0;
+}
+
+.summaryIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.summaryInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.summaryValue {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.summaryLabel {
+  font-size: 13px;
+  color: #6b7280;
+  overflow-wrap: anywhere;
+}
+
+/* Action Buttons */
+.actionButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.viewBtn,
+.approveBtn,
+.rejectBtn,
+.releaseBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.viewBtn {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.viewBtn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.approveBtn {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.approveBtn:hover {
+  background: #bbf7d0;
+}
+
+.rejectBtn {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.rejectBtn:hover {
+  background: #fecaca;
+}
+
+.releaseBtn {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.releaseBtn:hover {
+  background: #bae6fd;
+}
+
+/* Modal Footer */
+.modalFooter {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* Request Details */
+.requestDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.detailsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.controlNumber {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  min-width: 0;
+}
+
+.detailSection {
+  background: #f9fafb;
+  padding: 20px;
+  border-radius: 12px;
+  min-width: 0;
+}
+
+.detailSection h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.detailLabel {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.detailValue {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1f2937;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.assistanceInfo {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  min-width: 0;
+}
+
+.infoCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  background: #eff6ff;
+  border-radius: 10px;
+  text-align: center;
+  min-width: 0;
+}
+
+.infoLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.infoValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e40af;
+  overflow-wrap: anywhere;
+}
+
+.wideInfoCard {
+  grid-column: 1 / -1;
+  text-align: left;
+}
+
+.requirementsContent {
+  width: 100%;
+  color: #1f2937;
+}
+
+.validIdLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.validIdLink:hover {
+  background: #dbeafe;
+}
+
+.verificationPanel {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.verificationHeading {
+  margin: 0 0 10px 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e3a8a;
+  text-transform: uppercase;
+}
+
+.verificationChecklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.verificationRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #1f2937;
+  line-height: 1.45;
+}
+
+.verificationRow input {
+  margin-top: 2px;
+}
+
+.verificationStatus {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e3a8a;
+}
+
+.verificationEmpty {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.uploadedDocsSection {
+  margin-top: 12px;
+}
+
+.uploadedDocsHeading {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: #374151;
+}
+
+.uploadedDocsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.uploadedDocItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.uploadedDocMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.uploadedDocName {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f2937;
+  overflow-wrap: anywhere;
+}
+
+.uploadedDocType {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.walkInNotice {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #374151;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+}
+
+/* Decision Modal */
+.decisionContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.decisionIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.decisionTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 12px 0;
+}
+
+.decisionDesc {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+  margin: 0 0 20px 0;
+}
+
+.decisionDesc strong {
+  color: #374151;
+}
+
+.remarksSection {
+  width: 100%;
+  text-align: left;
+}
+
+.remarksLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.remarksInput {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.2s ease;
+}
+
+.remarksInput:focus {
+  outline: none;
+  border-color: #1e40af;
+}
+
+.remarksInput::placeholder {
+  color: #9ca3af;
+}
+
+/* Responsive */
+
+/* Table/Card View Toggle */
+.tableView {
+  display: block;
+}
+
+.mobileCardView {
+  display: none;
+}
+
+.requestCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.requestCard:last-child {
+  margin-bottom: 0;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.cardHeaderLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardControlNo {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e40af;
+  font-family: 'Courier New', monospace;
+}
+
+.cardActions {
+  display: flex;
+  gap: 6px;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cardRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cardLabel {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.cardValue {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  text-align: right;
+}
+
+.emptyCard {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+@media (max-width: 1200px) {
+  .summaryCards {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  .assistanceInfo {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .summaryCards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .assistanceInfo {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .requestsPage {
+    gap: 20px;
+  }
+
+  .summaryCards {
+    gap: 12px;
+  }
+
+  .summaryCard {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .summaryIcon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .summaryValue {
+    font-size: 22px;
+  }
+
+  .summaryLabel {
+    font-size: 12px;
+  }
+
+  .detailSection {
+    padding: 16px;
+  }
+
+  .detailSection h4 {
+    font-size: 13px;
+  }
+
+  .controlNumber {
+    font-size: 16px;
+  }
+
+  .infoCard {
+    padding: 14px;
+  }
+
+  .infoValue {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 768px) {
+  .requestsPage {
+    gap: 16px;
+  }
+
+  /* Switch to card view on mobile */
+  .tableView {
+    display: none;
+  }
+
+  .mobileCardView {
+    display: block;
+    padding: 0 16px 16px;
+  }
+
+  .requestCard {
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .cardHeader {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+  }
+
+  .cardControlNo {
+    font-size: 12px;
+  }
+
+  .cardBody {
+    gap: 8px;
+  }
+
+  .cardLabel {
+    font-size: 12px;
+  }
+
+  .cardValue {
+    font-size: 12px;
+  }
+
+  .cardActions .viewBtn,
+  .cardActions .approveBtn,
+  .cardActions .rejectBtn,
+  .cardActions .releaseBtn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .summaryCards {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .summaryCard {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .summaryIcon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .summaryValue {
+    font-size: 20px;
+  }
+
+  .summaryLabel {
+    font-size: 11px;
+  }
+
+  .actionButtons {
+    gap: 6px;
+  }
+
+  .viewBtn,
+  .approveBtn,
+  .rejectBtn,
+  .releaseBtn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .detailsGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .detailsHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .detailRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 6px 0;
+  }
+
+  .detailValue {
+    text-align: left;
+  }
+
+  .assistanceInfo {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .decisionIcon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .decisionTitle {
+    font-size: 16px;
+  }
+
+  .decisionDesc {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 576px) {
+  .requestsPage {
+    gap: 14px;
+  }
+
+  .summaryCards {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .summaryCard {
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+
+  .summaryIcon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .summaryValue {
+    font-size: 18px;
+  }
+
+  .assistanceInfo {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .infoCard {
+    padding: 12px;
+    text-align: left;
+  }
+
+  .uploadedDocItem {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .validIdLink {
+    width: 100%;
+  }
+
+  .infoLabel {
+    font-size: 10px;
+  }
+
+  .infoValue {
+    font-size: 12px;
+  }
+
+  .modalFooter {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .modalFooter button {
+    width: 100%;
+  }
+
+  .remarksInput {
+    padding: 10px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 375px) {
+  .summaryIcon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .summaryValue {
+    font-size: 16px;
+  }
+
+  .summaryLabel {
+    font-size: 10px;
+  }
+
+  .controlNumber {
+    font-size: 14px;
+  }
+
+  .detailLabel,
+  .detailValue {
+    font-size: 12px;
+  }
+}

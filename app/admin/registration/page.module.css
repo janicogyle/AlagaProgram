@@ -1,0 +1,608 @@
+.registrationPage {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.statusBanner {
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
+  border: 1px solid transparent;
+}
+
+.statusBannerSuccess {
+  background: #ecfdf3;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.statusBannerError {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.controlNumberBar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  padding: 16px 24px;
+  border-radius: 12px;
+  color: white;
+  min-width: 0;
+}
+
+.controlNumberLabel {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.controlNumberValue {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-family: 'Courier New', monospace;
+  overflow-wrap: anywhere;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 24px;
+  align-items: start;
+  min-width: 0;
+}
+
+.mainCard {
+  height: fit-content;
+}
+
+.sideCards {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.formFields {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.muted {
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.assistanceRequirementsHint {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.assistanceRequirementsPanel {
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 10px;
+}
+
+.assistanceRequirementsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.assistanceRequirementsTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.assistanceRequirementsCeiling {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e40af;
+  background: #e0e7ff;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.assistanceRequirementsList {
+  margin: 10px 0 0 0;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #374151;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.assistanceRequirementItem {
+  min-width: 0;
+}
+
+.assistanceRequirementItemEmpty {
+  color: #6b7280;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.row3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.ageField {
+  display: flex;
+  flex-direction: column;
+}
+
+.ageDisplay {
+  padding: 12px 16px;
+  background-color: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* Sector Checkboxes */
+.sectorList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sectorError {
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.errorText {
+  color: #dc2626;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #374151;
+  position: relative;
+  padding-left: 28px;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.checkbox input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 18px;
+  width: 18px;
+  background-color: white;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.checkbox:hover .checkmark {
+  border-color: #1e40af;
+}
+
+.checkbox input:checked ~ .checkmark {
+  background-color: #1e40af;
+  border-color: #1e40af;
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+  left: 5px;
+  top: 1px;
+  width: 4px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.checkbox input:checked ~ .checkmark:after {
+  display: block;
+}
+
+/* Required Documents */
+.editDocsBtn,
+.savDocsBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: white;
+  color: #374151;
+}
+
+.editDocsBtn:hover {
+  border-color: #1e40af;
+  color: #1e40af;
+  background-color: #eff6ff;
+}
+
+.savDocsBtn {
+  background-color: #1e40af;
+  color: white;
+  border-color: #1e40af;
+}
+
+.savDocsBtn:hover {
+  background-color: #1e3a8a;
+}
+
+.addDocumentRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.addDocumentInput {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #374151;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.addDocumentInput:focus {
+  border-color: #1e40af;
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.08);
+}
+
+.addDocumentInput::placeholder {
+  color: #9ca3af;
+}
+
+.addDocumentBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 9px 14px;
+  background-color: #1e40af;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.2s ease;
+}
+
+.addDocumentBtn:hover {
+  background-color: #1e3a8a;
+}
+
+.addDocumentBtn:disabled {
+  background-color: #93c5fd;
+  cursor: not-allowed;
+}
+
+.requirementsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.requirementItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.requirementItem svg {
+  flex-shrink: 0;
+  color: #6b7280;
+}
+
+.requirementText {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.removeDocBtn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.removeDocBtn:hover {
+  color: #dc2626;
+  background-color: #fee2e2;
+}
+
+/* Action Buttons */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .sideCards {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .sideCards > * {
+    flex: 1;
+    min-width: 280px;
+  }
+}
+
+@media (max-width: 900px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .row3 {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .controlNumberBar {
+    flex-direction: row;
+    gap: 12px;
+    text-align: left;
+    padding: 14px 20px;
+  }
+
+  .controlNumberValue {
+    font-size: 16px;
+  }
+
+  .sideCards {
+    flex-direction: column;
+  }
+
+  .sideCards > * {
+    min-width: auto;
+  }
+
+  .formFields {
+    gap: 16px;
+  }
+
+  .label {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 768px) {
+  .registrationPage {
+    gap: 16px;
+  }
+
+  .row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .row3 {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .controlNumberBar {
+    padding: 14px 16px;
+    border-radius: 10px;
+  }
+
+  .controlNumberLabel {
+    font-size: 12px;
+  }
+
+  .controlNumberValue {
+    font-size: 14px;
+  }
+
+  .actions {
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+
+  .actions button {
+    width: 100%;
+    padding: 14px 20px;
+  }
+
+  .sectorList {
+    gap: 16px;
+  }
+
+  .checkbox {
+    padding: 12px;
+    padding-left: 44px;
+    background: #f9fafb;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    margin: 0;
+    align-items: flex-start;
+  }
+
+  .checkbox:has(input:checked) {
+    background: #eff6ff;
+    border-color: #1e40af;
+  }
+
+  .checkmark {
+    left: 12px;
+    top: 12px;
+    transform: none;
+    width: 20px;
+    height: 20px;
+  }
+
+  .checkmark:after {
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+  }
+}
+
+@media (max-width: 576px) {
+  .registrationPage {
+    gap: 14px;
+  }
+
+  .row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .formFields {
+    gap: 14px;
+  }
+
+  .controlNumberBar {
+    flex-direction: column;
+    text-align: left;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 12px 14px;
+  }
+
+  .sectorList {
+    gap: 12px;
+  }
+
+  .checkbox {
+    font-size: 13px;
+    padding: 10px;
+    padding-left: 40px;
+  }
+
+  .checkmark {
+    left: 10px;
+    top: 10px;
+    height: 18px;
+    width: 18px;
+  }
+
+  .checkmark:after {
+    left: 5px;
+    top: 1px;
+    width: 4px;
+    height: 9px;
+  }
+
+  .requirementItem {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  .ageDisplay {
+    padding: 10px 14px;
+  }
+}
+
+@media (max-width: 375px) {
+  .controlNumberBar {
+    padding: 10px 12px;
+  }
+
+  .controlNumberValue {
+    font-size: 13px;
+  }
+
+  .checkbox {
+    font-size: 12px;
+    padding: 8px;
+    padding-left: 36px;
+  }
+
+  .checkmark {
+    left: 8px;
+    height: 16px;
+    width: 16px;
+  }
+}

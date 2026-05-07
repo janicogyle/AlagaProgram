@@ -1,0 +1,157 @@
+.actionMenu {
+  position: relative;
+  display: inline-flex;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.trigger:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  margin-top: 4px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  min-width: 160px;
+  z-index: 50;
+  padding: 4px;
+  animation: dropdownIn 0.15s ease;
+}
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.left {
+  right: 0;
+}
+
+.right {
+  left: 0;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.menuItem:hover {
+  background-color: #f3f4f6;
+}
+
+.menuItem.danger {
+  color: #dc2626;
+}
+
+.menuItem.danger:hover {
+  background-color: #fef2f2;
+}
+
+.menuItem.success {
+  color: #059669;
+}
+
+.menuItem.success:hover {
+  background-color: #ecfdf5;
+}
+
+.divider {
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 4px 0;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* ======================= */
+/* RESPONSIVE STYLES       */
+/* ======================= */
+@media (max-width: 768px) {
+  .trigger {
+    width: 36px;
+    height: 36px;
+  }
+
+  .dropdown {
+    min-width: 140px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .menuItem {
+    padding: 12px 14px;
+    font-size: 14px;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 576px) {
+  .trigger {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+  }
+
+  .trigger:hover {
+    background-color: #e5e7eb;
+  }
+
+  .dropdown {
+    min-width: 150px;
+    border-radius: 10px;
+    padding: 6px;
+  }
+
+  .menuItem {
+    padding: 14px 16px;
+    font-size: 15px;
+    border-radius: 8px;
+  }
+
+  .icon {
+    width: 20px;
+    height: 20px;
+  }
+}

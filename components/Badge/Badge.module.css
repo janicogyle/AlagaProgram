@@ -1,0 +1,29 @@
+.badge {
+    display: inline-block;
+    padding: 0.25em 0.6em;
+    font-size: 75%;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.25rem;
+    color: #fff;
+}
+
+.approved, .completed {
+    background-color: #28a745; /* Green */
+}
+
+.pending {
+    background-color: #ffc107; /* Yellow */
+    color: #212529;
+}
+
+.rejected {
+    background-color: #dc3545; /* Red */
+}
+
+.default {
+    background-color: #6c757d; /* Gray */
+}

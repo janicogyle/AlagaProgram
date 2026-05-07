@@ -1,0 +1,58 @@
+.historyPage {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.historyCard {
+  margin-top: 0.5rem;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.muted {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.cooldownRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.cooldownLabel {
+  font-size: 0.9rem;
+  color: #374151;
+  font-weight: 600;
+}
+
+.cooldownMeta {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+@media (max-width: 576px) {
+  .historyPage {
+    gap: 1rem;
+  }
+
+  .headerRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .headerRow a,
+  .headerRow button {
+    width: 100%;
+  }
+}
