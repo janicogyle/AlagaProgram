@@ -111,6 +111,7 @@ export default function AccountRequestsPage() {
   const [processing, setProcessing] = useState(false);
   const [archiveNotes, setArchiveNotes] = useState('');
   const [documentPreview, setDocumentPreview] = useState({ open: false, url: "" });
+  const [previewZoom, setPreviewZoom] = useState(1);
   const [alertState, setAlertState] = useState({
     open: false,
     title: '',
@@ -231,6 +232,7 @@ export default function AccountRequestsPage() {
 
       if (/^https?:\/\//i.test(value)) {
         if (useInAppPreview) {
+          setPreviewZoom(1);
           setDocumentPreview({ open: true, url: value });
           return;
         }
@@ -251,6 +253,7 @@ export default function AccountRequestsPage() {
       if (!url) throw new Error("Unable to open document.");
 
       if (useInAppPreview) {
+        setPreviewZoom(1);
         setDocumentPreview({ open: true, url });
         return;
       }
@@ -999,22 +1002,62 @@ export default function AccountRequestsPage() {
 
       <Modal
         isOpen={documentPreview.open}
-        onClose={() => setDocumentPreview({ open: false, url: "" })}
+        onClose={() => {
+          setPreviewZoom(1);
+          setDocumentPreview({ open: false, url: "" });
+        }}
         title="Document Preview"
         size="large"
         footer={
-          <Button onClick={() => setDocumentPreview({ open: false, url: "" })}>
+          <Button
+            onClick={() => {
+              setPreviewZoom(1);
+              setDocumentPreview({ open: false, url: "" });
+            }}
+          >
             Close
           </Button>
         }
       >
         {documentPreview.url ? (
           isLikelyImage(documentPreview.url) ? (
-            <img
-              src={documentPreview.url}
-              alt="Uploaded document preview"
-              style={{ width: "100%", maxHeight: "70vh", objectFit: "contain" }}
-            />
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={() => setPreviewZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
+                  >
+                    -
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={() => setPreviewZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))))}
+                  >
+                    +
+                  </Button>
+                  <Button variant="secondary" size="small" onClick={() => setPreviewZoom(1)}>
+                    Reset
+                  </Button>
+                </div>
+                <span style={{ fontSize: 12, color: "#6b7280" }}>{Math.round(previewZoom * 100)}%</span>
+              </div>
+              <div style={{ maxHeight: "70vh", overflow: "auto", border: "1px solid #e5e7eb", borderRadius: 8 }}>
+                <img
+                  src={documentPreview.url}
+                  alt="Uploaded document preview"
+                  style={{
+                    display: "block",
+                    maxWidth: "100%",
+                    margin: "0 auto",
+                    transform: `scale(${previewZoom})`,
+                    transformOrigin: "top center",
+                  }}
+                />
+              </div>
+            </div>
           ) : (
             <iframe
               src={documentPreview.url}

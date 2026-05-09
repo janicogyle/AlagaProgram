@@ -239,6 +239,7 @@ export default function ResidentsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [editErrors, setEditErrors] = useState({ contact_number: '' });
   const [documentPreview, setDocumentPreview] = useState({ open: false, url: '' });
+  const [previewZoom, setPreviewZoom] = useState(1);
   const [editForm, setEditForm] = useState({
     first_name: '',
     middle_name: '',
@@ -261,6 +262,16 @@ export default function ResidentsPage() {
 
   const openAlert = ({ title, message }) => {
     setAlertState({ open: true, title, message });
+  };
+
+  const openDocumentPreview = (url) => {
+    setPreviewZoom(1);
+    setDocumentPreview({ open: true, url: String(url || '') });
+  };
+
+  const closeDocumentPreview = () => {
+    setPreviewZoom(1);
+    setDocumentPreview({ open: false, url: '' });
   };
 
   const closeAlert = () => {
@@ -480,7 +491,7 @@ export default function ResidentsPage() {
 
       if (/^https?:\/\//i.test(pathOrUrl)) {
         if (useInAppPreview) {
-          setDocumentPreview({ open: true, url: pathOrUrl });
+          openDocumentPreview(pathOrUrl);
           return;
         }
         if (!openedTab) throw new Error('Popup blocked. Please allow popups for this site.');
@@ -505,7 +516,7 @@ export default function ResidentsPage() {
       if (!url) throw new Error('Unable to open document.');
 
       if (useInAppPreview) {
-        setDocumentPreview({ open: true, url });
+        openDocumentPreview(url);
         return;
       }
       if (!openedTab) throw new Error('Popup blocked. Please allow popups for this site.');
@@ -1522,22 +1533,54 @@ export default function ResidentsPage() {
 
       <Modal
         isOpen={documentPreview.open}
-        onClose={() => setDocumentPreview({ open: false, url: '' })}
+        onClose={closeDocumentPreview}
         title="Document Preview"
         size="large"
         footer={
-          <Button onClick={() => setDocumentPreview({ open: false, url: '' })}>
+          <Button onClick={closeDocumentPreview}>
             Close
           </Button>
         }
       >
         {documentPreview.url ? (
           isLikelyImage(documentPreview.url) ? (
-            <img
-              src={documentPreview.url}
-              alt="Uploaded document preview"
-              style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain' }}
-            />
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={() => setPreviewZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
+                  >
+                    -
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={() => setPreviewZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))))}
+                  >
+                    +
+                  </Button>
+                  <Button variant="secondary" size="small" onClick={() => setPreviewZoom(1)}>
+                    Reset
+                  </Button>
+                </div>
+                <span style={{ fontSize: 12, color: '#6b7280' }}>{Math.round(previewZoom * 100)}%</span>
+              </div>
+              <div style={{ maxHeight: '70vh', overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                <img
+                  src={documentPreview.url}
+                  alt="Uploaded document preview"
+                  style={{
+                    display: 'block',
+                    maxWidth: '100%',
+                    margin: '0 auto',
+                    transform: `scale(${previewZoom})`,
+                    transformOrigin: 'top center',
+                  }}
+                />
+              </div>
+            </div>
           ) : (
             <iframe
               src={documentPreview.url}
