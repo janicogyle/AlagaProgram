@@ -436,11 +436,14 @@
 
 /* Table/Card View Toggle */
 .tableView {
-  display: block;
+  display: none;
 }
 
 .mobileCardView {
-  display: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  padding: 0 16px 16px;
 }
 
 .requestCard {
@@ -448,7 +451,6 @@
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 16px;
-  margin-bottom: 12px;
 }
 
 .requestCard:last-child {
@@ -525,7 +527,11 @@
   }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
+  .mobileCardView {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+
   .summaryCards {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -589,14 +595,10 @@
     gap: 16px;
   }
 
-  /* Switch to card view on mobile */
-  .tableView {
-    display: none;
-  }
-
   .mobileCardView {
-    display: block;
-    padding: 0 16px 16px;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 0 12px 12px;
   }
 
   .requestCard {

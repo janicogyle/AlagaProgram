@@ -12,6 +12,7 @@ import styles from './page.module.css';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function AnalyticsPage() {
+  const [viewportWidth, setViewportWidth] = useState(1200);
   const [timePeriod, setTimePeriod] = useState('3months');
   const [kpiData, setKpiData] = useState([
     { title: 'Total Beneficiaries', current: 0, previous: 0, growth: 0, icon: 'users', color: 'blue' },
@@ -28,6 +29,17 @@ export default function AnalyticsPage() {
   const [recentAccountRequests, setRecentAccountRequests] = useState([]);
   const [staffActivity, setStaffActivity] = useState([]);
   const [staffActivityLoading, setStaffActivityLoading] = useState(true);
+
+  useEffect(() => {
+    const updateViewportWidth = () => {
+      if (typeof window === 'undefined') return;
+      setViewportWidth(window.innerWidth || 1200);
+    };
+
+    updateViewportWidth();
+    window.addEventListener('resize', updateViewportWidth);
+    return () => window.removeEventListener('resize', updateViewportWidth);
+  }, []);
 
   const fetchData = useCallback(async () => {
     if (!supabase) {
@@ -312,6 +324,11 @@ export default function AnalyticsPage() {
     time: a.time ? new Date(a.time).toLocaleString() : '',
   }));
 
+  const isTablet = viewportWidth <= 1200 && viewportWidth > 768;
+  const isMobile = viewportWidth <= 768;
+  const chartHeight = isMobile ? 160 : isTablet ? 170 : 200;
+  const pieChartSize = isMobile ? 120 : isTablet ? 130 : 150;
+
   return (
     <div className={styles.analyticsPage}>
       {/* Header */}
@@ -344,16 +361,16 @@ export default function AnalyticsPage() {
         {recentAccountRequests.length === 0 ? (
           <p style={{ padding: 12, margin: 0, color: '#6b7280' }}>No recent account requests.</p>
         ) : (
-          <Table columns={columns} data={recentAccountRequests} />
+          <Table columns={columns} data={recentAccountRequests} fitToContainer />
         )}
       </Card>
 
       {/* Recent Registrations (same as Dashboard) */}
-      <Card title="Recent Registrations" subtitle="Latest residents added to the system">
+      <Card title="Recent Approved Accounts" subtitle="Latest residents added to the system">
         {recentRegistrations.length === 0 ? (
           <p style={{ padding: 12, margin: 0, color: '#6b7280' }}>No recent registrations.</p>
         ) : (
-          <Table columns={columns} data={recentRegistrations} />
+          <Table columns={columns} data={recentRegistrations} fitToContainer />
         )}
       </Card>
 
@@ -387,7 +404,7 @@ export default function AnalyticsPage() {
             data={monthlyRegistrations}
             labelKey="label"
             valueKey="value"
-            height={200}
+            height={chartHeight}
           />
         </Card>
 
@@ -395,7 +412,7 @@ export default function AnalyticsPage() {
         <Card title="Sector Distribution" className={styles.chartCard}>
           <PieChart 
             data={sectorDistribution}
-            size={150}
+            size={pieChartSize}
             donut={true}
           />
         </Card>
@@ -404,7 +421,7 @@ export default function AnalyticsPage() {
         <Card title="Gender Distribution" className={styles.chartCard}>
           <PieChart 
             data={genderDistribution}
-            size={150}
+            size={pieChartSize}
             donut={true}
           />
         </Card>
@@ -415,7 +432,7 @@ export default function AnalyticsPage() {
             data={ageDistribution}
             labelKey="label"
             valueKey="value"
-            height={200}
+            height={chartHeight}
             color="linear-gradient(180deg, #10b981 0%, #059669 100%)"
           />
         </Card>

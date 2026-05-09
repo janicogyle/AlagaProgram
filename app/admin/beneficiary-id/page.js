@@ -197,21 +197,24 @@ export default function BeneficiaryIdVerifyPage() {
 
 function QrScanner({ onDetected, onError }) {
   const [starting, setStarting] = useState(true);
+  const [cameras, setCameras] = useState([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const videoRef = useRef(null);
+  const readerRef = useRef(null);
+  const controlsRef = useRef(null);
 
   useEffect(() => {
-    let reader;
-    let controls;
     let active = true;
 
-    const stop = () => {
+    const stop = (resetReader = true) => {
       try {
-        controls?.stop?.();
+        controlsRef.current?.stop?.();
       } catch {
         // ignore
       }
+      controlsRef.current = null;
       try {
-        reader?.reset?.();
+        if (resetReader) readerRef.current?.reset?.();
       } catch {
         // ignore
       }
@@ -233,33 +236,50 @@ function QrScanner({ onDetected, onError }) {
       }
     };
 
+    const choosePreferredCamera = (devices) => {
+      if (!devices?.length) return '';
+      const preferred =
+        devices.find((d) => /back|rear|environment/i.test(String(d.label || ''))) ||
+        devices[devices.length - 1] ||
+        devices[0];
+      return preferred?.deviceId || '';
+    };
+
+    const startWithDevice = async (deviceId) => {
+      const reader = readerRef.current;
+      if (!reader || !deviceId || !videoRef.current) return;
+
+      stop(false);
+
+      controlsRef.current = await reader.decodeFromVideoDevice(deviceId, videoRef.current, (result) => {
+        if (!active) return;
+        if (result) {
+          stop();
+          onDetected?.(result.getText());
+        }
+      });
+    };
+
     const start = async () => {
       try {
         const mod = await import('@zxing/browser');
         const { BrowserQRCodeReader } = mod;
 
-        reader = new BrowserQRCodeReader();
+        readerRef.current = new BrowserQRCodeReader();
 
         const devices = await BrowserQRCodeReader.listVideoInputDevices();
+        if (!devices?.length) {
+          throw new Error('No camera devices found.');
+        }
+        const preferredId = choosePreferredCamera(devices);
+        if (!preferredId) {
+          throw new Error('No available camera was found.');
+        }
 
-        // Prefer back camera if available (mobile)
-        const preferred =
-          devices?.find((d) => /back|rear|environment/i.test(d.label || '')) ||
-          devices?.[devices.length - 1] ||
-          devices?.[0];
-
-        const deviceId = preferred?.deviceId;
-
+        setCameras(devices);
+        setSelectedDeviceId(preferredId);
+        await startWithDevice(preferredId);
         setStarting(false);
-
-        // decodeFromVideoDevice may return controls in newer versions
-        controls = await reader.decodeFromVideoDevice(deviceId, videoRef.current, (result) => {
-          if (!active) return;
-          if (result) {
-            stop();
-            onDetected?.(result.getText());
-          }
-        });
       } catch (e) {
         setStarting(false);
         stop();
@@ -272,6 +292,8 @@ function QrScanner({ onDetected, onError }) {
             ? 'Camera permission denied. Please allow camera access in your browser.'
             : rawMsg.toLowerCase().includes('video source')
               ? 'Could not start video source. Close other apps using the camera, then refresh the page and try again.'
+            : rawMsg.toLowerCase().includes('no camera devices')
+              ? 'No camera found on this device.'
               : rawMsg;
 
         onError?.(msg);
@@ -286,8 +308,76 @@ function QrScanner({ onDetected, onError }) {
     };
   }, [onDetected, onError]);
 
+  const switchCamera = async (deviceId) => {
+    const nextId = String(deviceId || '');
+    if (!nextId || nextId === selectedDeviceId || !readerRef.current || !videoRef.current) return;
+
+    setStarting(true);
+    setSelectedDeviceId(nextId);
+    try {
+      try {
+        controlsRef.current?.stop?.();
+      } catch {
+        // ignore
+      }
+      controlsRef.current = await readerRef.current.decodeFromVideoDevice(nextId, videoRef.current, (result) => {
+        if (result) {
+          try {
+            controlsRef.current?.stop?.();
+          } catch {
+            // ignore
+          }
+          try {
+            readerRef.current?.reset?.();
+          } catch {
+            // ignore
+          }
+          onDetected?.(result.getText());
+        }
+      });
+    } catch (e) {
+      const msg = String(e?.message || e || 'Failed to switch camera.');
+      onError?.(msg);
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const handleFlip = async () => {
+    if (cameras.length < 2) return;
+    const currentIndex = cameras.findIndex((c) => c.deviceId === selectedDeviceId);
+    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % cameras.length : 0;
+    await switchCamera(cameras[nextIndex]?.deviceId);
+  };
+
   return (
     <div className={styles.scannerWrap}>
+      <div className={styles.scannerControls}>
+        <select
+          className={styles.cameraSelect}
+          value={selectedDeviceId}
+          onChange={(e) => switchCamera(e.target.value)}
+          disabled={starting || cameras.length === 0}
+        >
+          {cameras.length === 0 ? (
+            <option value="">No camera detected</option>
+          ) : (
+            cameras.map((device, index) => (
+              <option key={device.deviceId} value={device.deviceId}>
+                {device.label || `Camera ${index + 1}`}
+              </option>
+            ))
+          )}
+        </select>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={handleFlip}
+          disabled={starting || cameras.length < 2}
+        >
+          Flip Camera
+        </Button>
+      </div>
       <video ref={videoRef} className={styles.video} />
       <div className={styles.scanHint}>
         {starting

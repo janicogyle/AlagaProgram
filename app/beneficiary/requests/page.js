@@ -799,6 +799,10 @@ export default function BeneficiaryRequestPage() {
       newErrors.contactNumber = 'Contact number must be exactly 11 digits. Please update your profile.';
     }
 
+    if (!formData.assistanceType) {
+      newErrors.assistanceType = 'Type of assistance is required.';
+    }
+
     if (formData.assistanceType && !beneficiaryIsRequester) {
       if (!formData.beneficiaryName.trim()) {
         newErrors.beneficiaryName = 'Beneficiary name is required';
@@ -1423,8 +1427,9 @@ export default function BeneficiaryRequestPage() {
                 name="assistanceType"
                 value={formData.assistanceType}
                 onChange={handleChange}
-                options={[{ value: '', label: 'Select type (if any)' }, ...assistanceTypeOptions]}
-                optional
+                options={[{ value: '', label: 'Select option' }, ...assistanceTypeOptions]}
+                error={errors.assistanceType}
+                required
               />
               {formData.assistanceType === 'Others' && (
                 <Input

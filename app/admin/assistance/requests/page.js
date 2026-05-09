@@ -917,7 +917,7 @@ export default function RequestsPage() {
                         <circle cx="12" cy="12" r="3" />
                       </svg>
                     </button>
-                    {request.status === 'Pending' && (
+                    {['Pending', 'Resubmitted'].includes(request.status) && (
                       <>
                         <button 
                           className={styles.approveBtn}
