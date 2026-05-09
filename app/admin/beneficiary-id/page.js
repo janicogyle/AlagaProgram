@@ -247,17 +247,37 @@ function QrScanner({ onDetected, onError }) {
 
     const startWithDevice = async (deviceId) => {
       const reader = readerRef.current;
-      if (!reader || !deviceId || !videoRef.current) return;
+      if (!reader || !videoRef.current) return;
 
       stop(false);
 
-      controlsRef.current = await reader.decodeFromVideoDevice(deviceId, videoRef.current, (result) => {
+      controlsRef.current = await reader.decodeFromVideoDevice(deviceId || undefined, videoRef.current, (result) => {
         if (!active) return;
         if (result) {
           stop();
           onDetected?.(result.getText());
         }
       });
+    };
+
+    const requestCameraPermission = async () => {
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        throw new Error('This browser does not support camera access.');
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch {
+          // ignore
+        }
+      });
+    };
+
+    const getFallbackVideoDevices = async () => {
+      if (!navigator?.mediaDevices?.enumerateDevices) return [];
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      return devices.filter((d) => d.kind === 'videoinput');
     };
 
     const start = async () => {
@@ -267,17 +287,16 @@ function QrScanner({ onDetected, onError }) {
 
         readerRef.current = new BrowserQRCodeReader();
 
-        const devices = await BrowserQRCodeReader.listVideoInputDevices();
+        await requestCameraPermission();
+
+        let devices = await BrowserQRCodeReader.listVideoInputDevices();
         if (!devices?.length) {
-          throw new Error('No camera devices found.');
+          devices = await getFallbackVideoDevices();
         }
         const preferredId = choosePreferredCamera(devices);
-        if (!preferredId) {
-          throw new Error('No available camera was found.');
-        }
 
-        setCameras(devices);
-        setSelectedDeviceId(preferredId);
+        setCameras(devices || []);
+        setSelectedDeviceId(preferredId || '');
         await startWithDevice(preferredId);
         setStarting(false);
       } catch (e) {
@@ -290,6 +309,12 @@ function QrScanner({ onDetected, onError }) {
         const msg =
           name === 'NotAllowedError'
             ? 'Camera permission denied. Please allow camera access in your browser.'
+            : name === 'NotFoundError'
+              ? 'No camera found on this device.'
+              : name === 'NotReadableError'
+                ? 'Camera is already in use by another app or tab. Close other apps and try again.'
+                : !window.isSecureContext
+                  ? 'Camera requires a secure connection (HTTPS).'
             : rawMsg.toLowerCase().includes('video source')
               ? 'Could not start video source. Close other apps using the camera, then refresh the page and try again.'
             : rawMsg.toLowerCase().includes('no camera devices')
