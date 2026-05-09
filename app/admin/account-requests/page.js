@@ -94,6 +94,11 @@ function parseValidIdUrls(value, fallbackValue) {
   return list.map((item) => String(item || "").trim()).filter(Boolean);
 }
 
+const isLikelyImage = (fileUrl) => /\.(png|jpe?g|gif|webp)$/i.test(String(fileUrl || ""));
+const shouldUseInAppPreview = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia("(max-width: 1024px), (pointer: coarse)").matches;
+
 export default function AccountRequestsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("Pending");
@@ -105,6 +110,7 @@ export default function AccountRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [archiveNotes, setArchiveNotes] = useState('');
+  const [documentPreview, setDocumentPreview] = useState({ open: false, url: "" });
   const [alertState, setAlertState] = useState({
     open: false,
     title: '',
@@ -207,10 +213,29 @@ export default function AccountRequestsPage() {
   const openDocument = async (pathOrUrl) => {
     if (!pathOrUrl) return;
 
+    const useInAppPreview = shouldUseInAppPreview();
+    let openedTab = null;
     try {
       const value = String(pathOrUrl);
+      if (!useInAppPreview) {
+        // Open synchronously so mobile Safari/Chrome do not block the popup.
+        openedTab = window.open('', "_blank", "noopener,noreferrer");
+        if (openedTab) {
+          try {
+            openedTab.opener = null;
+          } catch {
+            // ignore
+          }
+        }
+      }
+
       if (/^https?:\/\//i.test(value)) {
-        window.open(value, "_blank", "noopener,noreferrer");
+        if (useInAppPreview) {
+          setDocumentPreview({ open: true, url: value });
+          return;
+        }
+        if (!openedTab) throw new Error("Popup blocked. Please allow popups for this site.");
+        openedTab.location.href = value;
         return;
       }
 
@@ -225,8 +250,18 @@ export default function AccountRequestsPage() {
       const url = json?.data?.url;
       if (!url) throw new Error("Unable to open document.");
 
-      window.open(url, "_blank", "noopener,noreferrer");
+      if (useInAppPreview) {
+        setDocumentPreview({ open: true, url });
+        return;
+      }
+      if (!openedTab) throw new Error("Popup blocked. Please allow popups for this site.");
+      openedTab.location.href = url;
     } catch (e) {
+      try {
+        openedTab?.close?.();
+      } catch {
+        // ignore
+      }
       openAlert({
         title: "Unable to open",
         message: e?.message || "Failed to open document.",
@@ -959,6 +994,36 @@ export default function AccountRequestsPage() {
               placeholder="e.g. Archived by mistake"
             />
           </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={documentPreview.open}
+        onClose={() => setDocumentPreview({ open: false, url: "" })}
+        title="Document Preview"
+        size="large"
+        footer={
+          <Button onClick={() => setDocumentPreview({ open: false, url: "" })}>
+            Close
+          </Button>
+        }
+      >
+        {documentPreview.url ? (
+          isLikelyImage(documentPreview.url) ? (
+            <img
+              src={documentPreview.url}
+              alt="Uploaded document preview"
+              style={{ width: "100%", maxHeight: "70vh", objectFit: "contain" }}
+            />
+          ) : (
+            <iframe
+              src={documentPreview.url}
+              title="Uploaded document preview"
+              style={{ width: "100%", height: "70vh", border: 0 }}
+            />
+          )
+        ) : (
+          <p style={{ margin: 0 }}>No document available for preview.</p>
         )}
       </Modal>
 

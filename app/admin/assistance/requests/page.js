@@ -105,6 +105,9 @@ const getFileNameFromUrl = (fileUrl) => {
 };
 
 const isLikelyImage = (fileUrl) => /\.(png|jpe?g|gif|webp)$/i.test(String(fileUrl || ''));
+const shouldUseInAppPreview = () =>
+  typeof window !== 'undefined' &&
+  window.matchMedia('(max-width: 1024px), (pointer: coarse)').matches;
 
 const parseLegacyRequirementUrls = (value) => {
   if (!value) return [];
@@ -156,6 +159,7 @@ export default function RequestsPage() {
   const [status, setStatus] = useState(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [requirementsByType, setRequirementsByType] = useState({});
+  const [documentPreview, setDocumentPreview] = useState({ open: false, url: '' });
 
   useEffect(() => {
     const loadRequirements = async () => {
@@ -481,10 +485,29 @@ export default function RequestsPage() {
   const openValidId = async (pathOrUrl) => {
     if (!pathOrUrl) return;
 
+    const useInAppPreview = shouldUseInAppPreview();
+    let openedTab = null;
     try {
+      if (!useInAppPreview) {
+        // Open a blank tab immediately from the click event so mobile browsers don't block it.
+        openedTab = window.open('', '_blank', 'noopener,noreferrer');
+        if (openedTab) {
+          try {
+            openedTab.opener = null;
+          } catch {
+            // ignore
+          }
+        }
+      }
+
       // Legacy: stored as full URL
       if (/^https?:\/\//i.test(pathOrUrl)) {
-        window.open(pathOrUrl, '_blank', 'noopener,noreferrer');
+        if (useInAppPreview) {
+          setDocumentPreview({ open: true, url: pathOrUrl });
+          return;
+        }
+        if (!openedTab) throw new Error('Popup blocked. Please allow popups for this site.');
+        openedTab.location.href = pathOrUrl;
         return;
       }
 
@@ -507,8 +530,18 @@ export default function RequestsPage() {
       const url = json?.data?.url;
       if (!url) throw new Error('Unable to open document.');
 
-      window.open(url, '_blank', 'noopener,noreferrer');
+      if (useInAppPreview) {
+        setDocumentPreview({ open: true, url });
+        return;
+      }
+      if (!openedTab) throw new Error('Popup blocked. Please allow popups for this site.');
+      openedTab.location.href = url;
     } catch (err) {
+      try {
+        openedTab?.close?.();
+      } catch {
+        // ignore
+      }
       openAlert({
         title: 'Open document failed',
         message: err?.message || 'Unable to open the uploaded ID. Please try again.',
@@ -1277,6 +1310,36 @@ export default function RequestsPage() {
               );
             })()}
           </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={documentPreview.open}
+        onClose={() => setDocumentPreview({ open: false, url: '' })}
+        title="Document Preview"
+        size="large"
+        footer={
+          <Button onClick={() => setDocumentPreview({ open: false, url: '' })}>
+            Close
+          </Button>
+        }
+      >
+        {documentPreview.url ? (
+          isLikelyImage(documentPreview.url) ? (
+            <img
+              src={documentPreview.url}
+              alt="Uploaded document preview"
+              style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+            />
+          ) : (
+            <iframe
+              src={documentPreview.url}
+              title="Uploaded document preview"
+              style={{ width: '100%', height: '70vh', border: 0 }}
+            />
+          )
+        ) : (
+          <p style={{ margin: 0 }}>No document available for preview.</p>
         )}
       </Modal>
 

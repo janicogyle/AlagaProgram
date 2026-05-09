@@ -52,6 +52,11 @@ const sexOptions = [
   { value: "female", label: "Female" },
 ];
 
+const isLikelyImage = (fileUrl) => /\.(png|jpe?g|gif|webp)$/i.test(String(fileUrl || ''));
+const shouldUseInAppPreview = () =>
+  typeof window !== 'undefined' &&
+  window.matchMedia('(max-width: 1024px), (pointer: coarse)').matches;
+
 const civilStatusOptions = [
   { value: "single", label: "Single" },
   { value: "married", label: "Married" },
@@ -233,6 +238,7 @@ export default function ResidentsPage() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [editErrors, setEditErrors] = useState({ contact_number: '' });
+  const [documentPreview, setDocumentPreview] = useState({ open: false, url: '' });
   const [editForm, setEditForm] = useState({
     first_name: '',
     middle_name: '',
@@ -457,9 +463,28 @@ export default function ResidentsPage() {
   const openDocument = async (pathOrUrl) => {
     if (!pathOrUrl) return;
 
+    const useInAppPreview = shouldUseInAppPreview();
+    let openedTab = null;
     try {
+      if (!useInAppPreview) {
+        // Open synchronously to avoid popup blocking on mobile browsers.
+        openedTab = window.open('', '_blank', 'noopener,noreferrer');
+        if (openedTab) {
+          try {
+            openedTab.opener = null;
+          } catch {
+            // ignore
+          }
+        }
+      }
+
       if (/^https?:\/\//i.test(pathOrUrl)) {
-        window.open(pathOrUrl, '_blank', 'noopener,noreferrer');
+        if (useInAppPreview) {
+          setDocumentPreview({ open: true, url: pathOrUrl });
+          return;
+        }
+        if (!openedTab) throw new Error('Popup blocked. Please allow popups for this site.');
+        openedTab.location.href = pathOrUrl;
         return;
       }
 
@@ -479,8 +504,18 @@ export default function ResidentsPage() {
       const url = json?.data?.url;
       if (!url) throw new Error('Unable to open document.');
 
-      window.open(url, '_blank', 'noopener,noreferrer');
+      if (useInAppPreview) {
+        setDocumentPreview({ open: true, url });
+        return;
+      }
+      if (!openedTab) throw new Error('Popup blocked. Please allow popups for this site.');
+      openedTab.location.href = url;
     } catch (err) {
+      try {
+        openedTab?.close?.();
+      } catch {
+        // ignore
+      }
       openAlert({
         title: 'Open document failed',
         message: err?.message || 'Unable to open the uploaded ID. Please try again.',
@@ -1483,6 +1518,36 @@ export default function ResidentsPage() {
             <Table columns={historyColumns} data={historyTableData} />
           )}
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={documentPreview.open}
+        onClose={() => setDocumentPreview({ open: false, url: '' })}
+        title="Document Preview"
+        size="large"
+        footer={
+          <Button onClick={() => setDocumentPreview({ open: false, url: '' })}>
+            Close
+          </Button>
+        }
+      >
+        {documentPreview.url ? (
+          isLikelyImage(documentPreview.url) ? (
+            <img
+              src={documentPreview.url}
+              alt="Uploaded document preview"
+              style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+            />
+          ) : (
+            <iframe
+              src={documentPreview.url}
+              title="Uploaded document preview"
+              style={{ width: '100%', height: '70vh', border: 0 }}
+            />
+          )
+        ) : (
+          <p style={{ margin: 0 }}>No document available for preview.</p>
+        )}
       </Modal>
 
       <Modal
