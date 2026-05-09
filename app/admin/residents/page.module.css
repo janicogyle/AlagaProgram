@@ -408,6 +408,135 @@
   white-space: nowrap;
 }
 
+.residentDetailsContent {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.residentInfoCards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.residentInfoCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+  min-width: 0;
+}
+
+.residentInfoTitle {
+  margin: 0 0 10px;
+  font-size: 15px;
+  color: #1f2937;
+}
+
+.residentInfoGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.residentInfoRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.residentInfoLabel {
+  font-size: 11px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.residentInfoValue {
+  font-size: 14px;
+  color: #374151;
+  overflow-wrap: anywhere;
+}
+
+.residentInfoHint {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.residentInfoEmpty {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.residentMutedText {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.modalFooterEnd {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.previewShell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.previewToolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.previewToolbarLeft,
+.previewToolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.previewHint,
+.previewZoom {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.previewImageWrap {
+  max-height: 70vh;
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.previewImage {
+  display: block;
+  max-width: 100%;
+  margin: 0 auto;
+  transform-origin: top center;
+}
+
+.previewFrame {
+  width: 100%;
+  height: 70vh;
+  border: 0;
+}
+
+.previewEmpty {
+  margin: 0;
+}
+
 .assistanceSummaryRow {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -556,6 +685,20 @@
 }
 
 @media (max-width: 768px) {
+  .residentInfoCards {
+    grid-template-columns: 1fr;
+  }
+
+  .residentDetailsContent {
+    max-height: 68vh;
+  }
+
+  .previewFrame,
+  .previewImageWrap {
+    max-height: 62vh;
+    height: 62vh;
+  }
+
   .assistanceSummaryRow {
     grid-template-columns: repeat(2, 1fr);
   }

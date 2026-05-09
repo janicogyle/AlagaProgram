@@ -1227,7 +1227,7 @@ export default function ResidentsPage() {
           handleCloseHistory();
         }}
         title="Beneficiary Details"
-        size="xlarge"
+        size="large"
         footer={
           selectedResident ? (
             <div className={styles.residentDetailsFooter}>
@@ -1274,9 +1274,9 @@ export default function ResidentsPage() {
         }
       >
         {selectedResident && (
-          <div className={styles.assistanceModalContent}>
+          <div className={styles.residentDetailsContent}>
             {detailsLoading ? (
-              <p style={{ margin: 0, color: '#6b7280' }}>Loading full details…</p>
+              <p className={styles.residentMutedText}>Loading full details…</p>
             ) : null}
 
             <div className={styles.assistanceResidentInfo}>
@@ -1303,93 +1303,102 @@ export default function ResidentsPage() {
               </div>
             </div>
 
-            <div>
-              <h3 style={{ margin: "0 0 10px" }}>Address</h3>
+            <div className={styles.residentInfoCards}>
+              <section className={styles.residentInfoCard}>
+                <h3 className={styles.residentInfoTitle}>Address</h3>
+                <div className={styles.residentInfoGrid}>
+                  <div className={styles.residentInfoRow}>
+                    <span className={styles.residentInfoLabel}>Complete Address</span>
+                    <strong className={styles.residentInfoValue}>{formatAddressLine(effectiveResident)}</strong>
+                  </div>
+                  <div className={styles.residentInfoRow}>
+                    <span className={styles.residentInfoLabel}>House No.</span>
+                    <strong className={styles.residentInfoValue}>{displayValue(effectiveResident?.house_no)}</strong>
+                  </div>
+                  <div className={styles.residentInfoRow}>
+                    <span className={styles.residentInfoLabel}>Purok</span>
+                    <strong className={styles.residentInfoValue}>{displayValue(effectiveResident?.purok)}</strong>
+                  </div>
+                  <div className={styles.residentInfoRow}>
+                    <span className={styles.residentInfoLabel}>Barangay</span>
+                    <strong className={styles.residentInfoValue}>{displayValue(effectiveResident?.barangay)}</strong>
+                  </div>
+                  <div className={styles.residentInfoRow}>
+                    <span className={styles.residentInfoLabel}>City/Municipality</span>
+                    <strong className={styles.residentInfoValue}>{displayValue(effectiveResident?.city)}</strong>
+                  </div>
+                </div>
+              </section>
 
-              <div style={{ display: 'grid', gap: 6, fontSize: 14, color: '#374151' }}>
-                <div>
-                  Complete Address: <strong>{formatAddressLine(effectiveResident)}</strong>
+              <section className={styles.residentInfoCard}>
+                <h3 className={styles.residentInfoTitle}>Personal Information</h3>
+                <div className={styles.residentInfoGrid}>
+                  <div className={styles.residentInfoRow}>
+                    <span className={styles.residentInfoLabel}>Birthday</span>
+                    <strong className={styles.residentInfoValue}>
+                      {effectiveResident?.birthday
+                        ? new Date(effectiveResident.birthday).toLocaleDateString('en-PH', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: '2-digit',
+                          })
+                        : '-'}
+                    </strong>
+                  </div>
+                  <div className={styles.residentInfoRow}>
+                    <span className={styles.residentInfoLabel}>Birthplace</span>
+                    <strong className={styles.residentInfoValue}>{effectiveResident?.birthplace || '-'}</strong>
+                  </div>
+                  <div className={styles.residentInfoRow}>
+                    <span className={styles.residentInfoLabel}>Sex</span>
+                    <strong className={styles.residentInfoValue}>{effectiveResident?.sex || '-'}</strong>
+                  </div>
+                  <div className={styles.residentInfoRow}>
+                    <span className={styles.residentInfoLabel}>Citizenship</span>
+                    <strong className={styles.residentInfoValue}>{effectiveResident?.citizenship || '-'}</strong>
+                  </div>
+                  <div className={styles.residentInfoRow}>
+                    <span className={styles.residentInfoLabel}>Civil Status</span>
+                    <strong className={styles.residentInfoValue}>{effectiveResident?.civil_status || '-'}</strong>
+                  </div>
+                  <div className={styles.residentInfoRow}>
+                    <span className={styles.residentInfoLabel}>Age</span>
+                    <strong className={styles.residentInfoValue}>
+                      {(() => {
+                        const stored = Number(effectiveResident?.age);
+                        const computed = computeAgeFromBirthday(effectiveResident?.birthday);
+                        const value = Number.isFinite(stored) && stored > 0 ? stored : computed;
+                        return value == null ? '-' : value;
+                      })()}
+                    </strong>
+                  </div>
                 </div>
-                <div>
-                  House No.: <strong>{displayValue(effectiveResident?.house_no)}</strong>
-                </div>
-                <div>
-                  Purok: <strong>{displayValue(effectiveResident?.purok)}</strong>
-                </div>
-                <div>
-                  Barangay: <strong>{displayValue(effectiveResident?.barangay)}</strong>
-                </div>
-                <div>
-                  City/Municipality: <strong>{displayValue(effectiveResident?.city)}</strong>
-                </div>
-              </div>
-            </div>
+              </section>
 
-            <div>
-              <h3 style={{ margin: "0 0 10px" }}>Personal Information</h3>
-              <div style={{ display: 'grid', gap: 6, fontSize: 14, color: '#374151' }}>
-                <div>
-                  Birthday:{' '}
-                  <strong>
-                    {effectiveResident?.birthday
-                      ? new Date(effectiveResident.birthday).toLocaleDateString('en-PH', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: '2-digit',
-                        })
-                      : '-'}
-                  </strong>
-                </div>
-                <div>
-                  Birthplace: <strong>{effectiveResident?.birthplace || '-'}</strong>
-                </div>
-                <div>
-                  Sex: <strong>{effectiveResident?.sex || '-'}</strong>
-                </div>
-                <div>
-                  Citizenship: <strong>{effectiveResident?.citizenship || '-'}</strong>
-                </div>
-                <div>
-                  Civil Status: <strong>{effectiveResident?.civil_status || '-'}</strong>
-                </div>
-                <div>
-                  {(() => {
-                    const stored = Number(effectiveResident?.age);
-                    const computed = computeAgeFromBirthday(effectiveResident?.birthday);
-                    const value = Number.isFinite(stored) && stored > 0 ? stored : computed;
-                    return (
-                      <>
-                        Age: <strong>{value == null ? '-' : value}</strong>
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 style={{ margin: "0 0 10px" }}>Sector Classification</h3>
-              {getSectorBadges(effectiveResident).length ? (
-                <div className={styles.badges}>
-                  {getSectorBadges(effectiveResident).map((s) => (
-                    <Badge key={s} variant="secondary">
-                      {s}
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <p style={{ margin: 0, color: "#6b7280" }}>General</p>
-              )}
+              <section className={styles.residentInfoCard}>
+                <h3 className={styles.residentInfoTitle}>Sector Classification</h3>
+                {getSectorBadges(effectiveResident).length ? (
+                  <div className={styles.badges}>
+                    {getSectorBadges(effectiveResident).map((s) => (
+                      <Badge key={s} variant="secondary">
+                        {s}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className={styles.residentInfoEmpty}>General</p>
+                )}
+              </section>
             </div>
 
             {isAdmin ? (
-              <div>
-                <h3 style={{ margin: '0 0 10px' }}>Sign-up Submission</h3>
+              <section className={styles.residentInfoCard}>
+                <h3 className={styles.residentInfoTitle}>Sign-up Submission</h3>
                 {signupInfo ? (
-                  <div style={{ display: 'grid', gap: 8, fontSize: 14, color: '#374151' }}>
-                    <div>
-                      Submitted:{' '}
-                      <strong>
+                  <div className={styles.residentInfoGrid}>
+                    <div className={styles.residentInfoRow}>
+                      <span className={styles.residentInfoLabel}>Submitted</span>
+                      <strong className={styles.residentInfoValue}>
                         {signupInfo?.created_at
                           ? new Date(signupInfo.created_at).toLocaleString('en-PH', {
                               year: 'numeric',
@@ -1401,35 +1410,37 @@ export default function ResidentsPage() {
                           : '-'}
                       </strong>
                     </div>
-                    <div>
-                      Request Status: <strong>{signupInfo?.status || '-'}</strong>
+                    <div className={styles.residentInfoRow}>
+                      <span className={styles.residentInfoLabel}>Request Status</span>
+                      <strong className={styles.residentInfoValue}>{signupInfo?.status || '-'}</strong>
                     </div>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span>Valid ID:</span>
+                    <div className={styles.residentInfoRow}>
+                      <span className={styles.residentInfoLabel}>Valid ID</span>
                       {signupInfo?.valid_id_url ? (
                         <Button variant="secondary" size="small" onClick={() => openDocument(signupInfo.valid_id_url)}>
                           View Uploaded ID
                         </Button>
                       ) : (
-                        <strong>-</strong>
+                        <strong className={styles.residentInfoValue}>-</strong>
                       )}
                     </div>
                     {signupInfo?.notes ? (
-                      <div>
-                        Notes: <strong>{signupInfo.notes}</strong>
+                      <div className={styles.residentInfoRow}>
+                        <span className={styles.residentInfoLabel}>Notes</span>
+                        <strong className={styles.residentInfoValue}>{signupInfo.notes}</strong>
                       </div>
                     ) : null}
-                    <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>
+                    <p className={styles.residentInfoHint}>
                       The submitted values are automatically reflected above.
                     </p>
                   </div>
                 ) : (
-                  <p style={{ margin: 0, color: '#6b7280' }}>
+                  <p className={styles.residentInfoHint}>
                     No sign-up record was found for this beneficiary. This usually means the beneficiary was registered
                     manually or was created before sign-up tracking was enabled.
                   </p>
                 )}
-              </div>
+              </section>
             ) : null}
           </div>
         )}
@@ -1441,7 +1452,7 @@ export default function ResidentsPage() {
         title="Assistance History"
         size="large"
         footer={
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <div className={styles.modalFooterEnd}>
             <Button onClick={handleCloseHistory}>Close</Button>
           </div>
         }
@@ -1514,9 +1525,9 @@ export default function ResidentsPage() {
         }
       >
         {documentPreview.url ? (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <div style={{ display: 'flex', gap: 8 }}>
+          <div className={styles.previewShell}>
+            <div className={styles.previewToolbar}>
+              <div className={styles.previewToolbarLeft}>
                 <Button
                   variant="secondary"
                   size="small"
@@ -1542,37 +1553,32 @@ export default function ResidentsPage() {
                   Reset
                 </Button>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className={styles.previewToolbarRight}>
                 {!isLikelyImage(documentPreview.url) ? (
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>Zoom buttons are for images only</span>
+                  <span className={styles.previewHint}>Zoom buttons are for images only</span>
                 ) : null}
-                <span style={{ fontSize: 12, color: '#6b7280' }}>{Math.round(previewZoom * 100)}%</span>
+                <span className={styles.previewZoom}>{Math.round(previewZoom * 100)}%</span>
               </div>
             </div>
             {isLikelyImage(documentPreview.url) ? (
-              <div style={{ maxHeight: '70vh', overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+              <div className={styles.previewImageWrap}>
                 <img
                   src={documentPreview.url}
                   alt="Uploaded document preview"
-                  style={{
-                    display: 'block',
-                    maxWidth: '100%',
-                    margin: '0 auto',
-                    transform: `scale(${previewZoom})`,
-                    transformOrigin: 'top center',
-                  }}
+                  className={styles.previewImage}
+                  style={{ transform: `scale(${previewZoom})` }}
                 />
               </div>
             ) : (
               <iframe
                 src={documentPreview.url}
                 title="Uploaded document preview"
-                style={{ width: '100%', height: '70vh', border: 0 }}
+                className={styles.previewFrame}
               />
             )}
           </div>
         ) : (
-          <p style={{ margin: 0 }}>No document available for preview.</p>
+          <p className={styles.previewEmpty}>No document available for preview.</p>
         )}
       </Modal>
 

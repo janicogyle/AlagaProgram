@@ -95,9 +95,6 @@ function parseValidIdUrls(value, fallbackValue) {
 }
 
 const isLikelyImage = (fileUrl) => /\.(png|jpe?g|gif|webp)$/i.test(String(fileUrl || ""));
-const shouldUseInAppPreview = () =>
-  typeof window !== "undefined" &&
-  window.matchMedia("(max-width: 1024px), (pointer: coarse)").matches;
 
 export default function AccountRequestsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -669,7 +666,7 @@ export default function AccountRequestsPage() {
                   <div className={styles.cardRow}>
                     <span className={styles.cardLabel}>Sector</span>
                     <div className={styles.cardValue}>
-                      <div className={styles.sectorBadges} style={{ justifyContent: 'flex-end' }}>
+                      <div className={`${styles.sectorBadges} ${styles.sectorBadgesEnd}`}>
                         {getSectorBadges(request).length ? (
                           getSectorBadges(request).map((sector) => (
                             <Badge key={sector} variant="secondary">
@@ -846,8 +843,8 @@ export default function AccountRequestsPage() {
 
             {detailsRequest.status === "Pending" && (
               <div className={styles.detailsActionsRow}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <div className={styles.detailsActionsStack}>
+                  <div className={styles.detailsActionsButtons}>
                     <Button
                       variant="secondary"
                       onClick={() => handleOpenReject(detailsRequest)}
@@ -893,8 +890,8 @@ export default function AccountRequestsPage() {
         }
       >
         {selectedRequest && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <p className={styles.confirmText} style={{ margin: 0 }}>
+          <div className={styles.confirmStack}>
+            <p className={`${styles.confirmText} ${styles.noMargin}`}>
               You are about to approve this signup request and create a beneficiary account for
               <strong> {buildFullName(selectedRequest)} </strong>
               in the ALAGA Program. This can be updated later from User Management.
@@ -923,8 +920,8 @@ export default function AccountRequestsPage() {
         }
       >
         {selectedRequest && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p className={styles.confirmText} style={{ margin: 0 }}>
+          <div className={styles.confirmStack}>
+            <p className={`${styles.confirmText} ${styles.noMargin}`}>
               Are you sure you want to archive this signup request for
               <strong> {buildFullName(selectedRequest)} </strong>?
             </p>
@@ -956,8 +953,8 @@ export default function AccountRequestsPage() {
         }
       >
         {selectedRequest && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p className={styles.confirmText} style={{ margin: 0 }}>
+          <div className={styles.confirmStack}>
+            <p className={`${styles.confirmText} ${styles.noMargin}`}>
               Move this request back to <strong>Pending</strong> for
               <strong> {buildFullName(selectedRequest)} </strong>?
             </p>
@@ -992,9 +989,9 @@ export default function AccountRequestsPage() {
         }
       >
         {documentPreview.url ? (
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <div style={{ display: "flex", gap: 8 }}>
+          <div className={styles.previewShell}>
+            <div className={styles.previewToolbar}>
+              <div className={styles.previewToolbarLeft}>
                 <Button
                   variant="secondary"
                   size="small"
@@ -1020,37 +1017,32 @@ export default function AccountRequestsPage() {
                   Reset
                 </Button>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div className={styles.previewToolbarRight}>
                 {!isLikelyImage(documentPreview.url) ? (
-                  <span style={{ fontSize: 12, color: "#6b7280" }}>Zoom buttons are for images only</span>
+                  <span className={styles.previewHint}>Zoom buttons are for images only</span>
                 ) : null}
-                <span style={{ fontSize: 12, color: "#6b7280" }}>{Math.round(previewZoom * 100)}%</span>
+                <span className={styles.previewZoom}>{Math.round(previewZoom * 100)}%</span>
               </div>
             </div>
             {isLikelyImage(documentPreview.url) ? (
-              <div style={{ maxHeight: "70vh", overflow: "auto", border: "1px solid #e5e7eb", borderRadius: 8 }}>
+              <div className={styles.previewImageWrap}>
                 <img
                   src={documentPreview.url}
                   alt="Uploaded document preview"
-                  style={{
-                    display: "block",
-                    maxWidth: "100%",
-                    margin: "0 auto",
-                    transform: `scale(${previewZoom})`,
-                    transformOrigin: "top center",
-                  }}
+                  className={styles.previewImage}
+                  style={{ transform: `scale(${previewZoom})` }}
                 />
               </div>
             ) : (
               <iframe
                 src={documentPreview.url}
                 title="Uploaded document preview"
-                style={{ width: "100%", height: "70vh", border: 0 }}
+                className={styles.previewFrame}
               />
             )}
           </div>
         ) : (
-          <p style={{ margin: 0 }}>No document available for preview.</p>
+          <p className={styles.previewEmpty}>No document available for preview.</p>
         )}
       </Modal>
 
@@ -1065,7 +1057,7 @@ export default function AccountRequestsPage() {
           </>
         }
       >
-        <p style={{ margin: 0, color: '#374151', whiteSpace: 'pre-wrap' }}>{alertState.message}</p>
+        <p className={styles.alertMessage}>{alertState.message}</p>
       </Modal>
     </div>
   );
