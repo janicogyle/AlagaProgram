@@ -496,29 +496,10 @@ export default function RequestsPage() {
   const openValidId = async (pathOrUrl) => {
     if (!pathOrUrl) return;
 
-    const useInAppPreview = shouldUseInAppPreview();
-    let openedTab = null;
     try {
-      if (!useInAppPreview) {
-        // Open a blank tab immediately from the click event so mobile browsers don't block it.
-        openedTab = window.open('', '_blank', 'noopener,noreferrer');
-        if (openedTab) {
-          try {
-            openedTab.opener = null;
-          } catch {
-            // ignore
-          }
-        }
-      }
-
       // Legacy: stored as full URL
       if (/^https?:\/\//i.test(pathOrUrl)) {
-        if (useInAppPreview) {
-          openDocumentPreview(pathOrUrl);
-          return;
-        }
-        if (!openedTab) throw new Error('Popup blocked. Please allow popups for this site.');
-        openedTab.location.href = pathOrUrl;
+        openDocumentPreview(pathOrUrl);
         return;
       }
 
@@ -541,18 +522,8 @@ export default function RequestsPage() {
       const url = json?.data?.url;
       if (!url) throw new Error('Unable to open document.');
 
-      if (useInAppPreview) {
-        openDocumentPreview(url);
-        return;
-      }
-      if (!openedTab) throw new Error('Popup blocked. Please allow popups for this site.');
-      openedTab.location.href = url;
+      openDocumentPreview(url);
     } catch (err) {
-      try {
-        openedTab?.close?.();
-      } catch {
-        // ignore
-      }
       openAlert({
         title: 'Open document failed',
         message: err?.message || 'Unable to open the uploaded ID. Please try again.',
@@ -1336,30 +1307,42 @@ export default function RequestsPage() {
         }
       >
         {documentPreview.url ? (
-          isLikelyImage(documentPreview.url) ? (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <Button
-                    variant="secondary"
-                    size="small"
-                    onClick={() => setPreviewZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
-                  >
-                    -
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="small"
-                    onClick={() => setPreviewZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))))}
-                  >
-                    +
-                  </Button>
-                  <Button variant="secondary" size="small" onClick={() => setPreviewZoom(1)}>
-                    Reset
-                  </Button>
-                </div>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onClick={() => setPreviewZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
+                  disabled={!isLikelyImage(documentPreview.url)}
+                >
+                  -
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onClick={() => setPreviewZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))))}
+                  disabled={!isLikelyImage(documentPreview.url)}
+                >
+                  +
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onClick={() => setPreviewZoom(1)}
+                  disabled={!isLikelyImage(documentPreview.url)}
+                >
+                  Reset
+                </Button>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {!isLikelyImage(documentPreview.url) ? (
+                  <span style={{ fontSize: 12, color: '#6b7280' }}>Zoom buttons are for images only</span>
+                ) : null}
                 <span style={{ fontSize: 12, color: '#6b7280' }}>{Math.round(previewZoom * 100)}%</span>
               </div>
+            </div>
+            {isLikelyImage(documentPreview.url) ? (
               <div style={{ maxHeight: '70vh', overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
                 <img
                   src={documentPreview.url}
@@ -1373,14 +1356,14 @@ export default function RequestsPage() {
                   }}
                 />
               </div>
-            </div>
-          ) : (
-            <iframe
-              src={documentPreview.url}
-              title="Uploaded document preview"
-              style={{ width: '100%', height: '70vh', border: 0 }}
-            />
-          )
+            ) : (
+              <iframe
+                src={documentPreview.url}
+                title="Uploaded document preview"
+                style={{ width: '100%', height: '70vh', border: 0 }}
+              />
+            )}
+          </div>
         ) : (
           <p style={{ margin: 0 }}>No document available for preview.</p>
         )}
