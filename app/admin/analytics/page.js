@@ -25,6 +25,7 @@ export default function AnalyticsPage() {
   const [ageDistribution, setAgeDistribution] = useState([]);
   const [purokDistribution, setPurokDistribution] = useState([]);
   const [recentRegistrations, setRecentRegistrations] = useState([]);
+  const [recentAccountRequests, setRecentAccountRequests] = useState([]);
   const [staffActivity, setStaffActivity] = useState([]);
   const [staffActivityLoading, setStaffActivityLoading] = useState(true);
 
@@ -49,6 +50,12 @@ export default function AnalyticsPage() {
     const { data: assistanceRequests } = await supabase
       .from('assistance_requests')
       .select('status, created_at');
+
+    const { data: accountRequests } = await supabase
+      .from('account_requests')
+      .select('id, created_at, first_name, last_name, is_pwd, is_senior_citizen, is_solo_parent, purok, barangay, status')
+      .order('created_at', { ascending: false })
+      .limit(5);
 
     const total = residents.length;
     const requestRows = assistanceRequests || [];
@@ -161,6 +168,23 @@ export default function AnalyticsPage() {
         status: r.status || 'Active',
       })),
     );
+
+    if (accountRequests) {
+      setRecentAccountRequests(
+        accountRequests.map((r) => ({
+          id: r.id,
+          name: `${r.last_name || ''}, ${r.first_name || ''}`.replace(/^,\s/, '').trim() || '—',
+          sector: [
+            r.is_pwd && 'PWD',
+            r.is_senior_citizen && 'Senior Citizen',
+            r.is_solo_parent && 'Solo Parent',
+          ].filter(Boolean),
+          purok: r.purok || r.barangay || '—',
+          date: r.created_at ? new Date(r.created_at).toLocaleDateString() : '',
+          status: r.status || 'Pending',
+        }))
+      );
+    }
   }, [timePeriod]);
 
   useEffect(() => {
@@ -262,7 +286,17 @@ export default function AnalyticsPage() {
       key: 'status',
       label: 'Status',
       render: (status) => (
-        <Badge variant={status === 'Active' ? 'success' : 'danger'}>{status}</Badge>
+        <Badge
+          variant={
+            status === 'Active' || status === 'Approved'
+              ? 'success'
+              : status === 'Pending'
+              ? 'warning'
+              : 'danger'
+          }
+        >
+          {status}
+        </Badge>
       ),
     },
   ];
@@ -305,9 +339,22 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
+      {/* Recent Account Requests */}
+      <Card title="Recent Account Requests" subtitle="Latest beneficiary account signups needing approval">
+        {recentAccountRequests.length === 0 ? (
+          <p style={{ padding: 12, margin: 0, color: '#6b7280' }}>No recent account requests.</p>
+        ) : (
+          <Table columns={columns} data={recentAccountRequests} />
+        )}
+      </Card>
+
       {/* Recent Registrations (same as Dashboard) */}
       <Card title="Recent Registrations" subtitle="Latest residents added to the system">
-        <Table columns={columns} data={recentRegistrations} />
+        {recentRegistrations.length === 0 ? (
+          <p style={{ padding: 12, margin: 0, color: '#6b7280' }}>No recent registrations.</p>
+        ) : (
+          <Table columns={columns} data={recentRegistrations} />
+        )}
       </Card>
 
       <Card title="Staff Recent Activity" subtitle="Latest actions performed by staff/admin accounts">
