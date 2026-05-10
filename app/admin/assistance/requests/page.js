@@ -105,6 +105,9 @@ const getFileNameFromUrl = (fileUrl) => {
 };
 
 const isLikelyImage = (fileUrl) => /\.(png|jpe?g|gif|webp)$/i.test(String(fileUrl || ''));
+const shouldUseInAppPreview = () =>
+  typeof window !== 'undefined' &&
+  window.matchMedia('(max-width: 1024px), (pointer: coarse)').matches;
 
 const parseLegacyRequirementUrls = (value) => {
   if (!value) return [];
@@ -156,6 +159,18 @@ export default function RequestsPage() {
   const [status, setStatus] = useState(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [requirementsByType, setRequirementsByType] = useState({});
+  const [documentPreview, setDocumentPreview] = useState({ open: false, url: '' });
+  const [previewZoom, setPreviewZoom] = useState(1);
+
+  const openDocumentPreview = (url) => {
+    setPreviewZoom(1);
+    setDocumentPreview({ open: true, url: String(url || '') });
+  };
+
+  const closeDocumentPreview = () => {
+    setPreviewZoom(1);
+    setDocumentPreview({ open: false, url: '' });
+  };
 
   useEffect(() => {
     const loadRequirements = async () => {
@@ -484,7 +499,7 @@ export default function RequestsPage() {
     try {
       // Legacy: stored as full URL
       if (/^https?:\/\//i.test(pathOrUrl)) {
-        window.open(pathOrUrl, '_blank', 'noopener,noreferrer');
+        openDocumentPreview(pathOrUrl);
         return;
       }
 
@@ -507,7 +522,7 @@ export default function RequestsPage() {
       const url = json?.data?.url;
       if (!url) throw new Error('Unable to open document.');
 
-      window.open(url, '_blank', 'noopener,noreferrer');
+      openDocumentPreview(url);
     } catch (err) {
       openAlert({
         title: 'Open document failed',
@@ -917,7 +932,7 @@ export default function RequestsPage() {
                         <circle cx="12" cy="12" r="3" />
                       </svg>
                     </button>
-                    {request.status === 'Pending' && (
+                    {['Pending', 'Resubmitted'].includes(request.status) && (
                       <>
                         <button 
                           className={styles.approveBtn}
@@ -1277,6 +1292,80 @@ export default function RequestsPage() {
               );
             })()}
           </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={documentPreview.open}
+        onClose={closeDocumentPreview}
+        title="Document Preview"
+        size="large"
+        footer={
+          <Button onClick={closeDocumentPreview}>
+            Close
+          </Button>
+        }
+      >
+        {documentPreview.url ? (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onClick={() => setPreviewZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
+                  disabled={!isLikelyImage(documentPreview.url)}
+                >
+                  -
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onClick={() => setPreviewZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))))}
+                  disabled={!isLikelyImage(documentPreview.url)}
+                >
+                  +
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onClick={() => setPreviewZoom(1)}
+                  disabled={!isLikelyImage(documentPreview.url)}
+                >
+                  Reset
+                </Button>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {!isLikelyImage(documentPreview.url) ? (
+                  <span style={{ fontSize: 12, color: '#6b7280' }}>Zoom buttons are for images only</span>
+                ) : null}
+                <span style={{ fontSize: 12, color: '#6b7280' }}>{Math.round(previewZoom * 100)}%</span>
+              </div>
+            </div>
+            {isLikelyImage(documentPreview.url) ? (
+              <div style={{ maxHeight: '70vh', overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                <img
+                  src={documentPreview.url}
+                  alt="Uploaded document preview"
+                  style={{
+                    display: 'block',
+                    maxWidth: '100%',
+                    margin: '0 auto',
+                    transform: `scale(${previewZoom})`,
+                    transformOrigin: 'top center',
+                  }}
+                />
+              </div>
+            ) : (
+              <iframe
+                src={documentPreview.url}
+                title="Uploaded document preview"
+                style={{ width: '100%', height: '70vh', border: 0 }}
+              />
+            )}
+          </div>
+        ) : (
+          <p style={{ margin: 0 }}>No document available for preview.</p>
         )}
       </Modal>
 

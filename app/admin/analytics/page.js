@@ -12,6 +12,7 @@ import styles from './page.module.css';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function AnalyticsPage() {
+  const [viewportWidth, setViewportWidth] = useState(1200);
   const [timePeriod, setTimePeriod] = useState('3months');
   const [kpiData, setKpiData] = useState([
     { title: 'Total Beneficiaries', current: 0, previous: 0, growth: 0, icon: 'users', color: 'blue' },
@@ -25,8 +26,20 @@ export default function AnalyticsPage() {
   const [ageDistribution, setAgeDistribution] = useState([]);
   const [purokDistribution, setPurokDistribution] = useState([]);
   const [recentRegistrations, setRecentRegistrations] = useState([]);
+  const [recentAccountRequests, setRecentAccountRequests] = useState([]);
   const [staffActivity, setStaffActivity] = useState([]);
   const [staffActivityLoading, setStaffActivityLoading] = useState(true);
+
+  useEffect(() => {
+    const updateViewportWidth = () => {
+      if (typeof window === 'undefined') return;
+      setViewportWidth(window.innerWidth || 1200);
+    };
+
+    updateViewportWidth();
+    window.addEventListener('resize', updateViewportWidth);
+    return () => window.removeEventListener('resize', updateViewportWidth);
+  }, []);
 
   const fetchData = useCallback(async () => {
     if (!supabase) {
@@ -49,6 +62,12 @@ export default function AnalyticsPage() {
     const { data: assistanceRequests } = await supabase
       .from('assistance_requests')
       .select('status, created_at');
+
+    const { data: accountRequests } = await supabase
+      .from('account_requests')
+      .select('id, created_at, first_name, last_name, is_pwd, is_senior_citizen, is_solo_parent, purok, barangay, status')
+      .order('created_at', { ascending: false })
+      .limit(5);
 
     const total = residents.length;
     const requestRows = assistanceRequests || [];
@@ -161,6 +180,23 @@ export default function AnalyticsPage() {
         status: r.status || 'Active',
       })),
     );
+
+    if (accountRequests) {
+      setRecentAccountRequests(
+        accountRequests.map((r) => ({
+          id: r.id,
+          name: `${r.last_name || ''}, ${r.first_name || ''}`.replace(/^,\s/, '').trim() || '—',
+          sector: [
+            r.is_pwd && 'PWD',
+            r.is_senior_citizen && 'Senior Citizen',
+            r.is_solo_parent && 'Solo Parent',
+          ].filter(Boolean),
+          purok: r.purok || r.barangay || '—',
+          date: r.created_at ? new Date(r.created_at).toLocaleDateString() : '',
+          status: r.status || 'Pending',
+        }))
+      );
+    }
   }, [timePeriod]);
 
   useEffect(() => {
@@ -262,7 +298,17 @@ export default function AnalyticsPage() {
       key: 'status',
       label: 'Status',
       render: (status) => (
-        <Badge variant={status === 'Active' ? 'success' : 'danger'}>{status}</Badge>
+        <Badge
+          variant={
+            status === 'Active' || status === 'Approved'
+              ? 'success'
+              : status === 'Pending'
+              ? 'warning'
+              : 'danger'
+          }
+        >
+          {status}
+        </Badge>
       ),
     },
   ];
@@ -277,6 +323,11 @@ export default function AnalyticsPage() {
     title: `${a.title}\n${a.message}`,
     time: a.time ? new Date(a.time).toLocaleString() : '',
   }));
+
+  const isTablet = viewportWidth <= 1200 && viewportWidth > 768;
+  const isMobile = viewportWidth <= 768;
+  const chartHeight = isMobile ? 160 : isTablet ? 170 : 200;
+  const pieChartSize = isMobile ? 120 : isTablet ? 130 : 150;
 
   return (
     <div className={styles.analyticsPage}>
@@ -305,9 +356,22 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
+      {/* Recent Account Requests */}
+      <Card title="Recent Account Requests" subtitle="Latest beneficiary account signups needing approval">
+        {recentAccountRequests.length === 0 ? (
+          <p style={{ padding: 12, margin: 0, color: '#6b7280' }}>No recent account requests.</p>
+        ) : (
+          <Table columns={columns} data={recentAccountRequests} fitToContainer />
+        )}
+      </Card>
+
       {/* Recent Registrations (same as Dashboard) */}
-      <Card title="Recent Registrations" subtitle="Latest residents added to the system">
-        <Table columns={columns} data={recentRegistrations} />
+      <Card title="Recent Approved Accounts" subtitle="Latest residents added to the system">
+        {recentRegistrations.length === 0 ? (
+          <p style={{ padding: 12, margin: 0, color: '#6b7280' }}>No recent registrations.</p>
+        ) : (
+          <Table columns={columns} data={recentRegistrations} fitToContainer />
+        )}
       </Card>
 
       <Card title="Staff Recent Activity" subtitle="Latest actions performed by staff/admin accounts">
@@ -340,7 +404,7 @@ export default function AnalyticsPage() {
             data={monthlyRegistrations}
             labelKey="label"
             valueKey="value"
-            height={200}
+            height={chartHeight}
           />
         </Card>
 
@@ -348,7 +412,7 @@ export default function AnalyticsPage() {
         <Card title="Sector Distribution" className={styles.chartCard}>
           <PieChart 
             data={sectorDistribution}
-            size={150}
+            size={pieChartSize}
             donut={true}
           />
         </Card>
@@ -357,7 +421,7 @@ export default function AnalyticsPage() {
         <Card title="Gender Distribution" className={styles.chartCard}>
           <PieChart 
             data={genderDistribution}
-            size={150}
+            size={pieChartSize}
             donut={true}
           />
         </Card>
@@ -368,7 +432,7 @@ export default function AnalyticsPage() {
             data={ageDistribution}
             labelKey="label"
             valueKey="value"
-            height={200}
+            height={chartHeight}
             color="linear-gradient(180deg, #10b981 0%, #059669 100%)"
           />
         </Card>

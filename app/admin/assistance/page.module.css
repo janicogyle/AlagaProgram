@@ -282,7 +282,6 @@
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 16px;
-  margin-bottom: 12px;
   min-width: 0;
 }
 
@@ -380,19 +379,28 @@
   }
 }
 
-@media (max-width: 768px) {
-  .assistancePage {
-    gap: 20px;
-  }
-
-  /* Switch to card view on mobile */
+@media (max-width: 1200px) {
   .tableView {
     display: none;
   }
 
   .mobileCardView {
-    display: block;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 12px;
     padding: 0 16px 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .assistancePage {
+    gap: 20px;
+  }
+
+  .mobileCardView {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 0 12px 12px;
   }
 
   .recordCard {

@@ -33,6 +33,13 @@ const typeOptions = [
   { value: 'Others', label: 'Others' },
 ];
 
+const sectorOptions = [
+  { value: '', label: 'All Sectors' },
+  { value: 'PWD', label: 'PWD' },
+  { value: 'Senior Citizen', label: 'Senior Citizen' },
+  { value: 'Solo Parent', label: 'Solo Parent' },
+];
+
 
 
 const serviceTypes = [
@@ -53,6 +60,7 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
 
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [sectorFilter, setSectorFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('Released');
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -94,6 +102,31 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
         if (error) throw error;
 
         const rows = Array.isArray(data) ? data : [];
+        const residentIds = Array.from(
+          new Set(rows.map((row) => row?.resident_id).filter(Boolean)),
+        );
+
+        let residentSectorsById = new Map();
+        if (residentIds.length > 0) {
+          const { data: residentRows, error: residentsError } = await supabase
+            .from('residents')
+            .select('id, is_pwd, is_senior_citizen, is_solo_parent')
+            .in('id', residentIds);
+
+          if (!residentsError && Array.isArray(residentRows)) {
+            residentSectorsById = new Map(
+              residentRows.map((resident) => {
+                const sectors = [
+                  resident?.is_pwd ? 'PWD' : null,
+                  resident?.is_senior_citizen ? 'Senior Citizen' : null,
+                  resident?.is_solo_parent ? 'Solo Parent' : null,
+                ].filter(Boolean);
+                return [resident.id, sectors];
+              }),
+            );
+          }
+        }
+
         const latestByResident = new Map();
 
         rows.forEach((row) => {
@@ -117,6 +150,7 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
           status: r.status || 'Released',
           date: r.request_date ? new Date(r.request_date).toLocaleDateString() : '',
           cooldownInfo: getCooldownInfo(latestByResident.get(r.resident_id) || null),
+          sectors: residentSectorsById.get(r.resident_id) || [],
         }));
 
         setRecords(mapped);
@@ -177,8 +211,9 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
       record.beneficiary.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.controlNo.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = !typeFilter || record.type === typeFilter;
+    const matchesSector = !sectorFilter || (record.sectors || []).includes(sectorFilter);
     const matchesStatus = !statusFilter || record.status === statusFilter;
-    return matchesSearch && matchesType && matchesStatus;
+    return matchesSearch && matchesType && matchesSector && matchesStatus;
   });
 
   const handleChange = (e) => {
@@ -394,6 +429,13 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
             onChange={(e) => setTypeFilter(e.target.value)}
             options={typeOptions}
             placeholder="All Types"
+          />
+          <Select
+            name="sector"
+            value={sectorFilter}
+            onChange={(e) => setSectorFilter(e.target.value)}
+            options={sectorOptions}
+            placeholder="All Sectors"
           />
         </FilterBar>
 

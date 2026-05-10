@@ -3,11 +3,12 @@ import styles from './Table.module.css';
 export default function Table({ 
   columns, 
   data, 
-  emptyMessage = 'No data available' 
+  emptyMessage = 'No data available',
+  fitToContainer = false,
 }) {
   return (
     <div className={styles.tableWrapper}>
-      <table className={styles.table}>
+      <table className={`${styles.table} ${fitToContainer ? styles.fitTable : ''}`}>
         <thead>
           <tr>
             {columns.map((column) => (

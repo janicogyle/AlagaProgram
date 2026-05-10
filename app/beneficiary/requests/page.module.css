@@ -375,14 +375,21 @@
 	}
 
 	.sideCards {
-		flex-direction: row;
-		flex-wrap: wrap;
+		flex-direction: column;
 		gap: 16px;
 	}
 
 	.sideCards > * {
-		flex: 1;
-		min-width: 280px;
+		min-width: 0;
+	}
+
+	.actions {
+		flex-direction: column-reverse;
+		gap: 10px;
+	}
+
+	.actions button {
+		width: 100%;
 	}
 }
 

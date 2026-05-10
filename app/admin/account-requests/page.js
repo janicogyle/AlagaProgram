@@ -94,6 +94,8 @@ function parseValidIdUrls(value, fallbackValue) {
   return list.map((item) => String(item || "").trim()).filter(Boolean);
 }
 
+const isLikelyImage = (fileUrl) => /\.(png|jpe?g|gif|webp)$/i.test(String(fileUrl || ""));
+
 export default function AccountRequestsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("Pending");
@@ -105,6 +107,8 @@ export default function AccountRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [archiveNotes, setArchiveNotes] = useState('');
+  const [documentPreview, setDocumentPreview] = useState({ open: false, url: "" });
+  const [previewZoom, setPreviewZoom] = useState(1);
   const [alertState, setAlertState] = useState({
     open: false,
     title: '',
@@ -209,8 +213,10 @@ export default function AccountRequestsPage() {
 
     try {
       const value = String(pathOrUrl);
+
       if (/^https?:\/\//i.test(value)) {
-        window.open(value, "_blank", "noopener,noreferrer");
+        setPreviewZoom(1);
+        setDocumentPreview({ open: true, url: value });
         return;
       }
 
@@ -225,7 +231,8 @@ export default function AccountRequestsPage() {
       const url = json?.data?.url;
       if (!url) throw new Error("Unable to open document.");
 
-      window.open(url, "_blank", "noopener,noreferrer");
+      setPreviewZoom(1);
+      setDocumentPreview({ open: true, url });
     } catch (e) {
       openAlert({
         title: "Unable to open",
@@ -659,7 +666,7 @@ export default function AccountRequestsPage() {
                   <div className={styles.cardRow}>
                     <span className={styles.cardLabel}>Sector</span>
                     <div className={styles.cardValue}>
-                      <div className={styles.sectorBadges} style={{ justifyContent: 'flex-end' }}>
+                      <div className={`${styles.sectorBadges} ${styles.sectorBadgesEnd}`}>
                         {getSectorBadges(request).length ? (
                           getSectorBadges(request).map((sector) => (
                             <Badge key={sector} variant="secondary">
@@ -836,8 +843,8 @@ export default function AccountRequestsPage() {
 
             {detailsRequest.status === "Pending" && (
               <div className={styles.detailsActionsRow}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <div className={styles.detailsActionsStack}>
+                  <div className={styles.detailsActionsButtons}>
                     <Button
                       variant="secondary"
                       onClick={() => handleOpenReject(detailsRequest)}
@@ -883,8 +890,8 @@ export default function AccountRequestsPage() {
         }
       >
         {selectedRequest && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <p className={styles.confirmText} style={{ margin: 0 }}>
+          <div className={styles.confirmStack}>
+            <p className={`${styles.confirmText} ${styles.noMargin}`}>
               You are about to approve this signup request and create a beneficiary account for
               <strong> {buildFullName(selectedRequest)} </strong>
               in the ALAGA Program. This can be updated later from User Management.
@@ -913,8 +920,8 @@ export default function AccountRequestsPage() {
         }
       >
         {selectedRequest && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p className={styles.confirmText} style={{ margin: 0 }}>
+          <div className={styles.confirmStack}>
+            <p className={`${styles.confirmText} ${styles.noMargin}`}>
               Are you sure you want to archive this signup request for
               <strong> {buildFullName(selectedRequest)} </strong>?
             </p>
@@ -946,8 +953,8 @@ export default function AccountRequestsPage() {
         }
       >
         {selectedRequest && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p className={styles.confirmText} style={{ margin: 0 }}>
+          <div className={styles.confirmStack}>
+            <p className={`${styles.confirmText} ${styles.noMargin}`}>
               Move this request back to <strong>Pending</strong> for
               <strong> {buildFullName(selectedRequest)} </strong>?
             </p>
@@ -962,6 +969,83 @@ export default function AccountRequestsPage() {
         )}
       </Modal>
 
+      <Modal
+        isOpen={documentPreview.open}
+        onClose={() => {
+          setPreviewZoom(1);
+          setDocumentPreview({ open: false, url: "" });
+        }}
+        title="Document Preview"
+        size="large"
+        footer={
+          <Button
+            onClick={() => {
+              setPreviewZoom(1);
+              setDocumentPreview({ open: false, url: "" });
+            }}
+          >
+            Close
+          </Button>
+        }
+      >
+        {documentPreview.url ? (
+          <div className={styles.previewShell}>
+            <div className={styles.previewToolbar}>
+              <div className={styles.previewToolbarLeft}>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onClick={() => setPreviewZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
+                  disabled={!isLikelyImage(documentPreview.url)}
+                >
+                  -
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onClick={() => setPreviewZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))))}
+                  disabled={!isLikelyImage(documentPreview.url)}
+                >
+                  +
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onClick={() => setPreviewZoom(1)}
+                  disabled={!isLikelyImage(documentPreview.url)}
+                >
+                  Reset
+                </Button>
+              </div>
+              <div className={styles.previewToolbarRight}>
+                {!isLikelyImage(documentPreview.url) ? (
+                  <span className={styles.previewHint}>Zoom buttons are for images only</span>
+                ) : null}
+                <span className={styles.previewZoom}>{Math.round(previewZoom * 100)}%</span>
+              </div>
+            </div>
+            {isLikelyImage(documentPreview.url) ? (
+              <div className={styles.previewImageWrap}>
+                <img
+                  src={documentPreview.url}
+                  alt="Uploaded document preview"
+                  className={styles.previewImage}
+                  style={{ transform: `scale(${previewZoom})` }}
+                />
+              </div>
+            ) : (
+              <iframe
+                src={documentPreview.url}
+                title="Uploaded document preview"
+                className={styles.previewFrame}
+              />
+            )}
+          </div>
+        ) : (
+          <p className={styles.previewEmpty}>No document available for preview.</p>
+        )}
+      </Modal>
+
       {/* Alert Modal */}
       <Modal
         isOpen={isAlertModalOpen}
@@ -973,7 +1057,7 @@ export default function AccountRequestsPage() {
           </>
         }
       >
-        <p style={{ margin: 0, color: '#374151', whiteSpace: 'pre-wrap' }}>{alertState.message}</p>
+        <p className={styles.alertMessage}>{alertState.message}</p>
       </Modal>
     </div>
   );

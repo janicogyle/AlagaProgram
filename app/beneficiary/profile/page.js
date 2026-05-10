@@ -119,6 +119,10 @@ export default function ProfilePage() {
   if (resident?.is_pwd) sectors.push('PWD');
   if (resident?.is_senior_citizen) sectors.push('Senior Citizen');
   if (resident?.is_solo_parent) sectors.push('Solo Parent');
+  const fullName = [resident?.first_name, resident?.middle_name, resident?.last_name].filter(Boolean).join(' ');
+  const addressLine = [resident?.house_no, resident?.purok, resident?.barangay, resident?.city]
+    .filter(Boolean)
+    .join(', ');
 
   return (
     <div className={styles.profilePage}>
@@ -135,9 +139,21 @@ export default function ProfilePage() {
             We couldn&apos;t find your beneficiary profile yet. The layout below shows what will be stored once you sign up.
           </p>
         )}
+        {!loading && resident && (
+          <div className={styles.profileSummary}>
+            <div className={styles.profileIdentity}>
+              <h2 className={styles.profileName}>{fullName || 'Beneficiary'}</h2>
+              <p className={styles.profileMeta}>{resident?.contact_number || 'No contact number on file'}</p>
+              <p className={styles.profileMeta}>{addressLine || 'No address on file'}</p>
+            </div>
+            <div className={styles.profileBadges}>
+              {sectors.length ? sectors.map((s) => <StatusChip key={s} label={s} />) : <StatusChip label="General" />}
+            </div>
+          </div>
+        )}
 
         <form className={styles.profileForm}>
-            <section className={styles.section} aria-labelledby="id-card-heading">
+            <section className={styles.sectionCard} aria-labelledby="id-card-heading">
               <SectionHeader
                 id="id-card-heading"
                 title="Beneficiary ID (QR)"
@@ -150,12 +166,19 @@ export default function ProfilePage() {
               )}
               {!idCard.loading && idCard.qrUrl && (
                 <div className={styles.qrWrap}>
-                  <img className={styles.qrImage} src={idCard.qrUrl} alt="Beneficiary ID QR Code" />
+                  <div className={styles.qrImageBox}>
+                    <img className={styles.qrImage} src={idCard.qrUrl} alt="Beneficiary ID QR Code" />
+                  </div>
                   <div className={styles.qrMeta}>
                     <div className={styles.qrRow}>
                       <span className={styles.qrLabel}>Expires:</span>
                       <strong>{idCard.card?.expires_at ? new Date(idCard.card.expires_at).toLocaleDateString() : '-'}</strong>
                     </div>
+                    <div className={styles.qrRow}>
+                      <span className={styles.qrLabel}>Card Ref:</span>
+                      <span className={styles.qrRef}>{String(idCard.card?.id || '-').slice(0, 8).toUpperCase()}</span>
+                    </div>
+                    <p className={styles.qrHint}>Keep this QR private. Share only with authorized barangay staff.</p>
                     <div className={styles.qrButtons}>
                       <Button
                         variant="secondary"
@@ -190,7 +213,7 @@ export default function ProfilePage() {
               )}
             </section>
 
-            <section className={styles.section} aria-labelledby="personal-info-heading">
+            <section className={styles.sectionCard} aria-labelledby="personal-info-heading">
               <SectionHeader
                 id="personal-info-heading"
                 title="Personal information"
@@ -279,7 +302,7 @@ export default function ProfilePage() {
               </div>
             </section>
 
-            <section className={styles.section} aria-labelledby="address-info-heading">
+            <section className={styles.sectionCard} aria-labelledby="address-info-heading">
               <SectionHeader
                 id="address-info-heading"
                 title="Address information"
@@ -313,7 +336,7 @@ export default function ProfilePage() {
               </div>
             </section>
 
-            <HelperText>
+            <HelperText className={styles.footerNote}>
               For any corrections to your information, please visit the barangay office so our social services team can
               update your records.
             </HelperText>
