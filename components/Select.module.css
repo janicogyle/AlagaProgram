@@ -78,12 +78,35 @@
   color: #dc2626;
 }
 
+.compact {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.compact .select {
+  width: auto;
+  min-width: var(--select-min-width, 8.5rem);
+  max-width: var(--select-max-width, 11.5rem);
+  padding: 8px 32px 8px 12px;
+  min-height: 38px;
+  font-size: 13px;
+}
+
+.compact .arrow {
+  right: 10px;
+}
+
 /* ======================= */
 /* RESPONSIVE STYLES       */
 /* ======================= */
 @media (max-width: 768px) {
   .label {
     font-size: 13px;
+  }
+
+  .compact .select {
+    max-width: none;
+    width: 100%;
   }
 
   .select {

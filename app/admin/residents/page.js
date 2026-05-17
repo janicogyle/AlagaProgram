@@ -13,6 +13,7 @@ import {
   DataTableFooter,
   Modal,
   Table,
+  DocumentPreviewModal,
 } from "@/components";
 import styles from "./page.module.css";
 import { supabase } from '@/lib/supabaseClient';
@@ -52,7 +53,6 @@ const sexOptions = [
   { value: "female", label: "Female" },
 ];
 
-const isLikelyImage = (fileUrl) => /\.(png|jpe?g|gif|webp)$/i.test(String(fileUrl || ''));
 const shouldUseInAppPreview = () =>
   typeof window !== 'undefined' &&
   window.matchMedia('(max-width: 1024px), (pointer: coarse)').matches;
@@ -238,8 +238,7 @@ export default function ResidentsPage() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [editErrors, setEditErrors] = useState({ contact_number: '' });
-  const [documentPreview, setDocumentPreview] = useState({ open: false, url: '' });
-  const [previewZoom, setPreviewZoom] = useState(1);
+  const [documentPreview, setDocumentPreview] = useState({ open: false, url: '', path: '' });
   const [editForm, setEditForm] = useState({
     first_name: '',
     middle_name: '',
@@ -264,14 +263,16 @@ export default function ResidentsPage() {
     setAlertState({ open: true, title, message });
   };
 
-  const openDocumentPreview = (url) => {
-    setPreviewZoom(1);
-    setDocumentPreview({ open: true, url: String(url || '') });
+  const openDocumentPreview = (url, path = '') => {
+    setDocumentPreview({
+      open: true,
+      url: String(url || ''),
+      path: String(path || ''),
+    });
   };
 
   const closeDocumentPreview = () => {
-    setPreviewZoom(1);
-    setDocumentPreview({ open: false, url: '' });
+    setDocumentPreview({ open: false, url: '', path: '' });
   };
 
   const closeAlert = () => {
@@ -476,7 +477,7 @@ export default function ResidentsPage() {
 
     try {
       if (/^https?:\/\//i.test(pathOrUrl)) {
-        openDocumentPreview(pathOrUrl);
+        openDocumentPreview(pathOrUrl, pathOrUrl);
         return;
       }
 
@@ -496,7 +497,7 @@ export default function ResidentsPage() {
       const url = json?.data?.url;
       if (!url) throw new Error('Unable to open document.');
 
-      openDocumentPreview(url);
+      openDocumentPreview(url, pathOrUrl);
     } catch (err) {
       openAlert({
         title: 'Open document failed',
@@ -1513,74 +1514,12 @@ export default function ResidentsPage() {
         </div>
       </Modal>
 
-      <Modal
+      <DocumentPreviewModal
         isOpen={documentPreview.open}
         onClose={closeDocumentPreview}
-        title="Document Preview"
-        size="large"
-        footer={
-          <Button onClick={closeDocumentPreview}>
-            Close
-          </Button>
-        }
-      >
-        {documentPreview.url ? (
-          <div className={styles.previewShell}>
-            <div className={styles.previewToolbar}>
-              <div className={styles.previewToolbarLeft}>
-                <Button
-                  variant="secondary"
-                  size="small"
-                  onClick={() => setPreviewZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
-                  disabled={!isLikelyImage(documentPreview.url)}
-                >
-                  -
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="small"
-                  onClick={() => setPreviewZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))))}
-                  disabled={!isLikelyImage(documentPreview.url)}
-                >
-                  +
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="small"
-                  onClick={() => setPreviewZoom(1)}
-                  disabled={!isLikelyImage(documentPreview.url)}
-                >
-                  Reset
-                </Button>
-              </div>
-              <div className={styles.previewToolbarRight}>
-                {!isLikelyImage(documentPreview.url) ? (
-                  <span className={styles.previewHint}>Zoom buttons are for images only</span>
-                ) : null}
-                <span className={styles.previewZoom}>{Math.round(previewZoom * 100)}%</span>
-              </div>
-            </div>
-            {isLikelyImage(documentPreview.url) ? (
-              <div className={styles.previewImageWrap}>
-                <img
-                  src={documentPreview.url}
-                  alt="Uploaded document preview"
-                  className={styles.previewImage}
-                  style={{ transform: `scale(${previewZoom})` }}
-                />
-              </div>
-            ) : (
-              <iframe
-                src={documentPreview.url}
-                title="Uploaded document preview"
-                className={styles.previewFrame}
-              />
-            )}
-          </div>
-        ) : (
-          <p className={styles.previewEmpty}>No document available for preview.</p>
-        )}
-      </Modal>
+        url={documentPreview.url}
+        path={documentPreview.path}
+      />
 
       <Modal
         isOpen={!!selectedResident && editVerifyOpen}
