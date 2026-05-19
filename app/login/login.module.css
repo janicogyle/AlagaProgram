@@ -4,9 +4,22 @@
   align-items: center;
   min-height: 100vh;
   padding: 2rem 1.5rem;
-  background: linear-gradient(135deg, #e5f0ff 0%, #f3f4f6 40%, #eef2ff 100%);
   position: relative;
   min-width: 0;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 50%, #172554 100%);
+}
+
+.container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('/dashimage.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.18;
+  pointer-events: none;
 }
 
 .loginBox {
@@ -20,11 +33,8 @@
   min-height: 460px;
   transition: min-height 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   min-width: 0;
-}
-
-.loginBox:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+  position: relative;
+  z-index: 1;
 }
   
   .logo {
