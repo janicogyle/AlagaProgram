@@ -1,0 +1,36 @@
+.legalContent {
+  margin-top: 0.75rem;
+  line-height: 1.5;
+  color: #4b5563;
+}
+
+.legalIntro {
+  margin: 0 0 0.4rem;
+  color: #111827;
+}
+
+.legalParagraph {
+  margin: 0.25rem 0 0.5rem;
+}
+
+.legalHeading {
+  display: block;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.25rem;
+}
+
+.legalList {
+  padding-left: 1.2rem;
+  margin: 0.35rem 0 0.75rem;
+}
+
+.legalList li {
+  margin-bottom: 0.5rem;
+}
+
+.legalSubList {
+  padding-left: 1.1rem;
+  margin: 0.35rem 0 0.5rem;
+  list-style: disc;
+}
