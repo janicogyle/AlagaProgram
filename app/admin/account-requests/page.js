@@ -12,6 +12,7 @@ import {
   DataTableFooter,
   Modal,
   Table,
+  DocumentPreviewModal,
 } from "@/components";
 import { supabase } from "@/lib/supabaseClient";
 import styles from "./page.module.css";
@@ -94,8 +95,6 @@ function parseValidIdUrls(value, fallbackValue) {
   return list.map((item) => String(item || "").trim()).filter(Boolean);
 }
 
-const isLikelyImage = (fileUrl) => /\.(png|jpe?g|gif|webp)$/i.test(String(fileUrl || ""));
-
 export default function AccountRequestsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("Pending");
@@ -107,8 +106,7 @@ export default function AccountRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [archiveNotes, setArchiveNotes] = useState('');
-  const [documentPreview, setDocumentPreview] = useState({ open: false, url: "" });
-  const [previewZoom, setPreviewZoom] = useState(1);
+  const [documentPreview, setDocumentPreview] = useState({ open: false, url: "", path: "" });
   const [alertState, setAlertState] = useState({
     open: false,
     title: '',
@@ -215,8 +213,7 @@ export default function AccountRequestsPage() {
       const value = String(pathOrUrl);
 
       if (/^https?:\/\//i.test(value)) {
-        setPreviewZoom(1);
-        setDocumentPreview({ open: true, url: value });
+        setDocumentPreview({ open: true, url: value, path: value });
         return;
       }
 
@@ -231,8 +228,7 @@ export default function AccountRequestsPage() {
       const url = json?.data?.url;
       if (!url) throw new Error("Unable to open document.");
 
-      setPreviewZoom(1);
-      setDocumentPreview({ open: true, url });
+      setDocumentPreview({ open: true, url, path: value });
     } catch (e) {
       openAlert({
         title: "Unable to open",
@@ -548,15 +544,19 @@ export default function AccountRequestsPage() {
           subtitle="Review beneficiary signups and approve accounts for the ALAGA Program"
         />
 
-        <FilterBar>
+        <FilterBar className={styles.filters}>
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
             placeholder="Search by name or contact number..."
+            className={styles.searchInput}
           />
           <div className={styles.filterGroup}>
-            <label className={styles.filterLabel}>Status</label>
+            <label htmlFor="status-filter" className={styles.filterLabel}>
+              Status
+            </label>
             <select
+              id="status-filter"
               className={styles.select}
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -709,6 +709,7 @@ export default function AccountRequestsPage() {
         isOpen={isDetailsModalOpen}
         onClose={handleCloseModal}
         title="Signup Details"
+        size="xlarge"
       >
         {detailsRequest && (
           <div className={styles.detailsContent}>
@@ -842,29 +843,36 @@ export default function AccountRequestsPage() {
             )}
 
             {detailsRequest.status === "Pending" && (
-              <div className={styles.detailsActionsRow}>
-                <div className={styles.detailsActionsStack}>
-                  <div className={styles.detailsActionsButtons}>
-                    <Button
-                      variant="secondary"
-                      onClick={() => handleOpenReject(detailsRequest)}
-                    >
-                      Archive
-                    </Button>
-                    <Button onClick={() => handleOpenApprove(detailsRequest)}>
-                      Approve & Create Account
-                    </Button>
-                  </div>
-                  <div className={styles.subtleText}>
-                    The information provided during sign-up will be automatically reflected in the beneficiary profile after approval.
-                  </div>
+              <div className={styles.detailsActionsSection}>
+                <div className={styles.detailsActionsButtons}>
+                  <Button
+                    variant="outline"
+                    className={styles.detailsActionBtn}
+                    onClick={() => handleOpenReject(detailsRequest)}
+                  >
+                    Archive
+                  </Button>
+                  <Button
+                    className={styles.detailsActionBtn}
+                    onClick={() => handleOpenApprove(detailsRequest)}
+                  >
+                    Approve & Create Account
+                  </Button>
                 </div>
+                <p className={styles.detailsActionsHint}>
+                  The information provided during sign-up will be automatically reflected in the
+                  beneficiary profile after approval.
+                </p>
               </div>
             )}
 
             {(detailsRequest.status === "Archived" || detailsRequest.status === "Rejected") && (
-              <div className={styles.detailsActionsRow}>
-                <Button variant="outline" onClick={() => handleOpenUnarchive(detailsRequest)}>
+              <div className={styles.detailsActionsSection}>
+                <Button
+                  variant="outline"
+                  className={styles.detailsActionBtnSingle}
+                  onClick={() => handleOpenUnarchive(detailsRequest)}
+                >
                   Unarchive
                 </Button>
               </div>
@@ -969,82 +977,12 @@ export default function AccountRequestsPage() {
         )}
       </Modal>
 
-      <Modal
+      <DocumentPreviewModal
         isOpen={documentPreview.open}
-        onClose={() => {
-          setPreviewZoom(1);
-          setDocumentPreview({ open: false, url: "" });
-        }}
-        title="Document Preview"
-        size="large"
-        footer={
-          <Button
-            onClick={() => {
-              setPreviewZoom(1);
-              setDocumentPreview({ open: false, url: "" });
-            }}
-          >
-            Close
-          </Button>
-        }
-      >
-        {documentPreview.url ? (
-          <div className={styles.previewShell}>
-            <div className={styles.previewToolbar}>
-              <div className={styles.previewToolbarLeft}>
-                <Button
-                  variant="secondary"
-                  size="small"
-                  onClick={() => setPreviewZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
-                  disabled={!isLikelyImage(documentPreview.url)}
-                >
-                  -
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="small"
-                  onClick={() => setPreviewZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))))}
-                  disabled={!isLikelyImage(documentPreview.url)}
-                >
-                  +
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="small"
-                  onClick={() => setPreviewZoom(1)}
-                  disabled={!isLikelyImage(documentPreview.url)}
-                >
-                  Reset
-                </Button>
-              </div>
-              <div className={styles.previewToolbarRight}>
-                {!isLikelyImage(documentPreview.url) ? (
-                  <span className={styles.previewHint}>Zoom buttons are for images only</span>
-                ) : null}
-                <span className={styles.previewZoom}>{Math.round(previewZoom * 100)}%</span>
-              </div>
-            </div>
-            {isLikelyImage(documentPreview.url) ? (
-              <div className={styles.previewImageWrap}>
-                <img
-                  src={documentPreview.url}
-                  alt="Uploaded document preview"
-                  className={styles.previewImage}
-                  style={{ transform: `scale(${previewZoom})` }}
-                />
-              </div>
-            ) : (
-              <iframe
-                src={documentPreview.url}
-                title="Uploaded document preview"
-                className={styles.previewFrame}
-              />
-            )}
-          </div>
-        ) : (
-          <p className={styles.previewEmpty}>No document available for preview.</p>
-        )}
-      </Modal>
+        onClose={() => setDocumentPreview({ open: false, url: "", path: "" })}
+        url={documentPreview.url}
+        path={documentPreview.path}
+      />
 
       {/* Alert Modal */}
       <Modal

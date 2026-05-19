@@ -432,6 +432,38 @@
   color: #9ca3af;
 }
 
+.filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  justify-content: flex-start;
+  padding: 12px 20px;
+}
+
+.searchInput {
+  flex: 1 1 220px;
+  max-width: 380px;
+  min-width: 180px;
+}
+
+.filterSelects {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.filterSelectType {
+  --select-max-width: 13rem;
+}
+
+.filterSelectStatus {
+  --select-min-width: 7.5rem;
+  --select-max-width: 10rem;
+}
+
 /* Responsive */
 
 /* Table/Card View Toggle */
@@ -444,6 +476,15 @@
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 16px;
   padding: 0 16px 16px;
+}
+
+@media (min-width: 769px) {
+  .tableView {
+    display: block;
+  }
+  .mobileCardView {
+    display: none;
+  }
 }
 
 .requestCard {
@@ -591,6 +632,31 @@
 }
 
 @media (max-width: 768px) {
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 16px;
+  }
+
+  .searchInput {
+    flex: 1 1 auto;
+    max-width: none;
+    width: 100%;
+  }
+
+  .filterSelects {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .filterSelectType,
+  .filterSelectStatus {
+    --select-min-width: 0;
+    --select-max-width: none;
+  }
+
   .requestsPage {
     gap: 16px;
   }

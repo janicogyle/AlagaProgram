@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import styles from './Select.module.css';
 
 export default function Select({
@@ -13,10 +12,11 @@ export default function Select({
   required = false,
   disabled = false,
   error = '',
+  compact = false,
   className = ''
 }) {
   return (
-    <div className={`${styles.selectGroup} ${className}`}>
+    <div className={`${styles.selectGroup} ${compact ? styles.compact : ''} ${className}`}>
       {label && (
         <label htmlFor={name} className={styles.label}>
           {label}

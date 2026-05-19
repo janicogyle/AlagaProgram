@@ -417,26 +417,33 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
           </div>
         )}
 
-        <FilterBar>
+        <FilterBar className={styles.filters}>
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
             placeholder="Search by name or control number..."
+            className={styles.searchInput}
           />
-          <Select
-            name="type"
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            options={typeOptions}
-            placeholder="All Types"
-          />
-          <Select
-            name="sector"
-            value={sectorFilter}
-            onChange={(e) => setSectorFilter(e.target.value)}
-            options={sectorOptions}
-            placeholder="All Sectors"
-          />
+          <div className={styles.filterSelects} role="group" aria-label="Filter records">
+            <Select
+              name="type"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              options={typeOptions}
+              placeholder="All Types"
+              compact
+              className={styles.filterSelectType}
+            />
+            <Select
+              name="sector"
+              value={sectorFilter}
+              onChange={(e) => setSectorFilter(e.target.value)}
+              options={sectorOptions}
+              placeholder="All Sectors"
+              compact
+              className={styles.filterSelectSector}
+            />
+          </div>
         </FilterBar>
 
         {/* Desktop Table View */}

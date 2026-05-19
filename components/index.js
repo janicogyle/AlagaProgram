@@ -20,6 +20,7 @@ export { default as SearchInput } from './SearchInput';
 export { default as FilterBar } from './FilterBar';
 export { default as DataTableFooter } from './DataTableFooter';
 export { default as Modal } from './Modal';
+export { default as DocumentPreviewModal } from './DocumentPreviewModal';
 export { default as ActionMenu } from './ActionMenu';
 export { default as EmptyState } from './EmptyState';
 export { default as NotificationPanel } from './NotificationPanel';

@@ -20,7 +20,9 @@ import {
   FilterBar,
   DataTableFooter,
   Modal,
+  DocumentPreviewModal,
 } from '@/components';
+import { isLikelyImage } from '@/lib/documentPreview';
 import styles from './page.module.css';
 
 // Requests are loaded from the `assistance_requests` table in Supabase.
@@ -104,7 +106,6 @@ const getFileNameFromUrl = (fileUrl) => {
   return parts[parts.length - 1] || 'Document';
 };
 
-const isLikelyImage = (fileUrl) => /\.(png|jpe?g|gif|webp)$/i.test(String(fileUrl || ''));
 const shouldUseInAppPreview = () =>
   typeof window !== 'undefined' &&
   window.matchMedia('(max-width: 1024px), (pointer: coarse)').matches;
@@ -159,17 +160,18 @@ export default function RequestsPage() {
   const [status, setStatus] = useState(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [requirementsByType, setRequirementsByType] = useState({});
-  const [documentPreview, setDocumentPreview] = useState({ open: false, url: '' });
-  const [previewZoom, setPreviewZoom] = useState(1);
+  const [documentPreview, setDocumentPreview] = useState({ open: false, url: '', path: '' });
 
-  const openDocumentPreview = (url) => {
-    setPreviewZoom(1);
-    setDocumentPreview({ open: true, url: String(url || '') });
+  const openDocumentPreview = (url, path = '') => {
+    setDocumentPreview({
+      open: true,
+      url: String(url || ''),
+      path: String(path || ''),
+    });
   };
 
   const closeDocumentPreview = () => {
-    setPreviewZoom(1);
-    setDocumentPreview({ open: false, url: '' });
+    setDocumentPreview({ open: false, url: '', path: '' });
   };
 
   useEffect(() => {
@@ -499,7 +501,7 @@ export default function RequestsPage() {
     try {
       // Legacy: stored as full URL
       if (/^https?:\/\//i.test(pathOrUrl)) {
-        openDocumentPreview(pathOrUrl);
+        openDocumentPreview(pathOrUrl, pathOrUrl);
         return;
       }
 
@@ -522,7 +524,7 @@ export default function RequestsPage() {
       const url = json?.data?.url;
       if (!url) throw new Error('Unable to open document.');
 
-      openDocumentPreview(url);
+      openDocumentPreview(url, pathOrUrl);
     } catch (err) {
       openAlert({
         title: 'Open document failed',
@@ -876,26 +878,33 @@ export default function RequestsPage() {
           </div>
         )}
 
-        <FilterBar>
+        <FilterBar className={styles.filters}>
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
             placeholder="Search by name or control number..."
+            className={styles.searchInput}
           />
-          <Select
-            name="type"
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            options={typeOptions}
-            placeholder="All Types"
-          />
-          <Select
-            name="status"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            options={statusOptions}
-            placeholder="All Status"
-          />
+          <div className={styles.filterSelects} role="group" aria-label="Filter requests">
+            <Select
+              name="type"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              options={typeOptions}
+              placeholder="All Types"
+              compact
+              className={styles.filterSelectType}
+            />
+            <Select
+              name="status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              options={statusOptions}
+              placeholder="All Status"
+              compact
+              className={styles.filterSelectStatus}
+            />
+          </div>
         </FilterBar>
 
         {/* Desktop Table View */}
@@ -1295,79 +1304,12 @@ export default function RequestsPage() {
         )}
       </Modal>
 
-      <Modal
+      <DocumentPreviewModal
         isOpen={documentPreview.open}
         onClose={closeDocumentPreview}
-        title="Document Preview"
-        size="large"
-        footer={
-          <Button onClick={closeDocumentPreview}>
-            Close
-          </Button>
-        }
-      >
-        {documentPreview.url ? (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <Button
-                  variant="secondary"
-                  size="small"
-                  onClick={() => setPreviewZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
-                  disabled={!isLikelyImage(documentPreview.url)}
-                >
-                  -
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="small"
-                  onClick={() => setPreviewZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))))}
-                  disabled={!isLikelyImage(documentPreview.url)}
-                >
-                  +
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="small"
-                  onClick={() => setPreviewZoom(1)}
-                  disabled={!isLikelyImage(documentPreview.url)}
-                >
-                  Reset
-                </Button>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {!isLikelyImage(documentPreview.url) ? (
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>Zoom buttons are for images only</span>
-                ) : null}
-                <span style={{ fontSize: 12, color: '#6b7280' }}>{Math.round(previewZoom * 100)}%</span>
-              </div>
-            </div>
-            {isLikelyImage(documentPreview.url) ? (
-              <div style={{ maxHeight: '70vh', overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-                <img
-                  src={documentPreview.url}
-                  alt="Uploaded document preview"
-                  style={{
-                    display: 'block',
-                    maxWidth: '100%',
-                    margin: '0 auto',
-                    transform: `scale(${previewZoom})`,
-                    transformOrigin: 'top center',
-                  }}
-                />
-              </div>
-            ) : (
-              <iframe
-                src={documentPreview.url}
-                title="Uploaded document preview"
-                style={{ width: '100%', height: '70vh', border: 0 }}
-              />
-            )}
-          </div>
-        ) : (
-          <p style={{ margin: 0 }}>No document available for preview.</p>
-        )}
-      </Modal>
+        url={documentPreview.url}
+        path={documentPreview.path}
+      />
 
       {/* Decision Confirmation Modal */}
       <Modal
