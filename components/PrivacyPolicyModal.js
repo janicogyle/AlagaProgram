@@ -79,6 +79,14 @@ export default function PrivacyPolicyModal({ isOpen, onClose }) {
               agree to the processing of your personal data.
             </p>
           </li>
+          <li>
+            <span className={styles.legalHeading}>Use of Cookies</span>
+            <p className={styles.legalParagraph}>
+              Our website uses essential cookies to ensure its proper functioning. These cookies are necessary for basic
+              site functionality and are always active. They are used to remember your cookie consent preferences and do
+              not store any personally identifiable information.
+            </p>
+          </li>
         </ol>
       </div>
     </Modal>
