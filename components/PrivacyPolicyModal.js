@@ -69,8 +69,7 @@ export default function PrivacyPolicyModal({ isOpen, onClose }) {
             <span className={styles.legalHeading}>Contact Information</span>
             <p className={styles.legalParagraph}>Barangay Sta. Rita Office</p>
             <p className={styles.legalParagraph}>
-              Email: <a href="mailto:visualcraftersolutions@gmail.com">visualcraftersolutions@gmail.com</a> (You may
-              replace this with an official barangay email if available)
+              Email: <a href="mailto:barangaystarita2023@gmail.com">barangaystarita2023@gmail.com</a>
             </p>
           </li>
           <li>
