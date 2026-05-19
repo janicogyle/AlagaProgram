@@ -1,5 +1,6 @@
 import { Geist } from "next/font/google";
 import "./globals.css";
+import CookieConsentBanner from "@/components/CookieConsentBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,6 +13,7 @@ export const metadata = {
   icons: {
     icon: "/Brand.png",
   },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({ children }) {
@@ -19,6 +21,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={geistSans.variable}>
         {children}
+        <CookieConsentBanner />
       </body>
     </html>
   );
