@@ -15,6 +15,7 @@ import {
   DocumentPreviewModal,
 } from "@/components";
 import { supabase } from "@/lib/supabaseClient";
+import { formatSmsNotificationResult } from "@/lib/smsTemplates";
 import styles from "./page.module.css";
 
 const statusOptions = [
@@ -288,12 +289,18 @@ export default function AccountRequestsPage() {
         throw new Error(result.error || 'Failed to approve request');
       }
 
+      if (result.sms?.ok === false && !result.sms?.skipped) {
+        console.warn('Account approval SMS failed:', result.sms);
+      }
+
       handleCloseModal();
       await fetchRequests();
       openAlert({
-        title: 'Approved',
-        message: 'Request approved and beneficiary account created successfully.',
-        variant: 'success',
+        title: result.sms?.ok === false && !result.sms?.skipped ? 'Approved (SMS failed)' : 'Approved',
+        message:
+          'Request approved and beneficiary account created successfully.' +
+          formatSmsNotificationResult(result.sms),
+        variant: result.sms?.ok === false && !result.sms?.skipped ? 'error' : 'success',
       });
     } catch (error) {
       console.warn('Approve error:', error?.message || error);
@@ -343,9 +350,9 @@ export default function AccountRequestsPage() {
       handleCloseModal();
       await fetchRequests();
       openAlert({
-        title: 'Archived',
-        message: 'Request archived successfully.',
-        variant: 'success',
+        title: 'Rejected',
+        message: 'Request rejected successfully.' + formatSmsNotificationResult(result.sms),
+        variant: result.sms?.ok === false && !result.sms?.skipped ? 'warning' : 'success',
       });
     } catch (error) {
       console.warn('Archive error:', error?.message || error);
@@ -934,11 +941,11 @@ export default function AccountRequestsPage() {
               <strong> {buildFullName(selectedRequest)} </strong>?
             </p>
             <Input
-              label="Archive note (optional)"
+              label="Rejection reason (optional, sent via SMS)"
               name="archiveNotes"
               value={archiveNotes}
               onChange={(e) => setArchiveNotes(e.target.value)}
-              placeholder="e.g. Duplicate request"
+              placeholder="e.g. Invalid ID, incomplete address proof"
             />
           </div>
         )}

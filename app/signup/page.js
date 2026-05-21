@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
@@ -10,7 +10,6 @@ import Modal from '../../components/Modal';
 import Select from '../../components/Select';
 import FileUpload from '../../components/FileUpload';
 import SectionHeader from '@/components/SectionHeader';
-import HelperText from '@/components/HelperText';
 import styles from './page.module.css';
 
 const purokOptions = [
@@ -60,8 +59,31 @@ const civilStatusOptions = [
   { value: 'divorced', label: 'Divorced' },
 ];
 
+const STEPS = [
+  { number: 1, label: 'Sector' },
+  { number: 2, label: 'Personal' },
+  { number: 3, label: 'Address' },
+  { number: 4, label: 'Account' },
+  { number: 5, label: 'Upload ID' },
+  { number: 6, label: 'Review' },
+];
+const TOTAL_STEPS = STEPS.length;
+
+const CheckIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
 export default function BeneficiarySignupPage() {
   const router = useRouter();
+  const stepContainerRef = useRef(null);
+
+  // Multi-step state
+  const [currentStep, setCurrentStep] = useState(1);
+  const [slideDirection, setSlideDirection] = useState('next');
+
+  // Form state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState(null);
   const [validIdFiles, setValidIdFiles] = useState([]);
@@ -72,6 +94,14 @@ export default function BeneficiarySignupPage() {
     contactNumber: '',
   });
   const [toast, setToast] = useState({ open: false, message: '' });
+  const [otpCode, setOtpCode] = useState('');
+  const [otpStatus, setOtpStatus] = useState(null);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpExpiresAt, setOtpExpiresAt] = useState(null);
+  const [otpVerifiedContact, setOtpVerifiedContact] = useState('');
 
   const [form, setForm] = useState({
     firstName: '',
@@ -94,7 +124,13 @@ export default function BeneficiarySignupPage() {
     city: 'Olongapo City',
   });
 
+  // Computed values
   const hasSectorSelected = form.isPwd || form.isSeniorCitizen || form.isSoloParent;
+  const isOtpVerified = otpVerified && otpVerifiedContact === form.contactNumber;
+
+  // ===========================
+  // HELPERS
+  // ===========================
 
   const calculateAge = (dob) => {
     if (!dob) return '';
@@ -109,12 +145,66 @@ export default function BeneficiarySignupPage() {
     return age;
   };
 
+  const resetOtpState = () => {
+    setOtpCode('');
+    setOtpStatus(null);
+    setOtpVerified(false);
+    setOtpCooldown(0);
+    setOtpExpiresAt(null);
+    setOtpVerifiedContact('');
+  };
+
+  const formatContactForDisplay = (num) => {
+    if (!num || num.length !== 11) return num || '—';
+    return `+63 ${num.slice(1, 4)} ${num.slice(4, 7)} ${num.slice(7)}`;
+  };
+
+  const formatBirthday = (dateStr) => {
+    if (!dateStr) return '—';
+    try {
+      const date = new Date(dateStr + 'T00:00:00');
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getSectorName = () => {
+    if (form.isPwd) return 'PWD';
+    if (form.isSeniorCitizen) return 'Senior Citizen';
+    if (form.isSoloParent) return 'Solo Parent';
+    return '—';
+  };
+
+  const getSexDisplay = () => {
+    const opt = sexOptions.find((o) => o.value === form.sex);
+    return opt ? opt.label : '—';
+  };
+
+  const getCivilStatusDisplay = () => {
+    const opt = civilStatusOptions.find((o) => o.value === form.civilStatus);
+    return opt ? opt.label : '—';
+  };
+
+  const getFullName = () => {
+    const parts = [form.firstName, form.middleName, form.lastName].filter(Boolean);
+    return parts.join(' ') || '—';
+  };
+
+  // ===========================
+  // EVENT HANDLERS
+  // ===========================
+
   const handleChange = (e) => {
     const { name, type, checked, value } = e.target;
     const newValue = type === 'checkbox' ? checked : value;
 
     if (name && fieldErrors?.[name]) {
       setFieldErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+
+    if (name === 'contactNumber') {
+      resetOtpState();
     }
 
     setForm((prev) => ({ ...prev, [name]: newValue }));
@@ -138,6 +228,10 @@ export default function BeneficiarySignupPage() {
     if (validIdError) setValidIdError('');
   };
 
+  // ===========================
+  // EFFECTS
+  // ===========================
+
   useEffect(() => {
     if (!toast.open) return;
     const timer = setTimeout(() => {
@@ -146,52 +240,310 @@ export default function BeneficiarySignupPage() {
     return () => clearTimeout(timer);
   }, [toast.open]);
 
+  useEffect(() => {
+    if (otpCooldown <= 0) return undefined;
+    const timer = setInterval(() => {
+      setOtpCooldown((prev) => Math.max(prev - 1, 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpCooldown]);
+
+  // ===========================
+  // LEGAL MODAL
+  // ===========================
+
   const openLegalModal = (type) => setLegalModal(type);
   const closeLegalModal = () => setLegalModal(null);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-      if (isSubmitting) return;
-      setStatus(null);
-      setFieldErrors({ contactNumber: '' });
-      setIsSubmitting(true);
+  // ===========================
+  // OTP HANDLERS
+  // ===========================
 
-      try {
-        if (!hasAgreed) {
-          setStatus({
-            type: 'error',
-            message: 'Please agree to the Data Privacy Notice and Terms & Conditions before submitting.',
-          });
-          return;
+  const formatOtpCooldown = (seconds) => {
+    const total = Math.max(0, Number(seconds) || 0);
+    if (total >= 3600) {
+      const hours = Math.floor(total / 3600);
+      const mins = Math.floor((total % 3600) / 60);
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+    if (total >= 60) {
+      const mins = Math.floor(total / 60);
+      const secs = total % 60;
+      return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+    }
+    return `${total}s`;
+  };
+
+  const handleSendOtp = async () => {
+    if (otpSending || otpCooldown > 0) return;
+    const contactNumber = String(form.contactNumber || '').trim();
+    if (!/^0\d{10}$/.test(contactNumber)) {
+      setFieldErrors((prev) => ({ ...prev, contactNumber: 'Contact number must be 11 digits.' }));
+      setOtpStatus({ type: 'error', message: 'Please enter a valid contact number before requesting an OTP.' });
+      return;
+    }
+
+    setOtpSending(true);
+    setOtpStatus(null);
+    try {
+      const response = await fetch('/api/sms/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contactNumber, purpose: 'signup' }),
+      });
+      const { data, error, retryAfterSeconds } = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const retryAfter = Number(retryAfterSeconds || data?.retryAfterSeconds || 0);
+        if (retryAfter > 0) {
+          setOtpCooldown(retryAfter);
+        }
+        setOtpStatus({ type: 'error', message: error || 'Failed to send OTP. Please try again.' });
+        return;
+      }
+
+      setOtpVerified(false);
+      setOtpVerifiedContact('');
+      setOtpExpiresAt(data?.expiresAt || null);
+
+      const sendsRemaining = Number(data?.sendsRemaining);
+      const lockoutMinutes = Number(data?.lockoutMinutes || 15);
+      if (Number.isFinite(sendsRemaining) && sendsRemaining <= 0) {
+        setOtpCooldown(lockoutMinutes * 60);
+      } else {
+        setOtpCooldown(Number(data?.retryAfterSeconds || 0) || 0);
+      }
+
+      setOtpStatus({ type: 'success', message: 'OTP sent. Please check your phone.' });
+    } catch (err) {
+      setOtpStatus({
+        type: 'error',
+        message: err?.message || 'Failed to send OTP. Please try again.',
+      });
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otpVerifying) return;
+    const contactNumber = String(form.contactNumber || '').trim();
+    if (!/^0\d{10}$/.test(contactNumber)) {
+      setFieldErrors((prev) => ({ ...prev, contactNumber: 'Contact number must be 11 digits.' }));
+      setOtpStatus({ type: 'error', message: 'Please enter a valid contact number before verifying.' });
+      return;
+    }
+
+    const code = String(otpCode || '').replace(/\D/g, '').slice(0, 6);
+    if (code.length < 6) {
+      setOtpStatus({ type: 'error', message: 'Please enter the 6-digit OTP.' });
+      return;
+    }
+
+    setOtpVerifying(true);
+    setOtpStatus(null);
+    try {
+      const response = await fetch('/api/sms/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contactNumber, otp: code, purpose: 'signup' }),
+      });
+      const { data, error } = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setOtpVerified(false);
+        setOtpStatus({ type: 'error', message: error || 'OTP verification failed.' });
+        return;
+      }
+
+      if (data?.verified) {
+        setOtpVerified(true);
+        setOtpVerifiedContact(contactNumber);
+        setOtpStatus({ type: 'success', message: 'Contact number verified successfully.' });
+      } else {
+        setOtpVerified(false);
+        setOtpStatus({ type: 'error', message: 'OTP verification failed.' });
+      }
+    } catch (err) {
+      setOtpStatus({
+        type: 'error',
+        message: err?.message || 'OTP verification failed.',
+      });
+    } finally {
+      setOtpVerifying(false);
+    }
+  };
+
+  // ===========================
+  // STEP VALIDATION
+  // ===========================
+
+  const validateStep = (step) => {
+    setStatus(null);
+    setValidIdError('');
+
+    switch (step) {
+      case 1: {
+        if (!hasSectorSelected) {
+          setStatus({ type: 'error', message: 'Please select a sector classification to continue.' });
+          return false;
+        }
+        return true;
+      }
+      case 2: {
+        if (!form.firstName.trim()) {
+          setStatus({ type: 'error', message: 'Please enter your first name.' });
+          return false;
+        }
+        if (!form.lastName.trim()) {
+          setStatus({ type: 'error', message: 'Please enter your last name.' });
+          return false;
+        }
+        if (!form.birthday) {
+          setStatus({ type: 'error', message: 'Please enter your birthday.' });
+          return false;
+        }
+        const age = calculateAge(form.birthday);
+        if (age === '' || Number.isNaN(age) || age < 0) {
+          setStatus({ type: 'error', message: 'Please provide a valid birthday.' });
+          return false;
+        }
+        if (age < 18) {
+          setStatus({ type: 'error', message: 'You must be at least 18 years old to sign up.' });
+          return false;
+        }
+        if (form.isSeniorCitizen && age < 60) {
+          setStatus({ type: 'error', message: 'Senior Citizen selection requires age 60 or above.' });
+          return false;
+        }
+        if (!form.birthplace.trim()) {
+          setStatus({ type: 'error', message: 'Please enter your birthplace.' });
+          return false;
+        }
+        if (!form.sex) {
+          setStatus({ type: 'error', message: 'Please select your sex.' });
+          return false;
+        }
+        if (!form.civilStatus) {
+          setStatus({ type: 'error', message: 'Please select your civil status.' });
+          return false;
+        }
+        return true;
+      }
+      case 3: {
+        if (!form.houseNo.trim()) {
+          setStatus({ type: 'error', message: 'Please enter your house number.' });
+          return false;
+        }
+        if (!form.purok) {
+          setStatus({ type: 'error', message: 'Please select your purok.' });
+          return false;
+        }
+        return true;
+      }
+      case 4: {
+        const cn = String(form.contactNumber || '').trim();
+        if (!/^0\d{10}$/.test(cn)) {
+          setFieldErrors((prev) => ({ ...prev, contactNumber: 'Contact number must be 11 digits starting with 0.' }));
+          setStatus({ type: 'error', message: 'Please enter a valid Philippine contact number.' });
+          return false;
         }
         if (!form.password || form.password.length < 8) {
           setStatus({ type: 'error', message: 'Password must be at least 8 characters long.' });
-          return;
+          return false;
         }
-
-      if (form.password !== form.confirmPassword) {
-        setStatus({ type: 'error', message: 'Passwords do not match.' });
-        return;
+        if (form.password !== form.confirmPassword) {
+          setStatus({ type: 'error', message: 'Passwords do not match.' });
+          return false;
+        }
+        if (!isOtpVerified) {
+          setStatus({ type: 'error', message: 'Please verify your contact number via SMS OTP before continuing.' });
+          return false;
+        }
+        return true;
       }
+      case 5: {
+        if (hasSectorSelected && validIdFiles.length === 0) {
+          setValidIdError('Please upload at least one valid ID to verify your sector classification.');
+          setStatus({ type: 'error', message: 'Please upload at least one valid ID.' });
+          return false;
+        }
+        return true;
+      }
+      default:
+        return true;
+    }
+  };
 
+  // ===========================
+  // STEP NAVIGATION
+  // ===========================
+
+  const goToStep = (step) => {
+    if (step === currentStep) return;
+    setStatus(null);
+    setSlideDirection(step > currentStep ? 'next' : 'prev');
+    setCurrentStep(step);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const goNext = () => {
+    if (!validateStep(currentStep)) return;
+    setSlideDirection('next');
+    setCurrentStep((prev) => Math.min(prev + 1, TOTAL_STEPS));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const goPrev = () => {
+    setStatus(null);
+    setSlideDirection('prev');
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleStepClick = (stepNumber) => {
+    if (stepNumber < currentStep) {
+      goToStep(stepNumber);
+    }
+  };
+
+  // ===========================
+  // FORM SUBMISSION
+  // ===========================
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    if (currentStep < TOTAL_STEPS) {
+      goNext();
+    } else {
+      handleFinalSubmit();
+    }
+  };
+
+  const handleFinalSubmit = async () => {
+    if (isSubmitting) return;
+    setStatus(null);
+    setFieldErrors({ contactNumber: '' });
+
+    if (!hasAgreed) {
+      setStatus({
+        type: 'error',
+        message: 'Please agree to the Data Privacy Notice and Terms & Conditions before submitting.',
+      });
+      return;
+    }
+    if (!isOtpVerified) {
+      setStatus({
+        type: 'error',
+        message: 'Please verify your contact number via SMS OTP before submitting.',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
       const ageValue = calculateAge(form.birthday);
-      if (ageValue === '' || Number.isNaN(ageValue) || ageValue < 0) {
-        setStatus({ type: 'error', message: 'Please provide a valid birthday.' });
-        return;
-      }
-      if (ageValue < 18) {
-        setStatus({ type: 'error', message: 'You must be at least 18 years old to sign up.' });
-        return;
-      }
-      if (form.isSeniorCitizen && ageValue < 60) {
-        setStatus({ type: 'error', message: 'Senior Citizen selection requires age 60 or above.' });
-        return;
-      }
-      if (hasSectorSelected && validIdFiles.length === 0) {
-        setValidIdError('Please upload a valid ID to verify your sector classification.');
-        return;
-      }
 
+      // Upload valid IDs
       let validIdPaths = [];
       if (validIdFiles.length > 0) {
         const uploaded = [];
@@ -233,6 +585,7 @@ export default function BeneficiarySignupPage() {
         }
       }
 
+      // Submit account request
       const response = await fetch('/api/account-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -280,7 +633,7 @@ export default function BeneficiarySignupPage() {
         open: true,
         message: 'Your account request is currently on process.',
       });
-      
+
       // Redirect to login after 3 seconds
       setTimeout(() => {
         router.push('/login');
@@ -296,9 +649,599 @@ export default function BeneficiarySignupPage() {
       setIsSubmitting(false);
     }
   };
+
   const handleCancel = () => {
     router.back();
   };
+
+  // ===========================
+  // RENDER: PROGRESS BAR
+  // ===========================
+
+  const renderProgressBar = () => (
+    <div className={styles.progressBarWrapper}>
+      <div className={styles.progressBar}>
+        {STEPS.map((step, index) => (
+          <Fragment key={step.number}>
+            {index > 0 && (
+              <div className={styles.progressLineWrapper}>
+                <div
+                  className={`${styles.progressLine} ${
+                    currentStep >= step.number ? styles.completedLine : ''
+                  }`}
+                />
+              </div>
+            )}
+            <div
+              className={`${styles.progressStep} ${
+                step.number < currentStep ? styles.progressStepClickable : ''
+              }`}
+              onClick={() => handleStepClick(step.number)}
+              role={step.number < currentStep ? 'button' : undefined}
+              tabIndex={step.number < currentStep ? 0 : undefined}
+              onKeyDown={(e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && step.number < currentStep) {
+                  e.preventDefault();
+                  handleStepClick(step.number);
+                }
+              }}
+            >
+              <div
+                className={`${styles.progressCircle} ${
+                  step.number === currentStep ? styles.activeCircle : ''
+                } ${step.number < currentStep ? styles.completedCircle : ''}`}
+              >
+                {step.number < currentStep ? <CheckIcon /> : step.number}
+              </div>
+              <span
+                className={`${styles.progressLabel} ${
+                  step.number <= currentStep ? styles.activeLabel : ''
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+          </Fragment>
+        ))}
+      </div>
+    <p className={styles.stepIndicator}>Step {currentStep} of {TOTAL_STEPS}</p>
+  </div>
+);
+
+  // ===========================
+  // RENDER: STEPS
+  // ===========================
+
+  const renderStep1 = () => (
+    <section className={styles.section} aria-labelledby="sector-heading">
+      <SectionHeader
+        id="sector-heading"
+        title="Sector Classification"
+        subtitle="Select your sector to help us determine the appropriate assistance programs for you."
+      />
+      <div className={styles.sectorRow}>
+        <span className={styles.sectorLabel}>Select only one:</span>
+        <div className={styles.sectorChips}>
+          <label
+            className={`${styles.sectorChip} ${form.isPwd ? styles.sectorChipActive : ''}`}
+          >
+            <input
+              type="checkbox"
+              name="isPwd"
+              checked={form.isPwd}
+              onChange={() => handleSectorChange('isPwd')}
+            />
+            <span>PWD</span>
+          </label>
+          <label
+            className={`${styles.sectorChip} ${form.isSeniorCitizen ? styles.sectorChipActive : ''}`}
+          >
+            <input
+              type="checkbox"
+              name="isSeniorCitizen"
+              checked={form.isSeniorCitizen}
+              onChange={() => handleSectorChange('isSeniorCitizen')}
+            />
+            <span>Senior Citizen</span>
+          </label>
+          <label
+            className={`${styles.sectorChip} ${form.isSoloParent ? styles.sectorChipActive : ''}`}
+          >
+            <input
+              type="checkbox"
+              name="isSoloParent"
+              checked={form.isSoloParent}
+              onChange={() => handleSectorChange('isSoloParent')}
+            />
+            <span>Solo Parent</span>
+          </label>
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderStep2 = () => (
+    <section className={styles.section} aria-labelledby="personal-heading">
+      <SectionHeader
+        id="personal-heading"
+        title="Personal Information"
+        subtitle="We use these details to correctly identify you as a beneficiary."
+      />
+      <div className={`${styles.formGrid} ${styles.personalGrid}`}>
+        <Input
+          label="First Name"
+          name="firstName"
+          value={form.firstName}
+          onChange={handleChange}
+          required
+        />
+        <Input
+          label="Middle Name"
+          name="middleName"
+          value={form.middleName}
+          onChange={handleChange}
+          optional
+        />
+        <Input
+          label="Last Name"
+          name="lastName"
+          value={form.lastName}
+          onChange={handleChange}
+          required
+        />
+        <Input
+          label="Birthday"
+          type="date"
+          name="birthday"
+          value={form.birthday}
+          onChange={handleChange}
+          required
+        />
+        <Input
+          label="Age"
+          type="text"
+          value={calculateAge(form.birthday) || ''}
+          placeholder="Auto"
+          disabled
+          readOnly
+        />
+        <Input
+          label="Birthplace"
+          name="birthplace"
+          value={form.birthplace}
+          onChange={handleChange}
+          required
+        />
+        <Select
+          label="Sex"
+          name="sex"
+          value={form.sex}
+          onChange={handleChange}
+          options={sexOptions}
+          placeholder="Select sex"
+          required
+        />
+        <Input
+          label="Citizenship"
+          name="citizenship"
+          value={form.citizenship}
+          onChange={handleChange}
+          readOnly
+          disabled
+          required
+        />
+        <Select
+          label="Civil Status"
+          name="civilStatus"
+          value={form.civilStatus}
+          onChange={handleChange}
+          options={civilStatusOptions}
+          placeholder="Select civil status"
+          required
+        />
+      </div>
+    </section>
+  );
+
+  const renderStep3 = () => (
+    <section className={styles.section} aria-labelledby="address-heading">
+      <SectionHeader
+        id="address-heading"
+        title="Address Information"
+        subtitle="Your address helps us verify your eligibility within the barangay."
+      />
+      <div className={`${styles.formGrid} ${styles.addressGrid}`}>
+        <Input
+          label="House Number"
+          name="houseNo"
+          value={form.houseNo}
+          onChange={handleChange}
+          required
+        />
+        <Select
+          label="Purok"
+          name="purok"
+          value={form.purok}
+          onChange={handleChange}
+          options={purokOptions}
+          placeholder="Select purok"
+          required
+        />
+        <Input
+          label="Barangay"
+          name="barangay"
+          value={form.barangay}
+          readOnly
+          disabled
+          required
+        />
+        <Input
+          label="City / Municipality"
+          name="city"
+          value={form.city}
+          readOnly
+          disabled
+          required
+        />
+      </div>
+    </section>
+  );
+
+  const renderOtpSection = () => (
+    <div className={styles.otpSection}>
+      <SectionHeader
+        id="otp-heading"
+        title="SMS Verification"
+        subtitle="Verify your contact number before continuing."
+      />
+      <div className={styles.otpGrid}>
+        <div className={`${styles.otpRow} ${styles.otpRowHint}`}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleSendOtp}
+            disabled={otpSending || otpCooldown > 0 || !form.contactNumber || isOtpVerified}
+            size="compact"
+          >
+            {otpCooldown > 0
+              ? `Resend in ${formatOtpCooldown(otpCooldown)}`
+              : otpSending
+                ? 'Sending OTP...'
+                : 'Send OTP'}
+          </Button>
+          <span className={styles.otpHint}>
+            We&apos;ll send a 6-digit verification code to your contact number. You can request up to 2
+            codes, then wait 15 minutes before trying again.
+          </span>
+        </div>
+        <div className={`${styles.otpRow} ${styles.otpRowVerify}`}>
+          <div className={styles.otpInputWrap}>
+            <Input
+              label="OTP Code"
+              name="otpCode"
+              value={otpCode}
+              onChange={(event) =>
+                setOtpCode(String(event.target.value || '').replace(/\D/g, '').slice(0, 6))
+              }
+              placeholder="6-digit code"
+              inputMode="numeric"
+              maxLength={6}
+              required
+              size="compact"
+            />
+          </div>
+          <Button
+            type="button"
+            onClick={handleVerifyOtp}
+            disabled={otpVerifying || otpCode.length < 6}
+            size="compact"
+          >
+            {otpVerifying ? 'Verifying...' : 'Verify OTP'}
+          </Button>
+        </div>
+        {otpStatus && (
+          <p
+            className={`${styles.otpStatus} ${
+              otpStatus.type === 'success' ? styles.otpStatusSuccess : styles.otpStatusError
+            }`}
+          >
+            {otpStatus.message}
+          </p>
+        )}
+        {isOtpVerified && (
+          <div className={styles.otpVerified}>
+            <span className={styles.otpVerifiedDot} aria-hidden="true" />
+            Contact number verified
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderStep4 = () => (
+    <section className={`${styles.section} ${styles.accountSection}`} aria-labelledby="account-heading">
+      <SectionHeader
+        id="account-heading"
+        title="Account Setup"
+        subtitle="Set up your contact number and password to secure your account."
+      />
+      <div className={`${styles.formGrid} ${styles.accountGrid}`}>
+        <div className={styles.accountContactRow}>
+          <Input
+            label="Contact Number"
+            type="tel"
+            name="contactNumber"
+            value={form.contactNumber}
+            onChange={handleChange}
+            placeholder="+63 XXX XXX XXXX"
+            mask="ph-contact"
+            error={fieldErrors.contactNumber}
+            required
+            size="compact"
+            className={styles.contactField}
+          />
+        </div>
+        <Input
+          label="Password"
+          type="password"
+          name="password"
+          value={form.password}
+          onChange={handleChange}
+          placeholder="At least 8 characters"
+          minLength={8}
+          required
+          size="compact"
+          className={styles.passwordField}
+        />
+        <Input
+          label="Confirm Password"
+          type="password"
+          name="confirmPassword"
+          value={form.confirmPassword}
+          onChange={handleChange}
+          placeholder="Re-enter your password"
+          minLength={8}
+          required
+          size="compact"
+          className={styles.passwordField}
+        />
+      </div>
+      {renderOtpSection()}
+    </section>
+  );
+
+  const renderStep5 = () => (
+    <section className={styles.section} aria-labelledby="upload-heading">
+      <SectionHeader
+        id="upload-heading"
+        title="Upload Valid ID(s)"
+        subtitle="Upload a valid government-issued ID to verify your sector classification."
+      />
+      <div className={styles.validIdRow}>
+        <FileUpload
+          label="Valid ID(s)"
+          documentType="validId"
+          multiple={true}
+          files={validIdFiles}
+          onChange={handleValidIdChange}
+          required={hasSectorSelected}
+        />
+        {validIdError && <p className={styles.fieldError}>{validIdError}</p>}
+      </div>
+    </section>
+  );
+
+  const renderReviewStep = () => {
+    const age = calculateAge(form.birthday);
+
+    return (
+      <section className={styles.section} aria-labelledby="review-heading">
+        <SectionHeader
+          id="review-heading"
+          title="Review & Consent"
+          subtitle="Please review your information carefully before submitting."
+        />
+
+        <div className={styles.reviewCard}>
+          {/* Sector Classification */}
+          <div className={styles.reviewGroup}>
+            <div className={styles.reviewGroupHeader}>
+              <h4 className={styles.reviewGroupTitle}>Sector Classification</h4>
+              <button type="button" className={styles.reviewEditBtn} onClick={() => goToStep(1)}>
+                Edit
+              </button>
+            </div>
+            <div className={styles.reviewGrid}>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>Sector</span>
+                <span className={styles.reviewValue}>{getSectorName()}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Personal Information */}
+          <div className={styles.reviewGroup}>
+            <div className={styles.reviewGroupHeader}>
+              <h4 className={styles.reviewGroupTitle}>Personal Information</h4>
+              <button type="button" className={styles.reviewEditBtn} onClick={() => goToStep(2)}>
+                Edit
+              </button>
+            </div>
+            <div className={styles.reviewGrid}>
+              <div className={`${styles.reviewItem} ${styles.reviewItemFull}`}>
+                <span className={styles.reviewLabel}>Full Name</span>
+                <span className={styles.reviewValue}>{getFullName()}</span>
+              </div>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>Birthday</span>
+                <span className={styles.reviewValue}>{formatBirthday(form.birthday)}</span>
+              </div>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>Age</span>
+                <span className={styles.reviewValue}>{age !== '' ? age : '—'}</span>
+              </div>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>Birthplace</span>
+                <span className={styles.reviewValue}>{form.birthplace || '—'}</span>
+              </div>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>Sex</span>
+                <span className={styles.reviewValue}>{getSexDisplay()}</span>
+              </div>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>Citizenship</span>
+                <span className={styles.reviewValue}>{form.citizenship || '—'}</span>
+              </div>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>Civil Status</span>
+                <span className={styles.reviewValue}>{getCivilStatusDisplay()}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Address */}
+          <div className={styles.reviewGroup}>
+            <div className={styles.reviewGroupHeader}>
+              <h4 className={styles.reviewGroupTitle}>Address</h4>
+              <button type="button" className={styles.reviewEditBtn} onClick={() => goToStep(3)}>
+                Edit
+              </button>
+            </div>
+            <div className={styles.reviewGrid}>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>House Number</span>
+                <span className={styles.reviewValue}>{form.houseNo || '—'}</span>
+              </div>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>Purok</span>
+                <span className={styles.reviewValue}>{form.purok || '—'}</span>
+              </div>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>Barangay</span>
+                <span className={styles.reviewValue}>{form.barangay}</span>
+              </div>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>City / Municipality</span>
+                <span className={styles.reviewValue}>{form.city}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Account */}
+          <div className={styles.reviewGroup}>
+            <div className={styles.reviewGroupHeader}>
+              <h4 className={styles.reviewGroupTitle}>Account</h4>
+              <button type="button" className={styles.reviewEditBtn} onClick={() => goToStep(4)}>
+                Edit
+              </button>
+            </div>
+            <div className={styles.reviewGrid}>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>Contact Number</span>
+                <div className={styles.reviewContactRow}>
+                  <span className={styles.reviewValue}>
+                    {formatContactForDisplay(form.contactNumber)}
+                  </span>
+                  {isOtpVerified && (
+                    <span className={styles.verifiedBadge}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      Verified
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>Password</span>
+                <span className={`${styles.reviewValue} ${styles.passwordDots}`}>••••••••</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Uploaded IDs */}
+          <div className={styles.reviewGroup}>
+            <div className={styles.reviewGroupHeader}>
+              <h4 className={styles.reviewGroupTitle}>Uploaded Valid ID(s)</h4>
+              <button type="button" className={styles.reviewEditBtn} onClick={() => goToStep(5)}>
+                Edit
+              </button>
+            </div>
+            {validIdFiles.length > 0 ? (
+              <div className={styles.reviewFileList}>
+                {validIdFiles.map((file, idx) => (
+                  <span key={idx} className={styles.reviewFileBadge}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                    {file.name}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className={styles.reviewValue} style={{ color: '#9ca3af' }}>
+                No files uploaded
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Helper Text */}
+        <p className={styles.helperTextReview}>
+          By submitting this form, you confirm that the information you provided is true and correct
+          to the best of your knowledge. The information provided during sign-up will be
+          automatically reflected in your Beneficiary Profile.
+        </p>
+
+        {/* Legal Consent */}
+        <div className={styles.legalConsent}>
+          <input
+            type="checkbox"
+            id="signupLegalConsent"
+            checked={hasAgreed}
+            onChange={(event) => setHasAgreed(event.target.checked)}
+            required
+          />
+          <label htmlFor="signupLegalConsent" className={styles.legalConsentLabel}>
+            I agree to the{' '}
+            <button
+              type="button"
+              className={styles.legalInlineLink}
+              onClick={() => openLegalModal('privacy')}
+            >
+              Data Privacy Notice
+            </button>{' '}
+            and{' '}
+            <button
+              type="button"
+              className={styles.legalInlineLink}
+              onClick={() => openLegalModal('terms')}
+            >
+              Terms &amp; Conditions
+            </button>
+            .
+          </label>
+        </div>
+      </section>
+    );
+  };
+
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 1: return renderStep1();
+      case 2: return renderStep2();
+      case 3: return renderStep3();
+      case 4: return renderStep4();
+      case 5: return renderStep5();
+        case 6: return renderReviewStep();
+        default: return null;
+      }
+    };
+
+  // ===========================
+  // MAIN RENDER
+  // ===========================
 
   return (
     <div className={styles.signupPage}>
@@ -307,6 +1250,7 @@ export default function BeneficiarySignupPage() {
           {toast.message}
         </div>
       )}
+
       <PageHeader
         title="ALAGA Program – Beneficiary Sign Up"
         subtitle="Submit your information to request assistance under the Barangay Sta. Rita ALAGA Program."
@@ -315,10 +1259,14 @@ export default function BeneficiarySignupPage() {
       <Card className={styles.formCard}>
         <p className={styles.intro}>
           This sign up form is exclusively for the <strong>ALAGA Program</strong> of
-          Barangay Sta. Rita. Provide accurate information so our social services team can review your eligibility and
-          contact you for verification if needed.
+          Barangay Sta. Rita. Provide accurate information so our social services team can review
+          your eligibility and contact you for verification if needed.
         </p>
 
+        {/* Progress Bar */}
+        {renderProgressBar()}
+
+        {/* Status Banner */}
         {status && (
           <div
             role="alert"
@@ -330,258 +1278,49 @@ export default function BeneficiarySignupPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <section className={styles.section} aria-labelledby="sector-classification-heading">
-            <div className={styles.sectorRow}>
-              <span id="sector-classification-heading" className={styles.sectorLabel}>Sector classification</span>
-              <p className={styles.sectorHelper}>
-                Select only one: PWD, Solo Parent, or Senior Citizen.
-              </p>
-              <div className={styles.sectorChips}>
-                <label className={styles.sectorChip}>
-                  <input
-                    type="checkbox"
-                    name="isPwd"
-                    checked={form.isPwd}
-                    onChange={() => handleSectorChange('isPwd')}
-                  />
-                  <span>PWD</span>
-                </label>
-                <label className={styles.sectorChip}>
-                  <input
-                    type="checkbox"
-                    name="isSeniorCitizen"
-                    checked={form.isSeniorCitizen}
-                    onChange={() => handleSectorChange('isSeniorCitizen')}
-                  />
-                  <span>Senior Citizen</span>
-                </label>
-                <label className={styles.sectorChip}>
-                  <input
-                    type="checkbox"
-                    name="isSoloParent"
-                    checked={form.isSoloParent}
-                    onChange={() => handleSectorChange('isSoloParent')}
-                  />
-                  <span>Solo Parent</span>
-                </label>
-              </div>
+        {/* Form */}
+        <form onSubmit={handleFormSubmit} className={styles.form}>
+          {/* Step Content */}
+          <div ref={stepContainerRef} className={styles.stepContainer} tabIndex={-1}>
+            <div
+              key={currentStep}
+              className={`${styles.stepContent} ${
+                slideDirection === 'next' ? styles.slideInNext : styles.slideInPrev
+              }`}
+            >
+              {renderCurrentStep()}
             </div>
-
-          </section>
-
-          <section className={`${styles.section} ${styles.personalSection}`} aria-labelledby="personal-info-heading">
-            <SectionHeader
-              id="personal-info-heading"
-              title="Personal information"
-              subtitle="We use these details to correctly identify you as a beneficiary."
-            />
-            <div className={`${styles.formGrid} ${styles.personalGrid}`}>
-              <Input
-                label="First Name"
-                name="firstName"
-                value={form.firstName}
-                onChange={handleChange}
-                required
-              />
-              <Input
-                label="Middle Name"
-                name="middleName"
-                value={form.middleName}
-                onChange={handleChange}
-                optional
-              />
-              <Input
-                label="Last Name"
-                name="lastName"
-                value={form.lastName}
-                onChange={handleChange}
-                required
-              />
-              <Input
-                label="Birthday"
-                type="date"
-                name="birthday"
-                value={form.birthday}
-                onChange={handleChange}
-                required
-              />
-              <Input
-                label="Age"
-                type="text"
-                value={calculateAge(form.birthday) || ''}
-                placeholder="Auto"
-                disabled
-                readOnly
-              />
-              <Input
-                label="Birthplace"
-                name="birthplace"
-                value={form.birthplace}
-                onChange={handleChange}
-                required
-              />
-              <Select
-                label="Sex"
-                name="sex"
-                value={form.sex}
-                onChange={handleChange}
-                options={sexOptions}
-                placeholder="Select sex"
-                required
-              />
-              <Input
-                label="Citizenship"
-                name="citizenship"
-                value={form.citizenship}
-                onChange={handleChange}
-                readOnly
-                disabled
-                required
-              />
-              <Select
-                label="Civil Status"
-                name="civilStatus"
-                value={form.civilStatus}
-                onChange={handleChange}
-                options={civilStatusOptions}
-                placeholder="Select civil status"
-                required
-              />
-              <Input
-                label="Contact Number"
-                type="tel"
-                name="contactNumber"
-                value={form.contactNumber}
-                onChange={handleChange}
-                placeholder="+63 XXX XXX XXXX"
-                mask="ph-contact"
-                error={fieldErrors.contactNumber}
-                required
-              />
-              <Input
-                label="Password"
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                placeholder="At least 8 characters"
-                minLength={8}
-                required
-              />
-              <Input
-                label="Confirm Password"
-                type="password"
-                name="confirmPassword"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                placeholder="Re-enter your password"
-                minLength={8}
-                required
-              />
-            </div>
-          </section>
-
-          <section className={`${styles.section} ${styles.addressSection}`} aria-labelledby="address-info-heading">
-            <SectionHeader
-              id="address-info-heading"
-              title="Address information"
-              subtitle="Your address helps us verify your eligibility within the barangay."
-            />
-            <div className={styles.formGrid}>
-              <Input
-                label="House Number"
-                name="houseNo"
-                value={form.houseNo}
-                onChange={handleChange}
-                required
-              />
-              <Select
-                label="Purok"
-                name="purok"
-                value={form.purok}
-                onChange={handleChange}
-                options={purokOptions}
-                placeholder="Select purok"
-                required
-              />
-              <Input
-                label="Barangay"
-                name="barangay"
-                value={form.barangay}
-                readOnly
-                disabled
-                required
-              />
-              <Input
-                label="City / Municipality"
-                name="city"
-                value={form.city}
-                readOnly
-                disabled
-                required
-              />
-            </div>
-
-            <div className={styles.validIdRow}>
-              <FileUpload
-                label="Valid ID(s)"
-                documentType="validId"
-                multiple={true}
-                files={validIdFiles}
-                onChange={handleValidIdChange}
-                required={hasSectorSelected}
-              />
-              {validIdError && <p className={styles.fieldError}>{validIdError}</p>}
-            </div>
-          </section>
-
-          <HelperText>
-            By submitting this form, you confirm that the information you provided is true and correct to the best of
-            your knowledge. The information provided during sign-up will be automatically reflected in your Beneficiary
-            Profile.
-          </HelperText>
-
-          <div className={styles.legalConsent}>
-            <input
-              type="checkbox"
-              id="signupLegalConsent"
-              checked={hasAgreed}
-              onChange={(event) => setHasAgreed(event.target.checked)}
-              required
-            />
-            <label htmlFor="signupLegalConsent" className={styles.legalConsentLabel}>
-              I agree to the{' '}
-              <button
-                type="button"
-                className={styles.legalInlineLink}
-                onClick={() => openLegalModal('privacy')}
-              >
-                Data Privacy Notice
-              </button>{' '}
-              and{' '}
-              <button
-                type="button"
-                className={styles.legalInlineLink}
-                onClick={() => openLegalModal('terms')}
-              >
-                Terms &amp; Conditions
-              </button>
-              .
-            </label>
           </div>
 
-          <div className={styles.actionsRow}>
-            <Button type="button" variant="secondary" onClick={handleCancel} disabled={isSubmitting}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting || !hasAgreed}>
-              {isSubmitting ? 'Submitting…' : 'Submit Sign Up'}
-            </Button>
+          {/* Navigation */}
+          <div className={styles.navRow}>
+            {currentStep === 1 ? (
+              <Button type="button" variant="secondary" onClick={handleCancel}>
+                Cancel
+              </Button>
+            ) : (
+              <Button type="button" variant="secondary" onClick={goPrev}>
+                ← Previous
+              </Button>
+            )}
+            <div className={styles.navSpacer} />
+            {currentStep < TOTAL_STEPS ? (
+              <Button type="button" onClick={goNext}>
+                Next →
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={isSubmitting || !hasAgreed || !isOtpVerified}
+              >
+                {isSubmitting ? 'Submitting…' : 'Submit Sign Up'}
+              </Button>
+            )}
           </div>
         </form>
       </Card>
 
+      {/* Legal Modal */}
       <Modal
         isOpen={!!legalModal}
         onClose={closeLegalModal}

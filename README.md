@@ -14,21 +14,68 @@ SUPABASE_SERVICE_ROLE_KEY=...   # server-side only (do NOT prefix with NEXT_PUBL
 # QR Beneficiary ID (server-side only)
 QR_CARD_SECRET=...              # used to sign/verify beneficiary ID QR tokens
 BENEFICIARY_SESSION_SECRET=...  # used for beneficiary session cookie (optional; falls back to QR_CARD_SECRET)
+
+# SMS (UniSMS) — https://unismsapi.com/register
+UNISMS_API_KEY=...               # API **Secret** key (Basic Auth username, password empty)
+UNISMS_SENDER_ID=...             # optional (approved Sender ID only)
+UNISMS_API_URL=...               # optional (defaults to https://unismsapi.com/api)
+SMS_OTP_SECRET=...               # used to hash OTP codes (required)
+SMS_DEV_MODE=false               # set true locally to print OTP in server console (no SMS credits)
+SMS_CRON_SECRET=...              # used to authorize the eligibility reminder cron
+
+# Cloudinary (document / Valid ID image storage)
+CLOUDINARY_URL=cloudinary://<api_key>:<api_secret>@<cloud_name>
+# Or set separately:
+# CLOUDINARY_CLOUD_NAME=...
+# CLOUDINARY_API_KEY=...
+# CLOUDINARY_API_SECRET=...
 ```
 
-If deploying to Vercel, make sure `SUPABASE_SERVICE_ROLE_KEY` is configured in **Project Settings → Environment Variables**. Without it, creating admin/staff users will fail with “Admin client not available”.
+If deploying to Vercel, make sure `SUPABASE_SERVICE_ROLE_KEY` and `CLOUDINARY_URL` are configured in **Project Settings → Environment Variables**. Without the service role key, creating admin/staff users will fail with “Admin client not available”. Without Cloudinary, Valid ID uploads will fail.
 
 ### Database
 
 To enable QR ID cards, run `setup-step5.sql` in the Supabase SQL Editor (creates `public.beneficiary_cards`).
+To enable SMS OTPs and logs, run `setup-step6.sql` in the Supabase SQL Editor (creates `public.sms_otps` and `public.sms_logs`).
+To remove legacy Supabase document storage, run `setup-step7.sql` after migrating uploads to Cloudinary.
 
-### Supabase Storage (Valid ID uploads)
+### SMS (UniSMS OTP)
 
-This app uploads beneficiary Valid IDs to Supabase Storage.
+1. Register at [UniSMS](https://unismsapi.com/register) and add credits.
+2. Copy your **API Secret** from the dashboard (not the placeholder `your_new_secret`).
+3. Set in `.env.local`: `UNISMS_API_KEY=your_actual_secret`
+4. Restart `pnpm dev`.
 
-Create a Storage bucket named **`document`** in your Supabase project (Storage → Buckets → New bucket).
+**Local testing without sending real SMS:** set `SMS_DEV_MODE=true`. The OTP is printed in the terminal when you click **Send OTP** (signup Step 4).
 
-Admin/Staff view the uploaded ID through a signed URL (server-side) for verification.
+**Troubleshooting:** `401 Unauthorized` means `UNISMS_API_KEY` is wrong or still a placeholder. Check `sms_logs` in Supabase for failed send details.
+
+**Automatic status SMS** (sent immediately after admin/staff updates status):
+
+| Action | SMS |
+|--------|-----|
+| Account approved | Login approval message |
+| Account rejected | Rejection + missing requirements (from admin notes) |
+| Assistance approved | Approval message |
+| Assistance rejected / incomplete | Missing documents + resubmit instruction |
+| Assistance resubmission required | Resubmission message (status `Resubmitted`) |
+
+Terminal logs use `[SMS]` prefix (e.g. `[SMS] account_approved sent to 639151234567`).
+
+### Cloudinary (Valid ID & requirement uploads)
+
+Valid IDs and assistance requirement files are uploaded to **Cloudinary only** — not Supabase Storage. The database stores Cloudinary HTTPS URLs (`https://res.cloudinary.com/...`).
+
+Get your credentials from the [Cloudinary Console](https://console.cloudinary.com/) → API Keys. Use the connection URL format:
+
+`cloudinary://<api_key>:<api_secret>@<cloud_name>`
+
+Admin/Staff open uploaded documents via `/api/documents/view` (Cloudinary URLs only).
+
+**Remove legacy Supabase Storage files** (one-time):
+
+1. Optional: `node scripts/clear-supabase-storage.mjs` (empties `documents` / `document` buckets via API)
+2. Run `setup-step7.sql` in the Supabase SQL Editor (deletes storage objects, drops policies/buckets, clears legacy DB paths)
 
 First, run the development server (this repo enforces **pnpm**):
 

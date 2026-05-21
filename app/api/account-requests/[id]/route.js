@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { createOrUpdateResident } from '@/lib/residents';
+import { sendAccountStatusSms } from '@/lib/smsNotify.server';
 
 export const runtime = 'nodejs';
 
@@ -331,17 +332,19 @@ export async function POST(request, { params }) {
     }
 
     const { action, processedBy, notes } = body;
-    const normalizedAction = action === 'reject' ? 'archive' : action;
+    const rawAction = String(action || '').trim().toLowerCase();
 
-    if (!normalizedAction || !['approve', 'archive', 'unarchive'].includes(normalizedAction)) {
+    if (!['approve', 'archive', 'reject', 'unarchive'].includes(rawAction)) {
       return NextResponse.json(
         {
           data: null,
-          error: 'Invalid action. Must be "approve", "archive", or "unarchive".',
+          error: 'Invalid action. Must be "approve", "reject", "archive", or "unarchive".',
         },
         { status: 400 },
       );
     }
+
+    const finalAction = rawAction === 'reject' ? 'archive' : rawAction;
 
     const { data: accountRequest, error: fetchError } = await fetchAccountRequestWithRetry(db, requestId);
 
@@ -360,14 +363,14 @@ export async function POST(request, { params }) {
 
     const currentStatus = accountRequest.status === 'Rejected' ? 'Archived' : accountRequest.status;
 
-    const requiresPending = normalizedAction === 'approve' || normalizedAction === 'archive';
-    const requiresArchived = normalizedAction === 'unarchive';
+    const requiresPending = finalAction === 'approve' || finalAction === 'archive';
+    const requiresArchived = finalAction === 'unarchive';
 
     if (requiresPending && currentStatus !== 'Pending') {
       return NextResponse.json(
         {
           data: null,
-          error: `This request cannot be ${normalizedAction}d because it is ${String(currentStatus).toLowerCase()}.`,
+          error: `This request cannot be ${finalAction}d because it is ${String(currentStatus).toLowerCase()}.`,
         },
         { status: 409 },
       );
@@ -383,7 +386,7 @@ export async function POST(request, { params }) {
       );
     }
 
-    if (normalizedAction === 'approve') {
+    if (finalAction === 'approve') {
       try {
         // Generate sequential control number for the new resident (YYYY-###)
         const year = new Date().getFullYear();
@@ -526,12 +529,20 @@ export async function POST(request, { params }) {
 
       if (error) throw error;
 
+      const sms = await sendAccountStatusSms({
+        contactNumber: accountRequest?.contact_number,
+        status: data?.status || 'Approved',
+        notes: accountRequest?.notes,
+        requestId,
+      });
+
       return NextResponse.json({ 
         data, 
         error: null, 
-        message: 'Account request approved and resident account created successfully.' 
+        message: 'Account request approved and resident account created successfully.',
+        sms,
       });
-    } else if (normalizedAction === 'archive') {
+    } else if (finalAction === 'archive') {
       const { data, error } = await db
         .from('account_requests')
         .update({
@@ -546,12 +557,20 @@ export async function POST(request, { params }) {
 
       if (error) throw error;
 
+      const sms = await sendAccountStatusSms({
+        contactNumber: accountRequest?.contact_number,
+        status: data?.status || 'Archived',
+        notes: data?.notes || notes,
+        requestId,
+      });
+
       return NextResponse.json({
         data,
         error: null,
         message: 'Account request archived.',
+        sms,
       });
-    } else if (normalizedAction === 'unarchive') {
+    } else if (finalAction === 'unarchive') {
       const { data, error } = await db
         .from('account_requests')
         .update({

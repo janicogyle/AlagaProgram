@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { hashPassword } from '@/lib/passwords.server';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
+import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/documentUrls.server';
 
 export const runtime = 'nodejs';
 
@@ -75,6 +76,46 @@ function getMissingAccountRequestsColumn(message) {
   if (match?.[1]) return match[1];
 
   return null;
+}
+
+function isMissingSmsOtpsTable(error) {
+  const msg = String(error?.message || '').toLowerCase();
+  const code = String(error?.code || '').toLowerCase();
+  return msg.includes('sms_otps') || msg.includes('does not exist') || code === '42p01';
+}
+
+async function requireSignupOtp(db, contactNumber) {
+  const { data: otpRow, error } = await db
+    .from('sms_otps')
+    .select('id, verified_at, expires_at, consumed_at')
+    .eq('contact_number', contactNumber)
+    .eq('purpose', 'signup')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
+    if (isMissingSmsOtpsTable(error)) {
+      throw new Error(
+        'SMS OTP verification is not configured. Run the SMS schema script (setup-step6.sql) and reload PostgREST.',
+      );
+    }
+    throw error;
+  }
+
+  if (!otpRow || !otpRow.verified_at) {
+    return { ok: false, error: 'Please verify your contact number via SMS OTP before submitting.' };
+  }
+
+  if (otpRow.consumed_at) {
+    return { ok: false, error: 'OTP already used. Please request a new code.' };
+  }
+
+  if (otpRow.expires_at && new Date(otpRow.expires_at).getTime() < Date.now()) {
+    return { ok: false, error: 'OTP expired. Please request a new code.' };
+  }
+
+  return { ok: true, otpId: otpRow.id };
 }
 
 async function insertAccountRequestWithRetry(db, payload) {
@@ -264,6 +305,11 @@ export async function POST(request) {
       return NextResponse.json({ data: null, error: 'Contact number must be 11 digits.' }, { status: 400 });
     }
 
+    const otpCheck = await requireSignupOtp(db, contactNumber);
+    if (!otpCheck.ok) {
+      return NextResponse.json({ data: null, error: otpCheck.error }, { status: 403 });
+    }
+
     const sectorCount = [!!body.isPwd, !!body.isSeniorCitizen, !!body.isSoloParent].filter(Boolean).length;
     if (sectorCount > 1) {
       return NextResponse.json(
@@ -277,7 +323,17 @@ export async function POST(request) {
     const effectiveValidIdUrls = validIdUrls.length
       ? validIdUrls
       : (validIdUrl ? [String(validIdUrl)] : []);
-    if (sectorCount > 0 && effectiveValidIdUrls.length === 0) {
+
+    if (effectiveValidIdUrls.length) {
+      const docCheck = validateCloudinaryDocumentUrls(effectiveValidIdUrls, { label: 'Valid ID' });
+      if (!docCheck.ok) {
+        return NextResponse.json({ data: null, error: docCheck.error }, { status: 400 });
+      }
+    }
+
+    const cloudinaryValidIdUrls = filterCloudinaryUrls(effectiveValidIdUrls);
+
+    if (sectorCount > 0 && cloudinaryValidIdUrls.length === 0) {
       return NextResponse.json(
         { data: null, error: 'Valid ID is required to verify your sector classification.' },
         { status: 400 },
@@ -344,19 +400,31 @@ export async function POST(request) {
       is_pwd: !!body.isPwd,
       is_senior_citizen: !!body.isSeniorCitizen,
       is_solo_parent: !!body.isSoloParent,
-      valid_id_url: effectiveValidIdUrls[0] || null,
-      valid_id_urls: effectiveValidIdUrls,
+      valid_id_url: cloudinaryValidIdUrls[0] || null,
+      valid_id_urls: cloudinaryValidIdUrls,
       status: 'Pending',
       password_hash: passwordHash,
     };
 
     const { data } = await insertAccountRequestWithRetry(db, insertPayload);
 
+    let otpConsumeError = null;
+    if (otpCheck?.otpId) {
+      const { error: consumeError } = await db
+        .from('sms_otps')
+        .update({ consumed_at: new Date().toISOString() })
+        .eq('id', otpCheck.otpId);
+      if (consumeError) {
+        otpConsumeError = consumeError.message || 'Failed to mark OTP as used.';
+      }
+    }
+
     return NextResponse.json({
       data,
       error: null,
       message:
         'PENDING APPROVAL: Your sign-up request was submitted successfully. Please wait for admin approval before you can log in.',
+      meta: otpConsumeError ? { otpConsumed: false, otpError: otpConsumeError } : { otpConsumed: true },
     });
   } catch (error) {
     console.error('Create account request error:', error);

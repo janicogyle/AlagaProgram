@@ -99,16 +99,19 @@ export default function AdminLoginPage() {
         <span className={styles.backLabel}>Back</span>
       </button>
 
-      <div className={styles.loginBox}>
-        <div className={styles.logo}>
+      <div className={styles.adminPanel}>
+        <div className={styles.adminHeader}>
           <Link href="/">
-            <img src="/Brand.png" alt="Barangay Logo" />
-            <h2>Barangay Sta. Rita</h2>
+            <img src="/Brand.png" alt="Barangay Logo" className={styles.adminLogo} />
+            <div className={styles.adminHeaderText}>
+              <h1 className={styles.adminTitle}>Barangay Sta. Rita</h1>
+              <p className={styles.adminSubtitle}>Administrator Login</p>
+            </div>
           </Link>
         </div>
 
-        <div className={styles.formSection}>
-          <UnifiedLoginForm role="admin" onLogin={handleLogin} />
+        <div className={styles.adminFormContainer}>
+          <UnifiedLoginForm role="admin" onLogin={handleLogin} showTitle={false} />
         </div>
       </div>
 

@@ -86,47 +86,61 @@ export default function LoginPage() {
         <span className={styles.backLabel}>Back</span>
       </button>
 
-      <div className={styles.loginBox}>
-        <div className={styles.logo}>
-          <Link href="/">
-            <img src="/Brand.png" alt="Barangay Logo" />
-            <h2>Barangay Sta. Rita</h2>
-          </Link>
-        </div>
-        
-        <div className={styles.formSection}>
-          <UnifiedLoginForm
-            role="beneficiary"
-            onLogin={handleLogin}
-          />
-          
-          <p className={styles.signup}>
-            Don&apos;t have an account? <Link href="/signup">Sign up</Link>
-          </p>
+      <div className={styles.loginShell}>
+        <div className={styles.welcomePanel}>
+          <div className={styles.welcomeHeader}>
+            <img
+              className={styles.welcomeLogo}
+              src="/Brand.png"
+              alt="Barangay Sta. Rita logo"
+            />
+            <div className={styles.welcomeHeaderText}>
+              <h1 className={styles.welcomeTitle}>Welcome to Barangay Sta. Rita</h1>
+              <p className={styles.welcomeSubtitle}>Alaga Program Portal</p>
+            </div>
+          </div>
 
-          <div className={styles.legalSection}>
-            <p className={styles.legalInlineText}>
-              By clicking the Sign In, you acknowledge and agree to the Data Privacy Notice and Terms and Conditions of the
-              Barangay Sta. Rita Alaga Program.
+          <p className={styles.welcomeDescription}>
+            Access the official barangay services for the community. Enter your contact number and password to continue.
+          </p>
+        </div>
+
+        <div className={styles.formPanel}>
+          <div className={styles.formSection}>
+            <div className={styles.formHeader}>
+              <div className={styles.formHeaderText}>
+                <p className={styles.formHeaderTitle}>Sign In</p>
+                <p className={styles.formHeaderSubtitle}>Beneficiary Portal</p>
+              </div>
+            </div>
+
+            <UnifiedLoginForm role="beneficiary" onLogin={handleLogin} showTitle={false} />
+            
+            <p className={styles.signup}>
+              Don&apos;t have an account? <Link href="/signup">Sign up</Link>
             </p>
-            <p className={styles.legalInlineText}>
-              <button
-                type="button"
-                className={styles.legalInlineLink}
-                onClick={() => openLegalModal('privacy')}
-              >
-                Data Privacy Notice
-              </button>{' '}
-              and{' '}
-              <button
-                type="button"
-                className={styles.legalInlineLink}
-                onClick={() => openLegalModal('terms')}
-              >
-                Terms &amp; Conditions
-              </button>
-              .
-            </p>
+
+            <div className={styles.legalSection}>
+              <p className={styles.legalInlineText}>
+                By clicking &apos;Sign In&apos;, you acknowledge and agree to the{' '}
+                <button
+                  type="button"
+                  className={styles.legalInlineLink}
+                  onClick={() => openLegalModal('privacy')}
+                >
+                  Data Privacy Notice
+                </button>{' '}
+                and{' '}
+                <button
+                  type="button"
+                  className={styles.legalInlineLink}
+                  onClick={() => openLegalModal('terms')}
+                >
+                  Terms &amp; Conditions
+                </button>{' '}
+                of the Barangay Sta. Rita Alaga Program.
+              </p>
+            </div>
           </div>
         </div>
       </div>

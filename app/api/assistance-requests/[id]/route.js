@@ -1,10 +1,33 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
+import { normalizeSmsContactNumber } from '@/lib/sms.server';
+import { sendAssistanceStatusSms } from '@/lib/smsNotify.server';
 
 export const runtime = 'nodejs';
 
 const ALLOWED_STATUSES = new Set(['Pending', 'Resubmitted', 'Approved', 'Released', 'Rejected']);
+
+async function resolveAssistanceContact(db, data) {
+  const primary = data?.beneficiary_contact || data?.requester_contact;
+  const normalizedPrimary = normalizeSmsContactNumber(primary);
+  if (normalizedPrimary) return normalizedPrimary;
+
+  if (data?.resident_id) {
+    const { data: resident, error } = await db
+      .from('residents')
+      .select('contact_number')
+      .eq('id', data.resident_id)
+      .limit(1)
+      .maybeSingle();
+    if (!error) {
+      const normalized = normalizeSmsContactNumber(resident?.contact_number);
+      if (normalized) return normalized;
+    }
+  }
+
+  return null;
+}
 
 const isCheckedRequirement = (row) => {
   if (row === true || row === 'true' || row === 1 || row === '1') return true;
@@ -248,7 +271,21 @@ export async function PATCH(request, { params }) {
       }
     }
 
-    return NextResponse.json({ data, error: null });
+    let sms = null;
+    const smsStatuses = new Set(['Approved', 'Rejected', 'Resubmitted']);
+    if (data?.status && smsStatuses.has(String(data.status))) {
+      const contactNumber = await resolveAssistanceContact(db, data);
+      sms = await sendAssistanceStatusSms({
+        contactNumber,
+        status: String(data.status),
+        controlNumber: data.control_number,
+        remarks: data.decision_remarks,
+        checklist: data.requirements_checklist,
+        requestId: data.id,
+      });
+    }
+
+    return NextResponse.json({ data, error: null, sms });
   } catch (error) {
     console.error('Update assistance request error:', error);
     return NextResponse.json(

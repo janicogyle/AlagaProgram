@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { getCooldownInfo } from '@/lib/requestCooldown';
+import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/documentUrls.server';
 
 export const runtime = 'nodejs';
 
@@ -96,31 +97,6 @@ const parseArrayValue = (value) => {
       // ignore
     }
   }
-  return [];
-};
-
-const listRequirementPathsFromStorage = async (controlNumber, limitCount = 0) => {
-  const folder = `assistance-requests/${String(controlNumber || '').trim()}`;
-  if (!folder || folder.endsWith('/')) return [];
-
-  if (!supabaseAdmin) return [];
-  const bucketsToTry = ['document', 'documents'];
-
-  for (const bucket of bucketsToTry) {
-    const { data, error } = await supabaseAdmin.storage.from(bucket).list(folder, { limit: 200 });
-    if (error) continue;
-    const sorted = (data || [])
-      .filter((item) => !item?.id?.endsWith('/') && !!item?.name)
-      .sort((a, b) => {
-        const aTime = Date.parse(String(a?.created_at || '')) || 0;
-        const bTime = Date.parse(String(b?.created_at || '')) || 0;
-        return bTime - aTime;
-      });
-    const trimmed = limitCount > 0 ? sorted.slice(0, limitCount) : sorted;
-    const paths = trimmed.map((item) => `${folder}/${item.name}`);
-    if (paths.length) return paths;
-  }
-
   return [];
 };
 
@@ -281,31 +257,22 @@ export async function GET(request) {
     if (error) throw error;
 
     const rows = Array.isArray(data) ? data : [];
-    const enriched = await Promise.all(
-      rows.map(async (row) => {
-        const reqFromColumn = parsePathArray(row?.requirements_urls);
-        const checklist = parseArrayValue(row?.requirements_checklist);
-        const maxCount = Array.isArray(checklist) && checklist.length > 0 ? checklist.length : 0;
-        const reqFromLegacy = parsePathArray(row?.valid_id_url);
-        let requirementUrls = reqFromColumn.length ? reqFromColumn : reqFromLegacy;
+    const enriched = rows.map((row) => {
+      const reqFromColumn = parsePathArray(row?.requirements_urls);
+      const checklist = parseArrayValue(row?.requirements_checklist);
+      const maxCount = Array.isArray(checklist) && checklist.length > 0 ? checklist.length : 0;
+      const reqFromLegacy = parsePathArray(row?.valid_id_url);
+      let requirementUrls = reqFromColumn.length ? reqFromColumn : reqFromLegacy;
 
-        if (!requirementUrls.length && row?.control_number) {
-          const fromStorage = await listRequirementPathsFromStorage(row.control_number, maxCount);
-          if (fromStorage.length) {
-            requirementUrls = fromStorage;
-          }
-        }
+      if (maxCount > 0 && requirementUrls.length > maxCount) {
+        requirementUrls = requirementUrls.slice(0, maxCount);
+      }
 
-        if (maxCount > 0 && requirementUrls.length > maxCount) {
-          requirementUrls = requirementUrls.slice(0, maxCount);
-        }
-
-        return {
-          ...row,
-          requirements_urls: requirementUrls,
-        };
-      }),
-    );
+      return {
+        ...row,
+        requirements_urls: requirementUrls,
+      };
+    });
 
     return NextResponse.json({ data: enriched, error: null });
   } catch (error) {
@@ -402,8 +369,24 @@ export async function POST(request) {
         }));
     const allRequirementUrls = effectiveRequirementFiles.map((file) => file.file_url).filter(Boolean);
     const legacyValidIdUrl = body.valid_id_url || body.validIdUrl || null;
+
+    const urlsToValidate = [...allRequirementUrls];
+    if (legacyValidIdUrl && typeof legacyValidIdUrl === 'string' && legacyValidIdUrl.startsWith('http')) {
+      urlsToValidate.push(legacyValidIdUrl);
+    }
+    if (urlsToValidate.length) {
+      const docCheck = validateCloudinaryDocumentUrls(urlsToValidate, { label: 'Requirement file' });
+      if (!docCheck.ok) {
+        return NextResponse.json({ data: null, error: docCheck.error }, { status: 400 });
+      }
+    }
+
+    const cloudinaryRequirementUrls = filterCloudinaryUrls(allRequirementUrls);
     const validIdUrl =
-      legacyValidIdUrl || (allRequirementUrls.length > 1 ? JSON.stringify(allRequirementUrls) : allRequirementUrls?.[0] ?? null);
+      legacyValidIdUrl ||
+      (cloudinaryRequirementUrls.length > 1
+        ? JSON.stringify(cloudinaryRequirementUrls)
+        : cloudinaryRequirementUrls?.[0] ?? null);
     const requestSourceRaw = String(body.request_source || body.requestSource || 'online').trim().toLowerCase();
     const requestSource = ALLOWED_REQUEST_SOURCES.has(requestSourceRaw) ? requestSourceRaw : 'online';
 
@@ -430,9 +413,12 @@ export async function POST(request) {
       requirementsCompletedRaw === true || requirementsCompletedRaw === false ? requirementsCompletedRaw : null;
     const maxRequiredFiles = Array.isArray(requirementsChecklist) ? requirementsChecklist.length : 0;
     const limitedRequirementUrls =
-      maxRequiredFiles > 0 ? allRequirementUrls.slice(0, maxRequiredFiles) : allRequirementUrls;
-    const limitedRequirementFiles =
-      maxRequiredFiles > 0 ? effectiveRequirementFiles.slice(0, maxRequiredFiles) : effectiveRequirementFiles;
+      maxRequiredFiles > 0
+        ? cloudinaryRequirementUrls.slice(0, maxRequiredFiles)
+        : cloudinaryRequirementUrls;
+    const limitedRequirementFiles = (
+      maxRequiredFiles > 0 ? effectiveRequirementFiles.slice(0, maxRequiredFiles) : effectiveRequirementFiles
+    ).filter((file) => filterCloudinaryUrls([file.file_url]).length > 0);
     if (requestSource === 'online' && maxRequiredFiles > 0 && limitedRequirementUrls.length < maxRequiredFiles) {
       return NextResponse.json(
         { data: null, error: `Please upload exactly ${maxRequiredFiles} requirement file(s).` },
@@ -500,10 +486,10 @@ export async function POST(request) {
         // If older schemas are missing multi-file columns, preserve all file paths in valid_id_url as JSON text.
         if (
           ['requirements_urls', 'requirements_files'].includes(stripped.removed) &&
-          allRequirementUrls.length > 1 &&
+          cloudinaryRequirementUrls.length > 1 &&
           typeof insertPayload.valid_id_url === 'string'
         ) {
-          insertPayload.valid_id_url = JSON.stringify(allRequirementUrls);
+          insertPayload.valid_id_url = JSON.stringify(cloudinaryRequirementUrls);
         }
         selectCols = selectCols.filter((c) => c !== stripped.removed);
       }

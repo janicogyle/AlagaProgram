@@ -996,7 +996,7 @@ export default function BeneficiaryRequestPage() {
             if (!uploadRes.ok || uploadJson?.error) {
               throw new Error(
                 uploadJson?.error ||
-                  'ATTACH REQUIREMENTS upload failed. Ensure your Supabase Storage bucket is named "document" and SUPABASE_SERVICE_ROLE_KEY is configured.',
+                  'ATTACH REQUIREMENTS upload failed. Ensure CLOUDINARY_URL is configured on the server.',
               );
             }
 

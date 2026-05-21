@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
+import { formatSmsNotificationResult } from '@/lib/smsTemplates';
 import {
   buildRequirementsMap,
   getLocalRequirementsMap,
@@ -644,18 +645,27 @@ export default function RequestsPage() {
       );
 
       const statusLabel = getStatusLabel(newStatus);
+      const actionLabel =
+        statusLabel === 'Approved'
+          ? 'approved'
+          : statusLabel === 'Incomplete'
+            ? 'marked as incomplete'
+            : statusLabel === 'Pending'
+              ? 'reopened'
+              : statusLabel === 'Resubmitted'
+                ? 'marked for resubmission'
+                : 'marked as released';
+
       setStatus({
-        type: 'success',
-        message: `Request ${selectedRequest.requestControlNo || selectedRequest.controlNo} has been ${
-          statusLabel === 'Approved'
-            ? 'approved'
-            : statusLabel === 'Incomplete'
-              ? 'marked as incomplete'
-              : statusLabel === 'Pending'
-                ? 'reopened'
-                : 'marked as released'
-        }.`,
+        type: result.sms?.ok === false && !result.sms?.skipped ? 'error' : 'success',
+        message:
+          `Request ${selectedRequest.requestControlNo || selectedRequest.controlNo} has been ${actionLabel}.` +
+          formatSmsNotificationResult(result.sms),
       });
+
+      if (result.sms?.ok === false && !result.sms?.skipped) {
+        console.warn('Assistance status SMS failed:', result.sms.error);
+      }
     } catch (err) {
       console.error('Failed to update request status:', err);
       openAlert({
@@ -1418,7 +1428,7 @@ export default function RequestsPage() {
                   decisionType === 'approve'
                     ? 'Add any notes for this approval...'
                     : decisionType === 'archive'
-                      ? 'Add a reason (optional)...'
+                      ? 'List missing documents or requirements (sent via SMS)...'
                       : 'Add any notes (optional)...'
                 }
                 rows={3}

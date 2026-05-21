@@ -1,21 +1,42 @@
 .inputGroup {
-    margin-bottom: 1rem;
+    margin-bottom: 1.15rem;
     text-align: left;
   }
   
   .inputGroup label {
     display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: #555;
+    margin-bottom: 0.45rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #0b2f6a;
   }
   
   .inputGroup input {
     width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(203, 213, 225, 0.8);
+    border-radius: 12px;
     font-size: 1rem;
+    min-height: 48px;
+    background: #f8fafc;
+    color: #0f172a;
+    box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.02);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  }
+
+  .inputGroup input::placeholder {
+    color: #94a3b8;
+  }
+
+  .inputGroup input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15), inset 0 2px 4px rgba(15, 23, 42, 0.02);
+  }
+
+  .inputGroup input:focus-visible {
+    outline: none;
   }
 
   .passwordWrapper {
@@ -23,50 +44,81 @@
   }
 
   .passwordWrapper input {
-    padding-right: 4rem;
+    padding-right: 3.5rem;
   }
 
   .passwordToggle {
     position: absolute;
     top: 50%;
-    right: 0.75rem;
+    right: 0.6rem;
     transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: #0070f3;
-    font-size: 0.9rem;
-    font-weight: 500;
+    background: rgba(37, 99, 235, 0.1);
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    color: #1d4ed8;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
   }
 
-  .passwordToggle:focus {
-    outline: none;
+  .passwordToggle:hover {
+    background: rgba(37, 99, 235, 0.18);
+    transform: translateY(-50%) scale(1.03);
+    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.18);
+  }
+
+  .passwordToggle:focus-visible {
+    outline: 2px solid rgba(37, 99, 235, 0.5);
+    outline-offset: 2px;
   }
   
   .loginButton {
     width: 100%;
-    padding: 0.75rem;
+    padding: 0.85rem;
     border: none;
-    border-radius: 4px;
-    background-color: #0070f3;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8, #1e40af);
     color: #fff;
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.3s;
+    box-shadow: 0 14px 28px rgba(30, 64, 175, 0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
   }
   
   .loginButton:hover {
-    background-color: #005bb5;
+    transform: translateY(-1px);
+    box-shadow: 0 18px 32px rgba(30, 64, 175, 0.36);
+    filter: brightness(1.02);
+  }
+
+  .loginButton:active {
+    transform: translateY(0);
+    box-shadow: 0 12px 24px rgba(30, 64, 175, 0.28);
   }
 
   .loginButton:disabled {
-    background-color: #cbd5e1;
+    background: #cbd5e1;
     color: #f8fafc;
     cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
   }
 
   .formExtras {
     margin: 0.75rem 0 1rem;
+    color: #475569;
+  }
+
+  .formTitle {
+    margin: 0 0 1.25rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #0f2f6a;
+    letter-spacing: 0.01em;
   }
   

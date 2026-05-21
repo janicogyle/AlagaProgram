@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { readBeneficiarySession } from '@/lib/beneficiarySession.server';
+import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/documentUrls.server';
 
 export const runtime = 'nodejs';
 
@@ -160,12 +161,28 @@ export async function PATCH(request, { params }) {
       ? requirementsChecklist.length > 0 && requirementsChecklist.every(isCheckedRequirement)
       : legacyRequirementsCompleted;
     const maxRequiredFiles = Array.isArray(requirementsChecklist) ? requirementsChecklist.length : 0;
+    const urlsToValidate = [...allRequirementUrls];
+    const legacyValidId = body.valid_id_url ?? body.validIdUrl;
+    if (legacyValidId && typeof legacyValidId === 'string' && legacyValidId.startsWith('http')) {
+      urlsToValidate.push(legacyValidId);
+    }
+    if (urlsToValidate.length) {
+      const docCheck = validateCloudinaryDocumentUrls(urlsToValidate, { label: 'Requirement file' });
+      if (!docCheck.ok) {
+        return NextResponse.json({ data: null, error: docCheck.error }, { status: 400 });
+      }
+    }
+
+    const cloudinaryRequirementUrls = filterCloudinaryUrls(allRequirementUrls);
     const limitedRequirementUrls =
-      maxRequiredFiles > 0 ? allRequirementUrls.slice(0, maxRequiredFiles) : allRequirementUrls;
-    const limitedRequirementFiles =
+      maxRequiredFiles > 0
+        ? cloudinaryRequirementUrls.slice(0, maxRequiredFiles)
+        : cloudinaryRequirementUrls;
+    const limitedRequirementFiles = (
       Array.isArray(requirementsFiles) && maxRequiredFiles > 0
         ? requirementsFiles.slice(0, maxRequiredFiles)
-        : requirementsFiles;
+        : requirementsFiles
+    )?.filter((file) => filterCloudinaryUrls([file.file_url]).length > 0);
     if (
       (body.request_source ?? body.requestSource ?? 'online') === 'online' &&
       maxRequiredFiles > 0 &&

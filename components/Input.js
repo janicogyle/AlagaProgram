@@ -23,6 +23,7 @@ export default function Input({
   error = '',
   icon = null,
   className = '',
+  size = 'default',
   mask = null,
   ...props
 }) {
@@ -60,10 +61,16 @@ export default function Input({
     });
   };
 
+  const groupClassName = `${styles.inputGroup} ${size === 'compact' ? styles.compactGroup : ''} ${className}`.trim();
+  const labelClassName = `${styles.label} ${size === 'compact' ? styles.compactLabel : ''}`.trim();
+  const inputClassName = `${styles.input} ${icon ? styles.withIcon : ''} ${error ? styles.inputError : ''} ${
+    size === 'compact' ? styles.compactInput : ''
+  }`.trim();
+
   return (
-    <div className={`${styles.inputGroup} ${className}`}>
+    <div className={groupClassName}>
       {label && (
-        <label htmlFor={name} className={styles.label}>
+        <label htmlFor={name} className={labelClassName}>
           {label}
           {required && <span className={styles.required}>*</span>}
           {optional && <span className={styles.optional}>(Optional)</span>}
@@ -82,7 +89,7 @@ export default function Input({
           autoComplete={resolvedAutoComplete}
           required={required}
           disabled={disabled}
-          className={`${styles.input} ${icon ? styles.withIcon : ''} ${error ? styles.inputError : ''}`}
+          className={inputClassName}
           {...props}
         />
         {isPassword && (

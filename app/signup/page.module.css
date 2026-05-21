@@ -1,10 +1,13 @@
+/* ============================= */
+/* PAGE LAYOUT                   */
+/* ============================= */
 .signupPage {
   width: 100%;
-  max-width: 760px;
+  max-width: 780px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
+  gap: 1.5rem;
   padding-top: 1.5rem;
   padding-bottom: 2rem;
   min-width: 0;
@@ -16,32 +19,38 @@
   right: 1rem;
   z-index: 9999;
   max-width: min(92vw, 380px);
-  background: #166534;
+  background: linear-gradient(135deg, #166534, #15803d);
   color: #ffffff;
-  border-radius: 10px;
-  padding: 0.75rem 1rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  font-size: 0.9rem;
-  line-height: 1.35;
+  border-radius: 12px;
+  padding: 0.85rem 1.15rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  animation: toastSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .intro {
-  margin: 0 0 1.25rem 0;
+  margin: 0;
   color: #4b5563;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
 }
 
 .formCard {
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
+  gap: 1rem;
 }
 
+/* ============================= */
+/* STATUS BANNER                 */
+/* ============================= */
 .statusBanner {
   padding: 0.75rem 1rem;
   border-radius: 0.75rem;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   border: 1px solid transparent;
+  animation: fadeSlideIn 0.3s ease;
 }
 
 .statusBannerSuccess {
@@ -56,54 +65,165 @@
   color: #b91c1c;
 }
 
+/* ============================= */
+/* PROGRESS BAR                  */
+/* ============================= */
+.progressBarWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0.75rem 0 1rem;
+  border-bottom: 1px solid #f0f1f3;
+  margin-bottom: 0.25rem;
+}
+
+.progressBar {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.progressStep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  cursor: default;
+  user-select: none;
+}
+
+.progressStepClickable {
+  cursor: pointer;
+}
+
+.progressStepClickable:hover .progressCircle {
+  transform: scale(1.1);
+}
+
+.progressCircle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 2.5px solid #d1d5db;
+  background: #fff;
+  color: #9ca3af;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.activeCircle {
+  border-color: #1e40af;
+  color: #1e40af;
+  background: #eff6ff;
+  box-shadow: 0 0 0 4px rgba(30, 64, 175, 0.1);
+  animation: stepPulse 2.5s ease-in-out infinite;
+}
+
+.completedCircle {
+  border-color: #1e40af;
+  background: linear-gradient(135deg, #1e40af, #2563eb);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.25);
+}
+
+.progressLineWrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding-top: 16px;
+  min-width: 6px;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+.progressLine {
+  height: 3px;
+  width: 100%;
+  background: #e5e7eb;
+  border-radius: 2px;
+  transition: background 0.4s ease;
+}
+
+.completedLine {
+  background: linear-gradient(90deg, #1e40af, #2563eb);
+}
+
+.progressLabel {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: #9ca3af;
+  text-align: center;
+  white-space: nowrap;
+  transition: color 0.3s ease;
+}
+
+.activeLabel {
+  color: #1e40af;
+  font-weight: 600;
+}
+
+.stepIndicator {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* ============================= */
+/* FORM                          */
+/* ============================= */
 .form {
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
+  gap: 1.25rem;
 }
 
+/* ============================= */
+/* STEP CONTAINER & ANIMATIONS   */
+/* ============================= */
+.stepContainer {
+  position: relative;
+  overflow: hidden;
+  outline: none;
+}
+
+.stepContent {
+  animation-duration: 0.38s;
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slideInNext {
+  animation-name: slideInFromRight;
+}
+
+.slideInPrev {
+  animation-name: slideInFromLeft;
+}
+
+/* ============================= */
+/* SECTION STYLES                */
+/* ============================= */
 .section {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
-.sectionHeader {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.sectionTitle {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #111827;
-}
-
-.sectionSubtitle {
-  font-size: 0.85rem;
-  color: #6b7280;
-}
-
-.formGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem 1.25rem;
-}
-
-.personalGrid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.addressSection .formGrid {
-  grid-template-columns: repeat(2, minmax(220px, 1fr));
-}
-
+/* ============================= */
+/* SECTOR CLASSIFICATION         */
+/* ============================= */
 .sectorRow {
-  margin-top: 0.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  margin-top: 0.25rem;
 }
 
 .sectorLabel {
@@ -121,28 +241,173 @@
 .sectorChips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.65rem;
 }
 
 .sectorChip {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.3rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  font-size: 0.8rem;
+  gap: 0.6rem;
+  padding: 0.65rem 1.15rem;
+  border-radius: 12px;
+  border: 2px solid #e5e7eb;
+  background: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
   color: #374151;
   cursor: pointer;
-  min-height: 40px;
+  min-height: 52px;
+  transition: all 0.2s ease;
+  flex: 1;
+  min-width: 130px;
+}
+
+.sectorChip:hover {
+  border-color: #93c5fd;
+  background: #f8faff;
+}
+
+.sectorChipActive {
+  border-color: #1e40af;
+  background: #eff6ff;
+  color: #1e40af;
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.08);
 }
 
 .sectorChip input {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
+  accent-color: #1e40af;
 }
 
+/* ============================= */
+/* FORM GRIDS                    */
+/* ============================= */
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem 1.25rem;
+}
+
+.personalGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.addressGrid {
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+}
+
+.accountGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.accountContactRow {
+  grid-column: 1 / -1;
+}
+
+.contactField {
+  width: 100%;
+  max-width: 17.5rem;
+}
+
+.passwordField {
+  min-width: 0;
+}
+
+/* ============================= */
+/* OTP SECTION                   */
+/* ============================= */
+.accountSection {
+  gap: 0.6rem;
+}
+
+.otpSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.35rem;
+}
+
+.otpGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.otpRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.otpRowHint {
+  align-items: center;
+}
+
+.otpRowVerify {
+  align-items: flex-end;
+}
+
+.otpInputWrap {
+  flex: 0 0 auto;
+  width: min(100%, 10.5rem);
+}
+
+.otpInputWrap input {
+  text-align: center;
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+}
+
+.otpHint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.otpStatus {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.75rem;
+  font-size: 0.8rem;
+  border: 1px solid transparent;
+}
+
+.otpStatusSuccess {
+  background: #ecfdf3;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.otpStatusError {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.otpVerified {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #166534;
+}
+
+.otpVerifiedDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+}
+
+/* ============================= */
+/* VALID ID                      */
+/* ============================= */
 .validIdRow {
   display: flex;
   flex-direction: column;
@@ -155,18 +420,159 @@
   color: #b91c1c;
 }
 
-.actionsRow {
+/* ============================= */
+/* NAVIGATION ROW                */
+/* ============================= */
+.navRow {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   gap: 0.75rem;
-  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f0f1f3;
 }
 
-.helperText {
+.navSpacer {
+  flex: 1;
+}
+
+/* ============================= */
+/* REVIEW & SUMMARY              */
+/* ============================= */
+.reviewCard {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fafbfc;
+}
+
+.reviewGroup {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #f0f1f3;
+}
+
+.reviewGroup:last-child {
+  border-bottom: none;
+}
+
+.reviewGroupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+
+.reviewGroupTitle {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.reviewEditBtn {
+  background: none;
+  border: none;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.2s;
+  font-family: inherit;
+}
+
+.reviewEditBtn:hover {
+  background: #eff6ff;
+}
+
+.reviewGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.7rem 1.5rem;
+}
+
+.reviewItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.reviewItemFull {
+  grid-column: 1 / -1;
+}
+
+.reviewLabel {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.reviewValue {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #111827;
+  word-break: break-word;
+}
+
+.reviewContactRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.reviewFileList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.reviewFileBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: #374151;
+}
+
+.verifiedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  background: #ecfdf3;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #166534;
+}
+
+.passwordDots {
+  letter-spacing: 0.2em;
+}
+
+.helperTextReview {
+  margin: 0;
   font-size: 0.85rem;
   color: #6b7280;
+  line-height: 1.6;
 }
 
+/* ============================= */
+/* LEGAL CONSENT                 */
+/* ============================= */
 .legalConsent {
   display: flex;
   align-items: flex-start;
@@ -177,13 +583,15 @@
   background: #f9fafb;
   font-size: 0.85rem;
   color: #4b5563;
+  margin-top: 0.75rem;
 }
 
 .legalConsent input {
-  width: 16px;
-  height: 16px;
-  margin-top: 0.2rem;
-  accent-color: #2563eb;
+  width: 18px;
+  height: 18px;
+  margin-top: 0.15rem;
+  accent-color: #1e40af;
+  flex-shrink: 0;
 }
 
 .legalConsentLabel {
@@ -198,12 +606,17 @@
   font-weight: 600;
   cursor: pointer;
   text-decoration: underline;
+  font-size: inherit;
+  font-family: inherit;
 }
 
 .legalInlineLink:hover {
   color: #1d4ed8;
 }
 
+/* ============================= */
+/* LEGAL MODAL CONTENT           */
+/* ============================= */
 .legalContent {
   line-height: 1.6;
   color: #4b5563;
@@ -246,28 +659,142 @@
   list-style: disc;
 }
 
+/* ============================= */
+/* KEYFRAME ANIMATIONS           */
+/* ============================= */
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toastSlideIn {
+  from {
+    transform: translateY(-12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes stepPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(30, 64, 175, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(30, 64, 175, 0.05);
+  }
+}
+
+/* ============================= */
+/* REDUCED MOTION                */
+/* ============================= */
+@media (prefers-reduced-motion: reduce) {
+  .stepContent,
+  .toast,
+  .statusBanner {
+    animation: none !important;
+  }
+
+  .activeCircle {
+    animation: none !important;
+  }
+
+  .progressCircle,
+  .progressLine,
+  .progressLabel {
+    transition: none !important;
+  }
+}
+
+/* ============================= */
+/* RESPONSIVE                    */
+/* ============================= */
 @media (max-width: 640px) {
   .signupPage {
     padding: 0 0 1.75rem;
   }
 
+  .progressCircle {
+    width: 30px;
+    height: 30px;
+    font-size: 0.72rem;
+    border-width: 2px;
+  }
+
+  .progressLineWrapper {
+    padding-top: 13px;
+  }
+
+  .progressLabel {
+    display: none;
+  }
+
   .personalGrid,
   .formGrid,
-  .addressSection .formGrid {
+  .addressGrid,
+  .accountGrid {
     grid-template-columns: 1fr;
   }
 
   .sectorChips {
-    grid-template-columns: 1fr;
+    flex-direction: column;
   }
 
   .sectorChip {
     width: 100%;
   }
 
-  .actionsRow {
-    flex-direction: column-reverse;
+  .otpRow {
+    flex-direction: column;
     align-items: stretch;
+  }
+
+  .otpRowVerify {
+    align-items: stretch;
+  }
+
+  .contactField,
+  .otpInputWrap {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .reviewGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .reviewGroup {
+    padding: 0.85rem 1rem;
   }
 
   .toast {
