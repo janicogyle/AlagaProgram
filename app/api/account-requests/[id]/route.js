@@ -4,6 +4,7 @@ import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { createOrUpdateResident } from '@/lib/residents';
 import { sendAccountStatusSms } from '@/lib/smsNotify.server';
+import { generateNextBeneficiaryControlNumber } from '@/lib/controlNumbers.server';
 
 export const runtime = 'nodejs';
 
@@ -388,30 +389,7 @@ export async function POST(request, { params }) {
 
     if (finalAction === 'approve') {
       try {
-        // Generate sequential control number for the new resident (YYYY-###)
-        const year = new Date().getFullYear();
-        let controlNumber = `${year}-001`;
-
-        try {
-          const { data: lastRow, error: lastError } = await db
-            .from('residents')
-            .select('control_number')
-            .like('control_number', `${year}-%`)
-            .order('control_number', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (!lastError) {
-            const last = String(lastRow?.control_number || '').trim();
-            const match = last.match(new RegExp(`^${year}-(\\d{3})$`));
-            const nextSeq = match ? Number(match[1]) + 1 : 1;
-            if (Number.isFinite(nextSeq) && nextSeq > 0) {
-              controlNumber = `${year}-${String(nextSeq).padStart(3, '0')}`;
-            }
-          }
-        } catch {
-          // fallback stays at YYYY-001
-        }
+        const controlNumber = await generateNextBeneficiaryControlNumber(db);
 
         const contactNumber = accountRequest.contact_number;
 

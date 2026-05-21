@@ -18,6 +18,10 @@ import {
 } from '@/lib/assistanceRequirements';
 import { createOrUpdateResident } from '@/lib/residents';
 import { getCooldownInfo } from '@/lib/requestCooldown';
+import {
+  queryNextAssistanceControlNumber,
+  queryNextBeneficiaryControlNumber,
+} from '@/lib/controlNumbers';
 
 const sexOptions = [
   { value: 'male', label: 'Male' },
@@ -70,44 +74,6 @@ const purokOptions = [
   { value: '7', label: '7' },
 ];
 
-const CONTROL_NUMBER_PAD = 3;
-
-const formatYearSequenceControlNumber = (year, seq) => {
-  const safeYear = Number(year) || new Date().getFullYear();
-  const safeSeq = Number(seq) || 1;
-  return `${safeYear}-${String(Math.max(1, safeSeq)).padStart(CONTROL_NUMBER_PAD, '0')}`;
-};
-
-const getNextSequentialControlNumber = async (tableName) => {
-  const year = new Date().getFullYear();
-  const fallback = formatYearSequenceControlNumber(year, 1);
-
-  if (!supabase) return fallback;
-
-  try {
-    const { data, error } = await supabase
-      .from(tableName)
-      .select('control_number')
-      .like('control_number', `${year}-%`)
-      .order('control_number', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) throw error;
-
-    const last = String(data?.control_number || '').trim();
-    const match = last.match(new RegExp(`^${year}-(\\d{${CONTROL_NUMBER_PAD}})$`));
-    const nextSeq = match ? Number(match[1]) + 1 : 1;
-
-    if (!Number.isFinite(nextSeq) || nextSeq < 1) return fallback;
-
-    return formatYearSequenceControlNumber(year, nextSeq);
-  } catch (err) {
-    console.warn('[controlNumber] Failed to compute next control number:', err);
-    return fallback;
-  }
-};
-
 export default function RegistrationPage() {
   const router = useRouter();
   const [controlNumber, setControlNumber] = useState('');
@@ -153,7 +119,7 @@ export default function RegistrationPage() {
   const [status, setStatus] = useState(null);
 
   const refreshResidentControlNumber = async () => {
-    const next = await getNextSequentialControlNumber('residents');
+    const next = await queryNextBeneficiaryControlNumber(supabase);
     setControlNumber(next);
   };
 
@@ -456,7 +422,7 @@ export default function RegistrationPage() {
       const age = calculateAge(formData.birthday);
 
       // Ensure we have a sequential control number (YYYY-###)
-      const residentControlNumber = controlNumber || (await getNextSequentialControlNumber('residents'));
+      const residentControlNumber = controlNumber || (await queryNextBeneficiaryControlNumber(supabase));
       if (!controlNumber) {
         setControlNumber(residentControlNumber);
       }
@@ -516,7 +482,12 @@ export default function RegistrationPage() {
           return;
         }
 
-        const assistanceControlNumber = await getNextSequentialControlNumber('assistance_requests');
+        const assistanceTypeForRequest =
+          formData.assistanceType === 'Others' ? formData.otherAssistanceType : formData.assistanceType;
+        const assistanceControlNumber = await queryNextAssistanceControlNumber(
+          supabase,
+          assistanceTypeForRequest,
+        );
 
         const buildAddress = () => {
           const barangayLabel = formData.barangay === 'sta-rita' ? 'Sta. Rita' : formData.barangay;

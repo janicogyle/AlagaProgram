@@ -9,7 +9,7 @@
 -- =====================================================
 CREATE TABLE IF NOT EXISTS public.assistance_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  control_number TEXT UNIQUE NOT NULL,
+  control_number TEXT NOT NULL,
   resident_id UUID REFERENCES public.residents(id) ON DELETE SET NULL,
   
   -- Requester Info
@@ -48,9 +48,14 @@ CREATE TABLE IF NOT EXISTS public.assistance_requests (
 );
 
 -- Add index for better query performance
+CREATE UNIQUE INDEX IF NOT EXISTS assistance_requests_assistance_type_control_number_uidx
+  ON public.assistance_requests (assistance_type, control_number);
+
 CREATE INDEX IF NOT EXISTS idx_assistance_requests_resident_id ON public.assistance_requests(resident_id);
 CREATE INDEX IF NOT EXISTS idx_assistance_requests_status ON public.assistance_requests(status);
 CREATE INDEX IF NOT EXISTS idx_assistance_requests_request_date ON public.assistance_requests(request_date);
+CREATE INDEX IF NOT EXISTS idx_assistance_requests_assistance_type_control_number
+  ON public.assistance_requests (assistance_type, control_number);
 
 -- Ensure columns exist on older installs
 ALTER TABLE public.assistance_requests ADD COLUMN IF NOT EXISTS requirements_urls JSONB DEFAULT '[]'::jsonb;

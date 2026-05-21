@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { getCooldownInfo } from '@/lib/requestCooldown';
 import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/documentUrls.server';
+import { generateNextAssistanceControlNumber } from '@/lib/controlNumbers.server';
 
 export const runtime = 'nodejs';
 
@@ -128,34 +129,6 @@ function stripMissingAssistanceColumn(message, payload) {
   const next = { ...payload };
   delete next[col];
   return { payload: next, removed: col };
-}
-
-async function generateNextControlNumber(db) {
-  const year = new Date().getFullYear();
-  const fallback = `${year}-001`;
-
-  try {
-    const { data, error } = await db
-      .from('assistance_requests')
-      .select('control_number')
-      .like('control_number', `${year}-%`)
-      .order('control_number', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) throw error;
-
-    const last = String(data?.control_number || '').trim();
-    const match = last.match(new RegExp(`^${year}-(\\d{3})$`));
-    const nextSeq = match ? Number(match[1]) + 1 : 1;
-
-    if (!Number.isFinite(nextSeq) || nextSeq < 1) return fallback;
-
-    return `${year}-${String(nextSeq).padStart(3, '0')}`;
-  } catch (err) {
-    console.warn('[assistance-requests] Failed to compute next control number:', err);
-    return fallback;
-  }
 }
 
 export async function GET(request) {
@@ -390,8 +363,6 @@ export async function POST(request) {
     const requestSourceRaw = String(body.request_source || body.requestSource || 'online').trim().toLowerCase();
     const requestSource = ALLOWED_REQUEST_SOURCES.has(requestSourceRaw) ? requestSourceRaw : 'online';
 
-    const providedControlNumber = body.control_number || body.controlNumber || null;
-
     const parseChecklist = (value) => {
       if (!value) return null;
       if (Array.isArray(value)) return value;
@@ -457,11 +428,9 @@ export async function POST(request) {
     let data;
     let error;
 
-    // If the client didn't provide a control number, generate a sequential one (YYYY-###).
-    // Retry on unique conflicts (rare, but can happen with concurrent requests).
+    // Assign a new control number per assistance type (YYYY-###). Retry on rare conflicts.
     for (let attempt = 0; attempt < 5; attempt++) {
-      const controlNumber =
-        providedControlNumber || (await generateNextControlNumber(db));
+      const controlNumber = await generateNextAssistanceControlNumber(db, assistanceType);
 
       const attemptPayload = buildPayload(controlNumber);
 
@@ -499,7 +468,7 @@ export async function POST(request) {
       const msg = String(error?.message || '').toLowerCase();
       const isDuplicate = msg.includes('duplicate') && msg.includes('control_number');
 
-      if (providedControlNumber || !isDuplicate) {
+      if (!isDuplicate) {
         break;
       }
     }

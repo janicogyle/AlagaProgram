@@ -148,6 +148,10 @@ function buildFullName(resident) {
 
 function parseControlNumber(value) {
   const raw = String(value || "").trim();
+  const benef = raw.match(/^BENEF-(\d+)$/i);
+  if (benef) {
+    return { year: 0, seq: Number(benef[1]) || 0, raw };
+  }
   const match = raw.match(/^(\d{4})-(\d+)$/);
   if (!match) {
     return { year: 0, seq: 0, raw };

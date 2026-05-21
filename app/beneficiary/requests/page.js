@@ -21,45 +21,10 @@ import {
 } from '@/lib/assistanceRequirements';
 import { supabase } from '@/lib/supabaseClient';
 import { getCooldownInfo } from '@/lib/requestCooldown';
-
-
-const CONTROL_NUMBER_PAD = 3;
-
-const formatYearSequenceControlNumber = (year, seq) => {
-  const safeYear = Number(year) || new Date().getFullYear();
-  const safeSeq = Number(seq) || 1;
-  return `${safeYear}-${String(Math.max(1, safeSeq)).padStart(CONTROL_NUMBER_PAD, '0')}`;
-};
-
-const getNextSequentialControlNumber = async (tableName) => {
-  const year = new Date().getFullYear();
-  const fallback = formatYearSequenceControlNumber(year, 1);
-
-  if (!supabase) return fallback;
-
-  try {
-    const { data, error } = await supabase
-      .from(tableName)
-      .select('control_number')
-      .like('control_number', `${year}-%`)
-      .order('control_number', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) throw error;
-
-    const last = String(data?.control_number || '').trim();
-    const match = last.match(new RegExp(`^${year}-(\\d{${CONTROL_NUMBER_PAD}})$`));
-    const nextSeq = match ? Number(match[1]) + 1 : 1;
-
-    if (!Number.isFinite(nextSeq) || nextSeq < 1) return fallback;
-
-    return formatYearSequenceControlNumber(year, nextSeq);
-  } catch (err) {
-    console.warn('[controlNumber] Failed to compute next control number:', err);
-    return fallback;
-  }
-};
+import {
+  queryNextAssistanceControlNumber,
+  queryNextBeneficiaryControlNumber,
+} from '@/lib/controlNumbers';
 
 const parseLegacyRequirementUrls = (value) => {
   if (!value) return [];
@@ -153,6 +118,7 @@ const normalizeRequirementFiles = (requirementsFilesValue, requirementsUrlsValue
 export default function BeneficiaryRequestPage() {
   const router = useRouter();
   const [controlNumber, setControlNumber] = useState('');
+  const [assistanceControlPreview, setAssistanceControlPreview] = useState('');
   const [budgets, setBudgets] = useState({});
   const [requirementsByType, setRequirementsByType] = useState(null);
   const [formData, setFormData] = useState({
@@ -231,13 +197,42 @@ export default function BeneficiaryRequestPage() {
       // fall through
     }
 
-    const next = await getNextSequentialControlNumber('residents');
-    setControlNumber(next);
+    setControlNumber('');
   };
 
   useEffect(() => {
     void refreshResidentControlNumber();
   }, []);
+
+  const resolveAssistanceType = () => {
+    if (!formData.assistanceType) return '';
+    return formData.assistanceType === 'Others' ? formData.otherAssistanceType : formData.assistanceType;
+  };
+
+  useEffect(() => {
+    const loadAssistanceControlPreview = async () => {
+      if (isEditMode) {
+        setAssistanceControlPreview(editingAssistanceControlNumber || '');
+        return;
+      }
+
+      const assistanceType = resolveAssistanceType();
+      if (!assistanceType || !supabase) {
+        setAssistanceControlPreview('');
+        return;
+      }
+
+      const next = await queryNextAssistanceControlNumber(supabase, assistanceType);
+      setAssistanceControlPreview(next);
+    };
+
+    void loadAssistanceControlPreview();
+  }, [
+    formData.assistanceType,
+    formData.otherAssistanceType,
+    isEditMode,
+    editingAssistanceControlNumber,
+  ]);
 
   useEffect(() => {
     const loadCooldownInfo = async () => {
@@ -929,10 +924,8 @@ export default function BeneficiaryRequestPage() {
           residentData = await createOrUpdateResident({ id: storedResidentId, ...baseResidentPayload });
           residentIdForRequest = residentData?.id || storedResidentId;
         } else {
-          const residentControlNumber = controlNumber || (await getNextSequentialControlNumber('residents'));
-          if (!controlNumber) {
-            setControlNumber(residentControlNumber);
-          }
+          const residentControlNumber = await queryNextBeneficiaryControlNumber(supabase);
+          setControlNumber(residentControlNumber);
 
           const residentPayload = {
             control_number: residentControlNumber,
@@ -959,9 +952,11 @@ export default function BeneficiaryRequestPage() {
           throw new Error('Missing request reference number. Please go back and try again.');
         }
 
+        const assistanceTypeForRequest = resolveAssistanceType();
         const assistanceControlNumber = isEditMode
           ? editingAssistanceControlNumber
-          : await getNextSequentialControlNumber('assistance_requests');
+          : assistanceControlPreview ||
+            (await queryNextAssistanceControlNumber(supabase, assistanceTypeForRequest));
 
         const buildAddress = () => {
           const barangayLabel = formData.barangay === 'sta-rita' ? 'Sta. Rita' : formData.barangay;
@@ -1270,9 +1265,17 @@ export default function BeneficiaryRequestPage() {
       )}
       <form onSubmit={handleSubmit} className={styles.formGrid}>
         <div className={styles.controlNumberBar}>
-          <div className={styles.controlNumberLabel}>Control Number</div>
-          <div className={styles.controlNumberValue}>
-            {controlNumber || editingAssistanceControlNumber || '—'}
+          <div>
+            <div className={styles.controlNumberLabel}>Beneficiary Control No.</div>
+            <div className={styles.controlNumberValue}>{controlNumber || '—'}</div>
+          </div>
+          <div>
+            <div className={styles.controlNumberLabel}>Request Control No.</div>
+            <div className={styles.controlNumberValue}>
+              {isEditMode
+                ? editingAssistanceControlNumber || '—'
+                : assistanceControlPreview || '—'}
+            </div>
           </div>
         </div>
 

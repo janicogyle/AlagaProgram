@@ -31,13 +31,29 @@ CLOUDINARY_URL=cloudinary://<api_key>:<api_secret>@<cloud_name>
 # CLOUDINARY_API_SECRET=...
 ```
 
-If deploying to Vercel, make sure `SUPABASE_SERVICE_ROLE_KEY` and `CLOUDINARY_URL` are configured in **Project Settings → Environment Variables**. Without the service role key, creating admin/staff users will fail with “Admin client not available”. Without Cloudinary, Valid ID uploads will fail.
+If deploying to Vercel, add these in **Project Settings → Environment Variables** (enable for **Production** and **Preview**, then **Redeploy**):
+
+| Variable | Required on Vercel |
+|----------|----------------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes (signup OTP, admin actions) |
+| `CLOUDINARY_URL` | Yes (Valid ID uploads) |
+| `UNISMS_API_KEY` | Yes (SMS OTP on signup) |
+| `SMS_OTP_SECRET` | Yes (OTP hashing) |
+| `QR_CARD_SECRET` or `BENEFICIARY_SESSION_SECRET` | Yes (beneficiary sessions / QR) |
+| `UNISMS_SENDER_ID` | Optional |
+| `SMS_DEV_MODE` | **Do not** set `true` on Vercel (local only) |
+
+Without `UNISMS_API_KEY` and `SMS_OTP_SECRET`, signup Step 4 shows “SMS is not configured”. `.env.local` is **not** uploaded to Vercel — copy values manually into the dashboard.
 
 ### Database
 
 To enable QR ID cards, run `setup-step5.sql` in the Supabase SQL Editor (creates `public.beneficiary_cards`).
 To enable SMS OTPs and logs, run `setup-step6.sql` in the Supabase SQL Editor (creates `public.sms_otps` and `public.sms_logs`).
 To remove legacy Supabase document storage, run `setup-step7.sql` after migrating uploads to Cloudinary.
+To enable per-assistance-type request control numbers (`YYYY-###`) and permanent beneficiary numbers (`BENEF-###`), run `setup-step8.sql`.
+If existing beneficiaries still show `2026-001` instead of `BENEF-001`, run `setup-step9.sql` to migrate resident control numbers (assistance requests stay `2026-###`).
 
 ### SMS (UniSMS OTP)
 
