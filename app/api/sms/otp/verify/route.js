@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { OTP_MAX_ATTEMPTS, hashOtp, normalizeSmsContactNumber } from '@/lib/sms.server';
+import { getSignupContactUnavailableReason } from '@/lib/contactRegistration.server';
 
 export const runtime = 'nodejs';
 
@@ -38,6 +39,13 @@ export async function POST(request) {
     }
 
     const purpose = parsePurpose(body.purpose);
+
+    if (purpose === 'signup') {
+      const blockedReason = await getSignupContactUnavailableReason(supabaseAdmin, contactNumber);
+      if (blockedReason) {
+        return NextResponse.json({ data: null, error: blockedReason }, { status: 409 });
+      }
+    }
 
     const { data: otpRow, error } = await supabaseAdmin
       .from('sms_otps')

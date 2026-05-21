@@ -102,6 +102,8 @@ export default function BeneficiarySignupPage() {
   const [otpCooldown, setOtpCooldown] = useState(0);
   const [otpExpiresAt, setOtpExpiresAt] = useState(null);
   const [otpVerifiedContact, setOtpVerifiedContact] = useState('');
+  const [contactChecking, setContactChecking] = useState(false);
+  const [contactUnavailable, setContactUnavailable] = useState('');
 
   const [form, setForm] = useState({
     firstName: '',
@@ -127,6 +129,8 @@ export default function BeneficiarySignupPage() {
   // Computed values
   const hasSectorSelected = form.isPwd || form.isSeniorCitizen || form.isSoloParent;
   const isOtpVerified = otpVerified && otpVerifiedContact === form.contactNumber;
+  const isContactValid = /^0\d{10}$/.test(String(form.contactNumber || '').trim());
+  const isContactBlocked = !!contactUnavailable;
 
   // ===========================
   // HELPERS
@@ -205,6 +209,7 @@ export default function BeneficiarySignupPage() {
 
     if (name === 'contactNumber') {
       resetOtpState();
+      setContactUnavailable('');
     }
 
     setForm((prev) => ({ ...prev, [name]: newValue }));
@@ -248,6 +253,55 @@ export default function BeneficiarySignupPage() {
     return () => clearInterval(timer);
   }, [otpCooldown]);
 
+  useEffect(() => {
+    if (!isContactValid) {
+      setContactUnavailable('');
+      setContactChecking(false);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setContactChecking(true);
+      try {
+        const contactNumber = String(form.contactNumber || '').trim();
+        const response = await fetch(
+          `/api/account-requests/check-contact?contactNumber=${encodeURIComponent(contactNumber)}`,
+          { signal: controller.signal },
+        );
+        const { data, error } = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          setContactUnavailable(error || 'Unable to verify contact number.');
+          return;
+        }
+        if (data?.available) {
+          setContactUnavailable('');
+          setFieldErrors((prev) => ({ ...prev, contactNumber: '' }));
+        } else {
+          const msg =
+            data?.error ||
+            'This contact number is already registered. Please log in or use a different number.';
+          setContactUnavailable(msg);
+          setFieldErrors((prev) => ({ ...prev, contactNumber: msg }));
+          resetOtpState();
+        }
+      } catch (err) {
+        if (err?.name !== 'AbortError') {
+          setContactUnavailable('');
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setContactChecking(false);
+        }
+      }
+    }, 450);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [form.contactNumber, isContactValid]);
+
   // ===========================
   // LEGAL MODAL
   // ===========================
@@ -275,11 +329,16 @@ export default function BeneficiarySignupPage() {
   };
 
   const handleSendOtp = async () => {
-    if (otpSending || otpCooldown > 0) return;
+    if (otpSending || otpCooldown > 0 || isContactBlocked || contactChecking) return;
     const contactNumber = String(form.contactNumber || '').trim();
     if (!/^0\d{10}$/.test(contactNumber)) {
       setFieldErrors((prev) => ({ ...prev, contactNumber: 'Contact number must be 11 digits.' }));
       setOtpStatus({ type: 'error', message: 'Please enter a valid contact number before requesting an OTP.' });
+      return;
+    }
+
+    if (contactUnavailable) {
+      setOtpStatus({ type: 'error', message: contactUnavailable });
       return;
     }
 
@@ -297,7 +356,13 @@ export default function BeneficiarySignupPage() {
         if (retryAfter > 0) {
           setOtpCooldown(retryAfter);
         }
-        setOtpStatus({ type: 'error', message: error || 'Failed to send OTP. Please try again.' });
+        const message = error || 'Failed to send OTP. Please try again.';
+        if (response.status === 409) {
+          setContactUnavailable(message);
+          setFieldErrors((prev) => ({ ...prev, contactNumber: message }));
+          resetOtpState();
+        }
+        setOtpStatus({ type: 'error', message });
         return;
       }
 
@@ -452,6 +517,11 @@ export default function BeneficiarySignupPage() {
         }
         if (form.password !== form.confirmPassword) {
           setStatus({ type: 'error', message: 'Passwords do not match.' });
+          return false;
+        }
+        if (contactUnavailable) {
+          setFieldErrors((prev) => ({ ...prev, contactNumber: contactUnavailable }));
+          setStatus({ type: 'error', message: contactUnavailable });
           return false;
         }
         if (!isOtpVerified) {
@@ -900,7 +970,14 @@ export default function BeneficiarySignupPage() {
             type="button"
             variant="secondary"
             onClick={handleSendOtp}
-            disabled={otpSending || otpCooldown > 0 || !form.contactNumber || isOtpVerified}
+            disabled={
+              otpSending ||
+              otpCooldown > 0 ||
+              !isContactValid ||
+              isContactBlocked ||
+              contactChecking ||
+              isOtpVerified
+            }
             size="compact"
           >
             {otpCooldown > 0
@@ -910,8 +987,11 @@ export default function BeneficiarySignupPage() {
                 : 'Send OTP'}
           </Button>
           <span className={styles.otpHint}>
-            We&apos;ll send a 6-digit verification code to your contact number. You can request up to 2
-            codes, then wait 15 minutes before trying again.
+            {contactChecking
+              ? 'Checking if this contact number is available...'
+              : isContactBlocked
+                ? contactUnavailable
+                : "We'll send a 6-digit verification code to your contact number. You can request up to 2 codes, then wait 15 minutes before trying again."}
           </span>
         </div>
         <div className={`${styles.otpRow} ${styles.otpRowVerify}`}>

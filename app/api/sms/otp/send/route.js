@@ -15,6 +15,7 @@ import {
   sendSms,
 } from '@/lib/sms.server';
 import { buildOtpMessage } from '@/lib/smsTemplates';
+import { getSignupContactUnavailableReason } from '@/lib/contactRegistration.server';
 
 export const runtime = 'nodejs';
 
@@ -47,6 +48,13 @@ export async function POST(request) {
     }
 
     const purpose = parsePurpose(body.purpose);
+
+    if (purpose === 'signup') {
+      const blockedReason = await getSignupContactUnavailableReason(supabaseAdmin, contactNumber);
+      if (blockedReason) {
+        return NextResponse.json({ data: null, error: blockedReason }, { status: 409 });
+      }
+    }
 
     if (!canSendSms()) {
       return NextResponse.json(
