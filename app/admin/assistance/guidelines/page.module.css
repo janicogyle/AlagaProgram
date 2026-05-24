@@ -149,14 +149,14 @@
 
 .checkList li::before {
   content: '•';
-  color: #9ca3af;
+  color: #64748b;
   line-height: 1.4;
   margin-top: 1px;
 }
 
 
 .emptyRequirement {
-  color: #9ca3af;
+  color: #64748b;
   font-style: italic;
   padding-left: 24px;
 }
@@ -431,7 +431,7 @@
 .flowConnector {
   display: none;
   font-size: 24px;
-  color: #9ca3af;
+  color: #64748b;
 }
 
 @media (min-width: 768px) {

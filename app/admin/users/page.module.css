@@ -67,6 +67,20 @@
   color: #6b7280;
 }
 
+.modalDetails {
+  display: grid;
+  gap: 10px;
+}
+
+.modalDetailRow {
+  margin: 0;
+  color: #111827;
+}
+
+.modalDetailRow strong {
+  color: #374151;
+}
+
 /* Table/Card View Toggle */
 .tableView {
   display: block;

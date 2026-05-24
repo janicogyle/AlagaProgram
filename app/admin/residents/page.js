@@ -1171,7 +1171,7 @@ export default function ResidentsPage() {
           </div>
         </FilterBar>
 
-        {loading && <p style={{ padding: 16 }}>Loading beneficiaries…</p>}
+        {loading && <p className={styles.emptyCard}>Loading beneficiaries…</p>}
         {!loading && (
           <>
             <div className={styles.tableView}>

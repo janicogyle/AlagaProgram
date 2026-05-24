@@ -310,7 +310,7 @@
 }
 
 .addDocumentInput::placeholder {
-  color: #9ca3af;
+  color: #64748b;
 }
 
 .addDocumentBtn {
@@ -375,7 +375,7 @@
   border: none;
   padding: 4px;
   cursor: pointer;
-  color: #9ca3af;
+  color: #64748b;
   display: flex;
   align-items: center;
   justify-content: center;

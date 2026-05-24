@@ -635,9 +635,9 @@ export default function UsersPage() {
           ))}
         </div>
 
-        {loading && <p style={{ padding: '20px', textAlign: 'center' }}>Loading users...</p>}
+        {loading && <p className={styles.placeholder}>Loading users...</p>}
         {!loading && filteredUsers.length === 0 && (
-          <p style={{ padding: '20px', textAlign: 'center' }}>
+          <p className={styles.placeholder}>
             No users found. Click “Add User” to create one.
           </p>
         )}
@@ -689,23 +689,23 @@ export default function UsersPage() {
         footer={<Button onClick={closeDetails}>Close</Button>}
       >
         {detailsState.user && (
-          <div style={{ display: 'grid', gap: 10 }}>
-            <p style={{ margin: 0 }}>
+          <div className={styles.modalDetails}>
+            <p className={styles.modalDetailRow}>
               <strong>Full Name:</strong> {detailsState.user.full_name}
             </p>
-            <p style={{ margin: 0 }}>
+            <p className={styles.modalDetailRow}>
               <strong>Email:</strong> {detailsState.user.email}
             </p>
-            <p style={{ margin: 0 }}>
+            <p className={styles.modalDetailRow}>
               <strong>Contact Number:</strong> {detailsState.user.contact_number || '—'}
             </p>
-            <p style={{ margin: 0 }}>
+            <p className={styles.modalDetailRow}>
               <strong>Role:</strong> {detailsState.user.role}
             </p>
-            <p style={{ margin: 0 }}>
+            <p className={styles.modalDetailRow}>
               <strong>Status:</strong> {detailsState.user.status}
             </p>
-            <p style={{ margin: 0 }}>
+            <p className={styles.modalDetailRow}>
               <strong>Last Login:</strong>{' '}
               {detailsState.user.last_login ? new Date(detailsState.user.last_login).toLocaleString() : 'Never'}
             </p>

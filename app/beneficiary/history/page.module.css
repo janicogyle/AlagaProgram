@@ -16,9 +16,14 @@
   margin-bottom: 0.75rem;
 }
 
+.headerRow h2 {
+  margin: 0;
+  color: #111827;
+}
+
 .muted {
   font-size: 0.9rem;
-  color: #6b7280;
+  color: #475569;
 }
 
 .cooldownRow {
@@ -37,7 +42,7 @@
 
 .cooldownMeta {
   font-size: 0.85rem;
-  color: #6b7280;
+  color: #475569;
 }
 
 @media (max-width: 576px) {

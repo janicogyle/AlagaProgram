@@ -104,6 +104,12 @@
   color: #6b7280;
 }
 
+.cardMessage {
+  padding: 12px;
+  margin: 0;
+  color: #374151;
+}
+
 /* Charts Grid */
 .chartsGrid {
   display: grid;

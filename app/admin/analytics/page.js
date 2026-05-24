@@ -354,7 +354,7 @@ export default function AnalyticsPage() {
       {/* Recent Account Requests */}
       <Card title="Recent Account Requests" subtitle="Latest beneficiary account signups needing approval">
         {recentAccountRequests.length === 0 ? (
-          <p style={{ padding: 12, margin: 0, color: '#6b7280' }}>No recent account requests.</p>
+          <p className={styles.cardMessage}>No recent account requests.</p>
         ) : (
           <Table columns={columns} data={recentAccountRequests} fitToContainer />
         )}
@@ -363,7 +363,7 @@ export default function AnalyticsPage() {
       {/* Recent Registrations (same as Dashboard) */}
       <Card title="Recent Approved Accounts" subtitle="Latest residents added to the system">
         {recentRegistrations.length === 0 ? (
-          <p style={{ padding: 12, margin: 0, color: '#6b7280' }}>No recent registrations.</p>
+          <p className={styles.cardMessage}>No recent registrations.</p>
         ) : (
           <Table columns={columns} data={recentRegistrations} fitToContainer />
         )}
@@ -371,9 +371,9 @@ export default function AnalyticsPage() {
 
       <Card title="Staff Recent Activity" subtitle="Latest actions performed by staff/admin accounts">
         {staffActivityLoading ? (
-          <p style={{ padding: 12, margin: 0, color: '#6b7280' }}>Loading staff activity...</p>
+          <p className={styles.cardMessage}>Loading staff activity...</p>
         ) : staffActivityRows.length === 0 ? (
-          <p style={{ padding: 12, margin: 0, color: '#6b7280' }}>No staff activity yet.</p>
+          <p className={styles.cardMessage}>No staff activity yet.</p>
         ) : (
           <Table
             columns={staffActivityColumns.map((c) =>

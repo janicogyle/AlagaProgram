@@ -84,7 +84,7 @@
 }
 
 .subtleText {
-  color: #9ca3af;
+  color: #64748b;
   font-size: 12px;
 }
 
@@ -247,7 +247,7 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #9ca3af;
+  color: #64748b;
   margin-bottom: 2px;
 }
 
@@ -389,7 +389,7 @@
 .emptyCard {
   text-align: center;
   padding: 40px 20px;
-  color: #9ca3af;
+  color: #475569;
   font-size: 14px;
 }
 

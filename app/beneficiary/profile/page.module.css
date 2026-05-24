@@ -43,7 +43,7 @@
 
 .sectionSubtitle {
     font-size: 0.85rem;
-    color: #6b7280;
+    color: #475569;
 }
 
 .formGrid {
@@ -91,12 +91,12 @@
 
 .muted {
     font-size: 0.9rem;
-    color: #6b7280;
+    color: #475569;
 }
 
 .helperText {
     font-size: 0.85rem;
-    color: #6b7280;
+    color: #475569;
 }
 
 .fieldLabel {
@@ -191,7 +191,7 @@
     margin: 0;
     font-size: 0.8rem;
     line-height: 1.35;
-    color: #6b7280;
+    color: #475569;
 }
 
 .footerNote {

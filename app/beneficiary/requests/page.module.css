@@ -72,14 +72,14 @@
 }
 
 .muted {
-	color: #6b7280;
+	color: #475569;
 	font-size: 13px;
 	line-height: 1.4;
 }
 
 .assistanceRequirementsHint {
 	margin: 0;
-	color: #6b7280;
+	color: #475569;
 	font-size: 13px;
 	line-height: 1.4;
 }
@@ -131,7 +131,7 @@
 }
 
 .assistanceRequirementItemEmpty {
-	color: #6b7280;
+	color: #475569;
 }
 
 .requirementUploads {

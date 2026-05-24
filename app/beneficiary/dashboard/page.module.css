@@ -31,6 +31,7 @@
     font-size: 1.1rem;
     font-weight: 600;
     margin-bottom: 0.25rem;
+    color: #111827;
 }
 
 .nextBody {
@@ -49,6 +50,7 @@
 .nextPrimary {
     font-weight: 600;
     margin-bottom: 0.25rem;
+    color: #111827;
 }
 
 .nextMeta {
@@ -110,13 +112,14 @@
     font-size: 1rem;
     font-weight: 600;
     margin: 0 0 0.25rem 0;
+    color: #111827;
 }
 
 .infoList {
     margin: 0;
     padding-left: 1.25rem;
     font-size: 0.9rem;
-    color: #4b5563;
+    color: #374151;
 }
 
 .infoList li + li {
@@ -170,7 +173,11 @@
 
 .muted {
     font-size: 0.9rem;
-    color: #6b7280;
+    color: #475569;
+}
+
+.requestsHeader h2 {
+    color: #111827;
 }
 
 @media (max-width: 900px) {

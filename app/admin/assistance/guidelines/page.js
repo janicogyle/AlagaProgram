@@ -366,11 +366,6 @@ export default function GuidelinesPage() {
 
   return (
     <div className={styles.guidelinesPage}>
-      {/* Header */}
-      <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>ALAGA Program Guidelines</h1>
-        <p className={styles.pageSubtitle}>Requirements and budget ceilings for social services assistance</p>
-      </div>
 
       {status && (
         <div
