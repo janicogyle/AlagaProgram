@@ -18,7 +18,7 @@ export default function AnalyticsPage() {
     { title: 'Total Beneficiaries', current: 0, previous: 0, growth: 0, icon: 'users', color: 'blue' },
     { title: 'New Registrations', current: 0, previous: 0, growth: 0, icon: 'registration', color: 'green' },
     { title: 'Active Request', current: 0, previous: 0, growth: 0, icon: 'assistance', color: 'orange' },
-    { title: 'Completion Rate', current: 0, previous: 0, growth: 0, icon: 'completion', format: '%', color: 'purple' },
+    { title: 'Released Assistance', current: 0, previous: 0, growth: 0, icon: 'completion', color: 'purple' },
   ]);
   const [monthlyRegistrations, setMonthlyRegistrations] = useState([]);
   const [sectorDistribution, setSectorDistribution] = useState([]);
@@ -71,7 +71,6 @@ export default function AnalyticsPage() {
 
     const total = residents.length;
     const requestRows = assistanceRequests || [];
-    const totalRequests = requestRows.length;
     const releasedRequests = requestRows.filter((r) => r.status === 'Released').length;
     const activeRequests = requestRows.filter((r) =>
       ['Pending', 'Resubmitted', 'Approved'].includes(r.status),
@@ -117,9 +116,6 @@ export default function AnalyticsPage() {
       purokCounts[purokKey] = (purokCounts[purokKey] || 0) + 1;
     });
 
-    const completionRate =
-      totalRequests > 0 ? Math.round((releasedRequests / totalRequests) * 100) : 0;
-
     setKpiData([
       { title: 'Total Beneficiaries', current: total, previous: 0, growth: 0, icon: 'users', color: 'blue' },
       {
@@ -132,12 +128,11 @@ export default function AnalyticsPage() {
       },
       { title: 'Active Request', current: activeRequests, previous: 0, growth: 0, icon: 'assistance', color: 'orange' },
       {
-        title: 'Completion Rate',
-        current: completionRate,
+        title: 'Released Assistance',
+        current: releasedRequests,
         previous: 0,
         growth: 0,
         icon: 'completion',
-        format: '%',
         color: 'purple',
       },
     ]);

@@ -1,0 +1,130 @@
+.skeletonContainer {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+.skeletonHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.skeletonTitle {
+  width: 250px;
+  height: 2rem;
+  background-color: #e2e8f0;
+  border-radius: 6px;
+}
+
+.skeletonSubtitle {
+  width: 350px;
+  height: 1rem;
+  background-color: #e2e8f0;
+  border-radius: 4px;
+}
+
+.skeletonStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+.skeletonStatCard {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.skeletonIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background-color: #f1f5f9;
+}
+
+.skeletonStatContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.skeletonStatTitle {
+  width: 60%;
+  height: 0.875rem;
+  background-color: #f1f5f9;
+  border-radius: 4px;
+}
+
+.skeletonStatValue {
+  width: 40%;
+  height: 1.5rem;
+  background-color: #f1f5f9;
+  border-radius: 4px;
+}
+
+.skeletonMainContent {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .skeletonMainContent {
+    grid-template-columns: 1fr;
+  }
+}
+
+.skeletonChart, .skeletonList {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.skeletonChartHeader, .skeletonListHeader {
+  width: 30%;
+  height: 1.25rem;
+  background-color: #f1f5f9;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.skeletonChartBody {
+  width: 100%;
+  height: 300px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+}
+
+.skeletonListItem {
+  width: 100%;
+  height: 3rem;
+  background-color: #f8fafc;
+  border-radius: 6px;
+}

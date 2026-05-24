@@ -775,8 +775,13 @@ export default function ResidentsPage() {
       label: "Beneficiary",
       render: (_, row) => (
         <div>
-          <div style={{ fontWeight: 600 }}>{buildFullName(row)}</div>
-          <div style={{ color: "#6b7280", fontSize: 13 }}>{row.contact_number || "-"}</div>
+          <div style={{ fontWeight: 600, color: "#111827" }}>{buildFullName(row)}</div>
+          <div style={{ color: "#6b7280", fontSize: 13, display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+            </svg>
+            {row.contact_number || "-"}
+          </div>
         </div>
       ),
     },
@@ -784,7 +789,17 @@ export default function ResidentsPage() {
       key: "control_number",
       label: "Control No.",
       render: (value) => (
-        <span style={{ fontFamily: "'Courier New', monospace" }}>{value || "-"}</span>
+        <span style={{ 
+          fontFamily: "'Courier New', monospace",
+          backgroundColor: "#f3f4f6",
+          padding: "4px 8px",
+          borderRadius: "4px",
+          color: "#374151",
+          fontSize: "13px",
+          fontWeight: "500"
+        }}>
+          {value || "-"}
+        </span>
       ),
     },
     {
@@ -808,11 +823,8 @@ export default function ResidentsPage() {
       key: "address",
       label: "Address",
       render: (_, row) => (
-        <div>
-          <div>{formatAddressLine(row)}</div>
-          <div style={{ color: "#6b7280", fontSize: 13 }}>
-            House No.: {displayValue(row.house_no)} • Purok: {displayValue(row.purok)} • Barangay: {displayValue(row.barangay)}
-          </div>
+        <div style={{ color: "#4b5563" }}>
+          {formatAddressLine(row)}
         </div>
       ),
     },
@@ -840,7 +852,16 @@ export default function ResidentsPage() {
 
         return (
           <div>
-            <Badge variant={variant}>{status}</Badge>
+            <Badge variant={variant}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                {status === 'Valid' && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                )}
+                {status}
+              </div>
+            </Badge>
             {expires ? (
               <div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>
                 Expires: {expires}
@@ -860,7 +881,7 @@ export default function ResidentsPage() {
     {
       key: "created_at",
       label: "Created",
-      render: (value) => <span>{formatDate(value)}</span>,
+      render: (value) => <span style={{ color: "#4b5563" }}>{formatDate(value)}</span>,
     },
     {
       key: "actions",
@@ -1198,7 +1219,7 @@ export default function ResidentsPage() {
 
                         <div className={styles.cardDetail}>
                           <span className={styles.detailLabel}>Address</span>
-                          <span className={styles.detailValue}>{formatAddressLine(row)}</span>
+                          <span className={styles.detailValue} style={{ color: "#4b5563" }}>{formatAddressLine(row)}</span>
                         </div>
 
                         <div className={styles.cardDetail}>

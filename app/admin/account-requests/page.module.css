@@ -142,7 +142,7 @@
 
 .filters {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   flex-wrap: wrap;
   gap: 10px 12px;
   justify-content: flex-start;
@@ -157,38 +157,47 @@
 
 .filterGroup {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 140px;
 }
 
 .filterLabel {
   font-size: 13px;
   font-weight: 500;
-  color: #6b7280;
-  white-space: nowrap;
+  color: #4b5563;
+  margin-left: 4px;
 }
 
 .select {
   border-radius: 8px;
   border: 1px solid #d1d5db;
-  padding: 8px 32px 8px 12px;
-  min-height: 38px;
-  min-width: 8.5rem;
-  font-size: 13px;
-  color: #111827;
-  background-color: #ffffff;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: #1f2937;
+  background-color: #f9fafb;
   cursor: pointer;
+  transition: all 0.2s ease;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
-  background-position: right 10px center;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 36px;
+  min-height: auto;
+  min-width: unset;
+}
+
+.select:hover {
+  background-color: #ffffff;
+  border-color: #9ca3af;
 }
 
 .select:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.1);
+  border-color: #3b82f6;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 .detailsContent {

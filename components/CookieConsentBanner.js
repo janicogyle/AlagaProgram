@@ -59,7 +59,6 @@ export default function CookieConsentBanner() {
     <>
       <div className={styles.banner}>
         <div className={styles.content}>
-        
           <div className={styles.textContainer}>
             <h3 className={styles.heading}>Cookie Consent</h3>
             <p className={styles.text}>

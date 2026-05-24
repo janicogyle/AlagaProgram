@@ -1,41 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import styles from './page.module.css';
 
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [liveStats, setLiveStats] = useState(null);
-  const [statsLoading, setStatsLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadStats() {
-      try {
-        setStatsLoading(true);
-        const res = await fetch('/api/public/stats');
-        if (!res.ok) throw new Error('Failed to fetch stats');
-        const data = await res.json();
-        if (!cancelled) setLiveStats(data);
-      } catch {
-        if (!cancelled) setLiveStats(null);
-      } finally {
-        if (!cancelled) setStatsLoading(false);
-      }
-    }
-
-    loadStats();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const formatCount = (value) => {
-    if (typeof value !== 'number' || Number.isNaN(value)) return '—';
-    return new Intl.NumberFormat('en-PH').format(value);
-  };
 
   const services = [
     {
@@ -151,25 +121,6 @@ export default function HomePage() {
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
         </svg>
       ),
-    },
-  ];
-
-  const statistics = [
-    {
-      label: 'Total beneficiaries',
-      value: statsLoading ? '—' : formatCount(liveStats?.totalResidents),
-    },
-    {
-      label: 'Registered PWD',
-      value: statsLoading ? '—' : formatCount(liveStats?.pwdCount),
-    },
-    {
-      label: 'Senior Citizens',
-      value: statsLoading ? '—' : formatCount(liveStats?.seniorCount),
-    },
-    {
-      label: 'Solo Parents',
-      value: statsLoading ? '—' : formatCount(liveStats?.soloParentCount),
     },
   ];
 
@@ -377,27 +328,6 @@ export default function HomePage() {
                     </svg>
                   </div>
                 )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Statistics Section */}
-      <section className={styles.statistics}>
-        <div className={styles.sectionContainer}>
-          <div className={styles.sectionHeader}>
-            <span className={styles.sectionTagLight}>Dashboard Preview</span>
-            <h2 className={styles.sectionTitleLight}>System Statistics</h2>
-            <p className={styles.sectionDescriptionLight}>
-              Real-time overview of registered residents and beneficiaries in our barangay.
-            </p>
-          </div>
-          <div className={styles.statsGrid}>
-            {statistics.map((stat, index) => (
-              <div key={index} className={styles.statCard}>
-                <span className={styles.statValue}>{stat.value}</span>
-                <span className={styles.statLabel}>{stat.label}</span>
               </div>
             ))}
           </div>

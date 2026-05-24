@@ -1026,7 +1026,6 @@ export default function RegistrationPage() {
                 placeholder="Enter beneficiary's full name"
                 error={errors.beneficiaryName}
                 disabled={!formData.assistanceType}
-                optional
               />
               <Input
                 label="Beneficiary Contact"
@@ -1038,7 +1037,6 @@ export default function RegistrationPage() {
                 mask="ph-contact"
                 error={errors.beneficiaryContact}
                 disabled={!formData.assistanceType}
-                optional
               />
               <Input
                 label="Beneficiary Address"
@@ -1048,7 +1046,6 @@ export default function RegistrationPage() {
                 placeholder="House No., Purok, Barangay, City"
                 error={errors.beneficiaryAddress}
                 disabled={!formData.assistanceType}
-                optional
               />
               <Input
                 label="Budget Ceiling"
@@ -1059,7 +1056,6 @@ export default function RegistrationPage() {
                 error={errors.assistanceAmount}
                 disabled={!formData.assistanceType}
                 readOnly
-                optional
               />
             </div>
           </Card>

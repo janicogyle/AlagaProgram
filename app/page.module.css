@@ -460,19 +460,6 @@
   letter-spacing: 0.5px;
 }
 
-.sectionTagLight {
-  display: inline-block;
-  padding: 6px 16px;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 50px;
-  margin-bottom: 16px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
 .sectionTitle {
   font-size: 36px;
   font-weight: 800;
@@ -480,22 +467,9 @@
   margin-bottom: 16px;
 }
 
-.sectionTitleLight {
-  font-size: 36px;
-  font-weight: 800;
-  color: white;
-  margin-bottom: 16px;
-}
-
 .sectionDescription {
   font-size: 17px;
   color: #6b7280;
-  line-height: 1.7;
-}
-
-.sectionDescriptionLight {
-  font-size: 17px;
-  color: rgba(255, 255, 255, 0.85);
   line-height: 1.7;
 }
 
@@ -691,66 +665,11 @@
 }
 
 /* ======================= */
-/* STATISTICS SECTION      */
-/* ======================= */
-.statistics {
-  padding: 100px 0;
-  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
-}
-
-.statsGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
-}
-
-.statCard {
-  padding: 32px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  text-align: center;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  transition: all 0.3s ease;
-}
-
-.statCard:hover {
-  background: rgba(255, 255, 255, 0.15);
-  transform: translateY(-4px);
-}
-
-.statIcon {
-  width: 56px;
-  height: 56px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 16px;
-  color: white;
-}
-
-.statValue {
-  display: block;
-  font-size: 42px;
-  font-weight: 800;
-  color: white;
-  margin-bottom: 8px;
-}
-
-.statLabel {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
-  font-weight: 500;
-}
-
-/* ======================= */
 /* CONTACT SECTION         */
 /* ======================= */
 .contact {
   padding: 100px 0;
-  background: white;
+  background: rgb(255, 251, 251);
 }
 
 .contactContent {
@@ -1043,9 +962,6 @@
     display: none;
   }
 
-  .statsGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 
   .contactContent {
     grid-template-columns: 1fr;
@@ -1066,7 +982,6 @@
   .about,
   .services,
   .process,
-  .statistics,
   .contact {
     padding: 80px 0;
   }
@@ -1102,7 +1017,7 @@
     text-align: left;
   }
 
-  .navLoginBtn {
+  .navLoginBtn, .navSignupBtn {
     width: 100%;
     margin: 16px 0 0;
     text-align: center;
@@ -1121,13 +1036,11 @@
     font-size: 16px;
   }
 
-  .sectionTitle,
-  .sectionTitleLight {
+  .sectionTitle {
     font-size: 30px;
   }
 
-  .sectionDescription,
-  .sectionDescriptionLight {
+  .sectionDescription {
     font-size: 15px;
   }
 
@@ -1157,13 +1070,7 @@
     padding: 28px 20px;
   }
 
-  .statCard {
-    padding: 28px;
-  }
 
-  .statValue {
-    font-size: 36px;
-  }
 
   .footerTop {
     flex-direction: column;
@@ -1287,26 +1194,22 @@
     margin-bottom: 40px;
   }
 
-  .sectionTag,
-  .sectionTagLight {
+  .sectionTag {
     font-size: 12px;
     padding: 5px 14px;
   }
 
-  .sectionTitle,
-  .sectionTitleLight {
+  .sectionTitle {
     font-size: 26px;
   }
 
-  .sectionDescription,
-  .sectionDescriptionLight {
+  .sectionDescription {
     font-size: 14px;
   }
 
   .about,
   .services,
   .process,
-  .statistics,
   .contact {
     padding: 64px 0;
   }
@@ -1349,28 +1252,10 @@
     padding: 32px 24px 24px;
   }
 
-  .statsGrid {
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
 
-  .statCard {
-    padding: 24px 16px;
-  }
 
-  .statIcon {
-    width: 48px;
-    height: 48px;
-    margin-bottom: 12px;
-  }
 
-  .statValue {
-    font-size: 32px;
-  }
 
-  .statLabel {
-    font-size: 13px;
-  }
 
   .contactContent {
     gap: 40px;
@@ -1583,21 +1468,18 @@
     margin-bottom: 32px;
   }
 
-  .sectionTag,
-  .sectionTagLight {
+  .sectionTag {
     font-size: 11px;
     padding: 4px 12px;
     margin-bottom: 12px;
   }
 
-  .sectionTitle,
-  .sectionTitleLight {
+  .sectionTitle {
     font-size: 22px;
     margin-bottom: 12px;
   }
 
-  .sectionDescription,
-  .sectionDescriptionLight {
+  .sectionDescription {
     font-size: 13px;
     line-height: 1.6;
   }
@@ -1605,7 +1487,6 @@
   .about,
   .services,
   .process,
-  .statistics,
   .contact {
     padding: 48px 0;
   }
@@ -1700,36 +1581,11 @@
     font-size: 12px;
   }
 
-  .statsGrid {
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
 
-  .statCard {
-    padding: 20px 12px;
-    border-radius: 14px;
-  }
 
-  .statIcon {
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
-    margin-bottom: 10px;
-  }
 
-  .statIcon svg {
-    width: 22px;
-    height: 22px;
-  }
 
-  .statValue {
-    font-size: 26px;
-    margin-bottom: 4px;
-  }
 
-  .statLabel {
-    font-size: 11px;
-  }
 
   .contactContent {
     gap: 32px;
@@ -1924,20 +1780,17 @@
     padding: 0 12px;
   }
 
-  .sectionTitle,
-  .sectionTitleLight {
+  .sectionTitle {
     font-size: 20px;
   }
 
-  .sectionDescription,
-  .sectionDescriptionLight {
+  .sectionDescription {
     font-size: 12px;
   }
 
   .about,
   .services,
   .process,
-  .statistics,
   .contact {
     padding: 40px 0;
   }
@@ -2005,32 +1858,11 @@
     font-size: 11px;
   }
 
-  .statsGrid {
-    gap: 10px;
-  }
 
-  .statCard {
-    padding: 16px 10px;
-    border-radius: 12px;
-  }
 
-  .statIcon {
-    width: 40px;
-    height: 40px;
-  }
 
-  .statIcon svg {
-    width: 20px;
-    height: 20px;
-  }
 
-  .statValue {
-    font-size: 22px;
-  }
 
-  .statLabel {
-    font-size: 10px;
-  }
 
   .contactIcon {
     width: 36px;
@@ -2206,8 +2038,4 @@
     gap: 16px;
   }
 
-  .statsGrid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-  }
 }

@@ -183,19 +183,6 @@ export default function ProfilePage() {
                       <Button
                         variant="secondary"
                         size="small"
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(idCard.token);
-                          } catch (e) {
-                            console.warn('Copy failed:', e);
-                          }
-                        }}
-                      >
-                        Copy Token
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="small"
                         onClick={() => {
                           const a = document.createElement('a');
                           a.href = idCard.qrUrl;

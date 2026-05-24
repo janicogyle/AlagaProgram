@@ -107,12 +107,12 @@ export default function DashboardLayout({ children }) {
         localStorage.removeItem('adminUser');
       }
 
-      // Redirect to login page
-      router.push('/login');
+      // Redirect to admin login page
+      router.push('/admin-login');
     } catch (error) {
       console.error('Logout failed:', error);
       // Still redirect even if there's an error
-      router.push('/login');
+      router.push('/admin-login');
     }
   };
 
