@@ -81,6 +81,9 @@
   align-items: center;
   justify-content: center;
   color: #6b7280;
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
 }
 
 .passwordToggle:hover {
@@ -99,6 +102,111 @@
 .errorMessage {
   font-size: 12px;
   color: #dc2626;
+  margin-top: 4px;
+}
+
+.successMessage {
+  font-size: 12px;
+  color: #16a34a;
+  margin-top: 4px;
+}
+
+.helperText {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* Mobile optimization */
+@media (max-width: 640px) {
+  .inputGroup {
+    gap: 8px;
+  }
+
+  .label {
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  .input {
+    padding: 14px 16px;
+    font-size: 16px;
+    min-height: 48px;
+    border-radius: 10px;
+  }
+
+  .input::placeholder {
+    font-size: 15px;
+  }
+
+  .withIcon {
+    padding-left: 48px;
+  }
+
+  .inputIcon {
+    left: 16px;
+  }
+
+  .passwordToggle {
+    right: 14px;
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  .errorMessage,
+  .successMessage,
+  .helperText {
+    font-size: 13px;
+  }
+}
+
+/* Very small mobile phones */
+@media (max-width: 360px) {
+  .input {
+    padding: 12px 14px;
+    font-size: 16px;
+  }
+
+  .label {
+    font-size: 14px;
+  }
+}
+
+/* Landscape mode optimization */
+@media (max-width: 640px) and (orientation: landscape) {
+  .inputGroup {
+    gap: 6px;
+  }
+
+  .label {
+    font-size: 13px;
+  }
+
+  .input {
+    padding: 10px 14px;
+    font-size: 14px;
+    min-height: 42px;
+    border-radius: 8px;
+  }
+
+  .withIcon {
+    padding-left: 40px;
+  }
+
+  .errorMessage,
+  .successMessage,
+  .helperText {
+    font-size: 11px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .input,
+  .passwordToggle {
+    transition: none;
+  }
 }
 
 .compactGroup {

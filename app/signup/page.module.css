@@ -739,27 +739,197 @@
 /* ============================= */
 /* RESPONSIVE                    */
 /* ============================= */
-@media (max-width: 640px) {
+
+/* Very small mobile phones (< 360px) */
+@media (max-width: 359px) {
   .signupPage {
-    padding: 0 0 1.75rem;
+    padding: 0 0.75rem 1.5rem;
+    gap: 1rem;
   }
 
   .progressCircle {
-    width: 30px;
-    height: 30px;
-    font-size: 0.72rem;
+    width: 28px;
+    height: 28px;
+    font-size: 0.68rem;
     border-width: 2px;
   }
 
   .progressLineWrapper {
-    padding-top: 13px;
+    padding-top: 12px;
+    min-width: 4px;
+    padding-left: 1px;
+    padding-right: 1px;
   }
 
   .progressLabel {
     display: none;
   }
 
-  .personalGrid,
+  .form {
+    gap: 1rem;
+  }
+
+  .section {
+    gap: 0.6rem;
+  }
+
+  .sectorChip {
+    padding: 0.55rem 0.85rem;
+    font-size: 0.85rem;
+    min-width: 110px;
+    min-height: 48px;
+  }
+
+  .formGrid {
+    gap: 0.8rem 1rem;
+  }
+
+  .reviewGroup {
+    padding: 0.75rem 0.9rem;
+  }
+
+  .reviewGrid {
+    gap: 0.6rem 1rem;
+  }
+
+  .toast {
+    top: 0.5rem;
+    right: 0.5rem;
+    left: 0.5rem;
+    max-width: none;
+    font-size: 0.8rem;
+    padding: 0.7rem 0.9rem;
+  }
+}
+
+/* Small mobile phones (360px - 480px) */
+@media (max-width: 480px) {
+  .signupPage {
+    padding: 0 1rem 1.75rem;
+    gap: 1.25rem;
+  }
+
+  .progressCircle {
+    width: 32px;
+    height: 32px;
+    font-size: 0.75rem;
+    border-width: 2px;
+  }
+
+  .progressLineWrapper {
+    padding-top: 14px;
+  }
+
+  .progressLabel {
+    display: none;
+  }
+
+  .form {
+    gap: 1.1rem;
+  }
+
+  .section {
+    gap: 0.65rem;
+  }
+
+  .personalGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .addressGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .accountGrid {
+    grid-template-columns: 1fr;
+    gap: 0.8rem 1rem;
+  }
+
+  .sectorChips {
+    flex-direction: column;
+  }
+
+  .sectorChip {
+    width: 100%;
+    min-height: 48px;
+    padding: 0.65rem 1rem;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+    gap: 0.9rem 1rem;
+  }
+
+  .otpRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .otpRowVerify {
+    align-items: stretch;
+  }
+
+  .contactField,
+  .otpInputWrap {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .reviewGrid {
+    grid-template-columns: 1fr;
+    gap: 0.65rem 1.25rem;
+  }
+
+  .reviewGroup {
+    padding: 0.85rem 1rem;
+  }
+
+  .reviewEditBtn {
+    font-size: 0.8rem;
+  }
+
+  .navRow {
+    flex-direction: row;
+    gap: 0.75rem;
+  }
+
+  .navRow button {
+    flex: 1;
+  }
+
+  .toast {
+    top: 0.75rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    max-width: none;
+  }
+}
+
+/* Medium mobile phones (480px - 640px) */
+@media (max-width: 640px) {
+  .signupPage {
+    padding: 0 1rem 2rem;
+  }
+
+  .progressCircle {
+    width: 34px;
+    height: 34px;
+    font-size: 0.78rem;
+    border-width: 2.2px;
+  }
+
+  .progressLineWrapper {
+    padding-top: 15px;
+  }
+
+  .progressLabel {
+    display: none;
+  }
+
+  .personalGrid {
+    grid-template-columns: 1fr;
+  }
+
   .formGrid,
   .addressGrid,
   .accountGrid {
@@ -772,6 +942,7 @@
 
   .sectorChip {
     width: 100%;
+    min-height: 50px;
   }
 
   .otpRow {
@@ -797,10 +968,77 @@
     padding: 0.85rem 1rem;
   }
 
+  .navRow {
+    flex-direction: row;
+    gap: 0.75rem;
+  }
+
+  .navRow button {
+    flex: 1;
+  }
+
   .toast {
     top: 0.75rem;
     right: 0.75rem;
     left: 0.75rem;
     max-width: none;
+  }
+}
+
+/* Tablets (641px - 1024px) */
+@media (max-width: 1024px) {
+  .signupPage {
+    max-width: 100%;
+    padding: 1rem 1.5rem;
+  }
+
+  .personalGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .addressGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .formGrid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  .accountGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .reviewGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Landscape mode optimization */
+@media (max-width: 640px) and (orientation: landscape) {
+  .signupPage {
+    padding: 0.5rem 1rem 1rem;
+    gap: 0.8rem;
+  }
+
+  .progressBarWrapper {
+    margin-bottom: 0;
+    padding: 0.5rem 0 0.75rem;
+  }
+
+  .form {
+    gap: 0.9rem;
+  }
+
+  .section {
+    gap: 0.5rem;
+  }
+
+  .navRow {
+    padding-top: 0.5rem;
+  }
+
+  .toast {
+    font-size: 0.8rem;
+    padding: 0.65rem 0.95rem;
   }
 }

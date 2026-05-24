@@ -65,6 +65,7 @@
   padding: 20px 24px;
   border-bottom: 1px solid #e5e7eb;
   flex-shrink: 0;
+  gap: 12px;
 }
 
 .title {
@@ -72,20 +73,25 @@
   font-weight: 600;
   color: #1f2937;
   margin: 0;
+  flex: 1;
 }
 
 .closeBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   background: none;
   border: none;
   border-radius: 6px;
   color: #6b7280;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
 }
 
 .closeBtn:hover {
@@ -93,10 +99,15 @@
   color: #374151;
 }
 
+.closeBtn:active {
+  transform: scale(0.95);
+}
+
 .body {
   padding: 24px;
   overflow-y: auto;
   flex: 1;
+  -webkit-overflow-scrolling: touch;
 }
 
 .footer {
@@ -146,21 +157,17 @@
   }
 
   .modal {
-    max-height: calc(100vh - 20px);
+    max-height: 90vh;
     border-radius: 16px 16px 0 0;
+    max-width: none;
   }
 
   .header {
-    padding: 14px 16px;
+    padding: 14px 18px;
   }
 
   .title {
     font-size: 16px;
-  }
-
-  .closeBtn {
-    width: 28px;
-    height: 28px;
   }
 
   .body {
@@ -169,14 +176,110 @@
 
   .footer {
     padding: 12px 16px;
-    gap: 8px;
   }
 
-  .small,
-  .medium,
-  .large,
-  .xlarge {
-    max-width: 100%;
+  .closeBtn {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    min-width: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .overlay {
+    padding: 8px;
+  }
+
+  .modal {
+    max-height: calc(100vh - 16px);
+    border-radius: 14px 14px 0 0;
+  }
+
+  .header {
+    padding: 12px 16px;
+    gap: 10px;
+  }
+
+  .title {
+    font-size: 15px;
+  }
+
+  .body {
+    padding: 14px;
+  }
+
+  .footer {
+    padding: 12px 14px;
+    gap: 8px;
+    flex-direction: column;
+  }
+
+  .footer button {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .closeBtn {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 360px) {
+  .header {
+    padding: 10px 14px;
+  }
+
+  .title {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .body {
+    padding: 12px;
+  }
+
+  .closeBtn {
+    width: 38px;
+    height: 38px;
+  }
+}
+
+/* Landscape mode */
+@media (max-width: 768px) and (orientation: landscape) {
+  .modal {
+    max-height: 95vh;
+  }
+
+  .body {
+    padding: 12px;
+  }
+
+  .header {
+    padding: 10px 14px;
+  }
+
+  .title {
+    font-size: 14px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .modal,
+  .overlay {
+    animation: none;
+  }
+
+  .closeBtn {
+    transition: none;
+  }
+
+  .closeBtn:active {
+    transform: none;
   }
 }
 

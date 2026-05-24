@@ -11,6 +11,11 @@
   --success: #16a34a;
   --danger: #dc2626;
   --warning: #ea580c;
+  
+  /* Mobile-first viewport settings */
+  --viewport-padding: 1rem;
+  --touch-target-min: 44px;
+  --input-height: 48px;
 }
 
 * {
@@ -31,6 +36,7 @@ html {
   scroll-behavior: smooth;
   /* Prevent iOS text size adjust */
   -webkit-text-size-adjust: 100%;
+  font-size: 16px;
 }
 
 body {
@@ -40,10 +46,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
-}
-
-html {
-  font-size: 16px;
+  word-break: break-word;
 }
 
 a {
@@ -80,6 +83,7 @@ a {
 img {
   max-width: 100%;
   height: auto;
+  display: block;
 }
 
 /* Scrollbar styles for webkit browsers */
@@ -101,8 +105,36 @@ img {
   background: #a8a8a8;
 }
 
-/* Responsive scrollbar - thinner on mobile */
+/* Selection styles */
+::selection {
+  background-color: rgba(30, 64, 175, 0.2);
+  color: inherit;
+}
+
+/* Focus visible for better accessibility */
+:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Responsive viewport and sizing */
+@media (max-width: 1024px) {
+  :root {
+    --viewport-padding: 1.25rem;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+}
+
 @media (max-width: 768px) {
+  :root {
+    --viewport-padding: 1rem;
+    --input-height: 48px;
+  }
+
   html,
   body {
     min-width: 0;
@@ -110,16 +142,108 @@ img {
 
   body {
     font-size: 14px;
+    line-height: 1.6;
   }
 
   ::-webkit-scrollbar {
     width: 4px;
     height: 4px;
   }
+
+  ::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+  }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 480px) {
+  :root {
+    --viewport-padding: 0.75rem;
+  }
+
+  html {
+    font-size: 15px;
+  }
+
   body {
     background: #f3f6fb;
+    font-size: 13px;
+  }
+
+  /* Prevent double-tap zoom on interactive elements */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 360px) {
+  :root {
+    --viewport-padding: 0.65rem;
+  }
+
+  body {
+    font-size: 12px;
+  }
+}
+
+/* Landscape mode optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+  body {
+    overflow-y: auto;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
+
+  /* Remove hover effects on touch devices */
+  button:hover,
+  a:hover {
+    background-color: inherit;
+  }
+
+  /* Add active state for touch feedback */
+  button:active,
+  a:active {
+    opacity: 0.8;
+  }
+}
+
+/* Dark mode support (optional) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #1f2937;
+    --foreground: #f3f4f6;
+    --card-bg: #111827;
+    --border-color: #374151;
+    --text-muted: #9ca3af;
+    --text-light: #6b7280;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

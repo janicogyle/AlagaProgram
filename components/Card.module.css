@@ -3,6 +3,11 @@
   border-radius: 8px;
   border: 1px solid #e5e7eb;
   min-width: 0;
+  transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .withPadding {
@@ -33,6 +38,7 @@
   color: #1f2937;
   margin: 0;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .cardSubtitle {
@@ -40,6 +46,7 @@
   color: #6b7280;
   margin: 4px 0 0 0;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .cardContent {
@@ -68,7 +75,7 @@
   }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 768px) {
   .card {
     border-radius: 10px;
   }
@@ -81,6 +88,7 @@
     flex-direction: column;
     align-items: stretch;
     margin-bottom: 12px;
+    gap: 10px;
   }
 
   .cardHeaderAction {
@@ -93,5 +101,53 @@
 
   .cardSubtitle {
     font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    border-radius: 8px;
+  }
+
+  .withPadding {
+    padding: 12px;
+  }
+
+  .cardHeader {
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+
+  .cardTitle {
+    font-size: 13px;
+  }
+
+  .cardSubtitle {
+    font-size: 10px;
+  }
+
+  .cardContent {
+    overflow-x: hidden;
+  }
+}
+
+@media (max-width: 360px) {
+  .withPadding {
+    padding: 10px;
+  }
+
+  .cardTitle {
+    font-size: 12px;
+  }
+
+  .cardSubtitle {
+    font-size: 9px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
   }
 }

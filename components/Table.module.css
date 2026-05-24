@@ -3,6 +3,7 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: 8px;
+  border: 1px solid #e5e7eb;
 }
 
 .table {
@@ -33,6 +34,9 @@
   color: #6b7280;
   background-color: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .tr {
@@ -82,12 +86,18 @@
   .tableWrapper {
     margin: 0 -12px;
     padding: 0 12px;
+    border: none;
+    border-top: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
   }
 
   .th {
     padding: 10px;
     font-size: 11px;
     white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
 
   .td {
@@ -102,36 +112,123 @@
 }
 
 @media (max-width: 576px) {
+  .tableWrapper {
+    margin: 0 -1rem;
+    padding: 0 1rem;
+  }
+
+  .table {
+    min-width: 100%;
+  }
+
   .th {
-    padding: 8px;
+    padding: 8px 10px;
     font-size: 10px;
+    white-space: nowrap;
   }
 
   .td {
-    padding: 8px;
+    padding: 10px 8px;
     font-size: 11px;
   }
 
   .emptyCell {
-    padding: 24px 8px;
+    padding: 24px 10px;
+    font-size: 11px;
   }
 }
 
-/* Make last column (actions) sticky on mobile */
+@media (max-width: 480px) {
+  .tableWrapper {
+    margin: 0 -0.75rem;
+    padding: 0 0.75rem;
+    border-radius: 6px;
+  }
+
+  .table {
+    min-width: calc(100% + 1.5rem);
+  }
+
+  .th {
+    padding: 8px;
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  .td {
+    padding: 8px;
+    font-size: 10px;
+    word-break: break-word;
+  }
+
+  .emptyCell {
+    padding: 20px 8px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 360px) {
+  .tableWrapper {
+    margin: 0;
+    padding: 0;
+  }
+
+  .th {
+    padding: 6px 8px;
+    font-size: 9px;
+  }
+
+  .td {
+    padding: 6px 8px;
+    font-size: 9px;
+  }
+
+  .table {
+    min-width: 100%;
+  }
+}
+
+/* Make last column (actions) sticky on mobile for easier access */
 @media (max-width: 768px) {
   .th:last-child,
   .td:last-child {
-    position: static;
-    right: auto;
-    background: white;
-    box-shadow: none;
+    position: relative;
+    right: 0;
   }
 
-  .th:last-child {
-    background: #f9fafb;
+  .td:last-child {
+    min-width: 60px;
+  }
+}
+
+/* Smooth scrolling on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .tableWrapper {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Landscape mode optimization */
+@media (max-width: 768px) and (orientation: landscape) {
+  .th {
+    padding: 6px 8px;
+    font-size: 9px;
   }
 
-  .tr:hover .td:last-child {
-    background: #f9fafb;
+  .td {
+    padding: 6px 8px;
+    font-size: 9px;
+  }
+
+  .emptyCell {
+    padding: 16px 8px;
+    font-size: 9px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .tr {
+    transition: none;
   }
 }
