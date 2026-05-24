@@ -14,7 +14,7 @@ import {
   Table,
   DocumentPreviewModal,
 } from "@/components";
-import { supabase } from "@/lib/supabaseClient";
+import { realtimeHelpers, supabase } from "@/lib/supabaseClient";
 import { formatSmsNotificationResult } from "@/lib/smsTemplates";
 import styles from "./page.module.css";
 
@@ -108,6 +108,7 @@ export default function AccountRequestsPage() {
   const [processing, setProcessing] = useState(false);
   const [archiveNotes, setArchiveNotes] = useState('');
   const [documentPreview, setDocumentPreview] = useState({ open: false, url: "", path: "" });
+  const [realtimeRefreshKey, setRealtimeRefreshKey] = useState(0);
   const [alertState, setAlertState] = useState({
     open: false,
     title: '',
@@ -117,6 +118,20 @@ export default function AccountRequestsPage() {
 
   useEffect(() => {
     fetchRequests();
+    // fetchRequests is the existing API loader; realtimeRefreshKey re-runs it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [realtimeRefreshKey]);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+
+    const channel = realtimeHelpers.subscribeToTable('account_requests', () => {
+      setRealtimeRefreshKey((value) => value + 1);
+    });
+
+    return () => {
+      realtimeHelpers.unsubscribe(channel);
+    };
   }, []);
 
   const fetchRequests = async () => {

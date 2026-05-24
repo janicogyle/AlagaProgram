@@ -19,12 +19,33 @@ import {
   getRequirementsForType,
   isMissingRequirementsColumn,
 } from '@/lib/assistanceRequirements';
-import { supabase } from '@/lib/supabaseClient';
+import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
 import { getCooldownInfo } from '@/lib/requestCooldown';
 import {
   queryNextAssistanceControlNumber,
   queryNextBeneficiaryControlNumber,
 } from '@/lib/controlNumbers';
+
+const EDITABLE_REQUEST_STATUSES = new Set(['Pending', 'Resubmitted', 'Rejected']);
+const ACTIVE_REQUEST_STATUSES = new Set(['Pending', 'Resubmitted']);
+const WIZARD_STEPS = [
+  { number: 1, label: 'Review Info' },
+  { number: 2, label: 'Assistance' },
+  { number: 3, label: 'Upload' },
+  { number: 4, label: 'Checklist' },
+  { number: 5, label: 'Review' },
+];
+const TOTAL_STEPS = WIZARD_STEPS.length;
+
+const getRequestStatusLabel = (status) => {
+  if (status === 'Rejected') return 'Incomplete';
+  if (status === 'Resubmitted') return 'Under Review';
+  return status;
+};
+
+const getFileDisplayName = (file, fallback = 'Document') => (
+  file?.name || file?.file_name || file?.fileName || fallback
+);
 
 const parseLegacyRequirementUrls = (value) => {
   if (!value) return [];
@@ -153,6 +174,7 @@ export default function BeneficiaryRequestPage() {
     dateOfRequest: new Date().toISOString().split('T')[0],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
   const [errors, setErrors] = useState({});
   const [requirementUploadFiles, setRequirementUploadFiles] = useState({});
   const [status, setStatus] = useState(null); // { type: 'success' | 'error', message: string }
@@ -160,12 +182,15 @@ export default function BeneficiaryRequestPage() {
   const [isLoadingEdit, setIsLoadingEdit] = useState(false);
   const [editingRequestId, setEditingRequestId] = useState(null);
   const [editingAssistanceControlNumber, setEditingAssistanceControlNumber] = useState(null);
+  const [editingRequestStatus, setEditingRequestStatus] = useState('');
+  const [activeRequest, setActiveRequest] = useState(null);
   const [existingRequirementFilesByIndex, setExistingRequirementFilesByIndex] = useState({});
   const [removedRequirementIndex, setRemovedRequirementIndex] = useState({});
   const [beneficiaryIsRequester, setBeneficiaryIsRequester] = useState(true);
   const [toast, setToast] = useState({ open: false, message: '' });
   const [cooldownInfo, setCooldownInfo] = useState(() => getCooldownInfo(null));
   const [cooldownLoading, setCooldownLoading] = useState(true);
+  const [realtimeRefreshKey, setRealtimeRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!toast.open) return;
@@ -204,6 +229,22 @@ export default function BeneficiaryRequestPage() {
     void refreshResidentControlNumber();
   }, []);
 
+  useEffect(() => {
+    if (!supabase || typeof window === 'undefined') return undefined;
+    const residentId = window.localStorage.getItem('beneficiaryResidentId');
+    if (!residentId) return undefined;
+
+    const channel = realtimeHelpers.subscribeToTable(
+      'assistance_requests',
+      () => setRealtimeRefreshKey((value) => value + 1),
+      `resident_id=eq.${residentId}`,
+    );
+
+    return () => {
+      realtimeHelpers.unsubscribe(channel);
+    };
+  }, []);
+
   const resolveAssistanceType = () => {
     if (!formData.assistanceType) return '';
     return formData.assistanceType === 'Others' ? formData.otherAssistanceType : formData.assistanceType;
@@ -216,7 +257,9 @@ export default function BeneficiaryRequestPage() {
         return;
       }
 
-      const assistanceType = resolveAssistanceType();
+      const assistanceType = formData.assistanceType === 'Others'
+        ? formData.otherAssistanceType
+        : formData.assistanceType;
       if (!assistanceType || !supabase) {
         setAssistanceControlPreview('');
         return;
@@ -262,11 +305,25 @@ export default function BeneficiaryRequestPage() {
         }
 
         const rows = Array.isArray(result.data) ? result.data : [];
+        const active = rows.find((row) => ACTIVE_REQUEST_STATUSES.has(String(row?.status || '')));
+        setActiveRequest(active || null);
+        if (active) {
+          setCooldownInfo({
+            status: getRequestStatusLabel(active.status) || 'Under Review',
+            isEligible: false,
+            daysRemaining: 0,
+            nextEligibleDate: null,
+            lastRequestDate: active.request_date || active.created_at || null,
+          });
+          return;
+        }
+
         const released = rows.find((row) => String(row?.status || '').toLowerCase() === 'released');
         const lastDate = released?.request_date || released?.created_at || null;
         setCooldownInfo(getCooldownInfo(lastDate));
       } catch (err) {
         console.warn('Failed to load request eligibility:', err);
+        setActiveRequest(null);
         setCooldownInfo(getCooldownInfo(null));
       } finally {
         setCooldownLoading(false);
@@ -274,7 +331,7 @@ export default function BeneficiaryRequestPage() {
     };
 
     loadCooldownInfo();
-  }, [isEditMode]);
+  }, [isEditMode, realtimeRefreshKey]);
 
   // Auto-fill from beneficiary sign up/profile (still editable)
   useEffect(() => {
@@ -386,12 +443,13 @@ export default function BeneficiaryRequestPage() {
           throw new Error('Request not found.');
         }
 
-        if (match.status !== 'Rejected') {
-          throw new Error('Only incomplete requests can be edited.');
+        if (!EDITABLE_REQUEST_STATUSES.has(match.status)) {
+          throw new Error('Only pending, under review, or incomplete requests can be edited.');
         }
 
         setEditingRequestId(match.id);
         setEditingAssistanceControlNumber(match.control_number);
+        setEditingRequestStatus(match.status || '');
 
         const parseRequirements = (value) => {
           if (!value) return [];
@@ -465,11 +523,13 @@ export default function BeneficiaryRequestPage() {
         const byIndex = {};
         const unassigned = [...mergedRequirementFiles];
         requirementLabels.forEach((label, idx) => {
-          const typed = mergedRequirementFiles.find((file) => String(file.requirement_type || '') === String(label));
-          if (typed) {
-            byIndex[idx] = [typed];
-            const pos = unassigned.findIndex((x) => x.file_url === typed.file_url);
-            if (pos >= 0) unassigned.splice(pos, 1);
+          const typedFiles = mergedRequirementFiles.filter((file) => String(file.requirement_type || '') === String(label));
+          if (typedFiles.length) {
+            byIndex[idx] = typedFiles;
+            typedFiles.forEach((typed) => {
+              const pos = unassigned.findIndex((x) => x.file_url === typed.file_url);
+              if (pos >= 0) unassigned.splice(pos, 1);
+            });
           }
         });
         requirementLabels.forEach((_, idx) => {
@@ -540,15 +600,18 @@ export default function BeneficiaryRequestPage() {
         setRequirementUploadFiles({});
         setErrors({});
         setStatus({
-          type: 'success',
-          message:
-            'Editing an incomplete request. Update the missing details, then click Resubmit Request.',
+          type: 'info',
+          message: ACTIVE_REQUEST_STATUSES.has(match.status)
+            ? 'Edit mode only. Review your changes, then click Save Changes on the final step.'
+            : 'Edit mode only. Update the missing details, then click Resubmit Request on the final step.',
         });
+        setCurrentStep(1);
       } catch (err) {
         console.error('Failed to load request for edit:', err);
         setIsEditMode(false);
         setEditingRequestId(null);
         setEditingAssistanceControlNumber(null);
+        setEditingRequestStatus('');
         setExistingRequirementFilesByIndex({});
         setRemovedRequirementIndex({});
         setRequirementUploadFiles({});
@@ -631,11 +694,15 @@ export default function BeneficiaryRequestPage() {
   const getCooldownVariant = (statusLabel) => {
     if (statusLabel === 'Eligible') return 'success';
     if (statusLabel === 'Almost Eligible') return 'warning';
+    if (statusLabel === 'Pending' || statusLabel === 'Under Review') return 'warning';
     return 'danger';
   };
 
   const getCooldownMessage = (info) => {
     if (!info) return 'Checking request eligibility...';
+    if (activeRequest) {
+      return 'You already have a request under review. Edit your current request if you need to correct information or replace uploaded files.';
+    }
     if (info.isEligible) return 'You can submit a new request now.';
     if (info.nextEligibleDate) {
       return `Please wait ${info.daysRemaining} day(s). Next eligible on ${info.nextEligibleDate}.`;
@@ -751,18 +818,24 @@ export default function BeneficiaryRequestPage() {
   };
 
   const handleRequirementUploadChange = (index, files) => {
-    const file = Array.isArray(files) ? files[0] || null : null;
-    // Save uploaded file
-    setRequirementUploadFiles((prev) => ({ ...prev, [index]: file }));
+    const fileList = Array.isArray(files) ? files.filter(Boolean) : [];
+    // Save uploaded files. New uploads replace saved files for that requirement on submit.
+    setRequirementUploadFiles((prev) => ({ ...prev, [index]: fileList }));
 
-    // If a file was uploaded, mark existing as not-removed so it will be used on submit
-    if (file) {
+    // If files were uploaded, mark existing as not-removed so replacement intent is clear.
+    if (fileList.length) {
       setRemovedRequirementIndex((prev) => ({ ...prev, [index]: false }));
     }
 
     if (errors.validId) {
       setErrors((prev) => ({ ...prev, validId: '' }));
     }
+  };
+
+  const getUploadedFilesForRequirement = (index) => {
+    const files = requirementUploadFiles?.[index];
+    if (!files) return [];
+    return Array.isArray(files) ? files.filter(Boolean) : [files].filter(Boolean);
   };
 
   const getExistingFilesForRequirement = (index) => {
@@ -798,6 +871,10 @@ export default function BeneficiaryRequestPage() {
       newErrors.assistanceType = 'Type of assistance is required.';
     }
 
+    if (formData.assistanceType === 'Others' && !formData.otherAssistanceType.trim()) {
+      newErrors.otherAssistanceType = 'Please specify the assistance type.';
+    }
+
     if (formData.assistanceType && !beneficiaryIsRequester) {
       if (!formData.beneficiaryName.trim()) {
         newErrors.beneficiaryName = 'Beneficiary name is required';
@@ -819,7 +896,7 @@ export default function BeneficiaryRequestPage() {
     // Instead of requiring the user to check boxes, infer checklist from uploaded/new/existing files.
     if (assistanceReqs.length) {
       const missingDocs = assistanceReqs.some((_req, idx) => {
-        const hasNew = !!requirementUploadFiles?.[idx];
+        const hasNew = getUploadedFilesForRequirement(idx).length > 0;
         const hasExisting = getExistingFilesForRequirement(idx).length > 0;
         return !hasNew && !hasExisting;
       });
@@ -836,10 +913,114 @@ export default function BeneficiaryRequestPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const buildFullName = () => [formData.firstName, formData.middleName, formData.lastName]
+    .map((s) => String(s || '').trim())
+    .filter(Boolean)
+    .join(' ');
+
+  const buildProfileAddress = () => {
+    const barangayLabel = formData.barangay === 'sta-rita' ? 'Sta. Rita' : formData.barangay;
+    return [formData.houseNo, formData.purok, formData.street, barangayLabel, formData.city]
+      .map((s) => String(s || '').trim())
+      .filter(Boolean)
+      .join(', ');
+  };
+
+  const getRequirementStatus = (index) => {
+    const uploaded = getUploadedFilesForRequirement(index);
+    const existing = getExistingFilesForRequirement(index);
+    return {
+      completed: uploaded.length > 0 || existing.length > 0,
+      files: uploaded.length > 0 ? uploaded : existing,
+      isReplacement: uploaded.length > 0,
+    };
+  };
+
+  const validateStep = (step) => {
+    const stepErrors = {};
+
+    if (step === 1) {
+      if (!formData.firstName.trim() || !formData.lastName.trim()) {
+        stepErrors.firstName = 'Your full name is missing. Please update your profile.';
+      }
+      if (!buildProfileAddress()) {
+        stepErrors.houseNo = 'Your address is missing. Please update your profile.';
+      }
+      if (!formData.contactNumber.trim() || formData.contactNumber.length !== 11) {
+        stepErrors.contactNumber = 'A valid 11-digit contact number is required in your profile.';
+      }
+    }
+
+    if (step === 2) {
+      if (!formData.assistanceType) {
+        stepErrors.assistanceType = 'Type of assistance is required.';
+      }
+      if (formData.assistanceType === 'Others' && !formData.otherAssistanceType.trim()) {
+        stepErrors.otherAssistanceType = 'Please specify the assistance type.';
+      }
+      if (formData.assistanceType && !formData.assistanceAmount) {
+        stepErrors.assistanceAmount = 'Budget ceiling is not configured for this assistance type.';
+      }
+      if (formData.assistanceType && !beneficiaryIsRequester) {
+        if (!formData.beneficiaryName.trim()) stepErrors.beneficiaryName = 'Beneficiary name is required.';
+        if (!formData.beneficiaryContact.trim()) {
+          stepErrors.beneficiaryContact = 'Beneficiary contact number is required.';
+        } else if (formData.beneficiaryContact.replace(/\D/g, '').length !== 11) {
+          stepErrors.beneficiaryContact = 'Beneficiary contact number must be exactly 11 digits.';
+        }
+        if (!formData.beneficiaryAddress.trim()) stepErrors.beneficiaryAddress = 'Beneficiary address is required.';
+      }
+    }
+
+    if (step === 3 || step === 5) {
+      const assistanceReqs = formData.assistanceType ? getRequirementsFor(formData.assistanceType) : [];
+      const missingDocs = assistanceReqs.some((_req, idx) => !getRequirementStatus(idx).completed);
+      if (missingDocs) {
+        stepErrors.validId = 'Please upload at least one file for each required document.';
+      }
+    }
+
+    setErrors((prev) => ({ ...prev, ...stepErrors }));
+    return Object.keys(stepErrors).length === 0;
+  };
+
+  const goToStep = (step) => {
+    const nextStep = Math.min(Math.max(step, 1), TOTAL_STEPS);
+    setCurrentStep(nextStep);
+  };
+
+  const handleNextStep = () => {
+    if (!validateStep(currentStep)) return;
+    goToStep(currentStep + 1);
+  };
+
+  const handlePreviousStep = () => {
+    goToStep(currentStep - 1);
+  };
+
+  const handleStepClick = (step) => {
+    if (step <= currentStep) {
+      goToStep(step);
+    }
+  };
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
+
+    if (currentStep < TOTAL_STEPS) {
+      return;
+    }
 
     if (!validateForm()) {
+      return;
+    }
+
+    if (!isEditMode && activeRequest) {
+      setStatus({
+        type: 'error',
+        message:
+          'You already have a request under review. Please edit your current request instead of creating a new one.',
+      });
       return;
     }
 
@@ -973,8 +1154,9 @@ export default function BeneficiaryRequestPage() {
 
         for (let idx = 0; idx < assistanceReqs.length; idx++) {
           const requirementLabel = assistanceReqs[idx];
-          const replacementFile = requirementUploadFiles?.[idx];
-          if (replacementFile) {
+          const replacementFiles = getUploadedFilesForRequirement(idx);
+          if (replacementFiles.length) {
+            for (const replacementFile of replacementFiles) {
             const form = new FormData();
             form.append('file', replacementFile);
             form.append('controlNumber', assistanceControlNumber);
@@ -1004,16 +1186,18 @@ export default function BeneficiaryRequestPage() {
               file_name: replacementFile.name || String(path).split('/').pop() || `Document ${idx + 1}`,
               requirement_type: requirementLabel,
             });
+            }
             continue;
           }
 
           const existingForIndex = getExistingFilesForRequirement(idx);
           if (existingForIndex.length) {
-            const kept = existingForIndex[0];
+            existingForIndex.forEach((kept) => {
             requirementFileDetails.push({
               file_url: kept.file_url,
               file_name: kept.file_name || String(kept.file_url).split('/').pop() || `Document ${idx + 1}`,
               requirement_type: requirementLabel,
+            });
             });
           }
         }
@@ -1089,6 +1273,9 @@ export default function BeneficiaryRequestPage() {
 
         const result = await response.json();
         if (!response.ok || result?.error) {
+          if (result?.code === 'ACTIVE_REQUEST_EXISTS' && result?.activeRequest) {
+            setActiveRequest(result.activeRequest);
+          }
           if (result?.code === 'REQUEST_COOLDOWN' && result?.cooldown) {
             setCooldownInfo(result.cooldown);
           }
@@ -1098,11 +1285,15 @@ export default function BeneficiaryRequestPage() {
         if (isEditMode) {
           setToast({
             open: true,
-            message: 'Request resubmitted successfully.',
+            message: editingRequestStatus === 'Rejected'
+              ? 'Request resubmitted successfully.'
+              : 'Request updated successfully.',
           });
           setStatus({
             type: 'success',
-            message: 'Request updated and resubmitted successfully!',
+            message: editingRequestStatus === 'Rejected'
+              ? 'Request updated and resubmitted successfully!'
+              : 'Request updated successfully!',
           });
           setTimeout(() => {
             router.push('/beneficiary/history');
@@ -1228,9 +1419,467 @@ export default function BeneficiaryRequestPage() {
     : [];
   const selectedAssistanceCeiling = formData.assistanceType ? getCeilingFor(formData.assistanceType) : null;
   const cooldownVariant = cooldownLoading ? 'secondary' : getCooldownVariant(cooldownInfo?.status);
-  const isCooldownBlocked = !isEditMode && !cooldownLoading && cooldownInfo && !cooldownInfo.isEligible;
+  const isCooldownBlocked = !isEditMode && !cooldownLoading && (activeRequest || (cooldownInfo && !cooldownInfo.isEligible));
   const isSubmitDisabled =
     isSubmitting || isLoadingEdit || (!isEditMode && (cooldownLoading || isCooldownBlocked));
+  const editButtonLabel = editingRequestStatus === 'Rejected' ? 'Resubmit Request' : 'Save Changes';
+  const fullName = buildFullName();
+  const profileAddress = buildProfileAddress();
+  const requestControlNumber = isEditMode
+    ? editingAssistanceControlNumber || '—'
+    : assistanceControlPreview || '—';
+
+  const renderProgressBar = () => (
+    <div className={styles.progressBarWrapper} aria-label="Request progress">
+      <div className={styles.progressBarScroll}>
+        <div className={styles.progressBar}>
+          {WIZARD_STEPS.map((step, index) => (
+            <div key={step.number} className={styles.progressSegment}>
+              {index > 0 && (
+                <div className={styles.progressLineWrapper}>
+                  <div
+                    className={`${styles.progressLine} ${
+                      currentStep >= step.number ? styles.completedLine : ''
+                    }`}
+                  />
+                </div>
+              )}
+              <button
+                type="button"
+                className={`${styles.progressStep} ${
+                  step.number < currentStep ? styles.progressStepClickable : ''
+                }`}
+                onClick={() => handleStepClick(step.number)}
+                disabled={step.number > currentStep}
+                aria-current={step.number === currentStep ? 'step' : undefined}
+              >
+                <span
+                  className={`${styles.progressCircle} ${
+                    step.number === currentStep ? styles.activeCircle : ''
+                  } ${step.number < currentStep ? styles.completedCircle : ''}`}
+                >
+                  {step.number < currentStep ? '✓' : step.number}
+                </span>
+                <span
+                  className={`${styles.progressLabel} ${
+                    step.number <= currentStep ? styles.activeLabel : ''
+                  }`}
+                >
+                  {step.label}
+                </span>
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+      <p className={styles.stepIndicator}>Step {currentStep} of {TOTAL_STEPS}</p>
+    </div>
+  );
+
+  const renderStep1 = () => (
+    <Card title="Step 1 — Review Information" subtitle="Confirm your account details before choosing assistance.">
+      <div className={styles.stepPanel}>
+        <div className={styles.controlNumberBar}>
+          <div>
+            <div className={styles.controlNumberLabel}>Beneficiary Control No.</div>
+            <div className={styles.controlNumberValue}>{controlNumber || '—'}</div>
+          </div>
+          <div>
+            <div className={styles.controlNumberLabel}>Request Control No.</div>
+            <div className={styles.controlNumberValue}>{requestControlNumber}</div>
+          </div>
+        </div>
+
+        <div className={styles.row}>
+          <Input
+            label="Full Name"
+            name="fullName"
+            value={fullName}
+            onChange={() => {}}
+            disabled
+            placeholder="Set this in My Profile"
+          />
+          <Input
+            label="Address"
+            name="address"
+            value={profileAddress}
+            onChange={() => {}}
+            disabled
+            placeholder="Set this in My Profile"
+          />
+        </div>
+
+        {(errors.firstName || errors.houseNo || errors.contactNumber) && (
+          <p className={styles.errorText}>
+            {errors.contactNumber || errors.firstName || errors.houseNo}
+          </p>
+        )}
+        <p className={styles.muted}>
+          These details come from your beneficiary profile. Contact the barangay office if anything needs correction.
+        </p>
+      </div>
+    </Card>
+  );
+
+  const renderStep2 = () => (
+    <Card title="Step 2 — Assistance Type" subtitle="Select the request type and review the budget ceiling.">
+      <div className={styles.stepPanel}>
+        <div className={styles.row}>
+          <Select
+            label="Type of Assistance"
+            name="assistanceType"
+            value={formData.assistanceType}
+            onChange={handleChange}
+            options={[{ value: '', label: 'Select option' }, ...assistanceTypeOptions]}
+            error={errors.assistanceType}
+            required
+          />
+          <Input
+            label="Budget Ceiling"
+            name="assistanceAmount"
+            type="number"
+            value={formData.assistanceAmount}
+            placeholder="Auto-filled from assistance type"
+            error={errors.assistanceAmount}
+            disabled={!formData.assistanceType}
+            readOnly
+          />
+        </div>
+
+        {formData.assistanceType === 'Others' && (
+          <Input
+            label="Please specify"
+            name="otherAssistanceType"
+            value={formData.otherAssistanceType}
+            onChange={handleChange}
+            placeholder="Specify other assistance"
+            error={errors.otherAssistanceType}
+            required
+          />
+        )}
+
+        <div className={styles.assistanceRequirementsPanel}>
+          <div className={styles.assistanceRequirementsHeader}>
+            <span className={styles.assistanceRequirementsTitle}>
+              {formData.assistanceType ? `Requirements for ${formData.assistanceType}` : 'Requirements'}
+            </span>
+            {typeof selectedAssistanceCeiling === 'number' && (
+              <span className={styles.assistanceRequirementsCeiling}>
+                Ceiling: ₱{Number(selectedAssistanceCeiling).toLocaleString('en-PH')}
+              </span>
+            )}
+          </div>
+          <ul className={styles.assistanceRequirementsList}>
+            {selectedAssistanceRequirements.length ? (
+              selectedAssistanceRequirements.map((req, idx) => (
+                <li key={`${req}-${idx}`} className={styles.assistanceRequirementItem}>{req}</li>
+              ))
+            ) : (
+              <li className={styles.assistanceRequirementItemEmpty}>
+                Select a Type of Assistance to view the required documents.
+              </li>
+            )}
+          </ul>
+        </div>
+
+        <div className={styles.row}>
+          <Input
+            label="Representative Name"
+            name="representativeName"
+            value={formData.representativeName}
+            onChange={handleChange}
+            placeholder="Enter representative's full name"
+            disabled={!formData.assistanceType}
+            optional
+          />
+          <Input
+            label="Representative Contact"
+            type="tel"
+            name="representativeContact"
+            value={formData.representativeContact}
+            onChange={handleChange}
+            placeholder="+63 XXX XXX XXXX"
+            mask="ph-contact"
+            disabled={!formData.assistanceType}
+            optional
+          />
+        </div>
+
+        <div style={{ opacity: formData.assistanceType ? 1 : 0.6 }}>
+          <span className={styles.label}>Sector Classification (choose one)</span>
+          <div className={styles.sectorList}>
+            {errors.sectors && <span className={styles.sectorError}>{errors.sectors}</span>}
+            <label className={styles.checkbox}>
+              <input
+                type="checkbox"
+                checked={formData.sectors.pwd}
+                onChange={() => handleSectorChange('pwd')}
+                disabled={!formData.assistanceType}
+              />
+              <span className={styles.checkmark}></span>
+              <span>PWD (Person with Disability)</span>
+            </label>
+            <label className={styles.checkbox}>
+              <input
+                type="checkbox"
+                checked={formData.sectors.seniorCitizen}
+                onChange={() => handleSectorChange('seniorCitizen')}
+                disabled={!formData.assistanceType}
+              />
+              <span className={styles.checkmark}></span>
+              <span>Senior Citizen (60 years old and above)</span>
+            </label>
+            <label className={styles.checkbox}>
+              <input
+                type="checkbox"
+                checked={formData.sectors.soloParent}
+                onChange={() => handleSectorChange('soloParent')}
+                disabled={!formData.assistanceType}
+              />
+              <span className={styles.checkmark}></span>
+              <span>Solo Parent</span>
+            </label>
+          </div>
+        </div>
+
+        <label className={styles.checkbox} style={{ opacity: formData.assistanceType ? 1 : 0.6 }}>
+          <input
+            type="checkbox"
+            checked={beneficiaryIsRequester}
+            onChange={(e) => setBeneficiaryIsRequester(e.target.checked)}
+            disabled={!formData.assistanceType}
+          />
+          <span className={styles.checkmark}></span>
+          <span>Beneficiary is the same as requester</span>
+        </label>
+
+        {!beneficiaryIsRequester && (
+          <div className={styles.row3}>
+            <Input
+              label="Beneficiary Name"
+              name="beneficiaryName"
+              value={formData.beneficiaryName}
+              onChange={handleChange}
+              placeholder="Enter beneficiary's full name"
+              error={errors.beneficiaryName}
+              disabled={!formData.assistanceType}
+              required={!!formData.assistanceType}
+            />
+            <Input
+              label="Beneficiary Contact"
+              type="tel"
+              name="beneficiaryContact"
+              value={formData.beneficiaryContact}
+              onChange={handleChange}
+              placeholder="+63 XXX XXX XXXX"
+              mask="ph-contact"
+              error={errors.beneficiaryContact}
+              disabled={!formData.assistanceType}
+              required={!!formData.assistanceType}
+            />
+            <Input
+              label="Beneficiary Address"
+              name="beneficiaryAddress"
+              value={formData.beneficiaryAddress}
+              onChange={handleChange}
+              placeholder="House No., Street, Barangay, City"
+              error={errors.beneficiaryAddress}
+              disabled={!formData.assistanceType}
+              required={!!formData.assistanceType}
+            />
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+
+  const renderStep3 = () => (
+    <Card title="Step 3 — Upload Documents" subtitle="Upload, replace, or remove files for each requirement.">
+      <div className={styles.stepPanel}>
+        {selectedAssistanceRequirements.length ? (
+          <div className={styles.requirementUploads}>
+            {selectedAssistanceRequirements.map((req, idx) => {
+              const existingFiles = getExistingFilesForRequirement(idx);
+              const uploadedFiles = getUploadedFilesForRequirement(idx);
+              const hasFiles = uploadedFiles.length > 0 || existingFiles.length > 0;
+              return (
+                <div key={`${req}-${idx}`} className={styles.requirementUploadItem}>
+                  <div className={styles.requirementUploadHeader}>
+                    <span className={styles.requirementUploadLabel}>{req}</span>
+                    <span className={styles.requirementUploadLimit}>JPG, PNG, PDF · 2MB per file</span>
+                  </div>
+
+                  {existingFiles.length > 0 && uploadedFiles.length === 0 && (
+                    <div className={styles.existingFileList}>
+                      {existingFiles.map((file, fileIdx) => (
+                        <div key={`${file.file_url || fileIdx}`} className={styles.existingFileRow}>
+                          <span className={styles.existingFileName}>
+                            Existing: {getFileDisplayName(file, `Document ${fileIdx + 1}`)}
+                          </span>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        className={styles.removeExistingFileBtn}
+                        onClick={() => setRemovedRequirementIndex((prev) => ({ ...prev, [idx]: true })) }
+                      >
+                        Remove saved files
+                      </button>
+                    </div>
+                  )}
+
+                  <FileUpload
+                    label={hasFiles ? 'Add replacement file(s)' : 'Required'}
+                    documentType="validId"
+                    multiple
+                    files={uploadedFiles}
+                    onChange={(files) => handleRequirementUploadChange(idx, files)}
+                    required={!hasFiles}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className={styles.assistanceRequirementsHint}>
+            No document uploads are required for this assistance type.
+          </p>
+        )}
+        {errors.validId && <p className={styles.errorText}>{errors.validId}</p>}
+      </div>
+    </Card>
+  );
+
+  const renderStep4 = () => (
+    <Card title="Step 4 — Requirements Checklist" subtitle="Review which documents are ready and which are missing.">
+      <div className={styles.stepPanel}>
+        {selectedAssistanceRequirements.length ? (
+          <ul className={styles.checklistReview}>
+            {selectedAssistanceRequirements.map((req, idx) => {
+              const requirementStatus = getRequirementStatus(idx);
+              return (
+                <li
+                  key={`${req}-${idx}`}
+                  className={`${styles.checklistReviewItem} ${
+                    requirementStatus.completed ? styles.checklistComplete : styles.checklistMissing
+                  }`}
+                >
+                  <label className={styles.checkbox}>
+                    <input type="checkbox" checked={requirementStatus.completed} disabled />
+                    <span className={styles.checkmark}></span>
+                    <span>{req}</span>
+                  </label>
+                  <Badge variant={requirementStatus.completed ? 'success' : 'danger'}>
+                    {requirementStatus.completed ? 'Completed' : 'Missing'}
+                  </Badge>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className={styles.assistanceRequirementsHint}>
+            No checklist is available for this assistance type.
+          </p>
+        )}
+        <p className={styles.muted}>
+          Go back to Upload Documents if any required item is still missing.
+        </p>
+      </div>
+    </Card>
+  );
+
+  const renderStep5 = () => (
+    <Card title="Step 5 — Review & Submit" subtitle="Check your request summary before sending it to the barangay office.">
+      <div className={styles.reviewGrid}>
+        <div className={styles.summaryBlock}>
+          <h3>Request</h3>
+          <dl className={styles.summaryList}>
+            <div>
+              <dt>Beneficiary Control No.</dt>
+              <dd>{controlNumber || '—'}</dd>
+            </div>
+            <div>
+              <dt>Request Control No.</dt>
+              <dd>{requestControlNumber}</dd>
+            </div>
+            <div>
+              <dt>Type of Assistance</dt>
+              <dd>{resolveAssistanceType() || '—'}</dd>
+            </div>
+            <div>
+              <dt>Budget Ceiling</dt>
+              <dd>
+                {formData.assistanceAmount
+                  ? `₱${Number(formData.assistanceAmount).toLocaleString('en-PH')}`
+                  : '—'}
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <div className={styles.summaryBlock}>
+          <h3>Beneficiary</h3>
+          <dl className={styles.summaryList}>
+            <div>
+              <dt>Name</dt>
+              <dd>{beneficiaryIsRequester ? fullName : formData.beneficiaryName || '—'}</dd>
+            </div>
+            <div>
+              <dt>Contact</dt>
+              <dd>{beneficiaryIsRequester ? formData.contactNumber : formData.beneficiaryContact || '—'}</dd>
+            </div>
+            <div>
+              <dt>Address</dt>
+              <dd>{beneficiaryIsRequester ? profileAddress : formData.beneficiaryAddress || '—'}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <div className={styles.uploadSummary}>
+        <h3>Uploaded Documents</h3>
+        {selectedAssistanceRequirements.length ? (
+          <ul className={styles.uploadSummaryList}>
+            {selectedAssistanceRequirements.map((req, idx) => {
+              const requirementStatus = getRequirementStatus(idx);
+              return (
+                <li key={`${req}-${idx}`} className={styles.uploadSummaryItem}>
+                  <div>
+                    <strong>{req}</strong>
+                    <div className={styles.fileNameList}>
+                      {requirementStatus.files.length ? (
+                        requirementStatus.files.map((file, fileIdx) => (
+                          <span key={`${getFileDisplayName(file)}-${fileIdx}`}>
+                            {getFileDisplayName(file, `Document ${fileIdx + 1}`)}
+                          </span>
+                        ))
+                      ) : (
+                        <span>Missing file</span>
+                      )}
+                    </div>
+                  </div>
+                  <Badge variant={requirementStatus.completed ? 'success' : 'danger'}>
+                    {requirementStatus.completed ? 'Ready' : 'Missing'}
+                  </Badge>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className={styles.muted}>No document uploads are required.</p>
+        )}
+        {errors.validId && <p className={styles.errorText}>{errors.validId}</p>}
+      </div>
+    </Card>
+  );
+
+  const renderCurrentStep = () => {
+    if (currentStep === 1) return renderStep1();
+    if (currentStep === 2) return renderStep2();
+    if (currentStep === 3) return renderStep3();
+    if (currentStep === 4) return renderStep4();
+    return renderStep5();
+  };
 
   return (
     <div className={styles.registrationPage}>
@@ -1239,12 +1888,16 @@ export default function BeneficiaryRequestPage() {
           {toast.message}
         </div>
       )}
-      <PageHeader title={isEditMode ? 'Edit Incomplete Request' : 'Request Assistance'} />
+      <PageHeader title={isEditMode ? 'Edit Request' : 'Request Assistance'} />
       {status && (
         <div
           role="alert"
           className={`${styles.statusBanner} ${
-            status.type === 'success' ? styles.statusBannerSuccess : styles.statusBannerError
+            status.type === 'success'
+              ? styles.statusBannerSuccess
+              : status.type === 'info'
+                ? styles.statusBannerInfo
+                : styles.statusBannerError
           }`}
         >
           {status.message}
@@ -1261,318 +1914,40 @@ export default function BeneficiaryRequestPage() {
           <Badge variant={cooldownVariant}>
             {cooldownLoading ? 'Checking' : cooldownInfo?.status || 'Eligible'}
           </Badge>
+          {activeRequest ? (
+            <Button
+              size="small"
+              href={`/beneficiary/requests?edit=${encodeURIComponent(activeRequest.id)}`}
+            >
+              Edit Current Request
+            </Button>
+          ) : null}
         </div>
       )}
-      <form onSubmit={handleSubmit} className={styles.formGrid}>
-        <div className={styles.controlNumberBar}>
-          <div>
-            <div className={styles.controlNumberLabel}>Beneficiary Control No.</div>
-            <div className={styles.controlNumberValue}>{controlNumber || '—'}</div>
-          </div>
-          <div>
-            <div className={styles.controlNumberLabel}>Request Control No.</div>
-            <div className={styles.controlNumberValue}>
-              {isEditMode
-                ? editingAssistanceControlNumber || '—'
-                : assistanceControlPreview || '—'}
-            </div>
-          </div>
+      <form onSubmit={(event) => event.preventDefault()} className={styles.wizardForm}>
+        {renderProgressBar()}
+        <div className={styles.stepContainer}>
+          {renderCurrentStep()}
         </div>
 
-        <Card title="Personal Information" className={styles.mainCard}>
-          <div className={styles.formFields}>
-            <div className={styles.row}>
-              <Input
-                label="Full Name"
-                name="fullName"
-                value={[formData.firstName, formData.middleName, formData.lastName]
-                  .map((s) => String(s || '').trim())
-                  .filter(Boolean)
-                  .join(' ')}
-                onChange={() => {}}
-                disabled
-                placeholder="Set this in My Profile"
-              />
-              <Input
-                label="Address"
-                name="address"
-                value={(() => {
-                  const barangayLabel = formData.barangay === 'sta-rita' ? 'Sta. Rita' : formData.barangay;
-                  return [formData.houseNo, formData.purok, formData.street, barangayLabel, formData.city]
-                    .map((s) => String(s || '').trim())
-                    .filter(Boolean)
-                    .join(', ');
-                })()}
-                onChange={() => {}}
-                disabled
-                placeholder="Set this in My Profile"
-              />
-            </div>
-
-            {(errors.firstName ||
-              errors.lastName ||
-              errors.houseNo ||
-              errors.street ||
-              errors.barangay ||
-              errors.city ||
-              errors.contactNumber) && (
-              <p className={styles.errorText} style={{ marginTop: -6 }}>
-                {errors.contactNumber ||
-                  errors.firstName ||
-                  errors.lastName ||
-                  errors.houseNo ||
-                  errors.street ||
-                  errors.barangay ||
-                  errors.city}
-              </p>
-            )}
-          </div>
-        </Card>
-
-        <div className={styles.sideCards}>
-          <Card
-            title="ATTACH REQUIREMENTS"
-            subtitle="Upload a clear photo or scan of your requirements for verification"
-          >
-            <div className={styles.formFields}>
-              {formData.assistanceType ? (
-                <div className={styles.assistanceRequirementsPanel}>
-                  <div className={styles.assistanceRequirementsHeader}>
-                    <span className={styles.assistanceRequirementsTitle}>
-                      Requirements for {formData.assistanceType}
-                    </span>
-                    {typeof selectedAssistanceCeiling === 'number' && (
-                      <span className={styles.assistanceRequirementsCeiling}>
-                        Ceiling: ₱{Number(selectedAssistanceCeiling).toLocaleString('en-PH')}
-                      </span>
-                    )}
-                  </div>
-                  <ul className={styles.assistanceRequirementsList}>
-                    {selectedAssistanceRequirements.length ? (
-                      selectedAssistanceRequirements.map((req, idx) => (
-                        <li key={idx} className={styles.assistanceRequirementItem}>
-                          <label className={styles.checkbox}>
-                            <input
-                              type="checkbox"
-                              checked={!!requirementUploadFiles?.[idx] || getExistingFilesForRequirement(idx).length > 0}
-                              disabled
-                            />
-                            <span className={styles.checkmark}></span>
-                            <span>{req}</span>
-                          </label>
-                        </li>
-                      ))
-                    ) : (
-                      <li className={styles.assistanceRequirementItemEmpty}>
-                        No checklist available for this assistance type.
-                      </li>
-                    )}
-                  </ul>
-                  {errors.requirementsChecklist && (
-                    <p className={styles.errorText}>{errors.requirementsChecklist}</p>
-                  )}
-                </div>
-              ) : (
-                <p className={styles.assistanceRequirementsHint}>
-                  Select a Type of Assistance to view the required documents.
-                </p>
-              )}
-
-              {selectedAssistanceRequirements.length ? (
-                <div className={styles.requirementUploads}>
-                  {selectedAssistanceRequirements.map((req, idx) => {
-                    const existingFiles = getExistingFilesForRequirement(idx);
-                    const uploadedFile = requirementUploadFiles?.[idx] || null;
-                    return (
-                      <div key={`${req}-${idx}`} className={styles.requirementUploadItem}>
-                        <div className={styles.requirementUploadHeader}>
-                          <span className={styles.requirementUploadLabel}>{req}</span>
-                          <span className={styles.requirementUploadLimit}>Upload limit: 1 file</span>
-                        </div>
-                        {existingFiles.length > 0 && !uploadedFile && (
-                          <div className={styles.existingFileRow}>
-                            <span className={styles.existingFileName}>
-                              Existing: {existingFiles[0]?.file_name || `Document ${idx + 1}`}
-                            </span>
-                            <button
-                              type="button"
-                              className={styles.removeExistingFileBtn}
-                              onClick={() => setRemovedRequirementIndex((prev) => ({ ...prev, [idx]: true })) }
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        )}
-                        <FileUpload
-                          label={existingFiles.length ? 'Replace file (optional)' : 'Required'}
-                          documentType="validId"
-                          multiple={false}
-                          files={uploadedFile ? [uploadedFile] : []}
-                          onChange={(files) => handleRequirementUploadChange(idx, files)}
-                          required={!existingFiles.length}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : null}
-              {errors.validId && <p className={styles.errorText}>{errors.validId}</p>}
-            </div>
-          </Card>
-
-          <Card
-            title="Assistance Request"
-            subtitle="Log an assistance request"
-          >
-            <div className={styles.formFields}>
-              <Select
-                label="Type of Assistance"
-                name="assistanceType"
-                value={formData.assistanceType}
-                onChange={handleChange}
-                options={[{ value: '', label: 'Select option' }, ...assistanceTypeOptions]}
-                error={errors.assistanceType}
-                required
-              />
-              {formData.assistanceType === 'Others' && (
-                <Input
-                  label="Please specify"
-                  name="otherAssistanceType"
-                  value={formData.otherAssistanceType}
-                  onChange={handleChange}
-                  placeholder="Specify other assistance"
-                  required
-                />
-              )}
-              <Input
-                label="Representative Name"
-                name="representativeName"
-                value={formData.representativeName}
-                onChange={handleChange}
-                placeholder="Enter representative's full name"
-                disabled={!formData.assistanceType}
-                optional
-              />
-              <Input
-                label="Representative Contact"
-                type="tel"
-                name="representativeContact"
-                value={formData.representativeContact}
-                onChange={handleChange}
-                placeholder="+63 XXX XXX XXXX"
-                mask="ph-contact"
-                disabled={!formData.assistanceType}
-                optional
-              />
-
-              <div style={{ opacity: formData.assistanceType ? 1 : 0.6 }}>
-                <span className={styles.label}>Sector Classification (choose one)</span>
-                <div className={styles.sectorList}>
-                  {errors.sectors && <span className={styles.sectorError}>{errors.sectors}</span>}
-                  <label className={styles.checkbox}>
-                    <input
-                      type="checkbox"
-                      checked={formData.sectors.pwd}
-                      onChange={() => handleSectorChange('pwd')}
-                      disabled={!formData.assistanceType}
-                    />
-                    <span className={styles.checkmark}></span>
-                    <span>PWD (Person with Disability)</span>
-                  </label>
-                  <label className={styles.checkbox}>
-                    <input
-                      type="checkbox"
-                      checked={formData.sectors.seniorCitizen}
-                      onChange={() => handleSectorChange('seniorCitizen')}
-                      disabled={!formData.assistanceType}
-                    />
-                    <span className={styles.checkmark}></span>
-                    <span>Senior Citizen (60 years old and above)</span>
-                  </label>
-                  <label className={styles.checkbox}>
-                    <input
-                      type="checkbox"
-                      checked={formData.sectors.soloParent}
-                      onChange={() => handleSectorChange('soloParent')}
-                      disabled={!formData.assistanceType}
-                    />
-                    <span className={styles.checkmark}></span>
-                    <span>Solo Parent</span>
-                  </label>
-                </div>
-              </div>
-
-              <label className={styles.checkbox} style={{ marginTop: 6, opacity: formData.assistanceType ? 1 : 0.6 }}>
-                <input
-                  type="checkbox"
-                  checked={beneficiaryIsRequester}
-                  onChange={(e) => setBeneficiaryIsRequester(e.target.checked)}
-                  disabled={!formData.assistanceType}
-                />
-                <span className={styles.checkmark}></span>
-                <span>Beneficiary is the same as requester</span>
-              </label>
-              {beneficiaryIsRequester ? (
-                <p className={styles.muted} style={{ margin: '6px 0 0' }}>
-                  Beneficiary details will be taken from Personal Information.
-                </p>
-              ) : (
-                <>
-                  <Input
-                    label="Beneficiary Name"
-                    name="beneficiaryName"
-                    value={formData.beneficiaryName}
-                    onChange={handleChange}
-                    placeholder="Enter beneficiary's full name"
-                    error={errors.beneficiaryName}
-                    disabled={!formData.assistanceType}
-                    required={!!formData.assistanceType && !beneficiaryIsRequester}
-                  />
-                  <Input
-                    label="Beneficiary Contact"
-                    type="tel"
-                    name="beneficiaryContact"
-                    value={formData.beneficiaryContact}
-                    onChange={handleChange}
-                    placeholder="+63 XXX XXX XXXX"
-                    mask="ph-contact"
-                    error={errors.beneficiaryContact}
-                    disabled={!formData.assistanceType}
-                    required={!!formData.assistanceType && !beneficiaryIsRequester}
-                  />
-                  <Input
-                    label="Beneficiary Address"
-                    name="beneficiaryAddress"
-                    value={formData.beneficiaryAddress}
-                    onChange={handleChange}
-                    placeholder="House No., Street, Barangay, City"
-                    error={errors.beneficiaryAddress}
-                    disabled={!formData.assistanceType}
-                    required={!!formData.assistanceType && !beneficiaryIsRequester}
-                  />
-                </>
-              )}
-              <Input
-                label="Budget Ceiling"
-                name="assistanceAmount"
-                type="number"
-                value={formData.assistanceAmount}
-                placeholder="Auto-filled from assistance type"
-                error={errors.assistanceAmount}
-                disabled={!formData.assistanceType}
-                readOnly
-              />
-            </div>
-          </Card>
-
-          <div className={styles.actions}>
-            <Button type="button" variant="secondary" onClick={handleCancel} disabled={isSubmitting}>
-              Cancel
+        <div className={styles.actions}>
+          <Button type="button" variant="secondary" onClick={handleCancel} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          {currentStep > 1 && (
+            <Button type="button" variant="secondary" onClick={handlePreviousStep} disabled={isSubmitting}>
+              Previous
             </Button>
-            <Button type="submit" disabled={isSubmitDisabled}>
-              {isSubmitting ? 'Submitting...' : isEditMode ? 'Resubmit Request' : 'Submit Request'}
+          )}
+          {currentStep < TOTAL_STEPS ? (
+            <Button type="button" onClick={handleNextStep} disabled={isSubmitDisabled}>
+              Next
             </Button>
-          </div>
+          ) : (
+            <Button type="button" onClick={handleSubmit} disabled={isSubmitDisabled}>
+              {isSubmitting ? 'Submitting...' : isEditMode ? editButtonLabel : 'Submit Request'}
+            </Button>
+          )}
         </div>
       </form>
     </div>

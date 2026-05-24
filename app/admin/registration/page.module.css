@@ -24,6 +24,17 @@
   color: #b91c1c;
 }
 
+.eligibilityBanner {
+  grid-column: 1 / -1;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
 .controlNumberBar {
   grid-column: 1 / -1;
   display: flex;
@@ -192,6 +203,36 @@
   color: #dc2626;
   font-size: 13px;
   margin-top: 4px;
+}
+
+.contactChecking {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+  animation: contactPulse 1.5s ease-in-out infinite;
+}
+
+.contactChecking::before {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #d1d5db;
+  border-top-color: #1e40af;
+  border-radius: 50%;
+  animation: contactSpin 0.7s linear infinite;
+}
+
+@keyframes contactSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes contactPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 .checkbox {

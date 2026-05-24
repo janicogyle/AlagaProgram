@@ -16,14 +16,27 @@ import {
   DocumentPreviewModal,
 } from "@/components";
 import styles from "./page.module.css";
-import { supabase } from '@/lib/supabaseClient';
+import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
 import { getCooldownInfo, parseDateInput } from '@/lib/requestCooldown';
+import {
+  buildEligibilityByResidentId,
+  buildEligibilityMaps,
+  getResidentEligibility,
+} from '@/lib/residentEligibility';
 
 const statusOptions = [
   { value: "", label: "All Status" },
   { value: "Active", label: "Active" },
   { value: "Inactive", label: "Inactive" },
 ];
+
+const registrationTypeOptions = [
+  { value: "", label: "All" },
+  { value: "Online", label: "Online" },
+  { value: "Walk-In", label: "Walk-In" },
+];
+
+const LOCKED_CITIZENSHIP = 'Filipino';
 
 const sectorOptions = [
   { value: "", label: "All Sectors" },
@@ -210,12 +223,15 @@ function getSectorBadges(resident) {
 
 export default function ResidentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [registrationTypeFilter, setRegistrationTypeFilter] = useState("");
   const [sectorFilter, setSectorFilter] = useState("");
   const [qrFilter, setQrFilter] = useState("");
   const [sortBy, setSortBy] = useState("created_desc");
   const [residents, setResidents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [eligibilityByResidentId, setEligibilityByResidentId] = useState({});
+  const [eligibilityMaps, setEligibilityMaps] = useState(() => buildEligibilityMaps([]));
+  const [eligibilityLoading, setEligibilityLoading] = useState(true);
   const [selectedResident, setSelectedResident] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [resetPassword, setResetPassword] = useState('');
@@ -238,6 +254,7 @@ export default function ResidentsPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyRequests, setHistoryRequests] = useState([]);
+  const [realtimeRefreshKey, setRealtimeRefreshKey] = useState(0);
 
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -250,7 +267,7 @@ export default function ResidentsPage() {
     birthday: '',
     birthplace: '',
     sex: '',
-    citizenship: '',
+    citizenship: LOCKED_CITIZENSHIP,
     civil_status: '',
     contact_number: '',
     house_no: '',
@@ -319,16 +336,65 @@ export default function ResidentsPage() {
     if (!info) return <Badge variant="secondary">—</Badge>;
 
     const variant =
-      info.status === 'Eligible' ? 'success' : info.status === 'Almost Eligible' ? 'warning' : 'danger';
+      info.status === 'Eligible'
+        ? 'success'
+        : info.status === 'Almost Eligible'
+          ? 'warning'
+          : info.status === 'Under Review'
+            ? 'secondary'
+            : 'danger';
 
-    const daysSuffix = info.isEligible
-      ? ''
-      : ` • ${info.daysRemaining} day${info.daysRemaining === 1 ? '' : 's'}`;
+    const daysSuffix =
+      info.isEligible || info.status === 'Under Review'
+        ? ''
+        : ` • ${info.daysRemaining} day${info.daysRemaining === 1 ? '' : 's'}`;
 
-    const eligibleOn = info.isEligible ? null : formatEligibilityDate(info.nextEligibleDate);
+    const eligibleOn =
+      info.isEligible || info.status === 'Under Review' ? null : formatEligibilityDate(info.nextEligibleDate);
     const dateSuffix = eligibleOn ? ` • Eligible on ${eligibleOn}` : '';
 
     return <Badge variant={variant}>{`${info.status}${daysSuffix}${dateSuffix}`}</Badge>;
+  };
+
+  const getRowEligibility = (residentId) => {
+    if (eligibilityByResidentId[residentId]) {
+      return eligibilityByResidentId[residentId];
+    }
+    return getResidentEligibility(residentId, eligibilityMaps);
+  };
+
+  const getCooldownHint = (eligibility) => {
+    if (!eligibility || eligibility.canCreateRequest) return null;
+    if (eligibility.blockReason === 'active') {
+      return 'A request is still under review.';
+    }
+    const info = eligibility.cooldownInfo;
+    if (info?.nextEligibleDate) {
+      return `${info.daysRemaining} day(s) remaining • Eligible on ${formatEligibilityDate(info.nextEligibleDate)}`;
+    }
+    if (info?.daysRemaining > 0) {
+      return `${info.daysRemaining} day(s) remaining before the next request.`;
+    }
+    return 'Not eligible for a new request yet.';
+  };
+
+  const renderNewRequestAction = (row) => {
+    const eligibility = getRowEligibility(row.id);
+    const canRequest = !eligibilityLoading && eligibility.canCreateRequest;
+    const hint = getCooldownHint(eligibility);
+
+    return (
+      <div className={styles.newRequestCell}>
+        <Button
+          size="small"
+          disabled={!canRequest}
+          href={canRequest ? `/admin/registration?residentId=${encodeURIComponent(row.id)}` : undefined}
+        >
+          New Request
+        </Button>
+        {!eligibilityLoading && hint ? <span className={styles.cooldownHint}>{hint}</span> : null}
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -341,6 +407,25 @@ export default function ResidentsPage() {
     }
 
     fetchResidents();
+  // fetchResidents is intentionally kept as the existing page loader; realtimeRefreshKey re-runs it.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [realtimeRefreshKey]);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+
+    const refresh = () => setRealtimeRefreshKey((value) => value + 1);
+    const channels = [
+      realtimeHelpers.subscribeToTable('residents', refresh),
+      realtimeHelpers.subscribeToTable('account_requests', refresh),
+      realtimeHelpers.subscribeToTable('assistance_requests', refresh),
+    ].filter(Boolean);
+
+    return () => {
+      channels.forEach((channel) => {
+        realtimeHelpers.unsubscribe(channel);
+      });
+    };
   }, []);
 
   const getAuthHeaders = async () => {
@@ -363,25 +448,45 @@ export default function ResidentsPage() {
   };
 
   const fetchResidents = async () => {
+    setEligibilityLoading(true);
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch("/api/residents", { headers });
-      const result = await response.json();
+      const [residentsResponse, requestsResponse] = await Promise.all([
+        fetch('/api/residents', { headers }),
+        fetch('/api/assistance-requests', { headers }),
+      ]);
 
-      if (!response.ok || result.error) {
-        throw new Error(result.error || "Failed to fetch beneficiaries");
+      const residentsResult = await residentsResponse.json();
+      const requestsResult = await requestsResponse.json();
+
+      if (!residentsResponse.ok || residentsResult.error) {
+        throw new Error(residentsResult.error || 'Failed to fetch beneficiaries');
       }
 
-      setResidents(result.data || []);
+      setResidents(residentsResult.data || []);
+
+      if (!requestsResponse.ok || requestsResult.error) {
+        console.warn('Failed to load request eligibility:', requestsResult.error);
+        setEligibilityMaps(buildEligibilityMaps([]));
+        setEligibilityByResidentId({});
+      } else {
+        const requestRows = Array.isArray(requestsResult.data) ? requestsResult.data : [];
+        const { maps, byId } = buildEligibilityByResidentId(requestRows);
+        setEligibilityMaps(maps);
+        setEligibilityByResidentId(byId);
+      }
     } catch (error) {
-      console.warn("Failed to fetch beneficiaries:", error?.message || error);
+      console.warn('Failed to fetch beneficiaries:', error?.message || error);
       openAlert({
         title: 'Load failed',
         message: error?.message || 'Failed to fetch beneficiaries.',
       });
       setResidents([]);
+      setEligibilityMaps(buildEligibilityMaps([]));
+      setEligibilityByResidentId({});
     } finally {
       setLoading(false);
+      setEligibilityLoading(false);
     }
   };
 
@@ -525,10 +630,19 @@ export default function ResidentsPage() {
   }, [selectedResident, isAdmin]);
 
   const cooldownInfo = useMemo(() => {
+    if (selectedResident?.id) {
+      const rowEligibility =
+        eligibilityByResidentId[selectedResident.id] ||
+        getResidentEligibility(selectedResident.id, eligibilityMaps);
+      if (rowEligibility?.blockReason === 'active') {
+        return rowEligibility.cooldownInfo;
+      }
+    }
+
     const latestReleased = historyRequests[0];
     const lastRequestDate = latestReleased?.request_date || latestReleased?.created_at || null;
     return getCooldownInfo(lastRequestDate);
-  }, [historyRequests]);
+  }, [historyRequests, selectedResident, eligibilityByResidentId, eligibilityMaps]);
 
   const openEditProfile = () => {
     if (!isAdmin || !selectedResident) {
@@ -546,7 +660,7 @@ export default function ResidentsPage() {
       birthday: toDateInputValue(base.birthday),
       birthplace: base.birthplace || '',
       sex: base.sex || '',
-      citizenship: base.citizenship || '',
+      citizenship: LOCKED_CITIZENSHIP,
       civil_status: base.civil_status || '',
       contact_number: base.contact_number || '',
       house_no: base.house_no || '',
@@ -606,6 +720,7 @@ export default function ResidentsPage() {
         headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify({
           ...editForm,
+          citizenship: LOCKED_CITIZENSHIP,
           contact_number: contact,
         }),
       });
@@ -628,7 +743,7 @@ export default function ResidentsPage() {
       const attempted = {
         birthplace: editForm.birthplace,
         sex: editForm.sex,
-        citizenship: editForm.citizenship,
+        citizenship: LOCKED_CITIZENSHIP,
         civil_status: editForm.civil_status,
       };
 
@@ -697,9 +812,10 @@ export default function ResidentsPage() {
 
       const matchesSearch =
         !query || fullName.includes(query) || contact.includes(query) || control.includes(query);
-      const matchesStatus = !statusFilter || r.status === statusFilter;
+      const matchesRegistrationType =
+        !registrationTypeFilter || r.registration_type === registrationTypeFilter;
 
-      return matchesSearch && matchesStatus && matchesSector(r) && matchesQr(r);
+      return matchesSearch && matchesRegistrationType && matchesSector(r) && matchesQr(r);
     });
 
     const sorted = [...filtered].sort((a, b) => {
@@ -730,7 +846,7 @@ export default function ResidentsPage() {
     });
 
     return sorted;
-  }, [residents, searchTerm, statusFilter, sectorFilter, qrFilter, sortBy]);
+  }, [residents, searchTerm, registrationTypeFilter, sectorFilter, qrFilter, sortBy]);
 
   const historySummary = useMemo(() => {
     const totalCount = historyRequests.length;
@@ -872,10 +988,10 @@ export default function ResidentsPage() {
       },
     },
     {
-      key: "status",
-      label: "Status",
-      render: (status) => (
-        <Badge variant={status === "Active" ? "success" : "secondary"}>{status || "-"}</Badge>
+      key: "registration_type",
+      label: "Registration Type",
+      render: (type) => (
+        <Badge variant={type === "Online" ? "success" : "secondary"}>{type || "Walk-In"}</Badge>
       ),
     },
     {
@@ -884,12 +1000,25 @@ export default function ResidentsPage() {
       render: (value) => <span style={{ color: "#4b5563" }}>{formatDate(value)}</span>,
     },
     {
+      key: 'eligibility',
+      label: 'Eligibility',
+      render: (_, row) => {
+        if (eligibilityLoading) {
+          return <span className={styles.eligibilityLoading}>Checking…</span>;
+        }
+        return getEligibilityBadge(getRowEligibility(row.id).cooldownInfo);
+      },
+    },
+    {
       key: "actions",
       label: "Actions",
       render: (_, row) => (
-        <Button variant="secondary" size="small" onClick={() => setSelectedResident(row)}>
-          View
-        </Button>
+        <div className={styles.rowActions}>
+          <Button variant="secondary" size="small" onClick={() => setSelectedResident(row)}>
+            View
+          </Button>
+          {renderNewRequestAction(row)}
+        </div>
       ),
     },
   ];
@@ -1102,7 +1231,7 @@ export default function ResidentsPage() {
       <Card padding={false}>
         <PageHeader
           title="Beneficiaries"
-          subtitle="View beneficiary accounts created from approved signup requests"
+          subtitle="Search existing beneficiaries before creating walk-in assistance requests"
         />
 
         <FilterBar>
@@ -1127,13 +1256,13 @@ export default function ResidentsPage() {
               </select>
             </div>
             <div className={styles.filterGroup}>
-              <label className={styles.filterLabel}>Status</label>
+              <label className={styles.filterLabel}>Registration Type</label>
               <select
                 className={styles.select}
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                value={registrationTypeFilter}
+                onChange={(e) => setRegistrationTypeFilter(e.target.value)}
               >
-                {statusOptions.map((opt) => (
+                {registrationTypeOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
@@ -1194,18 +1323,29 @@ export default function ResidentsPage() {
                           {getSectorBadges(row).map((sector) => (
                             <Badge key={sector}>{sector}</Badge>
                           ))}
-                          <Badge variant={row.status === 'Active' ? 'success' : 'secondary'}>
-                            {row.status || '-'}
+                          <Badge variant={row.registration_type === 'Online' ? 'success' : 'secondary'}>
+                            {row.registration_type || 'Walk-In'}
                           </Badge>
                         </div>
                       </div>
 
-                      <Button variant="secondary" size="small" onClick={() => setSelectedResident(row)}>
-                        View
-                      </Button>
+                      <div className={styles.cardActions}>
+                        <Button variant="secondary" size="small" onClick={() => setSelectedResident(row)}>
+                          View
+                        </Button>
+                        {renderNewRequestAction(row)}
+                      </div>
                     </div>
 
                     <div className={styles.cardBody}>
+                      <div className={styles.cardDetail}>
+                        <span className={styles.detailLabel}>Eligibility</span>
+                        <span className={styles.detailValue}>
+                          {eligibilityLoading
+                            ? 'Checking…'
+                            : getEligibilityBadge(getRowEligibility(row.id).cooldownInfo)}
+                        </span>
+                      </div>
                       <div className={styles.cardDetails}>
                         <div className={styles.cardDetail}>
                           <span className={styles.detailLabel}>Control No.</span>
@@ -1220,6 +1360,11 @@ export default function ResidentsPage() {
                         <div className={styles.cardDetail}>
                           <span className={styles.detailLabel}>Address</span>
                           <span className={styles.detailValue} style={{ color: "#4b5563" }}>{formatAddressLine(row)}</span>
+                        </div>
+
+                        <div className={styles.cardDetail}>
+                          <span className={styles.detailLabel}>Registration Type</span>
+                          <span className={styles.detailValue}>{row.registration_type || 'Walk-In'}</span>
                         </div>
 
                         <div className={styles.cardDetail}>
@@ -1658,7 +1803,8 @@ export default function ResidentsPage() {
             name="citizenship"
             value={editForm.citizenship}
             onChange={handleEditChange}
-            optional
+            readOnly
+            disabled
           />
 
           <Input

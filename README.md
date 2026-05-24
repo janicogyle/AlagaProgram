@@ -54,6 +54,7 @@ To enable SMS OTPs and logs, run `setup-step6.sql` in the Supabase SQL Editor (c
 To remove legacy Supabase document storage, run `setup-step7.sql` after migrating uploads to Cloudinary.
 To enable per-assistance-type request control numbers (`YYYY-###`) and permanent beneficiary numbers (`BENEF-###`), run `setup-step8.sql`.
 If existing beneficiaries still show `2026-001` instead of `BENEF-001`, run `setup-step9.sql` to migrate resident control numbers (assistance requests stay `2026-###`).
+If registration saves fail with missing requirements verification, run `setup-step10.sql` to add the verification columns and refresh the Supabase schema cache.
 
 ### SMS (UniSMS OTP)
 

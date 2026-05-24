@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
+import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
 import { formatSmsNotificationResult } from '@/lib/smsTemplates';
 import {
   buildRequirementsMap,
@@ -43,7 +43,7 @@ const statusOptions = [
   { value: 'Resubmitted', label: 'Resubmitted' },
   { value: 'Approved', label: 'Approved' },
   { value: 'Released', label: 'Released' },
-  { value: 'Incomplete', label: 'Incomplete' },
+  { value: 'Archived', label: 'Archived' },
 ];
 
 const isCheckedRequirement = (item) => {
@@ -162,6 +162,7 @@ export default function RequestsPage() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [requirementsByType, setRequirementsByType] = useState({});
   const [documentPreview, setDocumentPreview] = useState({ open: false, url: '', path: '' });
+  const [realtimeRefreshKey, setRealtimeRefreshKey] = useState(0);
 
   const openDocumentPreview = (url, path = '') => {
     setDocumentPreview({
@@ -210,7 +211,7 @@ export default function RequestsPage() {
     setAlertState((prev) => ({ ...prev, open: false }));
   };
 
-  const getStatusLabel = (dbStatus) => (dbStatus === 'Rejected' ? 'Incomplete' : dbStatus);
+  const getStatusLabel = (dbStatus) => (dbStatus === 'Rejected' ? 'Archived' : dbStatus);
 
   useEffect(() => {
     const loadRequests = async () => {
@@ -333,11 +334,7 @@ export default function RequestsPage() {
             if (!file?.file_url) return;
             requirementMap.set(file.file_url, file);
           });
-          let requirementFiles = Array.from(requirementMap.values());
-          const maxRequirementFiles = requirementsChecklist.length || 0;
-          if (maxRequirementFiles > 0 && requirementFiles.length > maxRequirementFiles) {
-            requirementFiles = requirementFiles.slice(0, maxRequirementFiles);
-          }
+          const requirementFiles = Array.from(requirementMap.values());
 
           const sectors = {
             pwd: !!resident.is_pwd,
@@ -435,6 +432,22 @@ export default function RequestsPage() {
     };
 
     loadRequests();
+  }, [realtimeRefreshKey, requirementsByType]);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+
+    const refresh = () => setRealtimeRefreshKey((value) => value + 1);
+    const channels = [
+      realtimeHelpers.subscribeToTable('assistance_requests', refresh),
+      realtimeHelpers.subscribeToTable('residents', refresh),
+    ].filter(Boolean);
+
+    return () => {
+      channels.forEach((channel) => {
+        realtimeHelpers.unsubscribe(channel);
+      });
+    };
   }, []);
 
   useEffect(() => {
@@ -554,7 +567,7 @@ export default function RequestsPage() {
     ) {
       setStatus({
         type: 'error',
-        message: 'Only pending/resubmitted requests can be approved or marked as incomplete.',
+        message: 'Only pending/resubmitted requests can be approved or archived.',
       });
       return;
     }
@@ -570,7 +583,7 @@ export default function RequestsPage() {
     if (decisionType === 'unarchive' && selectedRequest.status !== 'Rejected') {
       setStatus({
         type: 'error',
-        message: 'Only incomplete requests can be reopened.',
+        message: 'Only archived requests can be reopened.',
       });
       return;
     }
@@ -648,8 +661,8 @@ export default function RequestsPage() {
       const actionLabel =
         statusLabel === 'Approved'
           ? 'approved'
-          : statusLabel === 'Incomplete'
-            ? 'marked as incomplete'
+          : statusLabel === 'Archived'
+            ? 'archived'
             : statusLabel === 'Pending'
               ? 'reopened'
               : statusLabel === 'Resubmitted'
@@ -769,10 +782,10 @@ export default function RequestsPage() {
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </button>
-              <button 
-                className={styles.rejectBtn}
+              <button
+                className={styles.archiveBtn}
                 onClick={() => handleOpenDecision(row, 'archive')}
-                title="Mark Incomplete"
+                title="Archive request"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 8v13H3V8" />
@@ -863,7 +876,7 @@ export default function RequestsPage() {
           </div>
           <div className={styles.summaryInfo}>
             <span className={styles.summaryValue}>{requests.filter(r => r.status === 'Rejected').length}</span>
-            <span className={styles.summaryLabel}>Incomplete</span>
+            <span className={styles.summaryLabel}>Archived</span>
           </div>
         </div>
       </div>
@@ -962,10 +975,10 @@ export default function RequestsPage() {
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
                         </button>
-                        <button 
-                          className={styles.rejectBtn}
+                        <button
+                          className={styles.archiveBtn}
                           onClick={() => handleOpenDecision(request, 'archive')}
-                          title="Archive"
+                          title="Archive request"
                         >
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M21 8v13H3V8" />
@@ -1057,12 +1070,7 @@ export default function RequestsPage() {
                 Close
               </Button>
               <Button variant="secondary" onClick={() => handleOpenDecision(selectedRequest, 'archive')}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 8v13H3V8" />
-                  <path d="M1 3h22v5H1z" />
-                  <path d="M10 12h4" />
-                </svg>
-                Mark Incomplete
+                Archive
               </Button>
               <Button onClick={() => handleOpenDecision(selectedRequest, 'approve')}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1354,7 +1362,7 @@ export default function RequestsPage() {
                 : decisionType === 'approve'
                   ? 'Confirm Approval'
                   : decisionType === 'archive'
-                    ? 'Confirm Incomplete'
+                    ? 'Confirm Archive'
                     : decisionType === 'unarchive'
                       ? 'Confirm Reopen'
                       : 'Confirm Release'}
@@ -1417,6 +1425,13 @@ export default function RequestsPage() {
               Control No: <strong>{selectedRequest.controlNo}</strong><br />
               Requester: <strong>{selectedRequest.requester}</strong><br />
               Amount: <strong>{selectedRequest.amount}</strong>
+              {decisionType === 'archive' ? (
+                <>
+                  <br />
+                  <br />
+                  The request will be archived, not deleted. You can reopen it from the Archived list.
+                </>
+              ) : null}
             </p>
             <div className={styles.remarksSection}>
               <label className={styles.remarksLabel}>Remarks (Optional)</label>

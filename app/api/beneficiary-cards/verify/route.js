@@ -13,6 +13,101 @@ function isMissingBeneficiaryCardsTable(err) {
   );
 }
 
+const RESIDENT_FIELDS = [
+  'id',
+  'control_number',
+  'first_name',
+  'middle_name',
+  'last_name',
+  'birthday',
+  'age',
+  'birthplace',
+  'sex',
+  'citizenship',
+  'civil_status',
+  'contact_number',
+  'house_no',
+  'purok',
+  'barangay',
+  'city',
+  'is_pwd',
+  'is_senior_citizen',
+  'is_solo_parent',
+  'representative_name',
+  'representative_contact',
+  'status',
+  'created_at',
+].join(', ');
+
+const HISTORY_FIELDS = [
+  'id',
+  'control_number',
+  'requester_name',
+  'beneficiary_name',
+  'assistance_type',
+  'amount',
+  'status',
+  'request_date',
+  'created_at',
+].join(', ');
+
+async function loadResidentProfile(residentId) {
+  if (!residentId || !supabaseAdmin) return null;
+
+  const { data, error } = await supabaseAdmin
+    .from('residents')
+    .select(RESIDENT_FIELDS)
+    .eq('id', residentId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data || null;
+}
+
+async function loadReleasedHistory(residentId) {
+  if (!residentId || !supabaseAdmin) return [];
+
+  const { data, error } = await supabaseAdmin
+    .from('assistance_requests')
+    .select(HISTORY_FIELDS)
+    .eq('resident_id', residentId)
+    .eq('status', 'Released')
+    .order('request_date', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+async function buildVerificationPayload(base) {
+  const residentId = base?.resident?.id || base?.card?.resident_id;
+  if (!residentId) {
+    return { ...base, resident: base?.resident || null, releasedHistory: [] };
+  }
+
+  try {
+    const hasProfile = base?.resident && Object.prototype.hasOwnProperty.call(base.resident, 'first_name');
+    const [resident, releasedHistory] = await Promise.all([
+      hasProfile ? Promise.resolve(base.resident) : loadResidentProfile(residentId),
+      loadReleasedHistory(residentId),
+    ]);
+
+    return {
+      ...base,
+      resident: resident || base.resident || null,
+      releasedHistory,
+    };
+  } catch (profileError) {
+    console.warn('Verify card profile/history load failed:', profileError?.message || profileError);
+    return {
+      ...base,
+      resident: base?.resident || null,
+      releasedHistory: [],
+      profileWarning: 'Could not load full beneficiary profile or request history.',
+    };
+  }
+}
+
 export async function POST(request) {
   try {
     const auth = await requireStaffOrAdmin(request);
@@ -66,10 +161,7 @@ export async function POST(request) {
 
     const { data, error } = await supabaseAdmin
       .from('beneficiary_cards')
-      .select(
-        `id, resident_id, issued_at, expires_at, revoked_at, status,
-         resident:residents (id, control_number, first_name, middle_name, last_name, birthday, contact_number, status)`
-      )
+      .select('id, resident_id, issued_at, expires_at, revoked_at, status')
       .eq('id', cardId)
       .single();
 
@@ -84,30 +176,44 @@ export async function POST(request) {
     const expiresAtMs = new Date(data.expires_at).getTime();
 
     if (data.revoked_at) {
-      return NextResponse.json(
-        { data: { valid: false, reason: 'revoked', card: data, resident: data.resident }, error: null },
-        { status: 200 },
-      );
+      const payload = await buildVerificationPayload({
+        valid: false,
+        reason: 'revoked',
+        card: data,
+        resident: null,
+      });
+      return NextResponse.json({ data: payload, error: null }, { status: 200 });
     }
 
     if (Number.isFinite(expiresAtMs) && expiresAtMs < now) {
-      return NextResponse.json(
-        { data: { valid: false, reason: 'expired', card: data, resident: data.resident }, error: null },
-        { status: 200 },
-      );
+      const payload = await buildVerificationPayload({
+        valid: false,
+        reason: 'expired',
+        card: data,
+        resident: null,
+      });
+      return NextResponse.json({ data: payload, error: null }, { status: 200 });
     }
 
-    if (data.resident?.status && data.resident.status !== 'Active') {
-      return NextResponse.json(
-        { data: { valid: false, reason: 'inactive', card: data, resident: data.resident }, error: null },
-        { status: 200 },
-      );
+    const resident = await loadResidentProfile(data.resident_id);
+
+    if (resident?.status && resident.status !== 'Active') {
+      const payload = await buildVerificationPayload({
+        valid: false,
+        reason: 'inactive',
+        card: data,
+        resident,
+      });
+      return NextResponse.json({ data: payload, error: null }, { status: 200 });
     }
 
-    return NextResponse.json(
-      { data: { valid: true, reason: null, card: data, resident: data.resident }, error: null },
-      { status: 200 },
-    );
+    const payload = await buildVerificationPayload({
+      valid: true,
+      reason: null,
+      card: data,
+      resident: resident || null,
+    });
+    return NextResponse.json({ data: payload, error: null }, { status: 200 });
   } catch (err) {
     console.error('Verify beneficiary card error:', err);
 

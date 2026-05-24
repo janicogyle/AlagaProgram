@@ -17,11 +17,9 @@ import {
   isMissingRequirementsColumn,
 } from '@/lib/assistanceRequirements';
 import { createOrUpdateResident } from '@/lib/residents';
+import { queryNextBeneficiaryControlNumber } from '@/lib/controlNumbers';
 import { getCooldownInfo } from '@/lib/requestCooldown';
-import {
-  queryNextAssistanceControlNumber,
-  queryNextBeneficiaryControlNumber,
-} from '@/lib/controlNumbers';
+import { buildEligibilityMaps, getResidentEligibility } from '@/lib/residentEligibility';
 
 const sexOptions = [
   { value: 'male', label: 'Male' },
@@ -74,9 +72,51 @@ const purokOptions = [
   { value: '7', label: '7' },
 ];
 
+const MISSING_REQUIREMENTS_VERIFICATION_CODE = 'MISSING_REQUIREMENTS_VERIFICATION_COLUMNS';
+const MISSING_REQUIREMENTS_VERIFICATION_ERROR =
+  'Database is missing requirements verification columns. Run setup-step10.sql in Supabase SQL Editor, then try again.';
+const LOCKED_CITIZENSHIP = 'Filipino';
+
+const isCheckedRequirement = (item) => {
+  if (item === true || item === 'true' || item === 1 || item === '1') return true;
+  const value = item?.checked;
+  const completed = item?.completed;
+  return (
+    value === true ||
+    value === 'true' ||
+    value === 1 ||
+    value === '1' ||
+    completed === true ||
+    completed === 'true' ||
+    completed === 1 ||
+    completed === '1'
+  );
+};
+
+const toBoolean = (value) => {
+  if (value === true || value === 'true' || value === 1 || value === '1') return true;
+  if (value === false || value === 'false' || value === 0 || value === '0') return false;
+  return null;
+};
+
+const parseRequirementsChecklist = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.filter(Boolean);
+    } catch {
+      // ignore invalid legacy values
+    }
+  }
+  return [];
+};
+
 export default function RegistrationPage() {
   const router = useRouter();
   const [controlNumber, setControlNumber] = useState('');
+  const [existingResidentId, setExistingResidentId] = useState('');
   const [budgets, setBudgets] = useState({});
   const [requirementsByType, setRequirementsByType] = useState({});
   const [formData, setFormData] = useState({
@@ -91,7 +131,7 @@ export default function RegistrationPage() {
     birthday: '',
     birthplace: '',
     sex: '',
-    citizenship: 'Filipino',
+    citizenship: LOCKED_CITIZENSHIP,
     civilStatus: '',
     contactNumber: '',
     // Sector Classification
@@ -107,9 +147,6 @@ export default function RegistrationPage() {
     assistanceType: '',
     otherAssistanceType: '',
     assistanceAmount: '',
-    beneficiaryName: '',
-    beneficiaryContact: '',
-    beneficiaryAddress: '',
     dateOfRequest: new Date().toISOString().split('T')[0],
     requirementsChecklist: {},
     requirementsCompleted: false, // fallback when no checklist is defined
@@ -117,15 +154,218 @@ export default function RegistrationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState(null);
+  const [contactCheck, setContactCheck] = useState({
+    checking: false,
+    available: true,
+    error: null,
+  });
+  const [requestEligibility, setRequestEligibility] = useState({
+    loading: false,
+    canCreateRequest: true,
+    cooldownInfo: getCooldownInfo(null),
+    blockReason: null,
+  });
+
+  const getAuthHeaders = async () => {
+    if (!supabase) throw new Error('Supabase client not initialized.');
+
+    const { data, error } = await supabase.auth.getSession();
+    const session = data?.session;
+    if (error || !session) {
+      throw new Error('Not authenticated. Please log in again.');
+    }
+
+    return { Authorization: `Bearer ${session.access_token}` };
+  };
+
+  // Check whether a contact number is already registered (walk-in duplicate check)
+  const checkContactAvailability = async (contactDigits) => {
+    if (!contactDigits || contactDigits.length !== 11) {
+      setContactCheck({ checking: false, available: true, error: null });
+      return true;
+    }
+
+    // If editing an existing resident, exclude their own ID from the check
+    if (existingResidentId) {
+      setContactCheck({ checking: false, available: true, error: null });
+      return true;
+    }
+
+    setContactCheck({ checking: true, available: true, error: null });
+    try {
+      const headers = await getAuthHeaders();
+      const params = new URLSearchParams({ contact: contactDigits });
+      if (existingResidentId) {
+        params.set('excludeResidentId', existingResidentId);
+      }
+
+      const res = await fetch(`/api/residents/check-contact?${params.toString()}`, { headers });
+      const json = await res.json().catch(() => ({}));
+
+      const available = !!json?.available;
+      const error = json?.error || null;
+
+      setContactCheck({ checking: false, available, error });
+      return available;
+    } catch {
+      // On network error, allow submission (server-side will still block)
+      setContactCheck({ checking: false, available: true, error: null });
+      return true;
+    }
+  };
+
+  const buildAddress = (resident) => {
+    const barangayLabel = resident?.barangay === 'sta-rita' ? 'Sta. Rita' : resident?.barangay;
+    const purokPart = resident?.purok ? `Purok ${resident.purok}` : '';
+    return [resident?.house_no, purokPart, barangayLabel, resident?.city]
+      .map((s) => String(s || '').trim())
+      .filter(Boolean)
+      .join(', ');
+  };
+
+  const buildResidentFullName = (data = formData) =>
+    [data.firstName, data.middleName, data.lastName]
+      .map((part) => String(part || '').trim())
+      .filter(Boolean)
+      .join(' ');
+
+  const buildResidentAddress = (data = formData) => {
+    const barangayLabel = data.barangay === 'sta-rita' ? 'Sta. Rita' : data.barangay;
+    const purokPart = data.purok ? `Purok ${data.purok}` : '';
+    return [data.houseNo, purokPart, barangayLabel, data.city]
+      .map((s) => String(s || '').trim())
+      .filter(Boolean)
+      .join(', ');
+  };
 
   const refreshResidentControlNumber = async () => {
     const next = await queryNextBeneficiaryControlNumber(supabase);
     setControlNumber(next);
   };
 
-  // Generate control number on mount
+  const loadRequestEligibility = async (residentId) => {
+    if (!residentId) {
+      setRequestEligibility({
+        loading: false,
+        canCreateRequest: true,
+        cooldownInfo: getCooldownInfo(null),
+        blockReason: null,
+      });
+      return;
+    }
+
+    setRequestEligibility((prev) => ({ ...prev, loading: true }));
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(
+        `/api/assistance-requests?residentId=${encodeURIComponent(residentId)}`,
+        { headers },
+      );
+      const json = await res.json().catch(() => ({}));
+      const rows = Array.isArray(json?.data) ? json.data : [];
+      const maps = buildEligibilityMaps(rows);
+      const eligibility = getResidentEligibility(residentId, maps);
+      setRequestEligibility({
+        loading: false,
+        ...eligibility,
+      });
+    } catch {
+      setRequestEligibility({
+        loading: false,
+        canCreateRequest: true,
+        cooldownInfo: getCooldownInfo(null),
+        blockReason: null,
+      });
+    }
+  };
+
+  const assistanceRequestBlocked =
+    !!existingResidentId && !requestEligibility.loading && !requestEligibility.canCreateRequest;
+
+  const getAssistanceBlockMessage = () => {
+    if (requestEligibility.blockReason === 'active') {
+      return 'This beneficiary already has a request under review. Wait for processing before creating a new request.';
+    }
+    const info = requestEligibility.cooldownInfo;
+    if (info?.nextEligibleDate) {
+      return `This beneficiary must wait ${info.daysRemaining} more day(s). Next eligible on ${info.nextEligibleDate}.`;
+    }
+    return 'This beneficiary is not eligible for a new assistance request yet.';
+  };
+
   useEffect(() => {
-    void refreshResidentControlNumber();
+    const loadExistingResident = async (residentId) => {
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`/api/residents/${encodeURIComponent(residentId)}`, { headers });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || json?.error) {
+          throw new Error(json?.error || 'Failed to load beneficiary.');
+        }
+
+        const resident = json?.data?.resident;
+        if (!resident?.id) {
+          throw new Error('Beneficiary not found.');
+        }
+
+        setExistingResidentId(String(resident.id));
+        setControlNumber(resident.control_number || '');
+        setFormData((prev) => ({
+          ...prev,
+          lastName: resident.last_name || '',
+          firstName: resident.first_name || '',
+          middleName: resident.middle_name || '',
+          houseNo: resident.house_no || '',
+          purok: resident.purok || '',
+          barangay: resident.barangay || 'sta-rita',
+          city: resident.city || 'Olongapo',
+          birthday: resident.birthday || '',
+          birthplace: resident.birthplace || '',
+          sex: resident.sex || '',
+          citizenship: LOCKED_CITIZENSHIP,
+          civilStatus: resident.civil_status || '',
+          contactNumber: resident.contact_number || '',
+          sectors: {
+            pwd: !!resident.is_pwd,
+            seniorCitizen: !!resident.is_senior_citizen,
+            soloParent: !!resident.is_solo_parent,
+          },
+          representativeName: resident.representative_name || '',
+          representativeContact: resident.representative_contact || '',
+        }));
+        await loadRequestEligibility(String(resident.id));
+        setStatus({
+          type: 'success',
+          message: 'Existing beneficiary loaded. Add the new walk-in request below.',
+        });
+      } catch (error) {
+        setExistingResidentId('');
+        setRequestEligibility({
+          loading: false,
+          canCreateRequest: true,
+          cooldownInfo: getCooldownInfo(null),
+          blockReason: null,
+        });
+        setStatus({
+          type: 'error',
+          message: error?.message || 'Failed to load beneficiary.',
+        });
+        await refreshResidentControlNumber();
+      }
+    };
+
+    const residentId =
+      typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('residentId')
+        : null;
+
+    if (residentId) {
+      void loadExistingResident(residentId);
+    } else {
+      void refreshResidentControlNumber();
+    }
+    // Initial registration load only; helper functions read current page state as needed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -238,13 +478,21 @@ export default function RegistrationPage() {
       return;
     }
 
-    if (name === 'contactNumber' || name === 'representativeContact' || name === 'beneficiaryContact') {
+    if (name === 'contactNumber' || name === 'representativeContact') {
       const numericValue = String(value || '').replace(/\D/g, '');
       if (numericValue.length <= 11) {
         setFormData((prev) => ({
           ...prev,
           [name]: numericValue,
         }));
+
+        // Check for duplicate contact number when 11 digits are entered
+        if (name === 'contactNumber' && numericValue.length === 11) {
+          void checkContactAvailability(numericValue);
+        } else if (name === 'contactNumber' && numericValue.length < 11) {
+          // Reset contact check when user clears/changes the number
+          setContactCheck({ checking: false, available: true, error: null });
+        }
       }
       return;
     }
@@ -343,6 +591,8 @@ export default function RegistrationPage() {
       newErrors.contactNumber = 'Contact number is required';
     } else if (formData.contactNumber.length !== 11) {
       newErrors.contactNumber = 'Contact number must be exactly 11 digits';
+    } else if (!existingResidentId && !contactCheck.available && contactCheck.error) {
+      newErrors.contactNumber = contactCheck.error;
     }
 
     if (!newErrors.birthday) {
@@ -356,31 +606,23 @@ export default function RegistrationPage() {
       }
     }
 
-    // Validate assistance fields if a type is selected
-    if (formData.assistanceType) {
-      if (!formData.beneficiaryName.trim()) {
-        newErrors.beneficiaryName = 'Beneficiary name is required for assistance';
-      }
-      if (!formData.beneficiaryContact.trim()) {
-        newErrors.beneficiaryContact = 'Beneficiary contact number is required';
-      } else if (formData.beneficiaryContact.replace(/\D/g, '').length !== 11) {
-        newErrors.beneficiaryContact = 'Beneficiary contact number must be exactly 11 digits';
-      }
-      if (!formData.beneficiaryAddress.trim()) {
-        newErrors.beneficiaryAddress = 'Beneficiary address is required';
-      }
+    if (formData.assistanceType && assistanceRequestBlocked) {
+      newErrors.assistanceType = getAssistanceBlockMessage();
+    }
 
-      // Representative must not match beneficiary when provided
+    // Validate representative when applying for assistance on behalf of the registrant
+    if (formData.assistanceType && !assistanceRequestBlocked) {
       const norm = (v) => String(v || '').trim().toLowerCase();
-      if (formData.representativeName && norm(formData.representativeName) === norm(formData.beneficiaryName)) {
+      const residentName = buildResidentFullName();
+      const residentContact = String(formData.contactNumber || '').trim();
+
+      if (formData.representativeName && norm(formData.representativeName) === norm(residentName)) {
         newErrors.representativeName = 'Representative must be different from beneficiary.';
       }
       if (formData.representativeContact) {
         if (String(formData.representativeContact).replace(/\D/g, '').length !== 11) {
           newErrors.representativeContact = 'Representative contact number must be exactly 11 digits.';
-        } else if (
-          String(formData.representativeContact || '').trim() === String(formData.beneficiaryContact || '').trim()
-        ) {
+        } else if (String(formData.representativeContact || '').trim() === residentContact) {
           newErrors.representativeContact = 'Representative contact must be different from beneficiary contact.';
         }
       }
@@ -410,6 +652,18 @@ export default function RegistrationPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Re-check contact availability before submitting (for new registrations)
+    if (!existingResidentId && formData.contactNumber.length === 11) {
+      const isAvailable = await checkContactAvailability(formData.contactNumber);
+      if (!isAvailable) {
+        setErrors((prev) => ({
+          ...prev,
+          contactNumber: contactCheck.error || 'This contact number is already registered',
+        }));
+        return;
+      }
+    }
     
     if (!validateForm()) {
       return;
@@ -421,15 +675,19 @@ export default function RegistrationPage() {
     try {
       const age = calculateAge(formData.birthday);
 
-      // Ensure we have a sequential control number (YYYY-###)
-      const residentControlNumber = controlNumber || (await queryNextBeneficiaryControlNumber(supabase));
-      if (!controlNumber) {
+      // Existing walk-in beneficiaries keep their original control number/profile.
+      const residentControlNumber =
+        existingResidentId ? controlNumber : controlNumber || (await queryNextBeneficiaryControlNumber(supabase));
+      if (!existingResidentId && !controlNumber) {
         setControlNumber(residentControlNumber);
       }
       
       // 1. Insert or update resident record
+      // For new walk-in registrations, block duplicate contact numbers (allowContactMerge: false)
       const residentData = await createOrUpdateResident({
-        control_number: residentControlNumber,
+        ...(existingResidentId
+          ? { id: existingResidentId }
+          : { control_number: residentControlNumber }),
         last_name: formData.lastName,
         first_name: formData.firstName,
         middle_name: formData.middleName || null,
@@ -441,7 +699,7 @@ export default function RegistrationPage() {
         birthplace: formData.birthplace,
         age: age ? parseInt(age) : null,
         sex: formData.sex,
-        citizenship: formData.citizenship,
+        citizenship: LOCKED_CITIZENSHIP,
         civil_status: formData.civilStatus,
         contact_number: formData.contactNumber,
         is_pwd: formData.sectors.pwd,
@@ -450,53 +708,21 @@ export default function RegistrationPage() {
         representative_name: formData.representativeName,
         representative_contact: formData.representativeContact,
         status: 'Active',
-      });
+      }, { allowContactMerge: !!existingResidentId });
 
       // 2. Insert into assistance_requests table if an assistance type is selected
+      if (formData.assistanceType && assistanceRequestBlocked) {
+        setStatus({ type: 'error', message: getAssistanceBlockMessage() });
+        return;
+      }
+
       if (formData.assistanceType && residentData) {
         if (!supabase) {
           throw new Error('Database client not available');
         }
 
-        const { data: lastRequest, error: lastRequestError } = await supabase
-          .from('assistance_requests')
-          .select('request_date, created_at')
-          .eq('resident_id', residentData.id)
-          .eq('status', 'Released')
-          .order('request_date', { ascending: false })
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (lastRequestError) {
-          throw lastRequestError;
-        }
-
-        const lastRequestDate = lastRequest?.request_date || lastRequest?.created_at || null;
-        const cooldownInfo = getCooldownInfo(lastRequestDate);
-        if (!cooldownInfo.isEligible) {
-          setStatus({
-            type: 'error',
-            message: `Request blocked. Beneficiary can submit again on ${cooldownInfo.nextEligibleDate} (${cooldownInfo.daysRemaining} day(s) remaining).`,
-          });
-          return;
-        }
-
         const assistanceTypeForRequest =
           formData.assistanceType === 'Others' ? formData.otherAssistanceType : formData.assistanceType;
-        const assistanceControlNumber = await queryNextAssistanceControlNumber(
-          supabase,
-          assistanceTypeForRequest,
-        );
-
-        const buildAddress = () => {
-          const barangayLabel = formData.barangay === 'sta-rita' ? 'Sta. Rita' : formData.barangay;
-          const purokPart = formData.purok ? `Purok ${formData.purok}` : '';
-          return [formData.houseNo, purokPart, barangayLabel, formData.city]
-            .map((s) => String(s || '').trim())
-            .filter(Boolean)
-            .join(', ');
-        };
 
         // Admin/Staff: requirements are verified via checklist (no file uploads).
 
@@ -509,18 +735,15 @@ export default function RegistrationPage() {
           ? requirementsChecklist.every((row) => !!row?.checked)
           : !!formData.requirementsCompleted;
 
-        const residentFullName = `${formData.firstName} ${formData.lastName}`.trim();
-
-        const beneficiaryName = String(formData.beneficiaryName || '').trim() || residentFullName;
-        const beneficiaryContact = String(formData.beneficiaryContact || '').trim() || String(formData.contactNumber || '').trim();
-        const beneficiaryAddress = String(formData.beneficiaryAddress || '').trim() || buildAddress();
+        const beneficiaryName = buildResidentFullName();
+        const beneficiaryContact = String(formData.contactNumber || '').trim();
+        const beneficiaryAddress = buildResidentAddress();
 
         const representativeName = String(formData.representativeName || '').trim();
         const representativeContact = String(formData.representativeContact || '').trim();
 
         const payload = {
-          control_number: assistanceControlNumber,
-          resident_id: residentData.id, // Link to the newly created resident
+          resident_id: residentData.id || existingResidentId, // Link to the existing/new resident
 
           // Representative = person requesting on behalf of the beneficiary.
           // If blank, treat this as a self-request by the beneficiary.
@@ -537,75 +760,55 @@ export default function RegistrationPage() {
           amount: formData.assistanceAmount || 0,
           status: 'Pending', // Default status
           request_date: formData.dateOfRequest,
+          request_source: 'walk-in',
           requirements_completed: requirementsCompleted,
           requirements_checklist: requirementsChecklist,
         };
 
-        const stripMissingAssistanceColumn = (message, attemptPayload) => {
-          const msg = String(message || '');
+        const assistanceResponse = await fetch('/api/assistance-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const assistanceJson = await assistanceResponse.json().catch(() => ({}));
 
-          let match = msg.match(/Could not find the '([^']+)' column of 'assistance_requests' in the schema cache/i);
-          if (!match) {
-            match = msg.match(/column\s+(?:public\.)?assistance_requests\.([a-zA-Z0-9_]+)\s+does\s+not\s+exist/i);
+        if (!assistanceResponse.ok || assistanceJson?.error) {
+          if (assistanceJson?.code === MISSING_REQUIREMENTS_VERIFICATION_CODE) {
+            throw new Error(assistanceJson?.error || MISSING_REQUIREMENTS_VERIFICATION_ERROR);
           }
-          if (!match) {
-            match = msg.match(
-              /column\s+"?([a-zA-Z0-9_]+)"?\s+of\s+relation\s+"(?:public\.)?assistance_requests"\s+does\s+not\s+exist/i,
-            );
-          }
-
-          const col = match?.[1];
-          if (!col || !attemptPayload || typeof attemptPayload !== 'object') {
-            return { payload: attemptPayload, removed: null };
-          }
-          if (!(col in attemptPayload)) return { payload: attemptPayload, removed: null };
-
-          const next = { ...attemptPayload };
-          delete next[col];
-          return { payload: next, removed: col };
-        };
-
-        let attemptPayload = payload;
-        let savedAssistance = null;
-        let assistanceError;
-
-        for (let attempt = 0; attempt < 3; attempt++) {
-          ;({ data: savedAssistance, error: assistanceError } = await supabase
-            .from('assistance_requests')
-            .insert(attemptPayload)
-            .select('id, requirements_checklist, requirements_completed')
-            .single());
-          if (!assistanceError) break;
-
-          const stripped = stripMissingAssistanceColumn(assistanceError.message, attemptPayload);
-          if (!stripped.removed) break;
-          if (['requirements_checklist', 'requirements_completed'].includes(stripped.removed)) {
-            throw new Error(
-              'Database is missing requirements verification columns. Run the Supabase migration before saving registrations.',
-            );
-          }
-
-          attemptPayload = stripped.payload;
+          throw new Error(assistanceJson?.error || 'Failed to create assistance request.');
         }
 
-        if (assistanceError) throw assistanceError;
+        const savedAssistance = assistanceJson?.data || null;
+        const insertPayload = payload;
 
-        const savedChecklist = Array.isArray(savedAssistance?.requirements_checklist)
-          ? savedAssistance.requirements_checklist
-          : [];
-        const savedCompleted = savedAssistance?.requirements_completed === true;
-        const savedChecklistCompleted = savedChecklist.length
-          ? savedChecklist.every((row) => row?.checked === true)
-          : savedCompleted;
+        const requirementsColsInPayload =
+          Object.prototype.hasOwnProperty.call(insertPayload, 'requirements_checklist') ||
+          Object.prototype.hasOwnProperty.call(insertPayload, 'requirements_completed');
 
-        if (
-          savedChecklist.length !== requirementsChecklist.length ||
-          savedChecklistCompleted !== requirementsCompleted ||
-          savedCompleted !== requirementsCompleted
-        ) {
-          throw new Error(
-            'Requirements verification was not saved correctly. Please refresh the page and try again.',
+        if (requirementsColsInPayload) {
+          const savedChecklist = parseRequirementsChecklist(savedAssistance?.requirements_checklist);
+          const hasSavedCompleted = Object.prototype.hasOwnProperty.call(
+            savedAssistance || {},
+            'requirements_completed',
           );
+          const savedCompleted = toBoolean(savedAssistance?.requirements_completed) === true;
+          const savedChecklistCompleted = savedChecklist.length
+            ? savedChecklist.every(isCheckedRequirement)
+            : savedCompleted;
+          const savedCompletedMatches = hasSavedCompleted
+            ? savedCompleted === requirementsCompleted
+            : savedChecklist.length > 0 && savedChecklistCompleted === requirementsCompleted;
+
+          if (
+            savedChecklist.length !== requirementsChecklist.length ||
+            savedChecklistCompleted !== requirementsCompleted ||
+            !savedCompletedMatches
+          ) {
+            throw new Error(
+              'Requirements verification was not saved correctly. Please refresh the page and try again.',
+            );
+          }
         }
       }
 
@@ -621,7 +824,7 @@ export default function RegistrationPage() {
         birthday: '',
         birthplace: '',
         sex: '',
-        citizenship: 'Filipino',
+        citizenship: LOCKED_CITIZENSHIP,
         civilStatus: '',
         contactNumber: '',
         sectors: {
@@ -634,17 +837,16 @@ export default function RegistrationPage() {
         assistanceType: '',
         otherAssistanceType: '',
         assistanceAmount: '',
-        beneficiaryName: '',
-        beneficiaryContact: '',
-        beneficiaryAddress: '',
         dateOfRequest: new Date().toISOString().split('T')[0],
         requirementsChecklist: {},
         requirementsCompleted: false,
       });
+      setContactCheck({ checking: false, available: true, error: null });
+      setExistingResidentId('');
       void refreshResidentControlNumber();
       setStatus({
         type: 'success',
-        message: 'Registration saved successfully.',
+        message: 'Registration saved successfully. Beneficiary and request have been recorded.',
       });
 
       // Navigate to assistance page with resident data
@@ -674,7 +876,7 @@ export default function RegistrationPage() {
       birthday: '',
       birthplace: '',
       sex: '',
-      citizenship: 'Filipino',
+      citizenship: LOCKED_CITIZENSHIP,
       civilStatus: '',
       contactNumber: '',
       sectors: {
@@ -687,9 +889,6 @@ export default function RegistrationPage() {
       assistanceType: '',
       otherAssistanceType: '',
       assistanceAmount: '',
-      beneficiaryName: '',
-      beneficiaryContact: '',
-      beneficiaryAddress: '',
       dateOfRequest: new Date().toISOString().split('T')[0],
       requirementsChecklist: {},
       requirementsCompleted: false,
@@ -841,7 +1040,8 @@ export default function RegistrationPage() {
                 name="citizenship"
                 value={formData.citizenship}
                 onChange={handleChange}
-                placeholder="Enter citizenship"
+                readOnly
+                disabled
                 error={errors.citizenship}
                 required
               />
@@ -866,8 +1066,11 @@ export default function RegistrationPage() {
                 onChange={handleChange}
                 placeholder="+63 XXX XXX XXXX"
                 mask="ph-contact"
-                error={errors.contactNumber}
+                error={errors.contactNumber || (!contactCheck.available && contactCheck.error ? contactCheck.error : '')}
               />
+              {contactCheck.checking && (
+                <span className={styles.contactChecking}>Checking contact number...</span>
+              )}
             </div>
           </div>
         </Card>
@@ -945,6 +1148,11 @@ export default function RegistrationPage() {
           {/* Assistance Request Card */}
           <Card title="Initial Assistance Request" subtitle="Optional: log an assistance request upon registration">
             <div className={styles.formFields}>
+              {assistanceRequestBlocked ? (
+                <div className={styles.eligibilityBanner} role="status">
+                  {getAssistanceBlockMessage()}
+                </div>
+              ) : null}
               <Select
                 label="Type of Assistance"
                 name="assistanceType"
@@ -952,6 +1160,8 @@ export default function RegistrationPage() {
                 onChange={handleChange}
                 options={[{ value: '', label: 'Select type (if any)' }, ...assistanceTypeOptions]}
                 optional
+                disabled={assistanceRequestBlocked}
+                error={errors.assistanceType}
               />
               {formData.assistanceType === 'Others' && (
                 <Input
@@ -1018,35 +1228,6 @@ export default function RegistrationPage() {
                 </div>
               </div>
 
-              <Input
-                label="Beneficiary Name"
-                name="beneficiaryName"
-                value={formData.beneficiaryName}
-                onChange={handleChange}
-                placeholder="Enter beneficiary's full name"
-                error={errors.beneficiaryName}
-                disabled={!formData.assistanceType}
-              />
-              <Input
-                label="Beneficiary Contact"
-                type="tel"
-                name="beneficiaryContact"
-                value={formData.beneficiaryContact}
-                onChange={handleChange}
-                placeholder="+63 XXX XXX XXXX"
-                mask="ph-contact"
-                error={errors.beneficiaryContact}
-                disabled={!formData.assistanceType}
-              />
-              <Input
-                label="Beneficiary Address"
-                name="beneficiaryAddress"
-                value={formData.beneficiaryAddress}
-                onChange={handleChange}
-                placeholder="House No., Purok, Barangay, City"
-                error={errors.beneficiaryAddress}
-                disabled={!formData.assistanceType}
-              />
               <Input
                 label="Budget Ceiling"
                 name="assistanceAmount"

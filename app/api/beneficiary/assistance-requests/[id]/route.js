@@ -6,6 +6,7 @@ import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/docu
 export const runtime = 'nodejs';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const BENEFICIARY_EDITABLE_STATUSES = new Set(['Pending', 'Resubmitted', 'Rejected']);
 
 const isCheckedRequirement = (row) => {
   const value = row?.checked;
@@ -81,10 +82,9 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ data: null, error: 'Forbidden.' }, { status: 403 });
     }
 
-    // Stored status is still "Rejected" for compatibility, but user-facing label is "Incomplete".
-    if (existing.status !== 'Rejected') {
+    if (!BENEFICIARY_EDITABLE_STATUSES.has(existing.status)) {
       return NextResponse.json(
-        { data: null, error: 'Only incomplete requests can be edited.' },
+        { data: null, error: 'Only pending, under review, or incomplete requests can be edited.' },
         { status: 400 },
       );
     }
@@ -160,7 +160,9 @@ export async function PATCH(request, { params }) {
     const requirementsCompleted = requirementsChecklist !== undefined
       ? requirementsChecklist.length > 0 && requirementsChecklist.every(isCheckedRequirement)
       : legacyRequirementsCompleted;
-    const maxRequiredFiles = Array.isArray(requirementsChecklist) ? requirementsChecklist.length : 0;
+    const requiredLabels = Array.isArray(requirementsChecklist)
+      ? requirementsChecklist.map((row) => String(row?.label || '').trim()).filter(Boolean)
+      : [];
     const urlsToValidate = [...allRequirementUrls];
     const legacyValidId = body.valid_id_url ?? body.validIdUrl;
     if (legacyValidId && typeof legacyValidId === 'string' && legacyValidId.startsWith('http')) {
@@ -174,22 +176,22 @@ export async function PATCH(request, { params }) {
     }
 
     const cloudinaryRequirementUrls = filterCloudinaryUrls(allRequirementUrls);
-    const limitedRequirementUrls =
-      maxRequiredFiles > 0
-        ? cloudinaryRequirementUrls.slice(0, maxRequiredFiles)
-        : cloudinaryRequirementUrls;
-    const limitedRequirementFiles = (
-      Array.isArray(requirementsFiles) && maxRequiredFiles > 0
-        ? requirementsFiles.slice(0, maxRequiredFiles)
-        : requirementsFiles
-    )?.filter((file) => filterCloudinaryUrls([file.file_url]).length > 0);
+    const limitedRequirementUrls = cloudinaryRequirementUrls;
+    const limitedRequirementFiles = (Array.isArray(requirementsFiles) ? requirementsFiles : [])
+      .filter((file) => filterCloudinaryUrls([file.file_url]).length > 0);
+    const hasRequiredFiles = requiredLabels.length
+      ? requiredLabels.every((label, index) => (
+          limitedRequirementFiles.some((file) => String(file.requirement_type || '').trim() === label) ||
+          !!limitedRequirementUrls[index]
+        ))
+      : true;
     if (
       (body.request_source ?? body.requestSource ?? 'online') === 'online' &&
-      maxRequiredFiles > 0 &&
-      limitedRequirementUrls.length < maxRequiredFiles
+      requiredLabels.length > 0 &&
+      !hasRequiredFiles
     ) {
       return NextResponse.json(
-        { data: null, error: `Please upload exactly ${maxRequiredFiles} requirement file(s).` },
+        { data: null, error: 'Please upload at least one file for each required document.' },
         { status: 400 },
       );
     }
@@ -218,8 +220,9 @@ export async function PATCH(request, { params }) {
       request_source: body.request_source ?? body.requestSource ?? 'online',
     };
 
+    const nextStatus = existing.status === 'Rejected' ? 'Resubmitted' : existing.status;
     const update = {
-      status: 'Resubmitted',
+      status: nextStatus,
       processed_by: null,
       decision_remarks: null,
       updated_at: new Date().toISOString(),
@@ -289,8 +292,8 @@ export async function PATCH(request, { params }) {
       throw updateError;
     }
 
-    // Best-effort: notify Admin/Staff that a beneficiary resubmitted.
-    if (supabaseAdmin) {
+    // Best-effort: notify Admin/Staff when an incomplete request moves back under review.
+    if (supabaseAdmin && existing.status === 'Rejected' && nextStatus === 'Resubmitted') {
       try {
         const { data: recipients } = await supabaseAdmin
           .from('users')

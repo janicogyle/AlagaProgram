@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
-import { isSignupContactAvailable } from '@/lib/contactRegistration.server';
+import {
+  isSignupContactAvailable,
+  isWalkInContactAvailable,
+} from '@/lib/contactRegistration.server';
+import { requireStaffOrAdmin } from '@/lib/apiAuth';
 
 export const runtime = 'nodejs';
 
@@ -16,8 +20,15 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const contactNumber = searchParams.get('contactNumber') || searchParams.get('contact_number');
+    const excludeResidentId = searchParams.get('excludeResidentId') || searchParams.get('residentId') || '';
+    const context = String(searchParams.get('context') || '').trim().toLowerCase();
 
-    const { available, error } = await isSignupContactAvailable(db, contactNumber);
+    const staffAuth = await requireStaffOrAdmin(request);
+    const useWalkInCheck = context === 'walk-in' || context === 'admin' || staffAuth.ok;
+
+    const { available, error } = useWalkInCheck
+      ? await isWalkInContactAvailable(db, contactNumber, { excludeResidentId })
+      : await isSignupContactAvailable(db, contactNumber);
 
     return NextResponse.json({
       data: { available, error: available ? null : error },

@@ -8,6 +8,8 @@ import { generateNextBeneficiaryControlNumber } from '@/lib/controlNumbers.serve
 
 export const runtime = 'nodejs';
 
+const LOCKED_CITIZENSHIP = 'Filipino';
+
 function getMissingAccountRequestsColumn(message) {
   const msg = String(message || '');
 
@@ -404,7 +406,7 @@ export async function POST(request, { params }) {
 
           if (!existingResidentError && existingResident) {
             return NextResponse.json(
-              { data: null, error: 'This contact number is already registered and cannot be used again.' },
+              { data: null, error: 'This contact number is already registered' },
               { status: 409 },
             );
           }
@@ -422,7 +424,7 @@ export async function POST(request, { params }) {
           age: accountRequest.age,
           birthplace: accountRequest.birthplace,
           sex: accountRequest.sex,
-          citizenship: accountRequest.citizenship,
+          citizenship: LOCKED_CITIZENSHIP,
           civil_status: accountRequest.civil_status,
           contact_number: contactNumber,
           house_no: accountRequest.house_no,
@@ -443,7 +445,7 @@ export async function POST(request, { params }) {
         const message = String(residentError?.message || 'Unknown error');
         if (message.toLowerCase().includes('duplicate key value violates unique constraint')) {
           return NextResponse.json(
-            { data: null, error: 'This contact number is already registered and cannot be used again.' },
+            { data: null, error: 'This contact number is already registered' },
             { status: 409 },
           );
         }

@@ -1,8 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import styles from './Sidebar.module.css';
+import Button from './Button';
+import Modal from './Modal';
 
 const menuItems = [
   {
@@ -127,6 +130,7 @@ const icons = {
 
 export default function Sidebar({ user, onLogout, minimized, menuItems: customMenuItems, hideBranding, customTitle, customSubtitle }) {
   const pathname = usePathname();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const resolvedUser = user;
 
   const isAdminRole = resolvedUser?.role === 'Admin';
@@ -135,7 +139,15 @@ export default function Sidebar({ user, onLogout, minimized, menuItems: customMe
     ? baseMenuItems
     : baseMenuItems.filter((section) => section.section !== 'Administration');
 
+  const openLogoutConfirm = () => setShowLogoutConfirm(true);
+  const closeLogoutConfirm = () => setShowLogoutConfirm(false);
+  const confirmLogout = () => {
+    closeLogoutConfirm();
+    onLogout?.();
+  };
+
   return (
+    <>
     <aside className={minimized ? `${styles.sidebar} ${styles.minimized}` : styles.sidebar}>
       {!hideBranding ? (
         <div className={styles.logo}>
@@ -203,7 +215,7 @@ export default function Sidebar({ user, onLogout, minimized, menuItems: customMe
           )}
         </div>
         {!minimized && (
-          <button onClick={onLogout} className={styles.logoutButton}>
+          <button onClick={openLogoutConfirm} className={styles.logoutButton}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
               <polyline points="16 17 21 12 16 7" />
@@ -214,5 +226,26 @@ export default function Sidebar({ user, onLogout, minimized, menuItems: customMe
         )}
       </div>
     </aside>
+    <Modal
+      isOpen={showLogoutConfirm}
+      onClose={closeLogoutConfirm}
+      title="Confirm logout"
+      size="small"
+      footer={
+        <div className={styles.logoutModalActions}>
+          <Button type="button" variant="secondary" onClick={closeLogoutConfirm}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={confirmLogout}>
+            Logout
+          </Button>
+        </div>
+      }
+    >
+      <p className={styles.logoutModalText}>
+        Are you sure you want to log out of your account?
+      </p>
+    </Modal>
+    </>
   );
 }

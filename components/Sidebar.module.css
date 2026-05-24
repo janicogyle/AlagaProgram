@@ -208,6 +208,20 @@
   color: white;
 }
 
+.logoutModalText {
+  margin: 0;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.logoutModalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  width: 100%;
+}
+
 /* ======================= */
 /* RESPONSIVE STYLES       */
 /* ======================= */
@@ -345,6 +359,10 @@
   .logoutButton {
     padding: 12px;
     font-size: 14px;
+  }
+
+  .logoutModalActions {
+    flex-direction: column-reverse;
   }
 }
 

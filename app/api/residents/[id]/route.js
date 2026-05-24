@@ -4,6 +4,8 @@ import { requireAdmin, requireStaffOrAdmin } from '@/lib/apiAuth';
 
 export const runtime = 'nodejs';
 
+const LOCKED_CITIZENSHIP = 'Filipino';
+
 function normalizeContactNumber(input) {
   const digits = String(input || '').replace(/\D/g, '');
 
@@ -480,7 +482,7 @@ export async function PATCH(request, { params }) {
     const birthday = body?.birthday ?? null;
     const birthplace = body?.birthplace ?? null;
     const sex = body?.sex ?? null;
-    const citizenship = body?.citizenship ?? null;
+    const citizenship = LOCKED_CITIZENSHIP;
     const civil_status = body?.civil_status ?? body?.civilStatus ?? null;
 
     const house_no = body?.house_no ?? body?.houseNo ?? null;
@@ -524,7 +526,7 @@ export async function PATCH(request, { params }) {
       if (dupErr && dupErr.code !== 'PGRST116') throw dupErr;
       if (dupResident) {
         return NextResponse.json(
-          { data: null, error: 'This contact number is already registered and cannot be used again.' },
+          { data: null, error: 'This contact number is already registered' },
           { status: 409 },
         );
       }
@@ -768,7 +770,7 @@ export async function PATCH(request, { params }) {
 
     if (lower.includes('duplicate key value violates unique constraint')) {
       return NextResponse.json(
-        { data: null, error: 'This contact number is already registered and cannot be used again.' },
+        { data: null, error: 'This contact number is already registered' },
         { status: 409 },
       );
     }

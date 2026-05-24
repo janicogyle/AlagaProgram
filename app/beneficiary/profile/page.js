@@ -172,7 +172,9 @@ export default function ProfilePage() {
                   <div className={styles.qrMeta}>
                     <div className={styles.qrRow}>
                       <span className={styles.qrLabel}>Expires:</span>
-                      <strong>{idCard.card?.expires_at ? new Date(idCard.card.expires_at).toLocaleDateString() : '-'}</strong>
+                      <strong className={styles.qrDate}>
+                        {idCard.card?.expires_at ? new Date(idCard.card.expires_at).toLocaleDateString() : '-'}
+                      </strong>
                     </div>
                     <div className={styles.qrRow}>
                       <span className={styles.qrLabel}>Card Ref:</span>

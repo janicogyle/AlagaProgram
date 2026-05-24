@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Card, Button, PageHeader, Modal } from '@/components';
+import { Card, Button, PageHeader, Modal, Badge, Table } from '@/components';
 import styles from './page.module.css';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -10,12 +10,90 @@ function buildName(resident) {
   return [resident.first_name, resident.middle_name, resident.last_name].filter(Boolean).join(' ');
 }
 
+function displayValue(value) {
+  const text = String(value ?? '').trim();
+  return text || '-';
+}
+
+function formatAddress(resident) {
+  if (!resident) return '-';
+  const parts = [];
+  if (resident.house_no) parts.push(resident.house_no);
+  if (resident.purok) parts.push(`Purok ${resident.purok}`);
+  if (resident.barangay) parts.push(resident.barangay);
+  if (resident.city) parts.push(resident.city);
+  return parts.length ? parts.join(', ') : '-';
+}
+
+function formatDate(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: '2-digit' });
+}
+
+function formatDateTime(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleString('en-PH', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatAmount(value) {
+  return (Number(value) || 0).toLocaleString('en-PH', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function computeAge(birthday, storedAge) {
+  const parsed = Number(storedAge);
+  if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  if (!birthday) return null;
+  const birth = new Date(birthday);
+  if (Number.isNaN(birth.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const monthDiff = now.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) age -= 1;
+  return age >= 0 ? age : null;
+}
+
+function getSectors(resident) {
+  if (!resident) return [];
+  const sectors = [];
+  if (resident.is_pwd) sectors.push('PWD');
+  if (resident.is_senior_citizen) sectors.push('Senior Citizen');
+  if (resident.is_solo_parent) sectors.push('Solo Parent');
+  return sectors;
+}
+
+function getAssistanceTypeLabel(row) {
+  return String(row?.assistance_type || row?.service_type || '').trim() || 'Assistance';
+}
+
+function InfoRow({ label, value }) {
+  return (
+    <div className={styles.infoRow}>
+      <span className={styles.k}>{label}</span>
+      <span className={styles.v}>{value}</span>
+    </div>
+  );
+}
+
 export default function BeneficiaryIdVerifyPage() {
   const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [alertState, setAlertState] = useState({ open: false, title: '', message: '' });
   const [scanOpen, setScanOpen] = useState(false);
+  const [scanSession, setScanSession] = useState(0);
 
   const openAlert = ({ title, message }) => setAlertState({ open: true, title, message });
   const closeAlert = () => setAlertState((prev) => ({ ...prev, open: false }));
@@ -37,7 +115,6 @@ export default function BeneficiaryIdVerifyPage() {
     setToken(scanned);
     setScanOpen(false);
 
-    // Auto-verify after scan for a faster workflow
     try {
       await handleVerify(scanned);
     } catch {
@@ -77,6 +154,50 @@ export default function BeneficiaryIdVerifyPage() {
   };
 
   const badge = result?.valid ? styles.badgeValid : styles.badgeInvalid;
+  const resident = result?.resident;
+  const releasedHistory = Array.isArray(result?.releasedHistory) ? result.releasedHistory : [];
+  const sectors = getSectors(resident);
+
+  const historyColumns = [
+    {
+      key: 'control_number',
+      label: 'Control No.',
+      render: (value) => <span className={styles.historyControlNo}>{value || '-'}</span>,
+    },
+    {
+      key: 'assistance_type',
+      label: 'Type',
+      render: (_, row) => getAssistanceTypeLabel(row),
+    },
+    { key: 'requester_name', label: 'Requester' },
+    { key: 'beneficiary_name', label: 'Beneficiary' },
+    {
+      key: 'request_date',
+      label: 'Date',
+      render: (_, row) => formatDate(row.request_date || row.created_at),
+    },
+    {
+      key: 'amount',
+      label: 'Amount',
+      render: (value) => <span className={styles.historyAmount}>₱{formatAmount(value)}</span>,
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: () => <Badge variant="success">Released</Badge>,
+    },
+  ];
+
+  const historyRows = releasedHistory.map((row) => ({
+    id: row.id,
+    control_number: row.control_number,
+    assistance_type: getAssistanceTypeLabel(row),
+    requester_name: row.requester_name || '-',
+    beneficiary_name: row.beneficiary_name || '-',
+    request_date: row.request_date || row.created_at,
+    amount: row.amount,
+    status: row.status,
+  }));
 
   return (
     <div className={styles.page}>
@@ -86,7 +207,9 @@ export default function BeneficiaryIdVerifyPage() {
       />
 
       <Card>
-        <label className={styles.label} htmlFor="qrToken">QR Token</label>
+        <label className={styles.label} htmlFor="qrToken">
+          QR Token
+        </label>
         <textarea
           id="qrToken"
           className={styles.textarea}
@@ -97,7 +220,13 @@ export default function BeneficiaryIdVerifyPage() {
         />
 
         <div className={styles.actions}>
-          <Button onClick={() => setScanOpen(true)} disabled={loading}>
+          <Button
+            onClick={() => {
+              setScanSession((value) => value + 1);
+              setScanOpen(true);
+            }}
+            disabled={loading}
+          >
             Scan QR
           </Button>
           <Button onClick={() => handleVerify()} disabled={loading || !token.trim()}>
@@ -121,44 +250,120 @@ export default function BeneficiaryIdVerifyPage() {
               <span className={`${styles.badge} ${badge}`}>{result.valid ? 'VALID' : 'INVALID'}</span>
               {!result.valid && result.reason && (
                 <span className={styles.reason}>
-                Reason: {result.reason === 'not_setup' ? 'QR ID not enabled (setup required)' : String(result.reason).replace(/_/g, ' ')}
-              </span>
+                  Reason:{' '}
+                  {result.reason === 'not_setup'
+                    ? 'QR ID not enabled (setup required)'
+                    : String(result.reason).replace(/_/g, ' ')}
+                </span>
               )}
             </div>
 
-            {result.resident && (
-              <div className={styles.grid}>
+            {result.profileWarning ? (
+              <p className={styles.profileWarning}>{result.profileWarning}</p>
+            ) : null}
+
+            {result.card && (
+              <div className={styles.grid} style={{ marginBottom: 12 }}>
                 <div>
-                  <div className={styles.k}>Name</div>
-                  <div className={styles.v}>{buildName(result.resident) || '-'}</div>
+                  <div className={styles.k}>Issued</div>
+                  <div className={styles.v}>{formatDateTime(result.card.issued_at)}</div>
                 </div>
                 <div>
-                  <div className={styles.k}>Control No.</div>
-                  <div className={styles.v}>{result.resident.control_number || '-'}</div>
-                </div>
-                <div>
-                  <div className={styles.k}>Contact</div>
-                  <div className={styles.v}>{result.resident.contact_number || '-'}</div>
-                </div>
-                <div>
-                  <div className={styles.k}>Resident Status</div>
-                  <div className={styles.v}>{result.resident.status || '-'}</div>
+                  <div className={styles.k}>Expires</div>
+                  <div className={styles.v}>{formatDateTime(result.card.expires_at)}</div>
                 </div>
               </div>
             )}
 
-            {result.card && (
-              <div className={styles.grid} style={{ marginTop: 12 }}>
-                <div>
-                  <div className={styles.k}>Issued</div>
-                  <div className={styles.v}>{result.card.issued_at ? new Date(result.card.issued_at).toLocaleString() : '-'}</div>
+            {resident ? (
+              <>
+                <div className={styles.profileHeader}>
+                  <div>
+                    <h2 className={styles.profileName}>{buildName(resident)}</h2>
+                    <p className={styles.profileMeta}>
+                      Control No. {displayValue(resident.control_number)} · Contact{' '}
+                      {displayValue(resident.contact_number)}
+                    </p>
+                  </div>
+                  <Badge variant={resident.status === 'Active' ? 'success' : 'secondary'}>
+                    {displayValue(resident.status)}
+                  </Badge>
                 </div>
-                <div>
-                  <div className={styles.k}>Expires</div>
-                  <div className={styles.v}>{result.card.expires_at ? new Date(result.card.expires_at).toLocaleString() : '-'}</div>
+
+                <div className={styles.infoSections}>
+                  <section className={styles.infoSection}>
+                    <h3 className={styles.sectionTitle}>Address</h3>
+                    <div className={styles.infoGrid}>
+                      <InfoRow label="Complete Address" value={formatAddress(resident)} />
+                      <InfoRow label="House No." value={displayValue(resident.house_no)} />
+                      <InfoRow label="Purok" value={displayValue(resident.purok)} />
+                      <InfoRow label="Barangay" value={displayValue(resident.barangay)} />
+                      <InfoRow label="City/Municipality" value={displayValue(resident.city)} />
+                    </div>
+                  </section>
+
+                  <section className={styles.infoSection}>
+                    <h3 className={styles.sectionTitle}>Personal Information</h3>
+                    <div className={styles.infoGrid}>
+                      <InfoRow label="Birthday" value={formatDate(resident.birthday)} />
+                      <InfoRow label="Birthplace" value={displayValue(resident.birthplace)} />
+                      <InfoRow label="Sex" value={displayValue(resident.sex)} />
+                      <InfoRow label="Citizenship" value={displayValue(resident.citizenship)} />
+                      <InfoRow label="Civil Status" value={displayValue(resident.civil_status)} />
+                      <InfoRow
+                        label="Age"
+                        value={(() => {
+                          const age = computeAge(resident.birthday, resident.age);
+                          return age == null ? '-' : String(age);
+                        })()}
+                      />
+                      <InfoRow label="Registered" value={formatDate(resident.created_at)} />
+                    </div>
+                  </section>
+
+                  <section className={styles.infoSection}>
+                    <h3 className={styles.sectionTitle}>Sector Classification</h3>
+                    {sectors.length ? (
+                      <div className={styles.sectorBadges}>
+                        {sectors.map((sector) => (
+                          <Badge key={sector} variant="secondary">
+                            {sector}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className={styles.emptyHint}>General</p>
+                    )}
+                  </section>
+
+                  {(resident.representative_name || resident.representative_contact) && (
+                    <section className={styles.infoSection}>
+                      <h3 className={styles.sectionTitle}>Representative</h3>
+                      <div className={styles.infoGrid}>
+                        <InfoRow label="Name" value={displayValue(resident.representative_name)} />
+                        <InfoRow label="Contact" value={displayValue(resident.representative_contact)} />
+                      </div>
+                    </section>
+                  )}
                 </div>
-              </div>
-            )}
+
+                <section className={styles.historySection}>
+                  <div className={styles.historyHeader}>
+                    <h3 className={styles.sectionTitle}>Released Assistance History</h3>
+                    <span className={styles.historyCount}>
+                      {releasedHistory.length} record{releasedHistory.length === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  {releasedHistory.length ? (
+                    <div className={styles.historyTableWrap}>
+                      <Table columns={historyColumns} data={historyRows} />
+                    </div>
+                  ) : (
+                    <p className={styles.emptyHint}>No released assistance requests on record.</p>
+                  )}
+                </section>
+              </>
+            ) : null}
           </div>
         )}
       </Card>
@@ -168,17 +373,16 @@ export default function BeneficiaryIdVerifyPage() {
         onClose={() => setScanOpen(false)}
         title="Scan QR"
         footer={
-          <>
-            <Button variant="secondary" onClick={() => setScanOpen(false)}>
-              Close
-            </Button>
-          </>
+          <Button variant="secondary" onClick={() => setScanOpen(false)}>
+            Close
+          </Button>
         }
       >
         {scanOpen ? (
           <QrScanner
+            key={`scan-${scanSession}`}
             onDetected={handleScanDetected}
-            onError={(m) => openAlert({ title: 'Scanner error', message: m })}
+            onClose={() => setScanOpen(false)}
           />
         ) : null}
       </Modal>
@@ -195,8 +399,10 @@ export default function BeneficiaryIdVerifyPage() {
   );
 }
 
-function QrScanner({ onDetected, onError }) {
+function QrScanner({ onDetected, onClose }) {
   const [starting, setStarting] = useState(true);
+  const [scannerError, setScannerError] = useState('');
+  const [retryKey, setRetryKey] = useState(0);
   const [cameras, setCameras] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const videoRef = useRef(null);
@@ -251,25 +457,11 @@ function QrScanner({ onDetected, onError }) {
 
       stop(false);
 
-      controlsRef.current = await reader.decodeFromVideoDevice(deviceId || undefined, videoRef.current, (result) => {
+      controlsRef.current = await reader.decodeFromVideoDevice(deviceId || undefined, videoRef.current, (scanResult) => {
         if (!active) return;
-        if (result) {
+        if (scanResult) {
           stop();
-          onDetected?.(result.getText());
-        }
-      });
-    };
-
-    const requestCameraPermission = async () => {
-      if (!navigator?.mediaDevices?.getUserMedia) {
-        throw new Error('This browser does not support camera access.');
-      }
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      stream.getTracks().forEach((track) => {
-        try {
-          track.stop();
-        } catch {
-          // ignore
+          onDetected?.(scanResult.getText());
         }
       });
     };
@@ -280,14 +472,42 @@ function QrScanner({ onDetected, onError }) {
       return devices.filter((d) => d.kind === 'videoinput');
     };
 
+    const formatScannerError = (e) => {
+      const name = String(e?.name || '');
+      const rawMsg = String(e?.message || e || 'Failed to start scanner.');
+
+      if (name === 'NotAllowedError') {
+        return 'Camera permission denied. Allow camera access in your browser settings, then try again.';
+      }
+      if (name === 'NotFoundError') {
+        return 'No camera found on this device.';
+      }
+      if (name === 'NotReadableError' || name === 'TrackStartError') {
+        return 'Your camera is busy. Close other apps or browser tabs using the camera (Zoom, Teams, Camera, another Chrome tab), wait a few seconds, then tap Retry.';
+      }
+      if (!window.isSecureContext) {
+        return 'Camera requires HTTPS or localhost.';
+      }
+      if (rawMsg.toLowerCase().includes('video source')) {
+        return 'Could not start the camera. Close other apps using it, wait a few seconds, then tap Retry.';
+      }
+      if (rawMsg.toLowerCase().includes('no camera devices')) {
+        return 'No camera found on this device.';
+      }
+      return rawMsg;
+    };
+
     const start = async () => {
+      setScannerError('');
       try {
+        if (!navigator?.mediaDevices?.getUserMedia) {
+          throw new Error('This browser does not support camera access.');
+        }
+
         const mod = await import('@zxing/browser');
         const { BrowserQRCodeReader } = mod;
 
         readerRef.current = new BrowserQRCodeReader();
-
-        await requestCameraPermission();
 
         let devices = await BrowserQRCodeReader.listVideoInputDevices();
         if (!devices?.length) {
@@ -298,30 +518,12 @@ function QrScanner({ onDetected, onError }) {
         setCameras(devices || []);
         setSelectedDeviceId(preferredId || '');
         await startWithDevice(preferredId);
-        setStarting(false);
+        if (active) setStarting(false);
       } catch (e) {
+        if (!active) return;
         setStarting(false);
         stop();
-
-        const name = String(e?.name || '');
-        const rawMsg = String(e?.message || e || 'Failed to start scanner.');
-
-        const msg =
-          name === 'NotAllowedError'
-            ? 'Camera permission denied. Please allow camera access in your browser.'
-            : name === 'NotFoundError'
-              ? 'No camera found on this device.'
-              : name === 'NotReadableError'
-                ? 'Camera is already in use by another app or tab. Close other apps and try again.'
-                : !window.isSecureContext
-                  ? 'Camera requires a secure connection (HTTPS).'
-            : rawMsg.toLowerCase().includes('video source')
-              ? 'Could not start video source. Close other apps using the camera, then refresh the page and try again.'
-            : rawMsg.toLowerCase().includes('no camera devices')
-              ? 'No camera found on this device.'
-              : rawMsg;
-
-        onError?.(msg);
+        setScannerError(formatScannerError(e));
       }
     };
 
@@ -331,7 +533,7 @@ function QrScanner({ onDetected, onError }) {
       active = false;
       stop();
     };
-  }, [onDetected, onError]);
+  }, [onDetected, retryKey]);
 
   const switchCamera = async (deviceId) => {
     const nextId = String(deviceId || '');
@@ -345,8 +547,8 @@ function QrScanner({ onDetected, onError }) {
       } catch {
         // ignore
       }
-      controlsRef.current = await readerRef.current.decodeFromVideoDevice(nextId, videoRef.current, (result) => {
-        if (result) {
+      controlsRef.current = await readerRef.current.decodeFromVideoDevice(nextId, videoRef.current, (scanResult) => {
+        if (scanResult) {
           try {
             controlsRef.current?.stop?.();
           } catch {
@@ -357,12 +559,11 @@ function QrScanner({ onDetected, onError }) {
           } catch {
             // ignore
           }
-          onDetected?.(result.getText());
+          onDetected?.(scanResult.getText());
         }
       });
     } catch (e) {
-      const msg = String(e?.message || e || 'Failed to switch camera.');
-      onError?.(msg);
+      setScannerError(String(e?.message || e || 'Failed to switch camera.'));
     } finally {
       setStarting(false);
     }
@@ -374,6 +575,29 @@ function QrScanner({ onDetected, onError }) {
     const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % cameras.length : 0;
     await switchCamera(cameras[nextIndex]?.deviceId);
   };
+
+  if (scannerError) {
+    return (
+      <div className={styles.scannerWrap}>
+        <p className={styles.scannerError}>{scannerError}</p>
+        <div className={styles.scannerErrorActions}>
+          <Button
+            type="button"
+            onClick={() => {
+              setScannerError('');
+              setStarting(true);
+              setRetryKey((value) => value + 1);
+            }}
+          >
+            Retry
+          </Button>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.scannerWrap}>
@@ -412,4 +636,3 @@ function QrScanner({ onDetected, onError }) {
     </div>
   );
 }
-

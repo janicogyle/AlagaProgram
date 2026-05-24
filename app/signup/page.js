@@ -280,7 +280,7 @@ export default function BeneficiarySignupPage() {
         } else {
           const msg =
             data?.error ||
-            'This contact number is already registered. Please log in or use a different number.';
+            'This contact number is already registered';
           setContactUnavailable(msg);
           setFieldErrors((prev) => ({ ...prev, contactNumber: msg }));
           resetOtpState();

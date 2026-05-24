@@ -170,6 +170,11 @@
     font-size: 0.9rem;
 }
 
+.qrDate {
+    color: #111827;
+    font-weight: 700;
+}
+
 .qrButtons {
     display: flex;
     gap: 10px;

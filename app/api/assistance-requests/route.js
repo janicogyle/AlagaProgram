@@ -12,6 +12,14 @@ const isCheckedRequirement = (row) => {
 };
 
 const ALLOWED_REQUEST_SOURCES = new Set(['online', 'walk-in']);
+const ACTIVE_ONLINE_STATUSES = ['Pending', 'Resubmitted'];
+const REQUIREMENTS_VERIFICATION_COLUMNS = new Set([
+  'requirements_checklist',
+  'requirements_completed',
+]);
+const MISSING_REQUIREMENTS_VERIFICATION_CODE = 'MISSING_REQUIREMENTS_VERIFICATION_COLUMNS';
+const MISSING_REQUIREMENTS_VERIFICATION_ERROR =
+  'Database is missing requirements verification columns. Run setup-step10.sql in Supabase SQL Editor, then try again.';
 
 const getFileNameFromUrl = (fileUrl) => {
   const raw = String(fileUrl || '').trim();
@@ -87,20 +95,6 @@ const parsePathArray = (value) => {
   return [];
 };
 
-const parseArrayValue = (value) => {
-  if (!value) return [];
-  if (Array.isArray(value)) return value;
-  if (typeof value === 'string') {
-    try {
-      const parsed = JSON.parse(value);
-      if (Array.isArray(parsed)) return parsed;
-    } catch {
-      // ignore
-    }
-  }
-  return [];
-};
-
 function stripMissingAssistanceColumn(message, payload) {
   const msg = String(message || '');
 
@@ -123,8 +117,10 @@ function stripMissingAssistanceColumn(message, payload) {
   if (!match) return { payload, removed: null };
 
   const col = match[1];
-  if (!col || typeof payload !== 'object' || payload == null) return { payload, removed: null };
-  if (!(col in payload)) return { payload, removed: null };
+  if (!col) return { payload, removed: null };
+  if (typeof payload !== 'object' || payload == null || !(col in payload)) {
+    return { payload, removed: col };
+  }
 
   const next = { ...payload };
   delete next[col];
@@ -232,14 +228,8 @@ export async function GET(request) {
     const rows = Array.isArray(data) ? data : [];
     const enriched = rows.map((row) => {
       const reqFromColumn = parsePathArray(row?.requirements_urls);
-      const checklist = parseArrayValue(row?.requirements_checklist);
-      const maxCount = Array.isArray(checklist) && checklist.length > 0 ? checklist.length : 0;
       const reqFromLegacy = parsePathArray(row?.valid_id_url);
       let requirementUrls = reqFromColumn.length ? reqFromColumn : reqFromLegacy;
-
-      if (maxCount > 0 && requirementUrls.length > maxCount) {
-        requirementUrls = requirementUrls.slice(0, maxCount);
-      }
 
       return {
         ...row,
@@ -284,6 +274,38 @@ export async function POST(request) {
       return NextResponse.json({ data: null, error: 'assistance_type is required.' }, { status: 400 });
     }
 
+    const requestSourceRaw = String(body.request_source || body.requestSource || 'online').trim().toLowerCase();
+    const requestSource = ALLOWED_REQUEST_SOURCES.has(requestSourceRaw) ? requestSourceRaw : 'online';
+
+    if (requestSource === 'online') {
+      const { data: activeRequest, error: activeRequestError } = await db
+        .from('assistance_requests')
+        .select('id, control_number, status, request_date, created_at')
+        .eq('resident_id', residentId)
+        .in('status', ACTIVE_ONLINE_STATUSES)
+        .order('request_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (activeRequestError) {
+        throw activeRequestError;
+      }
+
+      if (activeRequest) {
+        return NextResponse.json(
+          {
+            data: null,
+            error:
+              'You already have a request under review. Please edit your current request instead of creating a new one.',
+            code: 'ACTIVE_REQUEST_EXISTS',
+            activeRequest,
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     const { data: lastRequest, error: lastRequestError } = await db
       .from('assistance_requests')
       .select('request_date, created_at')
@@ -301,7 +323,7 @@ export async function POST(request) {
     const lastRequestDate = lastRequest?.request_date || lastRequest?.created_at || null;
     const cooldownInfo = getCooldownInfo(lastRequestDate);
 
-    if (!cooldownInfo.isEligible) {
+    if (requestSource === 'online' && !cooldownInfo.isEligible) {
       return NextResponse.json(
         {
           data: null,
@@ -360,9 +382,6 @@ export async function POST(request) {
       (cloudinaryRequirementUrls.length > 1
         ? JSON.stringify(cloudinaryRequirementUrls)
         : cloudinaryRequirementUrls?.[0] ?? null);
-    const requestSourceRaw = String(body.request_source || body.requestSource || 'online').trim().toLowerCase();
-    const requestSource = ALLOWED_REQUEST_SOURCES.has(requestSourceRaw) ? requestSourceRaw : 'online';
-
     const parseChecklist = (value) => {
       if (!value) return null;
       if (Array.isArray(value)) return value;
@@ -382,17 +401,27 @@ export async function POST(request) {
     const requirementsCompletedRaw = body.requirements_completed ?? body.requirementsCompleted;
     const legacyRequirementsCompleted =
       requirementsCompletedRaw === true || requirementsCompletedRaw === false ? requirementsCompletedRaw : null;
-    const maxRequiredFiles = Array.isArray(requirementsChecklist) ? requirementsChecklist.length : 0;
-    const limitedRequirementUrls =
-      maxRequiredFiles > 0
-        ? cloudinaryRequirementUrls.slice(0, maxRequiredFiles)
-        : cloudinaryRequirementUrls;
-    const limitedRequirementFiles = (
-      maxRequiredFiles > 0 ? effectiveRequirementFiles.slice(0, maxRequiredFiles) : effectiveRequirementFiles
-    ).filter((file) => filterCloudinaryUrls([file.file_url]).length > 0);
-    if (requestSource === 'online' && maxRequiredFiles > 0 && limitedRequirementUrls.length < maxRequiredFiles) {
+    const requirementsVerificationRequested =
+      requirementsChecklist !== null ||
+      Object.prototype.hasOwnProperty.call(body, 'requirements_checklist') ||
+      Object.prototype.hasOwnProperty.call(body, 'requirementsChecklist') ||
+      Object.prototype.hasOwnProperty.call(body, 'requirements_completed') ||
+      Object.prototype.hasOwnProperty.call(body, 'requirementsCompleted');
+    const requiredLabels = Array.isArray(requirementsChecklist)
+      ? requirementsChecklist.map((row) => String(row?.label || '').trim()).filter(Boolean)
+      : [];
+    const limitedRequirementUrls = cloudinaryRequirementUrls;
+    const limitedRequirementFiles = effectiveRequirementFiles
+      .filter((file) => filterCloudinaryUrls([file.file_url]).length > 0);
+    const hasRequiredFiles = requiredLabels.length
+      ? requiredLabels.every((label, index) => (
+          limitedRequirementFiles.some((file) => String(file.requirement_type || '').trim() === label) ||
+          !!limitedRequirementUrls[index]
+        ))
+      : true;
+    if (requestSource === 'online' && requiredLabels.length > 0 && !hasRequiredFiles) {
       return NextResponse.json(
-        { data: null, error: `Please upload exactly ${maxRequiredFiles} requirement file(s).` },
+        { data: null, error: 'Please upload at least one file for each required document.' },
         { status: 400 },
       );
     }
@@ -450,6 +479,19 @@ export async function POST(request) {
         // instead of dropping all requirement-related fields.
         const stripped = stripMissingAssistanceColumn(error.message, insertPayload);
         if (!stripped.removed) break;
+        if (
+          requirementsVerificationRequested &&
+          REQUIREMENTS_VERIFICATION_COLUMNS.has(stripped.removed)
+        ) {
+          return NextResponse.json(
+            {
+              data: null,
+              error: MISSING_REQUIREMENTS_VERIFICATION_ERROR,
+              code: MISSING_REQUIREMENTS_VERIFICATION_CODE,
+            },
+            { status: 500 },
+          );
+        }
 
         insertPayload = stripped.payload;
         // If older schemas are missing multi-file columns, preserve all file paths in valid_id_url as JSON text.

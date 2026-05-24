@@ -6,6 +6,8 @@ import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/docu
 
 export const runtime = 'nodejs';
 
+const LOCKED_CITIZENSHIP = 'Filipino';
+
 function normalizeContactNumber(input) {
   const digits = String(input || '').replace(/\D/g, '');
 
@@ -292,7 +294,6 @@ export async function POST(request) {
       !body.birthday ||
       !body.birthplace ||
       !body.sex ||
-      !body.citizenship ||
       !body.civilStatus ||
       !contactNumber ||
       !body.houseNo ||
@@ -373,7 +374,7 @@ export async function POST(request) {
 
       if (!existingResidentError && existingResident) {
         return NextResponse.json(
-          { data: null, error: 'This contact number is already registered. Please log in instead.' },
+          { data: null, error: 'This contact number is already registered' },
           { status: 409 },
         );
       }
@@ -390,7 +391,7 @@ export async function POST(request) {
       age,
       birthplace: body.birthplace || null,
       sex: body.sex || null,
-      citizenship: body.citizenship || null,
+      citizenship: LOCKED_CITIZENSHIP,
       civil_status: body.civilStatus || body.civil_status || null,
       house_no: body.houseNo,
       purok: body.purok,

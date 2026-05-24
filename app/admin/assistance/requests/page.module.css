@@ -79,6 +79,8 @@
 .viewBtn,
 .approveBtn,
 .rejectBtn,
+.archiveBtn,
+.deleteBtn,
 .releaseBtn {
   width: 32px;
   height: 32px;
@@ -116,6 +118,24 @@
 }
 
 .rejectBtn:hover {
+  background: #fecaca;
+}
+
+.archiveBtn {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.archiveBtn:hover {
+  background: #fde68a;
+}
+
+.deleteBtn {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.deleteBtn:hover {
   background: #fecaca;
 }
 

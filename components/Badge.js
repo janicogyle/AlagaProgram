@@ -23,12 +23,12 @@ const variants = {
   'Approved': 'primary',
   'Released': 'success',
   'Incomplete': 'danger',
-  'Rejected': 'danger',
+  'Rejected': 'secondary',
   'Archived': 'secondary',
 };
 
 export default function Badge({ children, variant }) {
-  const displayText = children === 'Rejected' ? 'Incomplete' : children;
+  const displayText = children === 'Rejected' ? 'Archived' : children;
   const colorVariant = variant || variants[displayText] || variants[children] || 'default';
 
   return (

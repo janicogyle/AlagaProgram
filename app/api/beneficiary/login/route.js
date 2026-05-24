@@ -136,12 +136,15 @@ export async function POST(request) {
       return NextResponse.json({ data: null, error: 'Invalid contact number or password.' }, { status: 401 });
     }
 
-    let sessionToken = null;
+    let sessionToken;
     try {
       sessionToken = createBeneficiarySessionToken(resident.id);
     } catch (e) {
-      // QR/ID features are optional; don't block beneficiary login if secrets aren't configured yet.
-      console.warn('Beneficiary session cookie not set:', e?.message || e);
+      console.error('Beneficiary session cookie not set:', e?.message || e);
+      return NextResponse.json(
+        { data: null, error: 'Server configuration error. Beneficiary session is not available.' },
+        { status: 500 },
+      );
     }
 
     const res = NextResponse.json({
@@ -154,15 +157,13 @@ export async function POST(request) {
       error: null,
     });
 
-    if (sessionToken) {
-      res.cookies.set(BENEFICIARY_SESSION_COOKIE, sessionToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7,
-      });
-    }
+    res.cookies.set(BENEFICIARY_SESSION_COOKIE, sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    });
 
     return res;
   } catch (err) {

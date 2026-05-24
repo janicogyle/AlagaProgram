@@ -20,6 +20,7 @@
 
 .modal {
   background: white;
+  color: #1f2937;
   border-radius: 12px;
   width: 100%;
   max-height: calc(100vh - 32px);
@@ -107,7 +108,13 @@
   padding: 24px;
   overflow-y: auto;
   flex: 1;
+  color: #374151;
+  line-height: 1.5;
   -webkit-overflow-scrolling: touch;
+}
+
+.body p {
+  color: inherit;
 }
 
 .footer {

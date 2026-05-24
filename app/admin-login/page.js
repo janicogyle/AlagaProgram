@@ -70,6 +70,22 @@ export default function AdminLoginPage() {
       }
 
       // last_login is updated server-side in /api/admin/profile
+      const sessionRes = await fetch('/api/admin/session', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const sessionJson = await sessionRes.json().catch(() => ({}));
+
+      if (!sessionRes.ok || sessionJson?.error) {
+        openAlert({
+          title: 'Login failed',
+          message: sessionJson?.error || 'Unable to create admin session. Please try again.',
+        });
+        await supabase.auth.signOut();
+        return;
+      }
 
       // Store in localStorage for persistence
       if (typeof window !== 'undefined') {

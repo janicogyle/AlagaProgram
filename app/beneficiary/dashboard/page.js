@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import PageHeader from '../../../components/PageHeader';
 import StatCard from '../../../components/StatCard';
@@ -10,6 +10,14 @@ import Button from '../../../components/Button';
 import Badge from '../../../components/Badge';
 import styles from './page.module.css';
 import Modal from '../../../components/Modal';
+import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
+
+const isActiveRequestStatus = (status) => status === 'Pending' || status === 'Resubmitted';
+const getRequestStatusLabel = (status) => {
+  if (status === 'Rejected') return 'Incomplete';
+  if (status === 'Resubmitted') return 'Under Review';
+  return status;
+};
 
 const columns = [
   { key: 'control_number', label: 'Control No.' },
@@ -19,7 +27,7 @@ const columns = [
     key: 'status',
     label: 'Status',
     render: (status) => {
-      const label = status === 'Rejected' ? 'Incomplete' : status;
+      const label = getRequestStatusLabel(status);
       return (
         <Badge variant={status === 'Released' || status === 'Approved' ? 'success' : status === 'Rejected' ? 'danger' : 'warning'}>
           {label}
@@ -36,9 +44,9 @@ export default function BeneficiaryDashboardPage() {
   const [filter, setFilter] = useState('all'); // all | active | completed | rejected
   const [alertState, setAlertState] = useState({ open: false, title: '', message: '' });
 
-  const openAlert = ({ title, message }) => {
+  const openAlert = useCallback(({ title, message }) => {
     setAlertState({ open: true, title, message });
-  };
+  }, []);
 
   const closeAlert = () => {
     setAlertState((prev) => ({ ...prev, open: false }));
@@ -53,70 +61,89 @@ export default function BeneficiaryDashboardPage() {
     lastDate: null,
   });
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        let residentId = null;
-        let storedName = '';
+  const loadDashboard = useCallback(async ({ silent = false } = {}) => {
+    try {
+      if (!silent) setLoading(true);
+      let residentId = null;
+      let storedName = '';
 
-        if (typeof window !== 'undefined') {
-          residentId = window.localStorage.getItem('beneficiaryResidentId');
-          storedName = window.localStorage.getItem('beneficiaryName') || '';
-        }
+      if (typeof window !== 'undefined') {
+        residentId = window.localStorage.getItem('beneficiaryResidentId');
+        storedName = window.localStorage.getItem('beneficiaryName') || '';
+      }
 
-        if (storedName) {
-          setBeneficiaryName(storedName);
-        }
+      if (storedName) {
+        setBeneficiaryName(storedName);
+      }
 
-        if (!residentId) {
-          setRequests([]);
-          setStats({ total: 0, active: 0, pending: 0, completed: 0, rejected: 0, lastDate: null });
-          setLoading(false);
-          return;
-        }
+      if (!residentId) {
+        setRequests([]);
+        setStats({ total: 0, active: 0, pending: 0, completed: 0, rejected: 0, lastDate: null });
+        setLoading(false);
+        return;
+      }
 
-        const response = await fetch(`/api/assistance-requests?residentId=${encodeURIComponent(residentId)}`);
-        const result = await response.json();
+      const response = await fetch(`/api/assistance-requests?residentId=${encodeURIComponent(residentId)}`);
+      const result = await response.json();
 
-        if (!response.ok || result?.error) {
-          throw new Error(result?.error || 'Failed to load assistance requests.');
-        }
+      if (!response.ok || result?.error) {
+        throw new Error(result?.error || 'Failed to load assistance requests.');
+      }
 
-        const safeData = (result.data || []).map((row) => ({
-          ...row,
-          request_control_number: row.control_number,
-          control_number: row.residents?.control_number || row.control_number,
-        }));
-        setRequests(safeData);
+      const safeData = (result.data || []).map((row) => ({
+        ...row,
+        request_control_number: row.control_number,
+        control_number: row.residents?.control_number || row.control_number,
+      }));
+      setRequests(safeData);
 
-        if (safeData.length > 0) {
-          const total = safeData.length;
-          const pending = safeData.filter((r) => r.status === 'Pending').length;
-          const completed = safeData.filter((r) => r.status === 'Released' || r.status === 'Approved').length;
-          const rejected = safeData.filter((r) => r.status === 'Rejected').length;
-          const lastDate = safeData[0].request_date;
+      if (safeData.length > 0) {
+        const total = safeData.length;
+        const pending = safeData.filter((r) => isActiveRequestStatus(r.status)).length;
+        const completed = safeData.filter((r) => r.status === 'Released' || r.status === 'Approved').length;
+        const rejected = safeData.filter((r) => r.status === 'Rejected').length;
+        const lastDate = safeData[0].request_date;
 
-          setStats({ total, active: pending, pending, completed, rejected, lastDate });
-        } else {
-          setStats({ total: 0, active: 0, pending: 0, completed: 0, rejected: 0, lastDate: null });
-        }
-      } catch (err) {
-        console.error('Failed to load beneficiary dashboard data:', err);
+        setStats({ total, active: pending, pending, completed, rejected, lastDate });
+      } else {
+        setStats({ total: 0, active: 0, pending: 0, completed: 0, rejected: 0, lastDate: null });
+      }
+    } catch (err) {
+      console.error('Failed to load beneficiary dashboard data:', err);
+      if (!silent) {
         setRequests([]);
         setStats({ total: 0, active: 0, pending: 0, completed: 0, rejected: 0, lastDate: null });
         openAlert({
           title: 'Load failed',
           message: err?.message || 'Failed to load your dashboard data. Please try again.',
         });
-      } finally {
-        setLoading(false);
       }
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [openAlert]);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
+  useEffect(() => {
+    if (!supabase || typeof window === 'undefined') return undefined;
+    const residentId = window.localStorage.getItem('beneficiaryResidentId');
+    if (!residentId) return undefined;
+
+    const channel = realtimeHelpers.subscribeToTable(
+      'assistance_requests',
+      () => loadDashboard({ silent: true }),
+      `resident_id=eq.${residentId}`,
+    );
+
+    return () => {
+      realtimeHelpers.unsubscribe(channel);
     };
+  }, [loadDashboard]);
 
-    load();
-  }, []);
-
-  const isActiveStatus = (status) => status === 'Pending';
+  const isActiveStatus = isActiveRequestStatus;
   const isCompletedStatus = (status) => status === 'Released' || status === 'Approved';
   const isRejectedStatus = (status) => status === 'Rejected';
 
@@ -142,7 +169,8 @@ export default function BeneficiaryDashboardPage() {
     }
   };
 
-  const hasActiveRequest = requests.some((r) => isActiveStatus(r.status));
+  const activeRequest = requests.find((r) => isActiveStatus(r.status));
+  const hasActiveRequest = !!activeRequest;
 
   const currentRequestRaw = requests[0] || null;
   const currentRequest = currentRequestRaw
@@ -218,7 +246,7 @@ export default function BeneficiaryDashboardPage() {
                       : 'warning'
                   }
                 >
-                  {currentRequest.status === 'Rejected' ? 'Incomplete' : currentRequest.status}
+                  {getRequestStatusLabel(currentRequest.status)}
                 </Badge>
                 <p className={styles.statusHint}>{getStatusDescription(currentRequest.status)}</p>
               </div>
@@ -226,8 +254,8 @@ export default function BeneficiaryDashboardPage() {
           )}
 
           <div className={styles.quickActions}>
-            <Link href="/beneficiary/requests">
-              <Button>New Request</Button>
+            <Link href={activeRequest ? `/beneficiary/requests?edit=${encodeURIComponent(activeRequest.id)}` : '/beneficiary/requests'}>
+              <Button>{activeRequest ? 'Edit Current Request' : 'New Request'}</Button>
             </Link>
             <Link href="/beneficiary/history">
               <Button variant="secondary">My Requests</Button>

@@ -294,3 +294,60 @@ export async function PATCH(request, { params }) {
     );
   }
 }
+
+const DELETABLE_STATUSES = new Set(['Pending', 'Resubmitted']);
+
+export async function DELETE(request, { params }) {
+  try {
+    const auth = await requireStaffOrAdmin(request);
+    if (!auth.ok) return auth.response;
+
+    const db = supabaseAdmin;
+    if (!db) {
+      return NextResponse.json(
+        { data: null, error: 'Server configuration error. Database admin client not available.' },
+        { status: 500 },
+      );
+    }
+
+    const id = params?.id;
+    if (!id || id === 'undefined' || id === 'null') {
+      return NextResponse.json({ data: null, error: 'Missing request id.' }, { status: 400 });
+    }
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
+
+    let lookup = db.from('assistance_requests').select('id, status, control_number');
+    lookup = isUuid ? lookup.eq('id', String(id)) : lookup.eq('control_number', String(id));
+
+    const { data: row, error: lookupError } = await lookup.maybeSingle();
+    if (lookupError) throw lookupError;
+    if (!row?.id) {
+      return NextResponse.json({ data: null, error: 'Assistance request not found.' }, { status: 404 });
+    }
+
+    if (!DELETABLE_STATUSES.has(String(row.status || ''))) {
+      return NextResponse.json(
+        {
+          data: null,
+          error: 'Only pending or resubmitted requests can be removed.',
+        },
+        { status: 400 },
+      );
+    }
+
+    const { error: deleteError } = await db.from('assistance_requests').delete().eq('id', row.id);
+    if (deleteError) throw deleteError;
+
+    return NextResponse.json({
+      data: { id: row.id, control_number: row.control_number, removed: true },
+      error: null,
+    });
+  } catch (error) {
+    console.error('Delete assistance request error:', error);
+    return NextResponse.json(
+      { data: null, error: error.message || 'Failed to remove assistance request.' },
+      { status: 500 },
+    );
+  }
+}

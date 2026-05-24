@@ -40,6 +40,24 @@ function computeQrValidity({ residentStatus, card }) {
   return 'Valid';
 }
 
+function normalizeContactNumber(input) {
+  const digits = String(input || '').replace(/\D/g, '');
+
+  if (digits.length === 12 && digits.startsWith('63')) {
+    return `0${digits.slice(2)}`;
+  }
+
+  if (digits.length === 10) {
+    return `0${digits}`;
+  }
+
+  if (digits.length > 11) {
+    return digits.slice(-11);
+  }
+
+  return digits;
+}
+
 export async function GET(request) {
   const auth = await requireStaffOrAdmin(request);
   if (!auth.ok) return auth.response;
@@ -75,6 +93,7 @@ export async function GET(request) {
       'is_pwd',
       'is_senior_citizen',
       'is_solo_parent',
+      'account_request_id',
       'status',
       'created_at',
       'updated_at',
@@ -128,6 +147,38 @@ export async function GET(request) {
       return NextResponse.json({ data: residents, error: null });
     }
 
+    let approvedSignupContacts = new Set();
+    try {
+      const contacts = residents
+        .map((r) => normalizeContactNumber(r.contact_number))
+        .filter((contact) => contact && contact.length >= 10);
+
+      if (contacts.length) {
+        const { data: approvedRequests, error: requestsError } = await db
+          .from('account_requests')
+          .select('contact_number')
+          .eq('status', 'Approved')
+          .in('contact_number', Array.from(new Set(contacts)));
+
+        if (requestsError) throw requestsError;
+
+        approvedSignupContacts = new Set(
+          (approvedRequests || [])
+            .map((row) => normalizeContactNumber(row.contact_number))
+            .filter(Boolean),
+        );
+      }
+    } catch (err) {
+      const msg = String(err?.message || err || '').toLowerCase();
+      const missing =
+        msg.includes('account_requests') &&
+        (msg.includes('schema cache') || msg.includes('does not exist') || msg.includes('could not find the table'));
+      if (!missing) {
+        console.warn('Fetch account_requests for registration type failed (continuing):', err?.message || err);
+      }
+      approvedSignupContacts = new Set();
+    }
+
     // Optional: attach QR validity status (if beneficiary_cards is set up)
     let cardMap = new Map();
     let cardsStatus = 'not_setup'; // ok | not_setup | unavailable
@@ -168,6 +219,10 @@ export async function GET(request) {
 
       return {
         ...r,
+        registration_type:
+          r.account_request_id || approvedSignupContacts.has(normalizeContactNumber(r.contact_number))
+            ? 'Online'
+            : 'Walk-In',
         qr_validity,
         qr_card: card,
       };
