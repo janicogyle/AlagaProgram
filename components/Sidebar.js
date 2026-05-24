@@ -11,7 +11,7 @@ const menuItems = [
       { name: 'Dashboard', href: '/admin/analytics', icon: 'dashboard' },
       { name: 'Apply Service Request', href: '/admin/registration', icon: 'registration' },
       { name: 'Beneficiaries', href: '/admin/residents', icon: 'user' },
-      { name: 'Verify Beneficiary ID', href: '/admin/beneficiary-id', icon: 'document' },
+      { name: 'Verify Beneficiary ID', href: '/admin/beneficiary-id', icon: 'qr' },
       { name: 'Assistance Requests', href: '/admin/assistance/requests', icon: 'list' },
       { name: 'Assistance Tracking', href: '/admin/assistance', icon: 'assistance' },
       { name: 'Assistance Guidelines', href: '/admin/assistance/guidelines', icon: 'guidelines' },
@@ -53,13 +53,12 @@ const icons = {
     </svg>
   ),
   assistance: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M9 12h.01" />
-      <path d="M15 12h.01" />
-      <path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5" />
-      <path d="M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5.5 5 1.5" />
-      <path d="M19 6.3V4a1 1 0 0 0-1-1h-4a2 2 0 0 0 0 4h4a1 1 0 0 0 1-1v-1.7" />
-    </svg>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="9" y="2" width="6" height="4" rx="1" />
+    <path d="M9 4H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2" />
+    <line x1="9" y1="12" x2="15" y2="12" />
+    <line x1="9" y1="16" x2="13" y2="16" />
+  </svg>
   ),
   guidelines: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -80,10 +79,22 @@ const icons = {
   ),
   document: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M6 2h7l5 5v15H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" />
-      <path d="M13 2v5h5" />
-      <line x1="9" y1="13" x2="15" y2="13" />
-      <line x1="9" y1="17" x2="13" y2="17" />
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <line x1="19" y1="8" x2="19" y2="14" />
+      <line x1="22" y1="11" x2="16" y2="11" />
+    </svg>
+  ),
+  qr: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="6" height="6" rx="1" />
+      <rect x="15" y="3" width="6" height="6" rx="1" />
+      <rect x="3" y="15" width="6" height="6" rx="1" />
+      <path d="M17 15v2" />
+      <path d="M15 17h2" />
+      <path d="M19 17h2" />
+      <path d="M17 19v2" />
+      <path d="M21 15v6" />
     </svg>
   ),
   documents: (
@@ -106,9 +117,11 @@ const icons = {
   ),
   user: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" />
-      <path d="M4 20a8 8 0 0 1 16 0" />
-    </svg>
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
   ),
 };
 
