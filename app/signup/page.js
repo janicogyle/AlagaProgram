@@ -730,6 +730,7 @@ export default function BeneficiarySignupPage() {
 
   const renderProgressBar = () => (
     <div className={styles.progressBarWrapper}>
+      <div className={styles.progressBarScroll}>
       <div className={styles.progressBar}>
         {STEPS.map((step, index) => (
           <Fragment key={step.number}>
@@ -773,6 +774,7 @@ export default function BeneficiarySignupPage() {
             </div>
           </Fragment>
         ))}
+      </div>
       </div>
     <p className={styles.stepIndicator}>Step {currentStep} of {TOTAL_STEPS}</p>
   </div>
@@ -1324,7 +1326,8 @@ export default function BeneficiarySignupPage() {
   // ===========================
 
   return (
-    <div className={styles.signupPage}>
+    <div className={styles.signupShell}>
+      <div className={styles.signupPage}>
       {toast.open && (
         <div className={styles.toast} role="status" aria-live="polite">
           {toast.message}
@@ -1334,6 +1337,7 @@ export default function BeneficiarySignupPage() {
       <PageHeader
         title="ALAGA Program – Beneficiary Sign Up"
         subtitle="Submit your information to request assistance under the Barangay Sta. Rita ALAGA Program."
+        className={styles.signupPageHeader}
       />
 
       <Card className={styles.formCard}>
@@ -1565,6 +1569,7 @@ export default function BeneficiarySignupPage() {
           </div>
         )}
       </Modal>
+      </div>
     </div>
   );
 }
