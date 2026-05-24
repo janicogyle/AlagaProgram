@@ -99,10 +99,6 @@ export default function LoginPage() {
               <p className={styles.welcomeSubtitle}>Alaga Program Portal</p>
             </div>
           </div>
-
-          <p className={styles.welcomeDescription}>
-            Access the official barangay services for the community. Enter your contact number and password to continue.
-          </p>
         </div>
 
         <div className={styles.formPanel}>
