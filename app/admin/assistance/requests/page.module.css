@@ -507,6 +507,15 @@
   }
 }
 
+@media (max-width: 1200px) {
+  .tableView {
+    display: none;
+  }
+  .mobileCardView {
+    display: grid;
+  }
+}
+
 .requestCard {
   background: #ffffff;
   border: 1px solid #e5e7eb;

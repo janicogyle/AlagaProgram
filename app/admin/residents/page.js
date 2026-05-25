@@ -344,16 +344,17 @@ export default function ResidentsPage() {
             ? 'secondary'
             : 'danger';
 
-    const daysSuffix =
-      info.isEligible || info.status === 'Under Review'
-        ? ''
-        : ` • ${info.daysRemaining} day${info.daysRemaining === 1 ? '' : 's'}`;
+    // Simplified: just show "Eligible" or "Eligible on [date]"
+    if (info.isEligible || info.status === 'Eligible') {
+      return <Badge variant={variant}>Eligible</Badge>;
+    }
 
-    const eligibleOn =
-      info.isEligible || info.status === 'Under Review' ? null : formatEligibilityDate(info.nextEligibleDate);
-    const dateSuffix = eligibleOn ? ` • Eligible on ${eligibleOn}` : '';
+    if (info.status === 'Under Review') {
+      return <Badge variant={variant}>Under Review</Badge>;
+    }
 
-    return <Badge variant={variant}>{`${info.status}${daysSuffix}${dateSuffix}`}</Badge>;
+    const eligibleOn = formatEligibilityDate(info.nextEligibleDate);
+    return <Badge variant={variant}>{`Eligible on ${eligibleOn}`}</Badge>;
   };
 
   const getRowEligibility = (residentId) => {
@@ -381,19 +382,17 @@ export default function ResidentsPage() {
   const renderNewRequestAction = (row) => {
     const eligibility = getRowEligibility(row.id);
     const canRequest = !eligibilityLoading && eligibility.canCreateRequest;
-    const hint = getCooldownHint(eligibility);
 
     return (
-      <div className={styles.newRequestCell}>
-        <Button
-          size="small"
-          disabled={!canRequest}
-          href={canRequest ? `/admin/registration?residentId=${encodeURIComponent(row.id)}` : undefined}
-        >
-          New Request
-        </Button>
-        {!eligibilityLoading && hint ? <span className={styles.cooldownHint}>{hint}</span> : null}
-      </div>
+      <Button
+        size="small"
+        className={`${styles.actionButton} ${styles.requestActionButton}`}
+       
+        disabled={!canRequest}
+        href={canRequest ? `/admin/registration?residentId=${encodeURIComponent(row.id)}` : undefined}
+      >
+        Request
+      </Button>
     );
   };
 
@@ -1014,8 +1013,19 @@ export default function ResidentsPage() {
       label: "Actions",
       render: (_, row) => (
         <div className={styles.rowActions}>
-          <Button variant="secondary" size="small" onClick={() => setSelectedResident(row)}>
-            View
+          <Button
+            variant="secondary"
+            size="small"
+            className={`${styles.actionButton} ${styles.iconActionButton}`}
+            icon={
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            }
+            onClick={() => setSelectedResident(row)}
+          >
+            <span className={styles.srOnly}>View</span>
           </Button>
           {renderNewRequestAction(row)}
         </div>
@@ -1316,7 +1326,7 @@ export default function ResidentsPage() {
                     <div className={styles.cardHeader}>
                       <div className={styles.cardNameSection}>
                         <div className={styles.cardName}>{buildFullName(row)}</div>
-                        <div style={{ color: '#6b7280', fontSize: 13 }}>
+                        <div className={styles.cardContact}>
                           {row.contact_number || '-'}
                         </div>
                         <div className={styles.cardBadges}>
@@ -1330,15 +1340,26 @@ export default function ResidentsPage() {
                       </div>
 
                       <div className={styles.cardActions}>
-                        <Button variant="secondary" size="small" onClick={() => setSelectedResident(row)}>
-                          View
+                        <Button
+                          variant="secondary"
+                          size="small"
+                          className={`${styles.actionButton} ${styles.iconActionButton}`}
+                          icon={
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                          }
+                          onClick={() => setSelectedResident(row)}
+                        >
+                          <span className={styles.srOnly}>View</span>
                         </Button>
                         {renderNewRequestAction(row)}
                       </div>
                     </div>
 
                     <div className={styles.cardBody}>
-                      <div className={styles.cardDetail}>
+                      <div className={`${styles.cardDetail} ${styles.cardEligibility}`}>
                         <span className={styles.detailLabel}>Eligibility</span>
                         <span className={styles.detailValue}>
                           {eligibilityLoading
@@ -1350,8 +1371,7 @@ export default function ResidentsPage() {
                         <div className={styles.cardDetail}>
                           <span className={styles.detailLabel}>Control No.</span>
                           <span
-                            className={styles.detailValue}
-                            style={{ fontFamily: "'Courier New', monospace" }}
+                            className={`${styles.detailValue} ${styles.cardCode}`}
                           >
                             {row.control_number || '-'}
                           </span>
@@ -1359,7 +1379,7 @@ export default function ResidentsPage() {
 
                         <div className={styles.cardDetail}>
                           <span className={styles.detailLabel}>Address</span>
-                          <span className={styles.detailValue} style={{ color: "#4b5563" }}>{formatAddressLine(row)}</span>
+                          <span className={`${styles.detailValue} ${styles.cardAddress}`}>{formatAddressLine(row)}</span>
                         </div>
 
                         <div className={styles.cardDetail}>

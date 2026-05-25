@@ -482,6 +482,15 @@
 	border-radius: 10px;
 	background: #f8fafc;
 	border: 1px solid #e5e7eb;
+	color: #111827;
+}
+
+.uploadSummaryItem strong {
+	display: block;
+	font-size: 13px;
+	font-weight: 700;
+	line-height: 1.4;
+	color: #111827;
 }
 
 .fileNameList {
@@ -489,7 +498,7 @@
 	flex-direction: column;
 	gap: 4px;
 	margin-top: 6px;
-	color: #475569;
+	color: #334155;
 	font-size: 13px;
 	overflow-wrap: anywhere;
 }
