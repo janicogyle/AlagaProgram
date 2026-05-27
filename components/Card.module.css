@@ -57,6 +57,19 @@
   min-width: 0;
 }
 
+.fillHeight {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.fillHeightContent {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 /* ======================= */
 /* RESPONSIVE STYLES       */
 /* ======================= */

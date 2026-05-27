@@ -160,15 +160,6 @@ export default function BeneficiaryDashboardPage() {
     return 'Status updated by the barangay office.';
   };
 
-  const handleCopyControlNumber = (controlNumber) => {
-    if (!controlNumber) return;
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard
-        .writeText(controlNumber)
-        .catch((err) => console.error('Failed to copy control number:', err));
-    }
-  };
-
   const activeRequest = requests.find((r) => isActiveStatus(r.status));
   const hasActiveRequest = !!activeRequest;
 
@@ -209,49 +200,48 @@ export default function BeneficiaryDashboardPage() {
           <KpiCard title="Incomplete Requests" value={stats.rejected} color="purple" icon="incomplete" compact />
         </div>
 
-        <Card className={styles.nextStepsCard}>
-          <h3 className={styles.nextTitle}>
-            {currentRequest ? 'Your Current Request' : 'Get Started with Assistance'}
-          </h3>
-          {loading ? (
-            <p className={styles.muted}>Loading your latest request...</p>
-          ) : !currentRequest ? (
-            <p className={styles.muted}>
-              You have no assistance requests yet. Start a new request to access barangay services.
-            </p>
-          ) : (
-            <div className={styles.nextBody}>
-              <div>
-                <p className={styles.nextLabel}>Most recent request</p>
-                <p className={styles.nextPrimary}>{currentRequest.assistance_type}</p>
-                <p className={styles.nextMeta}>
-                  <span className={styles.controlNumberRow}>
-                    <span>Control No. {currentRequest.control_number}</span>
-                    <button
-                      type="button"
-                      className={styles.copyButton}
-                      onClick={() => handleCopyControlNumber(currentRequest.control_number)}
-                    >
-                      Copy
-                    </button>
-                  </span>
-                  {currentRequest.request_date && ` • ${currentRequest.request_date}`}
+        <Card className={styles.nextStepsCard} fillHeight>
+          <div className={styles.nextStepsBody}>
+          <div className={styles.requestMain}>
+            {loading ? (
+              <p className={styles.muted}>Loading your latest request...</p>
+            ) : !currentRequest ? (
+              <>
+                <h3 className={styles.nextTitle}>Get Started with Assistance</h3>
+                <p className={styles.muted}>
+                  You have no assistance requests yet. Start a new request to access barangay services.
                 </p>
-                <Badge
-                  variant={
-                    isCompletedStatus(currentRequest.status)
-                      ? 'success'
-                      : isRejectedStatus(currentRequest.status)
-                      ? 'danger'
-                      : 'warning'
-                  }
-                >
-                  {getRequestStatusLabel(currentRequest.status)}
-                </Badge>
-                <p className={styles.statusHint}>{getStatusDescription(currentRequest.status)}</p>
-              </div>
-            </div>
-          )}
+              </>
+            ) : (
+              <>
+                <div className={styles.requestHeader}>
+                  <div className={styles.requestHeaderText}>
+                    <h3 className={styles.nextTitle}>Your Current Request</h3>
+                    <p className={styles.nextLabel}>Most recent request</p>
+                  </div>
+                  <Badge
+                    variant={
+                      isCompletedStatus(currentRequest.status)
+                        ? 'success'
+                        : isRejectedStatus(currentRequest.status)
+                        ? 'danger'
+                        : 'warning'
+                    }
+                  >
+                    {getRequestStatusLabel(currentRequest.status)}
+                  </Badge>
+                </div>
+                <div className={styles.requestDetails}>
+                  <p className={styles.nextPrimary}>{currentRequest.assistance_type}</p>
+                  <p className={styles.nextMeta}>
+                    Control No. {currentRequest.control_number}
+                    {currentRequest.request_date && ` • ${currentRequest.request_date}`}
+                  </p>
+                  <p className={styles.statusHint}>{getStatusDescription(currentRequest.status)}</p>
+                </div>
+              </>
+            )}
+          </div>
 
           <div className={styles.quickActions}>
             <Link href={activeRequest ? `/beneficiary/requests?edit=${encodeURIComponent(activeRequest.id)}` : '/beneficiary/requests'}>
@@ -263,6 +253,7 @@ export default function BeneficiaryDashboardPage() {
             <Link href="/beneficiary/profile">
               <Button variant="secondary">My Profile</Button>
             </Link>
+          </div>
           </div>
         </Card>
       </div>

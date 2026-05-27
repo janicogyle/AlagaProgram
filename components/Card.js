@@ -6,10 +6,13 @@ export default function Card({
   subtitle,
   headerAction,
   className = '',
-  padding = true 
+  padding = true,
+  fillHeight = false,
 }) {
   return (
-    <div className={`${styles.card} ${padding ? styles.withPadding : ''} ${className}`}>
+    <div
+      className={`${styles.card} ${padding ? styles.withPadding : ''} ${fillHeight ? styles.fillHeight : ''} ${className}`}
+    >
       {(title || subtitle) && (
         <div className={styles.cardHeader}>
           <div className={styles.cardHeaderText}>
@@ -19,7 +22,7 @@ export default function Card({
           {headerAction && <div className={styles.cardHeaderAction}>{headerAction}</div>}
         </div>
       )}
-      <div className={styles.cardContent}>
+      <div className={`${styles.cardContent} ${fillHeight ? styles.fillHeightContent : ''}`}>
         {children}
       </div>
     </div>
