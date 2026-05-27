@@ -7,19 +7,33 @@ import styles from './NotificationPanel.module.css';
 
 const DEFAULT_ACTIVITIES = [];
 
-function getLocalReadKey() {
+function getLocalReadKeys() {
   if (typeof window === 'undefined') return null;
   const rid = window.localStorage.getItem('beneficiaryResidentId');
-  return `activityReadIds:${rid || 'anon'}`;
+  if (rid) return [`activityReadIds:beneficiary:${rid}`, `activityReadIds:${rid}`];
+
+  try {
+    const rawAdmin = window.localStorage.getItem('adminUser');
+    const admin = rawAdmin ? JSON.parse(rawAdmin) : null;
+    const adminKey = admin?.id || admin?.email || admin?.username || admin?.name;
+    if (adminKey) return [`activityReadIds:admin:${adminKey}`, 'activityReadIds:anon'];
+  } catch {
+    // Fall back to the legacy anonymous key.
+  }
+
+  return ['activityReadIds:anon'];
 }
 
 function readLocalReadSet() {
   try {
-    const key = getLocalReadKey();
-    if (!key) return new Set();
-    const raw = window.localStorage.getItem(key);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return new Set(Array.isArray(parsed) ? parsed : []);
+    const keys = getLocalReadKeys();
+    if (!keys?.length) return new Set();
+    const values = keys.flatMap((key) => {
+      const raw = window.localStorage.getItem(key);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    });
+    return new Set(values);
   } catch {
     return new Set();
   }
@@ -27,7 +41,7 @@ function readLocalReadSet() {
 
 function writeLocalReadSet(set) {
   try {
-    const key = getLocalReadKey();
+    const key = getLocalReadKeys()?.[0];
     if (!key) return;
     window.localStorage.setItem(key, JSON.stringify(Array.from(set)));
   } catch {
@@ -176,12 +190,7 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnread
 
   const applyLocalReadState = useCallback((items) => {
     const readSet = readLocalReadSet();
-    return (items || []).map((a) => {
-      if (a?.source === 'beneficiary' || a?.source === 'system') {
-        return { ...a, read: a.read || readSet.has(a.id) };
-      }
-      return a;
-    });
+    return (items || []).map((a) => ({ ...a, read: a.read || readSet.has(a.id) }));
   }, []);
 
   const mapLevelToIconAndColor = useCallback((level) => {
@@ -312,6 +321,10 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnread
       const next = (prev) => prev.map((a) => (a.id === activity.id ? { ...a, read: true } : a));
 
       if (activity.source === 'notification') {
+        const readSet = readLocalReadSet();
+        readSet.add(activity.id);
+        writeLocalReadSet(readSet);
+
         const token = await getAccessToken();
         if (token) {
           try {
