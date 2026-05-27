@@ -121,4 +121,79 @@
     color: #0f2f6a;
     letter-spacing: 0.01em;
   }
+
+@media (max-width: 768px) {
+  .inputGroup {
+    margin-bottom: 0.85rem;
+  }
+
+  .inputGroup label {
+    margin-bottom: 0.35rem;
+    font-size: 0.86rem;
+  }
+
+  .inputGroup input {
+    min-height: 44px;
+    padding: 0.72rem 0.9rem;
+    border-radius: 12px;
+    font-size: 0.95rem;
+  }
+
+  .passwordWrapper input {
+    padding-right: 3.15rem;
+  }
+
+  .passwordToggle {
+    width: 34px;
+    height: 34px;
+    right: 0.55rem;
+  }
+
+  .loginButton {
+    min-height: 44px;
+    padding: 0.7rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .inputGroup {
+    margin-bottom: 0.72rem;
+  }
+
+  .inputGroup label {
+    font-size: 0.82rem;
+  }
+
+  .inputGroup input {
+    min-height: 42px;
+    padding: 0.62rem 0.82rem;
+    font-size: 0.9rem;
+  }
+
+  .passwordToggle {
+    width: 32px;
+    height: 32px;
+  }
+
+  .loginButton {
+    min-height: 42px;
+    padding: 0.64rem;
+    font-size: 0.92rem;
+  }
+}
+
+@media (max-width: 480px) and (max-height: 700px) {
+  .inputGroup {
+    margin-bottom: 0.58rem;
+  }
+
+  .inputGroup label {
+    margin-bottom: 0.25rem;
+  }
+
+  .inputGroup input,
+  .loginButton {
+    min-height: 40px;
+  }
+}
   

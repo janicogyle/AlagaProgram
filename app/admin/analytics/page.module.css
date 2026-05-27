@@ -30,6 +30,72 @@
   min-width: 200px;
 }
 
+.trendFilters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.trendSelect {
+  --select-min-width: 112px;
+  --select-max-width: 132px;
+}
+
+.trendInsightPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.trendInsightTotal {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: #374151;
+  font-size: 13px;
+}
+
+.trendInsightTotal strong {
+  color: #1f2937;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.trendInsightList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trendInsightItem,
+.trendInsightMuted {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.trendInsightItem {
+  color: #1e40af;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.trendInsightMuted {
+  color: #6b7280;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
 /* KPI Cards */
 .kpiGrid {
   display: grid;
@@ -38,70 +104,70 @@
 }
 
 .kpiCard {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  padding: 28px 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   min-width: 0;
-}
-
-.kpiHeader {
+  position: relative;
+  overflow: hidden;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+  flex-direction: column;
+  color: white;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.kpiTitle {
-  font-size: 14px;
-  font-weight: 500;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+.kpiCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
-.kpiIcon {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+.kpiCard.blue {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.kpiCard.green {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.kpiCard.orange {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.kpiCard.purple {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+.kpiIconTop {
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
+  margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
-.kpiIcon.blue { background: #3b82f6; }
-.kpiIcon.green { background: #10b981; }
-.kpiIcon.orange { background: #f59e0b; }
-.kpiIcon.purple { background: #8b5cf6; }
+.kpiIconTop svg {
+  width: 24px;
+  height: 24px;
+}
 
 .kpiValue {
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 700;
-  color: #1f2937;
+  color: white;
   margin-bottom: 8px;
+  line-height: 1.2;
 }
 
-.kpiGrowth {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-}
-
-.kpiGrowth .positive {
-  color: #059669;
-  font-weight: 600;
-}
-
-.kpiGrowth .negative {
-  color: #dc2626;
-  font-weight: 600;
-}
-
-.kpiPrevious {
-  color: #6b7280;
+.kpiLabel {
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 12px;
 }
 
 .cardMessage {
@@ -119,7 +185,44 @@
 }
 
 .chartCard {
-  min-height: 280px;
+  min-height: 320px;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.chartCard:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.chartCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.chartCard:hover::before {
+  opacity: 1;
+}
+
+.purokChartCard {
+  overflow: visible;
+}
+
+.purokChartCard .horizontalChart {
+  padding-top: 44px;
 }
 
 /* Line Chart */
@@ -128,7 +231,7 @@
   align-items: flex-end;
   justify-content: space-around;
   height: 200px;
-  padding: 20px 0;
+  padding: 40px 0 20px 0;
 }
 
 .linePoint {
@@ -140,16 +243,26 @@
 
 .lineBar {
   background: linear-gradient(180deg, #3b82f6 0%, #1e40af 100%);
-  width: 24px;
-  margin-bottom: 12px;
-  border-radius: 4px 4px 0 0;
+  width: 28px;
+  margin-bottom: 16px;
+  border-radius: 8px 8px 0 0;
   min-height: 20px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.lineBar:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
 }
 
 .lineLabel {
   font-size: 12px;
   color: #6b7280;
-  font-weight: 500;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Pie Chart */
@@ -157,20 +270,27 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
-  padding: 20px;
+  gap: 28px;
+  padding: 0;
 }
 
 .pieContainer {
-  width: 150px;
-  height: 150px;
+  width: 180px;
+  height: 180px;
   border-radius: 50%;
   background: conic-gradient(
-    #7c3aed 0deg 133deg,
-    #1e40af 133deg 266deg,
-    #16a34a 266deg 360deg
+    #8b5cf6 0deg 120deg,
+    #10b981 120deg 240deg,
+    #f59e0b 240deg 360deg
   );
   position: relative;
+  box-shadow: 0 12px 32px rgba(139, 92, 246, 0.25);
+  transition: all 0.3s ease;
+}
+
+.pieContainer:hover {
+  transform: scale(1.05);
+  box-shadow: 0 16px 40px rgba(139, 92, 246, 0.35);
 }
 
 .pieContainer::after {
@@ -178,30 +298,38 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
   background: white;
   border-radius: 50%;
   transform: translate(-50%, -50%);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .pieLegend {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  width: 100%;
 }
 
 .legendItem {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
   font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  padding: 8px 0;
 }
 
 .legendColor {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* Bar Chart */
@@ -210,8 +338,8 @@
   align-items: flex-end;
   justify-content: space-around;
   height: 200px;
-  padding: 20px 0;
-  gap: 16px;
+  padding: 40px 0 20px 0;
+  gap: 12px;
 }
 
 .barItem {
@@ -219,109 +347,156 @@
   flex-direction: column;
   align-items: center;
   flex: 1;
-  gap: 8px;
+  gap: 12px;
 }
 
 .bar {
-  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(180deg, #3b82f6 0%, #1e40af 100%);
   width: 100%;
-  max-width: 40px;
-  border-radius: 4px 4px 0 0;
+  max-width: 48px;
+  border-radius: 12px 12px 0 0;
   min-height: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.bar:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+  filter: brightness(1.1);
 }
 
 .barLabel {
-  font-size: 12px;
+  font-size: 13px;
   color: #6b7280;
-  font-weight: 500;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .barValue {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: #1f2937;
+  position: absolute;
+  top: -28px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.barItem:hover .barValue {
+  opacity: 1;
 }
 
 /* Horizontal Chart */
 .horizontalChart {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 20px 0;
+  gap: 20px;
+  padding: 0;
 }
 
 .hBarItem {
   display: grid;
-  grid-template-columns: 80px 1fr 50px;
+  grid-template-columns: 100px 1fr 60px;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 }
 
 .hBarLabel {
   display: flex;
   flex-direction: column;
   font-size: 14px;
+  gap: 2px;
 }
 
 .hBarLabel span:first-child {
-  font-weight: 500;
+  font-weight: 600;
   color: #1f2937;
+  font-size: 14px;
 }
 
 .hBarCount {
   font-size: 12px;
   color: #6b7280;
+  font-weight: 500;
 }
 
 .hBarContainer {
-  background: #f3f4f6;
-  height: 24px;
-  border-radius: 12px;
+  background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 100%);
+  height: 28px;
+  border-radius: 14px;
   overflow: visible;
   position: relative;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.06);
 }
 
 .hBar {
   height: 100%;
-  background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%);
-  border-radius: 12px;
-  transition: all 0.3s ease;
+  background: linear-gradient(90deg, #8b5cf6 0%, #a78bfa 50%, #8b5cf6 100%);
+  border-radius: 14px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   cursor: pointer;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+}
+
+.hBar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.hBar:hover::before {
+  left: 100%;
 }
 
 .hBar:hover {
-  transform: scaleY(1.15);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+  transform: scaleY(1.25);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.35);
 }
 
 .hBarTooltip {
   position: absolute;
-  top: -70px;
+  bottom: 100%;
   left: 50%;
-  transform: translateX(-50%) scale(0.9);
+  transform: translateX(-50%) scale(0.95);
   background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
   color: white;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.3;
+  text-align: left;
+  width: max-content;
+  min-width: 150px;
+  max-width: min(220px, calc(100vw - 48px));
   white-space: nowrap;
+  pointer-events: none;
+  box-sizing: border-box;
   opacity: 0;
   visibility: hidden;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  gap: 6px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
   z-index: 100;
-  max-width: min(220px, 80vw);
-  white-space: normal;
+  margin-bottom: 8px;
 }
 
 .hBarTooltip::after {
   content: '';
   position: absolute;
-  bottom: -6px;
+  top: 100%;
   left: 50%;
   transform: translateX(-50%);
   border-width: 6px 6px 0 6px;
@@ -330,9 +505,10 @@
 }
 
 .hBarTooltip strong {
-  font-size: 13px;
-  color: #a78bfa;
+  font-size: 14px;
+  color: #c4b5fd;
   margin-bottom: 2px;
+  font-weight: 600;
 }
 
 .hBar:hover .hBarTooltip {
@@ -342,10 +518,14 @@
 }
 
 .hBarPercentage {
-  font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
   text-align: right;
+  background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* Assistance Analytics */
@@ -450,6 +630,15 @@
 @media (max-width: 1200px) {
   .kpiGrid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .kpiCard {
+    padding: 24px 20px;
+  }
+
+  .kpiValue {
+    font-size: 32px;
   }
   
   .chartsGrid {
@@ -459,6 +648,7 @@
 
   .chartCard {
     min-height: 250px;
+    padding: 24px;
   }
   
   .assistanceGrid {
@@ -487,13 +677,14 @@
     font-size: 28px;
   }
 
-  .kpiTitle {
-    font-size: 12px;
+  .kpiLabel {
+    font-size: 14px;
   }
 
-  .kpiIcon {
-    width: 36px;
-    height: 36px;
+  .kpiIconTop {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 12px;
   }
 
   .chartCard {
@@ -564,19 +755,14 @@
     margin-bottom: 4px;
   }
 
-  .kpiTitle {
-    font-size: 11px;
+  .kpiLabel {
+    font-size: 13px;
   }
 
-  .kpiIcon {
-    width: 32px;
-    height: 32px;
-  }
-
-  .kpiGrowth {
-    font-size: 12px;
-    flex-wrap: wrap;
-    gap: 4px;
+  .kpiIconTop {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 10px;
   }
   
   .assistanceGrid {
@@ -611,13 +797,13 @@
   }
 
   .pieContainer {
-    width: 120px;
-    height: 120px;
+    width: 140px;
+    height: 140px;
   }
 
   .pieContainer::after {
-    width: 50px;
-    height: 50px;
+    width: 60px;
+    height: 60px;
   }
 
   .legendItem {
@@ -625,20 +811,25 @@
   }
 
   .hBarItem {
-    grid-template-columns: 60px 1fr 40px;
-    gap: 8px;
+    grid-template-columns: 70px 1fr 45px;
+    gap: 10px;
   }
 
   .hBarLabel span:first-child {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .hBarCount {
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .hBarContainer {
-    height: 20px;
+    height: 22px;
+  }
+
+  .chartCard {
+    padding: 20px;
+    min-height: 260px;
   }
 }
 
@@ -662,22 +853,21 @@
 
   .kpiCard {
     padding: 16px;
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .kpiHeader {
-    flex-direction: row-reverse;
-    margin-bottom: 0;
-    gap: 12px;
-    flex: 1;
   }
 
   .kpiValue {
     font-size: 22px;
     margin-bottom: 2px;
+  }
+
+  .kpiLabel {
+    font-size: 12px;
+  }
+
+  .kpiIconTop {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 10px;
   }
 
   .chartsGrid {
@@ -686,6 +876,25 @@
 
   .chartCard {
     min-height: 240px;
+    padding: 18px;
+  }
+
+  .trendFilters {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .trendSelect {
+    flex: 1 1 120px;
+  }
+
+  .trendInsightPanel {
+    margin-top: 14px;
+    padding-top: 12px;
+  }
+
+  .trendInsightTotal strong {
+    font-size: 16px;
   }
 
   .lineChart,
@@ -693,9 +902,36 @@
     height: 140px;
   }
 
+  .pieContainer {
+    width: 120px;
+    height: 120px;
+  }
+
+  .pieContainer::after {
+    width: 50px;
+    height: 50px;
+  }
+
   .hBarItem {
     grid-template-columns: 1fr;
     gap: 6px;
+  }
+
+  .hBarTooltip {
+    left: 0;
+    min-width: 148px;
+    max-width: calc(100vw - 64px);
+    transform: scale(0.95);
+    white-space: normal;
+  }
+
+  .hBarTooltip::after {
+    left: 24px;
+    transform: none;
+  }
+
+  .hBar:hover .hBarTooltip {
+    transform: scale(1);
   }
 
   .hBarPercentage {
@@ -722,9 +958,14 @@
     font-size: 20px;
   }
 
-  .kpiIcon {
+  .kpiLabel {
+    font-size: 11px;
+  }
+
+  .kpiIconTop {
     width: 28px;
     height: 28px;
+    margin-bottom: 8px;
   }
 
   .assistanceItem {

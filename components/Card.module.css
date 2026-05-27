@@ -1,17 +1,20 @@
 .card {
-  background-color: white;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
   min-width: 0;
-  transition: box-shadow 0.2s ease;
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card:hover {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
 
 .withPadding {
-  padding: 20px;
+  padding: 24px;
 }
 
 .cardHeader {
@@ -59,7 +62,7 @@
 /* ======================= */
 @media (max-width: 900px) {
   .card {
-    border-radius: 10px;
+    border-radius: 16px;
   }
 
   .withPadding {
@@ -77,7 +80,7 @@
 
 @media (max-width: 768px) {
   .card {
-    border-radius: 10px;
+    border-radius: 14px;
   }
 
   .withPadding {
@@ -106,7 +109,7 @@
 
 @media (max-width: 480px) {
   .card {
-    border-radius: 8px;
+    border-radius: 12px;
   }
 
   .withPadding {
@@ -149,5 +152,9 @@
 @media (prefers-reduced-motion: reduce) {
   .card {
     transition: none;
+  }
+
+  .card:hover {
+    transform: none;
   }
 }

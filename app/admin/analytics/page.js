@@ -11,9 +11,31 @@ import Badge from '@/components/Badge';
 import styles from './page.module.css';
 import { supabase } from '@/lib/supabaseClient';
 
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_FULL_LABELS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
 export default function AnalyticsPage() {
+  const currentYear = new Date().getFullYear();
   const [viewportWidth, setViewportWidth] = useState(1200);
   const [timePeriod, setTimePeriod] = useState('3months');
+  const [trendMonth, setTrendMonth] = useState('all');
+  const [trendYear, setTrendYear] = useState(String(currentYear));
+  const [trendYearOptions, setTrendYearOptions] = useState([
+    { value: String(currentYear), label: String(currentYear) },
+  ]);
   const [kpiData, setKpiData] = useState([
     { title: 'Total Beneficiaries', current: 0, previous: 0, growth: 0, icon: 'users', color: 'blue' },
     { title: 'New Registrations', current: 0, previous: 0, growth: 0, icon: 'registration', color: 'green' },
@@ -83,9 +105,11 @@ export default function AnalyticsPage() {
     let male = 0;
     let female = 0;
 
-    const months = {};
     const ageBuckets = { '0-17': 0, '18-35': 0, '36-59': 0, '60+': 0 };
     const purokCounts = {};
+    const selectedTrendYear = Number(trendYear) || currentYear;
+    const trendMonthCounts = Array(12).fill(0);
+    const availableTrendYears = new Set([currentYear]);
 
     residents.forEach((r) => {
       const createdAt = r.created_at;
@@ -99,8 +123,11 @@ export default function AnalyticsPage() {
 
       if (createdAt) {
         const d = new Date(createdAt);
-        const key = d.toLocaleString('default', { month: 'short', year: '2-digit' });
-        months[key] = (months[key] || 0) + 1;
+        const registrationYear = d.getFullYear();
+        if (registrationYear >= currentYear) availableTrendYears.add(registrationYear);
+        if (registrationYear === selectedTrendYear) {
+          trendMonthCounts[d.getMonth()] += 1;
+        }
       }
 
       const age =
@@ -137,7 +164,24 @@ export default function AnalyticsPage() {
       },
     ]);
 
-    setMonthlyRegistrations(Object.entries(months).map(([label, value]) => ({ label, value })).slice(-6));
+    setTrendYearOptions(
+      Array.from(availableTrendYears)
+        .sort((a, b) => a - b)
+        .map((year) => ({ value: String(year), label: String(year) })),
+    );
+
+    const selectedMonthIndex = trendMonth === 'all' ? null : Number(trendMonth);
+    const trendMonthIndexes =
+      selectedMonthIndex === null || Number.isNaN(selectedMonthIndex)
+        ? MONTH_LABELS.map((_, index) => index)
+        : [selectedMonthIndex];
+
+    setMonthlyRegistrations(
+      trendMonthIndexes.map((monthIndex) => ({
+        label: MONTH_LABELS[monthIndex],
+        value: trendMonthCounts[monthIndex],
+      })),
+    );
 
     setSectorDistribution([
       { label: 'PWD', value: pwd, color: '#8b5cf6' },
@@ -192,7 +236,7 @@ export default function AnalyticsPage() {
         }))
       );
     }
-  }, [timePeriod]);
+  }, [currentYear, timePeriod, trendMonth, trendYear]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -274,6 +318,11 @@ export default function AnalyticsPage() {
     { value: '12months', label: 'Last Year' },
   ];
 
+  const trendMonthOptions = [
+    { value: 'all', label: 'All Months' },
+    ...MONTH_LABELS.map((month, index) => ({ value: String(index), label: month })),
+  ];
+
   const columns = [
     { key: 'name', label: 'Name' },
     {
@@ -323,6 +372,11 @@ export default function AnalyticsPage() {
   const isMobile = viewportWidth <= 768;
   const chartHeight = isMobile ? 160 : isTablet ? 170 : 200;
   const pieChartSize = isMobile ? 120 : isTablet ? 130 : 150;
+  const trendTotal = monthlyRegistrations.reduce((total, item) => total + (item.value || 0), 0);
+  const trendActiveMonths = monthlyRegistrations.filter((item) => item.value > 0);
+  const selectedTrendMonth =
+    trendMonth === 'all' ? null : MONTH_FULL_LABELS[Number(trendMonth)] || monthlyRegistrations[0]?.label || '';
+  const formatRegistrationCount = (count) => `${count} registration${count === 1 ? '' : 's'}`;
 
   return (
     <div className={styles.analyticsPage}>
@@ -337,15 +391,15 @@ export default function AnalyticsPage() {
       {/* KPI Cards */}
       <div className={styles.kpiGrid}>
         {kpiData.map((kpi, index) => (
-          <div key={index} className={styles.kpiCard}>
-            <div className={styles.kpiHeader}>
-              <span className={styles.kpiTitle}>{kpi.title}</span>
-              <div className={`${styles.kpiIcon} ${styles[kpi.color]}`}>
-                {getKpiIcon(kpi.icon)}
-              </div>
+          <div key={index} className={`${styles.kpiCard} ${styles[kpi.color]}`}>
+            <div className={styles.kpiIconTop}>
+              {getKpiIcon(kpi.icon)}
             </div>
             <div className={styles.kpiValue}>
               {kpi.current}{kpi.format || ''}
+            </div>
+            <div className={styles.kpiLabel}>
+              {kpi.title}
             </div>
           </div>
         ))}
@@ -394,13 +448,62 @@ export default function AnalyticsPage() {
       {/* Charts Section */}
       <div className={styles.chartsGrid}>
         {/* Registration Trends */}
-        <Card title="Registration Trends" className={styles.chartCard}>
+        <Card
+          title="Registration Trends"
+          className={styles.chartCard}
+          headerAction={(
+            <div className={styles.trendFilters}>
+              <Select
+                name="trendMonth"
+                value={trendMonth}
+                onChange={(e) => setTrendMonth(e.target.value)}
+                options={trendMonthOptions}
+                compact
+                className={styles.trendSelect}
+              />
+              <Select
+                name="trendYear"
+                value={trendYear}
+                onChange={(e) => setTrendYear(e.target.value)}
+                options={trendYearOptions}
+                compact
+                className={styles.trendSelect}
+              />
+            </div>
+          )}
+        >
           <BarChart 
             data={monthlyRegistrations}
             labelKey="label"
             valueKey="value"
             height={chartHeight}
           />
+          <div className={styles.trendInsightPanel}>
+            {trendMonth === 'all' ? (
+              <>
+                <div className={styles.trendInsightTotal}>
+                  <strong>{formatRegistrationCount(trendTotal)}</strong>
+                  <span>recorded in {trendYear}</span>
+                </div>
+                <div className={styles.trendInsightList}>
+                  {trendActiveMonths.length > 0 ? (
+                    trendActiveMonths.map((item) => (
+                      <span key={item.label} className={styles.trendInsightItem}>
+                        {formatRegistrationCount(item.value)} in {item.label}
+                      </span>
+                    ))
+                  ) : (
+                    <span className={styles.trendInsightItem}>No registrations recorded yet.</span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className={styles.trendInsightTotal}>
+                <strong>{formatRegistrationCount(trendTotal)}</strong>
+                <span>this month of {selectedTrendMonth} {trendYear}</span>
+              </div>
+            )}
+          </div>
         </Card>
 
         {/* Sector Distribution */}
@@ -433,7 +536,7 @@ export default function AnalyticsPage() {
         </Card>
 
         {/* Purok Distribution */}
-        <Card title="Residents by Purok" className={styles.chartCard}>
+        <Card title="Residents by Purok" className={`${styles.chartCard} ${styles.purokChartCard}`}>
           <div className={styles.horizontalChart}>
             {purokDistribution.map((item, index) => (
               <div 

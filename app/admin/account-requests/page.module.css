@@ -324,9 +324,16 @@
 
 .requestCard {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  border-radius: 16px;
   padding: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.requestCard:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
 
 .requestCard:last-child {
@@ -488,7 +495,7 @@
   }
 
   .requestCard {
-    border-radius: 10px;
+    border-radius: 14px;
     padding: 14px;
   }
 

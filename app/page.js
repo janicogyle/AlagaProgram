@@ -176,28 +176,22 @@ export default function HomePage() {
       <section id="home" className={styles.hero}>
         <div className={styles.heroContainer}>
           <div className={styles.heroContent}>
-            <div className={styles.heroBadge}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
-              ALAGA Program
-            </div>
             <h1 className={styles.heroTitle}>
-              Welcome to Barangay Sta. Rita
+              Barangay Sta. Rita
               <span className={styles.heroTitleHighlight}>Alaga Program</span>
             </h1>
             <p className={styles.heroDescription}>
-              A digital platform for managing resident profiles, tracking assistance programs, 
-              and generating QR-coded identification for PWD, Senior Citizens, and Solo Parents in our barangay.
+              A modern digital service for beneficiary registration, assistance tracking,
+              and QR-based verification for PWDs, senior citizens, and solo parents.
             </p>
             <div className={styles.heroActions}>
-              <a href="#about" className={styles.heroBtn}>
+              <Link href="/signup" className={styles.heroBtn}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M5 12h14" />
                   <path d="M12 5l7 7-7 7" />
                 </svg>
-                Get Started
-              </a>
+                Create Account
+              </Link>
               <Link href="/login" className={styles.heroBtnOutline}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
