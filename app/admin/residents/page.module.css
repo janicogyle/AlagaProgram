@@ -262,6 +262,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  align-items: center;
+}
+
+.cardBadgeItem {
+  display: inline-flex;
+  flex-shrink: 0;
 }
 
 .cardDetails {
@@ -391,7 +397,19 @@
   }
 
   .cardBadges {
-    gap: 4px;
+    gap: 6px;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .cardBadgeItem {
+    flex-shrink: 0;
+  }
+
+  .cardBadgeItem span {
+    padding: 4px 10px;
+    font-size: 12px;
+    white-space: nowrap;
   }
 
   .cardActions {

@@ -1331,11 +1331,15 @@ export default function ResidentsPage() {
                         </div>
                         <div className={styles.cardBadges}>
                           {getSectorBadges(row).map((sector) => (
-                            <Badge key={sector}>{sector}</Badge>
+                            <span key={sector} className={styles.cardBadgeItem}>
+                              <Badge>{sector}</Badge>
+                            </span>
                           ))}
-                          <Badge variant={row.registration_type === 'Online' ? 'success' : 'secondary'}>
-                            {row.registration_type || 'Walk-In'}
-                          </Badge>
+                          <span className={styles.cardBadgeItem}>
+                            <Badge variant={row.registration_type === 'Online' ? 'success' : 'secondary'}>
+                              {row.registration_type || 'Walk-In'}
+                            </Badge>
+                          </span>
                         </div>
                       </div>
 
