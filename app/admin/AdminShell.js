@@ -18,6 +18,17 @@ export default function AdminShell({ children, initialUser }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    document.documentElement.classList.add('appShellActive');
+    document.body.classList.add('appShellActive');
+    return () => {
+      document.documentElement.classList.remove('appShellActive');
+      document.body.classList.remove('appShellActive');
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const ensureAdminSession = async () => {
       try {
         const { data, error } = await supabase.auth.getSession();

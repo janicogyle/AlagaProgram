@@ -25,6 +25,12 @@
   overflow-y: auto;
   min-width: 0;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.pageContent::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .overlay {
@@ -62,6 +68,7 @@
 @media (max-width: 900px) {
   .mainContent {
     margin-left: 0;
+    width: 100%;
   }
 
   .mainContent.sidebarMinimized {

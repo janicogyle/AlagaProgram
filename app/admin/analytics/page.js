@@ -105,7 +105,7 @@ export default function AnalyticsPage() {
     let male = 0;
     let female = 0;
 
-    const ageBuckets = { '0-17': 0, '18-35': 0, '36-59': 0, '60+': 0 };
+    const ageBuckets = { '18-25': 0, '26-35': 0, '36-50': 0, '51-59': 0, '60+': 0 };
     const purokCounts = {};
     const selectedTrendYear = Number(trendYear) || currentYear;
     const trendMonthCounts = Array(12).fill(0);
@@ -133,9 +133,12 @@ export default function AnalyticsPage() {
       const age =
         r.age ?? (r.birthday ? Math.floor((Date.now() - new Date(r.birthday)) / 31557600000) : null);
       if (age !== null) {
-        if (age < 18) ageBuckets['0-17']++;
-        else if (age < 36) ageBuckets['18-35']++;
-        else if (age < 60) ageBuckets['36-59']++;
+        if (age < 18) {
+          // Age demographics chart starts at 18 by design.
+        } else if (age <= 25) ageBuckets['18-25']++;
+        else if (age <= 35) ageBuckets['26-35']++;
+        else if (age <= 50) ageBuckets['36-50']++;
+        else if (age <= 59) ageBuckets['51-59']++;
         else ageBuckets['60+']++;
       }
 
@@ -329,7 +332,7 @@ export default function AnalyticsPage() {
       key: 'sector',
       label: 'Sector',
       render: (sectors) => (
-        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+        <div className={styles.sectorBadges}>
           {sectors.map((s, i) => (
             <Badge key={i}>{s}</Badge>
           ))}
@@ -406,7 +409,9 @@ export default function AnalyticsPage() {
         {recentAccountRequests.length === 0 ? (
           <p className={styles.cardMessage}>No recent account requests.</p>
         ) : (
-          <Table columns={columns} data={recentAccountRequests} fitToContainer />
+          <div className={styles.recentAccountsTable}>
+            <Table columns={columns} data={recentAccountRequests} fitToContainer />
+          </div>
         )}
       </Card>
 
@@ -415,7 +420,9 @@ export default function AnalyticsPage() {
         {recentRegistrations.length === 0 ? (
           <p className={styles.cardMessage}>No recent registrations.</p>
         ) : (
-          <Table columns={columns} data={recentRegistrations} fitToContainer />
+          <div className={styles.recentAccountsTable}>
+            <Table columns={columns} data={recentRegistrations} fitToContainer />
+          </div>
         )}
       </Card>
 
@@ -425,19 +432,22 @@ export default function AnalyticsPage() {
         ) : staffActivityRows.length === 0 ? (
           <p className={styles.cardMessage}>No staff activity yet.</p>
         ) : (
-          <Table
-            columns={staffActivityColumns.map((c) =>
-              c.key === 'title'
-                ? {
-                    ...c,
-                    render: (value) => (
-                      <div style={{ whiteSpace: 'pre-line' }}>{value}</div>
-                    ),
-                  }
-                : c,
-            )}
-            data={staffActivityRows}
-          />
+          <div className={styles.staffActivityTable}>
+            <Table
+              columns={staffActivityColumns.map((c) =>
+                c.key === 'title'
+                  ? {
+                      ...c,
+                      render: (value) => (
+                        <div style={{ whiteSpace: 'pre-line' }}>{value}</div>
+                      ),
+                    }
+                  : c,
+              )}
+              data={staffActivityRows}
+              fitToContainer
+            />
+          </div>
         )}
       </Card>
 

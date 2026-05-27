@@ -109,6 +109,58 @@
   color: #374151;
 }
 
+.sectorBadges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.recentAccountsTable,
+.staffActivityTable {
+  min-width: 0;
+}
+
+.recentAccountsTable > div,
+.staffActivityTable > div {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+.recentAccountsTable table,
+.staffActivityTable table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.recentAccountsTable th:nth-child(1),
+.recentAccountsTable td:nth-child(1) {
+  width: 22%;
+}
+
+.recentAccountsTable th:nth-child(2),
+.recentAccountsTable td:nth-child(2) {
+  width: 25%;
+}
+
+.recentAccountsTable th:nth-child(3),
+.recentAccountsTable td:nth-child(3) {
+  width: 13%;
+}
+
+.recentAccountsTable th:nth-child(4),
+.recentAccountsTable td:nth-child(4) {
+  width: 22%;
+}
+
+.recentAccountsTable th:nth-child(5),
+.recentAccountsTable td:nth-child(5) {
+  width: 18%;
+}
+
 /* Charts Grid */
 .chartsGrid {
   display: grid;
@@ -764,6 +816,77 @@
 
   .trendInsightTotal strong {
     font-size: 16px;
+  }
+
+  .recentAccountsTable th,
+  .recentAccountsTable td,
+  .staffActivityTable th,
+  .staffActivityTable td {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .recentAccountsTable table,
+  .staffActivityTable table {
+    min-width: 0;
+  }
+
+  .recentAccountsTable th:nth-child(1),
+  .recentAccountsTable td:nth-child(1) {
+    width: 21%;
+  }
+
+  .recentAccountsTable th:nth-child(2),
+  .recentAccountsTable td:nth-child(2) {
+    width: 27%;
+  }
+
+  .recentAccountsTable th:nth-child(3),
+  .recentAccountsTable td:nth-child(3) {
+    width: 11%;
+  }
+
+  .recentAccountsTable th:nth-child(4),
+  .recentAccountsTable td:nth-child(4) {
+    width: 22%;
+  }
+
+  .recentAccountsTable th:nth-child(5),
+  .recentAccountsTable td:nth-child(5) {
+    width: 19%;
+  }
+
+  .sectorBadges {
+    gap: 3px;
+  }
+
+  .sectorBadges > span,
+  .recentAccountsTable td:nth-child(5) > span {
+    padding: 3px 6px;
+    font-size: 9px;
+    line-height: 1.2;
+  }
+
+  .recentAccountsTable td:nth-child(2) {
+    overflow: hidden;
+  }
+
+  .sectorBadges > span {
+    max-width: 100%;
+    box-sizing: border-box;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+
+  .staffActivityTable th:nth-child(1),
+  .staffActivityTable td:nth-child(1) {
+    width: 68%;
+  }
+
+  .staffActivityTable th:nth-child(2),
+  .staffActivityTable td:nth-child(2) {
+    width: 32%;
   }
 
   .lineChart,

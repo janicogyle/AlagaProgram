@@ -29,6 +29,17 @@ export default function BeneficiaryShell({ children }) {
   });
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    document.documentElement.classList.add('appShellActive');
+    document.body.classList.add('appShellActive');
+    return () => {
+      document.documentElement.classList.remove('appShellActive');
+      document.body.classList.remove('appShellActive');
+    };
+  }, []);
+
+  useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth <= 900;
       setIsMobile(mobile);
