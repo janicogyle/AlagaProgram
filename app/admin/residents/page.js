@@ -904,15 +904,7 @@ export default function ResidentsPage() {
       key: "control_number",
       label: "Control No.",
       render: (value) => (
-        <span style={{ 
-          fontFamily: "'Courier New', monospace",
-          backgroundColor: "#f3f4f6",
-          padding: "4px 8px",
-          borderRadius: "4px",
-          color: "#374151",
-          fontSize: "13px",
-          fontWeight: "500"
-        }}>
+        <span className={styles.controlNumberPill}>
           {value || "-"}
         </span>
       ),
@@ -938,7 +930,7 @@ export default function ResidentsPage() {
       key: "address",
       label: "Address",
       render: (_, row) => (
-        <div style={{ color: "#4b5563" }}>
+        <div className={`${styles.tableMutedText} ${styles.tableAddress}`}>
           {formatAddressLine(row)}
         </div>
       ),
@@ -996,7 +988,7 @@ export default function ResidentsPage() {
     {
       key: "created_at",
       label: "Created",
-      render: (value) => <span style={{ color: "#4b5563" }}>{formatDate(value)}</span>,
+      render: (value) => <span className={styles.tableMutedText}>{formatDate(value)}</span>,
     },
     {
       key: 'eligibility',

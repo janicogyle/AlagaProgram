@@ -203,6 +203,82 @@
   display: block;
 }
 
+.tableView table {
+  min-width: 0;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.tableView th:nth-child(1),
+.tableView td:nth-child(1) {
+  width: 13%;
+}
+
+.tableView th:nth-child(2),
+.tableView td:nth-child(2) {
+  width: 10%;
+}
+
+.tableView th:nth-child(3),
+.tableView td:nth-child(3) {
+  width: 10%;
+}
+
+.tableView th:nth-child(4),
+.tableView td:nth-child(4) {
+  width: 13%;
+}
+
+.tableView th:nth-child(5),
+.tableView td:nth-child(5) {
+  width: 10%;
+}
+
+.tableView th:nth-child(6),
+.tableView td:nth-child(6) {
+  width: 10%;
+}
+
+.tableView th:nth-child(7),
+.tableView td:nth-child(7) {
+  width: 8%;
+}
+
+.tableView th:nth-child(8),
+.tableView td:nth-child(8) {
+  width: 16%;
+}
+
+.tableView th:nth-child(9),
+.tableView td:nth-child(9) {
+  width: 10%;
+}
+
+.controlNumberPill {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  max-width: 100%;
+  border-radius: 4px;
+  background-color: #f3f4f6;
+  padding: 4px 8px;
+  color: #374151;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.tableMutedText {
+  color: #4b5563;
+  line-height: 1.45;
+}
+
+.tableAddress {
+  overflow-wrap: anywhere;
+}
+
 .mobileCardView {
   display: none;
 }
