@@ -297,27 +297,37 @@ async function generateCashAssistanceXLSX({ rows, reportYear, total, sectorLabel
     { key: 'amount', width: 12 },
   ];
 
-  // Try to add logo from public/Brand.png (server-side)
-  let logoAdded = false;
+  const logoSize = 72;
+  const logoAnchor = { col: 3.00, row: 0.1 };
+  const logoRowStart = 1;
+  const logoRowEnd = 3;
+  const titleRowIndex = 4;
+  const subtitleRowIndex = 5;
+  const sectorRowIndex = 6;
+  const spacerRowIndex = 7;
+
+  sheet.getRow(1).height = 18;
+  sheet.getRow(2).height = 18;
+  sheet.getRow(3).height = 18;
+  sheet.getRow(spacerRowIndex).height = 14;
+
+  // Try to add logo from public/Brand.png (server-side). Keep it square so the seal stays circular.
   try {
     const logoPath = path.join(process.cwd(), 'public', 'Brand.png');
     if (fs.existsSync(logoPath)) {
       const imgBuffer = fs.readFileSync(logoPath);
       const imageId = workbook.addImage({ buffer: imgBuffer, extension: 'png' });
-      // place at top-left (columns measure approx 8.43 per unit; using ext width/height in points)
       sheet.addImage(imageId, {
-        tl: { col: 0, row: 0 },
-        ext: { width: 120, height: 60 },
+        tl: logoAnchor,
+        ext: { width: logoSize, height: logoSize },
       });
-      logoAdded = true;
     }
   } catch (e) {
     console.warn('Could not add logo to XLSX:', e?.message || e);
   }
 
-  const titleRowIndex = logoAdded ? 2 : 1;
-  const subtitleRowIndex = logoAdded ? 3 : 2;
-  const sectorRowIndex = logoAdded ? 4 : 3;
+  sheet.mergeCells(`A${logoRowStart}:F${logoRowEnd}`);
+  sheet.getCell(`A${logoRowStart}`).alignment = { horizontal: 'center', vertical: 'middle' };
 
   sheet.mergeCells(`A${titleRowIndex}:F${titleRowIndex}`);
   sheet.getCell(`A${titleRowIndex}`).value = `SUMMARY OF ALAGA PROGRAM ${reportYear}`;
@@ -329,14 +339,13 @@ async function generateCashAssistanceXLSX({ rows, reportYear, total, sectorLabel
   sheet.getCell(`A${subtitleRowIndex}`).font = { bold: true, size: 12 };
   sheet.getCell(`A${subtitleRowIndex}`).alignment = { horizontal: 'center', vertical: 'middle' };
 
-  let freezeSplit = logoAdded ? 5 : 4;
+  const freezeSplit = 8;
 
   if (sectorLabel) {
     sheet.mergeCells(`A${sectorRowIndex}:F${sectorRowIndex}`);
     sheet.getCell(`A${sectorRowIndex}`).value = String(sectorLabel).toUpperCase();
     sheet.getCell(`A${sectorRowIndex}`).font = { bold: true, size: 10 };
     sheet.getCell(`A${sectorRowIndex}`).alignment = { horizontal: 'center', vertical: 'middle' };
-    freezeSplit = logoAdded ? 6 : 5;
   }
 
   sheet.addRow([]);

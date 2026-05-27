@@ -175,7 +175,8 @@ export default function ReportsPage() {
     const autoTableMod = await import('jspdf-autotable');
     const autoTable = autoTableMod.default ?? autoTableMod;
 
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
 
     // Try to fetch site logo from public folder and add to PDF (best-effort)
     try {
@@ -187,8 +188,8 @@ export default function ReportsPage() {
           reader.onload = () => resolve(reader.result);
           reader.readAsDataURL(blob);
         });
-        // Place logo at top-left (smaller size to not interfere with text)
-        doc.addImage(dataUrl, 'PNG', 20, 10, 50, 50);
+        const logoSize = 52;
+        doc.addImage(dataUrl, 'PNG', pageWidth / 2 - logoSize / 2, 12, logoSize, logoSize);
       }
     } catch (e) {
       // ignore if logo can't be loaded
@@ -196,17 +197,17 @@ export default function ReportsPage() {
     }
 
     doc.setFontSize(14);
-    doc.text(`SUMMARY OF ALAGA PROGRAM ${y}`, doc.internal.pageSize.getWidth() / 2, 40, {
+    doc.text(`SUMMARY OF ALAGA PROGRAM ${y}`, doc.internal.pageSize.getWidth() / 2, 82, {
       align: 'center',
     });
     doc.setFontSize(12);
-    doc.text('CASH ASSISTANCE / DONATIONS', doc.internal.pageSize.getWidth() / 2, 58, {
+    doc.text('CASH ASSISTANCE / DONATIONS', doc.internal.pageSize.getWidth() / 2, 100, {
       align: 'center',
     });
 
     if (sectorLabel) {
       doc.setFontSize(10);
-      doc.text(String(sectorLabel).toUpperCase(), doc.internal.pageSize.getWidth() / 2, 72, {
+      doc.text(String(sectorLabel).toUpperCase(), doc.internal.pageSize.getWidth() / 2, 114, {
         align: 'center',
       });
     }
@@ -232,25 +233,24 @@ export default function ReportsPage() {
       },
     ]);
 
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const colWidths = [36, 120, 190, 120, 140, 80];
+    const colWidths = [30, 78, 135, 104, 118, 55];
     const tableWidth = colWidths.reduce((sum, w) => sum + w, 0);
     const leftMargin = Math.max(40, (pageWidth - tableWidth) / 2);
 
     autoTable(doc, {
-      startY: sectorLabel ? 88 : 80,
+      startY: sectorLabel ? 130 : 122,
       head,
       body,
       theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 4, valign: 'middle' },
+      styles: { fontSize: 8, cellPadding: 3, valign: 'middle' },
       headStyles: { fillColor: [217, 217, 217], textColor: 20 },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 36 },
-        1: { halign: 'left', cellWidth: 120 },
-        2: { halign: 'left', cellWidth: 190 },
-        3: { halign: 'center', cellWidth: 120 },
-        4: { halign: 'left', cellWidth: 140 },
-        5: { halign: 'right', cellWidth: 80 },
+        0: { halign: 'center', cellWidth: colWidths[0] },
+        1: { halign: 'left', cellWidth: colWidths[1] },
+        2: { halign: 'left', cellWidth: colWidths[2] },
+        3: { halign: 'center', cellWidth: colWidths[3] },
+        4: { halign: 'left', cellWidth: colWidths[4] },
+        5: { halign: 'right', cellWidth: colWidths[5] },
       },
       margin: { left: leftMargin, right: leftMargin },
     });
