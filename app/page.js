@@ -37,12 +37,21 @@ export default function HomePage() {
   const aboutFeatures = [
     {
       icon: (
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M10 4h4" />
-          <path d="M12 4v2" />
-          <rect x="7" y="6" width="10" height="16" rx="2" />
-          <path d="M10 13h4" />
-          <path d="M12 11v4" />
+        /* Pill capsule icon — Medicine */
+        <svg
+          width="40"
+          height="40"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.9"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <g transform="rotate(-45 12 12)">
+            <rect x="7" y="3" width="10" height="18" rx="5" />
+            <line x1="7" y1="12" x2="17" y2="12" />
+          </g>
         </svg>
       ),
       title: 'Medicine Assistance',
@@ -50,12 +59,13 @@ export default function HomePage() {
     },
     {
       icon: (
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M3 22h18" />
-          <path d="M4 22V9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v13" />
-          <path d="M9 22V12h6v10" />
-          <path d="M12 2v3" />
-          <path d="M10.5 3.5h3" />
+        /* Hospital bed icon — Confinement */
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 9v6" />
+          <path d="M3 15h18" />
+          <path d="M21 9v6" />
+          <rect x="7" y="10" width="10" height="4" rx="1" />
+          <circle cx="7" cy="6.5" r="2" />
         </svg>
       ),
       title: 'Confinement Assistance',
@@ -63,11 +73,12 @@ export default function HomePage() {
     },
     {
       icon: (
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M12 2v14" />
-          <path d="M9 6h6" />
+        /* Tombstone with cross icon — Burial */
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8 22V11a4 4 0 0 1 8 0v11" />
           <path d="M5 22h14" />
-          <path d="M7 22v-3a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v3" />
+          <path d="M12 6v4" />
+          <path d="M10 8h4" />
         </svg>
       ),
       title: 'Burial Assistance',
