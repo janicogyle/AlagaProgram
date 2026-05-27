@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import PageHeader from '../../../components/PageHeader';
-import StatCard from '../../../components/StatCard';
+import KpiCard from '../../../components/KpiCard';
 import Card from '../../../components/Card';
 import Table from '../../../components/Table';
 import Button from '../../../components/Button';
@@ -203,10 +203,10 @@ export default function BeneficiaryDashboardPage() {
 
       <div className={styles.topSection}>
         <div className={styles.statsGrid}>
-          <StatCard title="Total Requests" value={stats.total} subtitle="All assistance requests you have submitted" />
-          <StatCard title="Active" value={stats.active} subtitle="Requests currently under review" />
-          <StatCard title="Completed" value={stats.completed} subtitle="Approved and released assistance" />
-          <StatCard title="Incomplete" value={stats.rejected} subtitle="Requests that were not approved" />
+          <KpiCard title="Total Requests" value={stats.total} color="blue" icon="file" compact />
+          <KpiCard title="Active Requests" value={stats.active} color="green" icon="assistance" compact />
+          <KpiCard title="Completed Requests" value={stats.completed} color="orange" icon="completion" compact />
+          <KpiCard title="Incomplete Requests" value={stats.rejected} color="purple" icon="incomplete" compact />
         </div>
 
         <Card className={styles.nextStepsCard}>

@@ -12,12 +12,28 @@ import { getCooldownInfo } from '@/lib/requestCooldown';
 import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
 
 const isEditableRequestStatus = (status) => ['Pending', 'Resubmitted', 'Rejected'].includes(status);
-const isActiveRequestStatus = (status) => ['Pending', 'Resubmitted'].includes(status);
 const getRequestStatusLabel = (status) => {
   if (status === 'Rejected') return 'Incomplete';
   if (status === 'Resubmitted') return 'Under Review';
   return status;
 };
+
+function RequestStatusBadge({ status }) {
+  const label = getRequestStatusLabel(status);
+  return (
+    <Badge
+      variant={
+        status === 'Released' || status === 'Approved'
+          ? 'success'
+          : status === 'Rejected'
+            ? 'danger'
+            : 'warning'
+      }
+    >
+      {label}
+    </Badge>
+  );
+}
 
 const columns = [
   { key: 'control_number', label: 'Control No.' },
@@ -29,22 +45,7 @@ const columns = [
   {
     key: 'status',
     label: 'Status',
-    render: (status) => {
-      const label = getRequestStatusLabel(status);
-      return (
-        <Badge
-          variant={
-            status === 'Released' || status === 'Approved'
-              ? 'success'
-              : status === 'Rejected'
-                ? 'danger'
-                : 'warning'
-          }
-        >
-          {label}
-        </Badge>
-      );
-    },
+    render: (status) => <RequestStatusBadge status={status} />,
   },
   {
     key: 'actions',
@@ -143,7 +144,7 @@ export default function BeneficiaryHistoryPage() {
     ...r,
     request_date: r.request_date ? new Date(r.request_date).toLocaleDateString() : '',
   }));
-  const activeRequest = requests.find((row) => isActiveRequestStatus(row.status));
+  const hasActiveRequest = requests.some((row) => ['Pending', 'Resubmitted'].includes(row.status));
 
   return (
     <div className={styles.historyPage}>
@@ -155,20 +156,10 @@ export default function BeneficiaryHistoryPage() {
       <Card className={styles.historyCard}>
         <div className={styles.headerRow}>
           <h2>Requests</h2>
-          {activeRequest ? (
-            <Button href={`/beneficiary/requests?edit=${encodeURIComponent(activeRequest.id)}`}>
-              Edit Current Request
-            </Button>
-          ) : (
+          {!hasActiveRequest && (
             <Button href="/beneficiary/requests">New Request</Button>
           )}
         </div>
-        {activeRequest ? (
-          <p className={styles.muted}>
-            You already have a request under review. Edit the current request if you need to correct
-            information or replace uploaded files.
-          </p>
-        ) : null}
         <div className={styles.cooldownRow}>
           <span className={styles.cooldownLabel}>Request Eligibility</span>
           <Badge
@@ -196,7 +187,39 @@ export default function BeneficiaryHistoryPage() {
             You have no assistance requests yet. Click &quot;New Request&quot; to submit one.
           </p>
         ) : (
-          <Table columns={columns} data={tableData} />
+          <>
+            <div className={styles.tableView}>
+              <Table columns={columns} data={tableData} />
+            </div>
+
+            <div className={styles.mobileCardView}>
+              {tableData.map((row) => (
+                <article key={row.id} className={styles.requestCard}>
+                  <div className={styles.cardHeader}>
+                    <span className={styles.cardControlNo}>{row.control_number}</span>
+                    <RequestStatusBadge status={row.status} />
+                  </div>
+                  <div className={styles.cardBody}>
+                    <div className={styles.cardRow}>
+                      <span className={styles.cardLabel}>Type of Assistance</span>
+                      <span className={styles.cardValue}>{row.assistance_type || '—'}</span>
+                    </div>
+                    <div className={styles.cardRow}>
+                      <span className={styles.cardLabel}>Date Requested</span>
+                      <span className={styles.cardValue}>{row.request_date || '—'}</span>
+                    </div>
+                  </div>
+                  {isEditableRequestStatus(row.status) ? (
+                    <div className={styles.cardFooter}>
+                      <Button href={`/beneficiary/requests?edit=${encodeURIComponent(row.id)}`}>
+                        Edit Request
+                      </Button>
+                    </div>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          </>
         )}
       </Card>
 

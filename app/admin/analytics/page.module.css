@@ -103,73 +103,6 @@
   gap: 20px;
 }
 
-.kpiCard {
-  border-radius: 16px;
-  padding: 28px 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  min-width: 0;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  color: white;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.kpiCard:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-}
-
-.kpiCard.blue {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-}
-
-.kpiCard.green {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-}
-
-.kpiCard.orange {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-}
-
-.kpiCard.purple {
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-}
-
-.kpiIconTop {
-  width: 44px;
-  height: 44px;
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  margin-bottom: 16px;
-  flex-shrink: 0;
-}
-
-.kpiIconTop svg {
-  width: 24px;
-  height: 24px;
-}
-
-.kpiValue {
-  font-size: 36px;
-  font-weight: 700;
-  color: white;
-  margin-bottom: 8px;
-  line-height: 1.2;
-}
-
-.kpiLabel {
-  font-size: 15px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 12px;
-}
-
 .cardMessage {
   padding: 12px;
   margin: 0;
@@ -632,14 +565,6 @@
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
   }
-
-  .kpiCard {
-    padding: 24px 20px;
-  }
-
-  .kpiValue {
-    font-size: 32px;
-  }
   
   .chartsGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -667,24 +592,6 @@
 
   .header p {
     font-size: 14px;
-  }
-
-  .kpiCard {
-    padding: 20px;
-  }
-
-  .kpiValue {
-    font-size: 28px;
-  }
-
-  .kpiLabel {
-    font-size: 14px;
-  }
-
-  .kpiIconTop {
-    width: 40px;
-    height: 40px;
-    margin-bottom: 12px;
   }
 
   .chartCard {
@@ -744,25 +651,6 @@
   .kpiGrid {
     grid-template-columns: 1fr 1fr;
     gap: 12px;
-  }
-
-  .kpiCard {
-    padding: 16px;
-  }
-
-  .kpiValue {
-    font-size: 24px;
-    margin-bottom: 4px;
-  }
-
-  .kpiLabel {
-    font-size: 13px;
-  }
-
-  .kpiIconTop {
-    width: 36px;
-    height: 36px;
-    margin-bottom: 10px;
   }
   
   .assistanceGrid {
@@ -851,25 +739,6 @@
     gap: 12px;
   }
 
-  .kpiCard {
-    padding: 16px;
-  }
-
-  .kpiValue {
-    font-size: 22px;
-    margin-bottom: 2px;
-  }
-
-  .kpiLabel {
-    font-size: 12px;
-  }
-
-  .kpiIconTop {
-    width: 32px;
-    height: 32px;
-    margin-bottom: 10px;
-  }
-
   .chartsGrid {
     gap: 16px;
   }
@@ -950,24 +819,6 @@
 }
 
 @media (max-width: 375px) {
-  .kpiCard {
-    padding: 14px;
-  }
-
-  .kpiValue {
-    font-size: 20px;
-  }
-
-  .kpiLabel {
-    font-size: 11px;
-  }
-
-  .kpiIconTop {
-    width: 28px;
-    height: 28px;
-    margin-bottom: 8px;
-  }
-
   .assistanceItem {
     padding: 14px;
   }

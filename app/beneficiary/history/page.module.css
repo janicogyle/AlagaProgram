@@ -7,23 +7,28 @@
 
 .historyCard {
   margin-top: 0.5rem;
+  min-width: 0;
 }
 
 .headerRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
   margin-bottom: 0.75rem;
 }
 
 .headerRow h2 {
   margin: 0;
   color: #111827;
+  font-size: 1.15rem;
 }
 
 .muted {
   font-size: 0.9rem;
   color: #475569;
+  line-height: 1.5;
+  margin: 0 0 0.75rem;
 }
 
 .cooldownRow {
@@ -45,19 +50,129 @@
   color: #475569;
 }
 
-@media (max-width: 576px) {
+.tableView {
+  display: block;
+  min-width: 0;
+}
+
+.mobileCardView {
+  display: none;
+}
+
+.requestCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.cardControlNo {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  font-family: 'Courier New', Courier, monospace;
+  overflow-wrap: anywhere;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cardRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cardLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.cardValue {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  overflow-wrap: anywhere;
+}
+
+.cardFooter {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.cardFooter a,
+.cardFooter button {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
   .historyPage {
     gap: 1rem;
   }
 
+  .historyCard {
+    padding: 1rem;
+  }
+
   .headerRow {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 0.75rem;
+  }
+
+  .headerRow h2 {
+    font-size: 1.05rem;
   }
 
   .headerRow a,
   .headerRow button {
     width: 100%;
+  }
+
+  .cooldownRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .tableView {
+    display: none;
+  }
+
+  .mobileCardView {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .requestCard {
+    padding: 14px;
+    border-radius: 12px;
+  }
+}
+
+@media (max-width: 576px) {
+  .cardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 }
