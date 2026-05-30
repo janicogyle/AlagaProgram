@@ -452,7 +452,7 @@ export default function ResidentsPage() {
       const headers = await getAuthHeaders();
       const [residentsResponse, requestsResponse] = await Promise.all([
         fetch('/api/residents', { headers }),
-        fetch('/api/assistance-requests', { headers }),
+        fetch('/api/assistance-requests/eligibility', { headers }),
       ]);
 
       const residentsResult = await residentsResponse.json();

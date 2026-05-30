@@ -58,6 +58,51 @@ function normalizeContactNumber(input) {
   return digits;
 }
 
+function parsePositiveInt(value, fallback, { min = 1, max = 100 } = {}) {
+  const parsed = Number.parseInt(String(value || ''), 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function applyResidentFilters(query, { search, sector }) {
+  let nextQuery = query;
+  const term = String(search || '').trim();
+  if (term) {
+    const escaped = term.replace(/[%_]/g, (match) => `\\${match}`);
+    nextQuery = nextQuery.or(
+      [
+        `first_name.ilike.%${escaped}%`,
+        `middle_name.ilike.%${escaped}%`,
+        `last_name.ilike.%${escaped}%`,
+        `control_number.ilike.%${escaped}%`,
+        `contact_number.ilike.%${escaped}%`,
+      ].join(','),
+    );
+  }
+
+  if (sector === 'PWD') nextQuery = nextQuery.eq('is_pwd', true);
+  if (sector === 'Senior Citizen') nextQuery = nextQuery.eq('is_senior_citizen', true);
+  if (sector === 'Solo Parent') nextQuery = nextQuery.eq('is_solo_parent', true);
+
+  return nextQuery;
+}
+
+function applyResidentSort(query, sortBy) {
+  if (sortBy === 'name_asc' || sortBy === 'name_desc') {
+    const ascending = sortBy === 'name_asc';
+    return query
+      .order('last_name', { ascending })
+      .order('first_name', { ascending })
+      .order('created_at', { ascending: false });
+  }
+
+  if (sortBy === 'control_asc' || sortBy === 'control_desc') {
+    return query.order('control_number', { ascending: sortBy === 'control_asc' });
+  }
+
+  return query.order('created_at', { ascending: sortBy === 'created_asc' });
+}
+
 export async function GET(request) {
   const auth = await requireStaffOrAdmin(request);
   if (!auth.ok) return auth.response;
@@ -70,6 +115,18 @@ export async function GET(request) {
         { status: 500 },
       );
     }
+
+    const { searchParams } = new URL(request.url);
+    const pageParam = searchParams.get('page');
+    const pageSizeParam = searchParams.get('pageSize');
+    const hasPagination = pageParam != null || pageSizeParam != null;
+    const page = parsePositiveInt(pageParam, 1, { min: 1, max: 100000 });
+    const pageSize = parsePositiveInt(pageSizeParam, 25, { min: 1, max: 100 });
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const search = searchParams.get('search') || '';
+    const sector = searchParams.get('sector') || '';
+    const sortBy = searchParams.get('sortBy') || 'created_desc';
 
     const required = new Set(['id', 'control_number', 'first_name', 'last_name']);
 
@@ -101,18 +158,25 @@ export async function GET(request) {
 
     let cols = [...columns];
     let lastError = null;
+    let residentsCount = null;
 
     for (let attempt = 0; attempt < columns.length; attempt++) {
-      const { data, error } = await db
+      let query = db
         .from('residents')
-        .select(cols.join(', '))
-        .order('created_at', { ascending: false });
+        .select(cols.join(', '), hasPagination ? { count: 'exact' } : undefined);
+
+      query = applyResidentFilters(query, { search, sector });
+      query = applyResidentSort(query, sortBy);
+      if (hasPagination) query = query.range(from, to);
+
+      const { data, error, count } = await query;
 
       if (!error) {
         const residents = Array.isArray(data) ? data : [];
         // continue below for QR enrichment
         lastError = null;
         data && (cols = cols);
+        residentsCount = typeof count === 'number' ? count : residents.length;
         // stash and break
         var residentsData = residents;
         break;
@@ -144,7 +208,13 @@ export async function GET(request) {
     const residents = residentsData || [];
 
     if (residents.length === 0) {
-      return NextResponse.json({ data: residents, error: null });
+      return NextResponse.json({
+        data: residents,
+        error: null,
+        meta: hasPagination
+          ? { page, pageSize, total: residentsCount || 0, totalPages: 0 }
+          : undefined,
+      });
     }
 
     let approvedSignupContacts = new Set();
@@ -228,7 +298,18 @@ export async function GET(request) {
       };
     });
 
-    return NextResponse.json({ data: enriched, error: null });
+    return NextResponse.json({
+      data: enriched,
+      error: null,
+      meta: hasPagination
+        ? {
+            page,
+            pageSize,
+            total: residentsCount || 0,
+            totalPages: Math.ceil((residentsCount || 0) / pageSize),
+          }
+        : undefined,
+    });
   } catch (error) {
     console.error('Fetch residents error:', error);
     return NextResponse.json(
