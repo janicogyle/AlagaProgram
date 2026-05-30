@@ -4,6 +4,31 @@ import { requireStaffOrAdmin } from '@/lib/apiAuth';
 
 export const runtime = 'nodejs';
 
+function jsonSuccess(data, { status = 200, meta } = {}) {
+  return NextResponse.json(
+    {
+      ok: true,
+      data,
+      error: null,
+      meta,
+    },
+    { status },
+  );
+}
+
+function jsonError(message, { status = 500, code = 'INTERNAL_ERROR', meta } = {}) {
+  return NextResponse.json(
+    {
+      ok: false,
+      data: null,
+      error: String(message || 'An unexpected error occurred.'),
+      code,
+      meta,
+    },
+    { status },
+  );
+}
+
 function getMissingResidentsColumn(message) {
   const msg = String(message || '');
 
@@ -64,7 +89,92 @@ function parsePositiveInt(value, fallback, { min = 1, max = 100 } = {}) {
   return Math.min(max, Math.max(min, parsed));
 }
 
-function applyResidentFilters(query, { search, sector }) {
+function toPostgrestList(values) {
+  return `(${values
+    .map((value) => `"${String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`)
+    .join(',')})`;
+}
+
+function uniqueNonEmpty(values) {
+  return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)));
+}
+
+async function loadApprovedSignupContacts(db) {
+  try {
+    const { data, error } = await db
+      .from('account_requests')
+      .select('contact_number')
+      .eq('status', 'Approved');
+
+    if (error) throw error;
+
+    return uniqueNonEmpty(
+      (data || []).flatMap((row) => {
+        const raw = String(row?.contact_number || '').trim();
+        const normalized = normalizeContactNumber(raw);
+        return [raw, normalized];
+      }),
+    );
+  } catch (err) {
+    const msg = String(err?.message || err || '').toLowerCase();
+    const missing =
+      msg.includes('account_requests') &&
+      (msg.includes('schema cache') || msg.includes('does not exist') || msg.includes('could not find the table'));
+    if (!missing) {
+      console.warn('Fetch account_requests for registration type failed (continuing):', err?.message || err);
+    }
+    return [];
+  }
+}
+
+async function loadLatestQrCards(db) {
+  const { data, error } = await db
+    .from('beneficiary_cards')
+    .select('id, resident_id, issued_at, expires_at, revoked_at, status')
+    .order('issued_at', { ascending: false });
+
+  if (error) throw error;
+
+  const cardMap = new Map();
+  for (const card of data || []) {
+    if (!card?.resident_id || cardMap.has(card.resident_id)) continue;
+    cardMap.set(card.resident_id, card);
+  }
+  return cardMap;
+}
+
+async function resolveQrResidentFilter(db, qrValidity) {
+  const filter = String(qrValidity || '').trim();
+  if (!filter) return { mode: 'none', ids: [] };
+
+  try {
+    const latestCards = await loadLatestQrCards(db);
+    const withCardIds = Array.from(latestCards.keys());
+
+    if (filter === 'No QR') {
+      return { mode: 'excludeIds', ids: withCardIds };
+    }
+
+    const ids = [];
+    for (const [residentId, card] of latestCards.entries()) {
+      const status = computeQrValidity({ residentStatus: '', card });
+      if (status === filter) ids.push(residentId);
+    }
+    return { mode: 'includeIds', ids };
+  } catch (err) {
+    if (isMissingBeneficiaryCardsTable(err)) {
+      return filter === 'No QR'
+        ? { mode: 'none', ids: [] }
+        : { mode: 'includeIds', ids: [] };
+    }
+    console.warn('Resolve QR filter failed (continuing):', err?.message || err);
+    return filter === 'No QR'
+      ? { mode: 'none', ids: [] }
+      : { mode: 'includeIds', ids: [] };
+  }
+}
+
+function applyResidentFilters(query, { search, sector, registrationType, approvedSignupContacts, qrResidentFilter }) {
   let nextQuery = query;
   const term = String(search || '').trim();
   if (term) {
@@ -83,6 +193,29 @@ function applyResidentFilters(query, { search, sector }) {
   if (sector === 'PWD') nextQuery = nextQuery.eq('is_pwd', true);
   if (sector === 'Senior Citizen') nextQuery = nextQuery.eq('is_senior_citizen', true);
   if (sector === 'Solo Parent') nextQuery = nextQuery.eq('is_solo_parent', true);
+
+  if (registrationType === 'Online') {
+    const contactList = approvedSignupContacts?.length
+      ? `,contact_number.in.${toPostgrestList(approvedSignupContacts)}`
+      : '';
+    nextQuery = nextQuery.or(`account_request_id.not.is.null${contactList}`);
+  }
+
+  if (registrationType === 'Walk-In') {
+    nextQuery = nextQuery.is('account_request_id', null);
+    if (approvedSignupContacts?.length) {
+      nextQuery = nextQuery.not('contact_number', 'in', toPostgrestList(approvedSignupContacts));
+    }
+  }
+
+  if (qrResidentFilter?.mode === 'includeIds') {
+    if (!qrResidentFilter.ids.length) return null;
+    nextQuery = nextQuery.in('id', qrResidentFilter.ids);
+  }
+
+  if (qrResidentFilter?.mode === 'excludeIds' && qrResidentFilter.ids.length) {
+    nextQuery = nextQuery.not('id', 'in', toPostgrestList(qrResidentFilter.ids));
+  }
 
   return nextQuery;
 }
@@ -110,10 +243,10 @@ export async function GET(request) {
   try {
     const db = supabaseAdmin ?? supabase;
     if (!db) {
-      return NextResponse.json(
-        { data: null, error: 'Server configuration error. Database client not available.' },
-        { status: 500 },
-      );
+      return jsonError('Server configuration error. Database client not available.', {
+        status: 500,
+        code: 'DATABASE_CLIENT_UNAVAILABLE',
+      });
     }
 
     const { searchParams } = new URL(request.url);
@@ -126,6 +259,8 @@ export async function GET(request) {
     const to = from + pageSize - 1;
     const search = searchParams.get('search') || '';
     const sector = searchParams.get('sector') || '';
+    const registrationType = searchParams.get('registrationType') || '';
+    const qrValidity = searchParams.get('qrValidity') || '';
     const sortBy = searchParams.get('sortBy') || 'created_desc';
 
     const required = new Set(['id', 'control_number', 'first_name', 'last_name']);
@@ -159,13 +294,27 @@ export async function GET(request) {
     let cols = [...columns];
     let lastError = null;
     let residentsCount = null;
+    let residentsData = [];
+    const approvedSignupContactValues = await loadApprovedSignupContacts(db);
+    const qrResidentFilter = await resolveQrResidentFilter(db, qrValidity);
 
     for (let attempt = 0; attempt < columns.length; attempt++) {
       let query = db
         .from('residents')
         .select(cols.join(', '), hasPagination ? { count: 'exact' } : undefined);
 
-      query = applyResidentFilters(query, { search, sector });
+      query = applyResidentFilters(query, {
+        search,
+        sector,
+        registrationType,
+        approvedSignupContacts: approvedSignupContactValues,
+        qrResidentFilter,
+      });
+      if (!query) {
+        residentsCount = 0;
+        break;
+      }
+      if (qrValidity === 'Valid') query = query.eq('status', 'Active');
       query = applyResidentSort(query, sortBy);
       if (hasPagination) query = query.range(from, to);
 
@@ -173,12 +322,9 @@ export async function GET(request) {
 
       if (!error) {
         const residents = Array.isArray(data) ? data : [];
-        // continue below for QR enrichment
         lastError = null;
-        data && (cols = cols);
         residentsCount = typeof count === 'number' ? count : residents.length;
-        // stash and break
-        var residentsData = residents;
+        residentsData = residents;
         break;
       }
 
@@ -187,14 +333,14 @@ export async function GET(request) {
       if (!missing) break;
 
       if (required.has(missing)) {
-        return NextResponse.json(
+        return jsonError(
+          `Database is missing residents.${missing} (or schema cache is stale). Run the latest SQL schema and reload PostgREST:\n\n` +
+            `NOTIFY pgrst, 'reload schema';`,
           {
-            data: null,
-            error:
-              `Database is missing residents.${missing} (or schema cache is stale). Run the latest SQL schema and reload PostgREST:\n\n` +
-              `NOTIFY pgrst, 'reload schema';`,
+            status: 500,
+            code: 'RESIDENTS_COLUMN_MISSING',
+            meta: { column: missing },
           },
-          { status: 500 },
         );
       }
 
@@ -208,46 +354,16 @@ export async function GET(request) {
     const residents = residentsData || [];
 
     if (residents.length === 0) {
-      return NextResponse.json({
-        data: residents,
-        error: null,
+      return jsonSuccess(residents, {
         meta: hasPagination
           ? { page, pageSize, total: residentsCount || 0, totalPages: 0 }
           : undefined,
       });
     }
 
-    let approvedSignupContacts = new Set();
-    try {
-      const contacts = residents
-        .map((r) => normalizeContactNumber(r.contact_number))
-        .filter((contact) => contact && contact.length >= 10);
-
-      if (contacts.length) {
-        const { data: approvedRequests, error: requestsError } = await db
-          .from('account_requests')
-          .select('contact_number')
-          .eq('status', 'Approved')
-          .in('contact_number', Array.from(new Set(contacts)));
-
-        if (requestsError) throw requestsError;
-
-        approvedSignupContacts = new Set(
-          (approvedRequests || [])
-            .map((row) => normalizeContactNumber(row.contact_number))
-            .filter(Boolean),
-        );
-      }
-    } catch (err) {
-      const msg = String(err?.message || err || '').toLowerCase();
-      const missing =
-        msg.includes('account_requests') &&
-        (msg.includes('schema cache') || msg.includes('does not exist') || msg.includes('could not find the table'));
-      if (!missing) {
-        console.warn('Fetch account_requests for registration type failed (continuing):', err?.message || err);
-      }
-      approvedSignupContacts = new Set();
-    }
+    const approvedSignupContacts = new Set(
+      approvedSignupContactValues.map((contact) => normalizeContactNumber(contact)).filter(Boolean),
+    );
 
     // Optional: attach QR validity status (if beneficiary_cards is set up)
     let cardMap = new Map();
@@ -298,9 +414,7 @@ export async function GET(request) {
       };
     });
 
-    return NextResponse.json({
-      data: enriched,
-      error: null,
+    return jsonSuccess(enriched, {
       meta: hasPagination
         ? {
             page,
@@ -312,9 +426,9 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error('Fetch residents error:', error);
-    return NextResponse.json(
-      { data: null, error: error.message || 'Failed to fetch residents.' },
-      { status: 500 },
-    );
+    return jsonError(error?.message || 'Failed to fetch residents.', {
+      status: 500,
+      code: error?.code || 'FETCH_RESIDENTS_FAILED',
+    });
   }
 }

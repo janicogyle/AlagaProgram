@@ -16,7 +16,8 @@ import {
   Modal,
 } from '@/components';
 import styles from './page.module.css';
-import { supabase } from '@/lib/supabaseClient';
+import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
+import { clearClientCachePrefix, getClientCache, setClientCache } from '@/lib/clientCache';
 import {
   buildRequirementsMap,
   getLocalRequirementsMap,
@@ -49,6 +50,9 @@ const serviceTypes = [
   { value: 'others', label: 'Others', ceiling: 'Variable' },
 ];
 
+const ASSISTANCE_RECORDS_CACHE_KEY = 'admin-assistance-records:list';
+const ASSISTANCE_RECORDS_CACHE_MAX_AGE = 0;
+
 const generateControlNumber = () => {
   const year = new Date().getFullYear();
   const seq = Math.floor(Math.random() * 999) + 1;
@@ -69,6 +73,7 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState(null);
   const [requirementsByType, setRequirementsByType] = useState({});
+  const [realtimeRefreshKey, setRealtimeRefreshKey] = useState(0);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -87,6 +92,16 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
 
   useEffect(() => {
     const loadAssistance = async () => {
+      const cached = getClientCache(ASSISTANCE_RECORDS_CACHE_KEY, { maxAge: ASSISTANCE_RECORDS_CACHE_MAX_AGE });
+      const hasCachedData = !!cached;
+
+      if (cached) {
+        setRecords(cached.value);
+        setLoading(false);
+
+        if (cached.isFresh) return;
+      }
+
       try {
         if (!supabase) {
           throw new Error('Database client not available');
@@ -154,15 +169,36 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
         }));
 
         setRecords(mapped);
+        setClientCache(ASSISTANCE_RECORDS_CACHE_KEY, mapped);
       } catch (err) {
         console.error('Failed to load assistance records:', err);
-        setRecords([]);
+        if (!hasCachedData) setRecords([]);
       } finally {
-        setLoading(false);
+        if (!hasCachedData) setLoading(false);
       }
     };
 
     loadAssistance();
+  }, [realtimeRefreshKey]);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+
+    const refresh = () => {
+      clearClientCachePrefix('admin-');
+      setRealtimeRefreshKey((value) => value + 1);
+    };
+
+    const channels = [
+      realtimeHelpers.subscribeToTable('assistance_requests', refresh),
+      realtimeHelpers.subscribeToTable('residents', refresh),
+    ].filter(Boolean);
+
+    return () => {
+      channels.forEach((channel) => {
+        realtimeHelpers.unsubscribe(channel);
+      });
+    };
   }, []);
 
   useEffect(() => {

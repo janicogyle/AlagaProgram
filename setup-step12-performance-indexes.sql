@@ -24,6 +24,15 @@ begin
       on public.residents (contact_number);
   end if;
 
+  if to_regclass('public.residents') is not null
+     and exists (
+       select 1 from information_schema.columns
+       where table_schema = 'public' and table_name = 'residents' and column_name = 'control_number'
+     ) then
+    create index if not exists idx_residents_control_number
+      on public.residents (control_number);
+  end if;
+
   if to_regclass('public.assistance_requests') is not null
      and exists (
        select 1 from information_schema.columns
@@ -97,6 +106,24 @@ begin
      ) then
     create index if not exists idx_beneficiary_cards_resident_issued_at
       on public.beneficiary_cards (resident_id, issued_at desc);
+  end if;
+
+  if to_regclass('public.account_requests') is not null
+     and exists (
+       select 1 from information_schema.columns
+       where table_schema = 'public' and table_name = 'account_requests' and column_name = 'status'
+     ) then
+    create index if not exists idx_account_requests_status
+      on public.account_requests (status);
+  end if;
+
+  if to_regclass('public.notifications') is not null
+     and exists (
+       select 1 from information_schema.columns
+       where table_schema = 'public' and table_name = 'notifications' and column_name = 'user_id'
+     ) then
+    create index if not exists idx_notifications_user_id
+      on public.notifications (user_id);
   end if;
 
   if to_regclass('public.sms_otps') is not null

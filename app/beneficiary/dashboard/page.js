@@ -11,12 +11,46 @@ import Badge from '../../../components/Badge';
 import styles from './page.module.css';
 import Modal from '../../../components/Modal';
 import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
+import { deleteClientCache, getClientCache, setClientCache } from '@/lib/clientCache';
 
 const isActiveRequestStatus = (status) => status === 'Pending' || status === 'Resubmitted';
+const DASHBOARD_CACHE_MAX_AGE = 0;
+const emptyStats = { total: 0, active: 0, pending: 0, completed: 0, rejected: 0, lastDate: null };
+
 const getRequestStatusLabel = (status) => {
   if (status === 'Rejected') return 'Incomplete';
   if (status === 'Resubmitted') return 'Under Review';
   return status;
+};
+
+const getDashboardCacheKey = (residentId) => `beneficiary-dashboard:${residentId}`;
+
+const buildDashboardState = (rows) => {
+  const safeData = (rows || []).map((row) => ({
+    ...row,
+    request_control_number: row.control_number,
+    control_number: row.residents?.control_number || row.control_number,
+  }));
+
+  if (safeData.length === 0) {
+    return { requests: safeData, stats: emptyStats };
+  }
+
+  const pending = safeData.filter((r) => isActiveRequestStatus(r.status)).length;
+  const completed = safeData.filter((r) => r.status === 'Released' || r.status === 'Approved').length;
+  const rejected = safeData.filter((r) => r.status === 'Rejected').length;
+
+  return {
+    requests: safeData,
+    stats: {
+      total: safeData.length,
+      active: pending,
+      pending,
+      completed,
+      rejected,
+      lastDate: safeData[0].request_date,
+    },
+  };
 };
 
 const columns = [
@@ -62,8 +96,10 @@ export default function BeneficiaryDashboardPage() {
   });
 
   const loadDashboard = useCallback(async ({ silent = false } = {}) => {
+    let cacheKey = null;
+    let usedCachedData = false;
+
     try {
-      if (!silent) setLoading(true);
       let residentId = null;
       let storedName = '';
 
@@ -78,10 +114,24 @@ export default function BeneficiaryDashboardPage() {
 
       if (!residentId) {
         setRequests([]);
-        setStats({ total: 0, active: 0, pending: 0, completed: 0, rejected: 0, lastDate: null });
+        setStats(emptyStats);
         setLoading(false);
         return;
       }
+
+      cacheKey = getDashboardCacheKey(residentId);
+      const cached = getClientCache(cacheKey, { maxAge: DASHBOARD_CACHE_MAX_AGE });
+
+      if (cached && !silent) {
+        usedCachedData = true;
+        setRequests(cached.value.requests);
+        setStats(cached.value.stats);
+        setLoading(false);
+
+        if (cached.isFresh) return;
+      }
+
+      if (!silent && !usedCachedData) setLoading(true);
 
       const response = await fetch(`/api/assistance-requests?residentId=${encodeURIComponent(residentId)}`);
       const result = await response.json();
@@ -90,36 +140,22 @@ export default function BeneficiaryDashboardPage() {
         throw new Error(result?.error || 'Failed to load assistance requests.');
       }
 
-      const safeData = (result.data || []).map((row) => ({
-        ...row,
-        request_control_number: row.control_number,
-        control_number: row.residents?.control_number || row.control_number,
-      }));
-      setRequests(safeData);
-
-      if (safeData.length > 0) {
-        const total = safeData.length;
-        const pending = safeData.filter((r) => isActiveRequestStatus(r.status)).length;
-        const completed = safeData.filter((r) => r.status === 'Released' || r.status === 'Approved').length;
-        const rejected = safeData.filter((r) => r.status === 'Rejected').length;
-        const lastDate = safeData[0].request_date;
-
-        setStats({ total, active: pending, pending, completed, rejected, lastDate });
-      } else {
-        setStats({ total: 0, active: 0, pending: 0, completed: 0, rejected: 0, lastDate: null });
-      }
+      const nextState = buildDashboardState(result.data || []);
+      setRequests(nextState.requests);
+      setStats(nextState.stats);
+      setClientCache(cacheKey, nextState);
     } catch (err) {
       console.error('Failed to load beneficiary dashboard data:', err);
-      if (!silent) {
+      if (!silent && !usedCachedData) {
         setRequests([]);
-        setStats({ total: 0, active: 0, pending: 0, completed: 0, rejected: 0, lastDate: null });
+        setStats(emptyStats);
         openAlert({
           title: 'Load failed',
           message: err?.message || 'Failed to load your dashboard data. Please try again.',
         });
       }
     } finally {
-      if (!silent) setLoading(false);
+      if (!silent && !usedCachedData) setLoading(false);
     }
   }, [openAlert]);
 
@@ -134,7 +170,10 @@ export default function BeneficiaryDashboardPage() {
 
     const channel = realtimeHelpers.subscribeToTable(
       'assistance_requests',
-      () => loadDashboard({ silent: true }),
+      () => {
+        deleteClientCache(getDashboardCacheKey(residentId));
+        loadDashboard({ silent: true });
+      },
       `resident_id=eq.${residentId}`,
     );
 

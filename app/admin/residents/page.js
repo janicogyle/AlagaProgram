@@ -17,6 +17,7 @@ import {
 } from "@/components";
 import styles from "./page.module.css";
 import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
+import { clearClientCachePrefix, getClientCache, setClientCache } from '@/lib/clientCache';
 import { getCooldownInfo, parseDateInput } from '@/lib/requestCooldown';
 import {
   buildEligibilityByResidentId,
@@ -37,6 +38,9 @@ const registrationTypeOptions = [
 ];
 
 const LOCKED_CITIZENSHIP = 'Filipino';
+const getResidentsCacheKey = ({ page, pageSize, searchTerm, registrationTypeFilter, sectorFilter, qrFilter, sortBy }) =>
+  `admin-residents:list:${page}:${pageSize}:${searchTerm}:${registrationTypeFilter}:${sectorFilter}:${qrFilter}:${sortBy}`;
+const RESIDENTS_CACHE_MAX_AGE = 0;
 
 const sectorOptions = [
   { value: "", label: "All Sectors" },
@@ -159,23 +163,6 @@ function buildFullName(resident) {
   return name || "-";
 }
 
-function parseControlNumber(value) {
-  const raw = String(value || "").trim();
-  const benef = raw.match(/^BENEF-(\d+)$/i);
-  if (benef) {
-    return { year: 0, seq: Number(benef[1]) || 0, raw };
-  }
-  const match = raw.match(/^(\d{4})-(\d+)$/);
-  if (!match) {
-    return { year: 0, seq: 0, raw };
-  }
-  return {
-    year: Number(match[1]) || 0,
-    seq: Number(match[2]) || 0,
-    raw,
-  };
-}
-
 function displayValue(v) {
   const s = String(v ?? '').trim();
   return s || '-';
@@ -221,6 +208,27 @@ function getSectorBadges(resident) {
   return sectors;
 }
 
+function asArray(value) {
+  return Array.isArray(value) ? value.filter((item) => item && typeof item === 'object') : [];
+}
+
+function asPositiveInt(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+async function readJsonSafe(response) {
+  try {
+    return await response.json();
+  } catch {
+    return { ok: false, data: null, error: 'Server returned an invalid response.' };
+  }
+}
+
+function getApiError(payload, fallback) {
+  return String(payload?.error || payload?.message || fallback || 'Request failed.');
+}
+
 export default function ResidentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [registrationTypeFilter, setRegistrationTypeFilter] = useState("");
@@ -228,6 +236,7 @@ export default function ResidentsPage() {
   const [qrFilter, setQrFilter] = useState("");
   const [sortBy, setSortBy] = useState("created_desc");
   const [residents, setResidents] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, pageSize: 25, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [eligibilityByResidentId, setEligibilityByResidentId] = useState({});
   const [eligibilityMaps, setEligibilityMaps] = useState(() => buildEligibilityMaps([]));
@@ -380,7 +389,8 @@ export default function ResidentsPage() {
   };
 
   const renderNewRequestAction = (row) => {
-    const eligibility = getRowEligibility(row.id);
+    const residentId = row?.id ? String(row.id) : '';
+    const eligibility = getRowEligibility(residentId);
     const canRequest = !eligibilityLoading && eligibility.canCreateRequest;
 
     return (
@@ -389,12 +399,16 @@ export default function ResidentsPage() {
         className={`${styles.actionButton} ${styles.requestActionButton}`}
        
         disabled={!canRequest}
-        href={canRequest ? `/admin/registration?residentId=${encodeURIComponent(row.id)}` : undefined}
+        href={canRequest && residentId ? `/admin/registration?residentId=${encodeURIComponent(residentId)}` : undefined}
       >
         Request
       </Button>
     );
   };
+
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  }, [searchTerm, registrationTypeFilter, sectorFilter, qrFilter, sortBy]);
 
   useEffect(() => {
     try {
@@ -408,12 +422,25 @@ export default function ResidentsPage() {
     fetchResidents();
   // fetchResidents is intentionally kept as the existing page loader; realtimeRefreshKey re-runs it.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [realtimeRefreshKey]);
+  }, [
+    pagination.page,
+    pagination.pageSize,
+    searchTerm,
+    registrationTypeFilter,
+    sectorFilter,
+    qrFilter,
+    sortBy,
+    realtimeRefreshKey,
+  ]);
 
   useEffect(() => {
     if (!supabase) return undefined;
 
-    const refresh = () => setRealtimeRefreshKey((value) => value + 1);
+    const refresh = () => {
+      clearClientCachePrefix('admin-');
+      clearClientCachePrefix('beneficiary-dashboard:');
+      setRealtimeRefreshKey((value) => value + 1);
+    };
     const channels = [
       realtimeHelpers.subscribeToTable('residents', refresh),
       realtimeHelpers.subscribeToTable('account_requests', refresh),
@@ -447,45 +474,99 @@ export default function ResidentsPage() {
   };
 
   const fetchResidents = async () => {
-    setEligibilityLoading(true);
+    const cacheKey = getResidentsCacheKey({
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      searchTerm,
+      registrationTypeFilter,
+      sectorFilter,
+      qrFilter,
+      sortBy,
+    });
+    const cached = getClientCache(cacheKey, { maxAge: RESIDENTS_CACHE_MAX_AGE });
+    const hasCachedData = !!cached;
+
+    if (cached) {
+      setResidents(asArray(cached.value?.residents));
+      setPagination((prev) => ({ ...prev, ...(cached.value?.pagination || {}) }));
+      setEligibilityMaps(cached.value?.eligibilityMaps || buildEligibilityMaps([]));
+      setEligibilityByResidentId(cached.value?.eligibilityByResidentId || {});
+      setLoading(false);
+      setEligibilityLoading(false);
+
+      if (cached.isFresh) return;
+    } else {
+      setEligibilityLoading(true);
+    }
+
     try {
       const headers = await getAuthHeaders();
+      const params = new URLSearchParams({
+        page: String(pagination.page),
+        pageSize: String(pagination.pageSize),
+        sortBy,
+      });
+      if (searchTerm.trim()) params.set('search', searchTerm.trim());
+      if (registrationTypeFilter) params.set('registrationType', registrationTypeFilter);
+      if (sectorFilter) params.set('sector', sectorFilter);
+      if (qrFilter) params.set('qrValidity', qrFilter);
       const [residentsResponse, requestsResponse] = await Promise.all([
-        fetch('/api/residents', { headers }),
+        fetch(`/api/residents?${params.toString()}`, { headers }),
         fetch('/api/assistance-requests/eligibility', { headers }),
       ]);
 
-      const residentsResult = await residentsResponse.json();
-      const requestsResult = await requestsResponse.json();
+      const residentsResult = await readJsonSafe(residentsResponse);
+      const requestsResult = await readJsonSafe(requestsResponse);
 
       if (!residentsResponse.ok || residentsResult.error) {
-        throw new Error(residentsResult.error || 'Failed to fetch beneficiaries');
+        throw new Error(getApiError(residentsResult, 'Failed to fetch beneficiaries.'));
       }
 
-      setResidents(residentsResult.data || []);
+      const nextResidents = asArray(residentsResult.data);
+      const nextPagination = {
+        page: asPositiveInt(residentsResult.meta?.page, pagination.page),
+        pageSize: asPositiveInt(residentsResult.meta?.pageSize, pagination.pageSize),
+        total: Math.max(0, Number(residentsResult.meta?.total ?? nextResidents.length) || 0),
+        totalPages: Math.max(1, Number(residentsResult.meta?.totalPages || 1) || 1),
+      };
+      let nextEligibilityMaps = buildEligibilityMaps([]);
+      let nextEligibilityByResidentId = {};
 
       if (!requestsResponse.ok || requestsResult.error) {
-        console.warn('Failed to load request eligibility:', requestsResult.error);
-        setEligibilityMaps(buildEligibilityMaps([]));
-        setEligibilityByResidentId({});
+        console.warn('Failed to load request eligibility:', getApiError(requestsResult, 'Unknown error'));
       } else {
-        const requestRows = Array.isArray(requestsResult.data) ? requestsResult.data : [];
+        const requestRows = asArray(requestsResult.data);
         const { maps, byId } = buildEligibilityByResidentId(requestRows);
-        setEligibilityMaps(maps);
-        setEligibilityByResidentId(byId);
+        nextEligibilityMaps = maps;
+        nextEligibilityByResidentId = byId;
       }
+
+      setResidents(nextResidents);
+      setPagination((prev) => ({ ...prev, ...nextPagination }));
+      setEligibilityMaps(nextEligibilityMaps);
+      setEligibilityByResidentId(nextEligibilityByResidentId);
+      setClientCache(cacheKey, {
+        residents: nextResidents,
+        pagination: nextPagination,
+        eligibilityMaps: nextEligibilityMaps,
+        eligibilityByResidentId: nextEligibilityByResidentId,
+      });
     } catch (error) {
       console.warn('Failed to fetch beneficiaries:', error?.message || error);
-      openAlert({
-        title: 'Load failed',
-        message: error?.message || 'Failed to fetch beneficiaries.',
-      });
-      setResidents([]);
-      setEligibilityMaps(buildEligibilityMaps([]));
-      setEligibilityByResidentId({});
+      if (!hasCachedData) {
+        openAlert({
+          title: 'Load failed',
+          message: error?.message || 'Failed to fetch beneficiaries.',
+        });
+        setResidents([]);
+        setEligibilityMaps(buildEligibilityMaps([]));
+        setEligibilityByResidentId({});
+      }
     } finally {
-      setLoading(false);
-      setEligibilityLoading(false);
+      if (!hasCachedData) {
+        setLoading(false);
+        setEligibilityLoading(false);
+      }
     }
   };
 
@@ -517,12 +598,12 @@ export default function ResidentsPage() {
         headers,
       });
 
-      const json = await res.json().catch(() => ({}));
+      const json = await readJsonSafe(res);
       if (!res.ok || json?.error) {
-        throw new Error(json?.error || 'Failed to load beneficiary details.');
+        throw new Error(getApiError(json, 'Failed to load beneficiary details.'));
       }
 
-      setResidentDetails(json?.data || null);
+      setResidentDetails(json?.data && typeof json.data === 'object' ? json.data : null);
     } catch (err) {
       console.warn('Failed to load beneficiary details:', err?.message || err);
       setResidentDetails(null);
@@ -541,11 +622,11 @@ export default function ResidentsPage() {
         `/api/assistance-requests?residentId=${encodeURIComponent(residentId)}&status=Released`,
         { headers },
       );
-      const json = await res.json().catch(() => ({}));
+      const json = await readJsonSafe(res);
       if (!res.ok || json?.error) {
-        throw new Error(json?.error || 'Failed to load assistance history.');
+        throw new Error(getApiError(json, 'Failed to load assistance history.'));
       }
-      const rows = Array.isArray(json?.data) ? json.data : [];
+      const rows = asArray(json?.data);
       const released = rows.filter(
         (row) => String(row?.status || '').toLowerCase() === 'released',
       );
@@ -596,10 +677,10 @@ export default function ResidentsPage() {
       const res = await fetch(`/api/documents/view?path=${encodeURIComponent(pathOrUrl)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const json = await res.json().catch(() => ({}));
+      const json = await readJsonSafe(res);
 
       if (!res.ok || json?.error) {
-        throw new Error(json?.error || 'Unable to open document.');
+        throw new Error(getApiError(json, 'Unable to open document.'));
       }
 
       const url = json?.data?.url;
@@ -724,10 +805,10 @@ export default function ResidentsPage() {
         }),
       });
 
-      const json = await res.json().catch(() => ({}));
+      const json = await readJsonSafe(res);
 
       if (!res.ok) {
-        const msg = json?.error || 'Failed to update beneficiary profile.';
+        const msg = getApiError(json, 'Failed to update beneficiary profile.');
 
         // Show contact-number uniqueness/validation problems inline
         if (res.status === 409 || /contact number/i.test(msg) || /already in use/i.test(msg) || /duplicate/i.test(msg)) {
@@ -753,7 +834,8 @@ export default function ResidentsPage() {
       const updated = json?.data;
 
       if (updated?.id) {
-        setResidents((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+        clearClientCachePrefix('admin-');
+        setResidents((prev) => asArray(prev).map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
         setSelectedResident((prev) => (prev?.id === updated.id ? { ...prev, ...updated } : prev));
         setResidentDetails((prev) => (prev?.resident?.id === updated.id ? { ...prev, resident: { ...prev.resident, ...updated } } : prev));
       }
@@ -784,68 +866,7 @@ export default function ResidentsPage() {
     }
   };
 
-  const filteredResidents = useMemo(() => {
-    const query = searchTerm.toLowerCase();
-
-    const matchesSector = (resident) => {
-      if (!sectorFilter) return true;
-      if (sectorFilter === 'PWD') return !!resident.is_pwd;
-      if (sectorFilter === 'Senior Citizen') return !!resident.is_senior_citizen;
-      if (sectorFilter === 'Solo Parent') return !!resident.is_solo_parent;
-      return true;
-    };
-
-    const matchesQr = (resident) => {
-      if (!qrFilter) return true;
-      const status = String(resident?.qr_validity || 'Not Setup');
-      if (qrFilter === 'No QR') {
-        return status === 'No QR' || status === 'Not Setup' || status === 'Unavailable';
-      }
-      return status === qrFilter;
-    };
-
-    const filtered = residents.filter((r) => {
-      const fullName = buildFullName(r).toLowerCase();
-      const contact = String(r.contact_number || "").toLowerCase();
-      const control = String(r.control_number || "").toLowerCase();
-
-      const matchesSearch =
-        !query || fullName.includes(query) || contact.includes(query) || control.includes(query);
-      const matchesRegistrationType =
-        !registrationTypeFilter || r.registration_type === registrationTypeFilter;
-
-      return matchesSearch && matchesRegistrationType && matchesSector(r) && matchesQr(r);
-    });
-
-    const sorted = [...filtered].sort((a, b) => {
-      if (sortBy === 'name_asc' || sortBy === 'name_desc') {
-        const aName = buildFullName(a).toLowerCase();
-        const bName = buildFullName(b).toLowerCase();
-        const cmp = aName.localeCompare(bName);
-        return sortBy === 'name_asc' ? cmp : -cmp;
-      }
-
-      if (sortBy === 'control_asc' || sortBy === 'control_desc') {
-        const aControl = parseControlNumber(a.control_number);
-        const bControl = parseControlNumber(b.control_number);
-        const yearCmp = aControl.year - bControl.year;
-        const seqCmp = aControl.seq - bControl.seq;
-        const cmp = yearCmp !== 0 ? yearCmp : seqCmp !== 0 ? seqCmp : aControl.raw.localeCompare(bControl.raw);
-        return sortBy === 'control_asc' ? cmp : -cmp;
-      }
-
-      if (sortBy === 'created_asc' || sortBy === 'created_desc') {
-        const aDate = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
-        const cmp = aDate - bDate;
-        return sortBy === 'created_asc' ? cmp : -cmp;
-      }
-
-      return 0;
-    });
-
-    return sorted;
-  }, [residents, searchTerm, registrationTypeFilter, sectorFilter, qrFilter, sortBy]);
+  const filteredResidents = residents;
 
   const historySummary = useMemo(() => {
     const totalCount = historyRequests.length;
@@ -1151,9 +1172,9 @@ export default function ResidentsPage() {
         body: JSON.stringify({ newPassword: resetPassword }),
       });
 
-      const result = await response.json().catch(() => ({}));
+      const result = await readJsonSafe(response);
       if (!response.ok || result?.success === false) {
-        throw new Error(result?.error || 'Failed to reset password');
+        throw new Error(getApiError(result, 'Failed to reset password'));
       }
 
       handleCloseReset();
@@ -1184,9 +1205,9 @@ export default function ResidentsPage() {
         body: JSON.stringify({ residentId: selectedResident.id, expiresInDays: 365 }),
       });
 
-      const payload = await response.json().catch(() => ({}));
+      const payload = await readJsonSafe(response);
       if (!response.ok || payload?.error) {
-        const msg = String(payload?.error || 'Failed to issue ID card.');
+        const msg = getApiError(payload, 'Failed to issue ID card.');
         openAlert({ title: 'Issue failed', message: msg });
         return;
       }
@@ -1204,6 +1225,7 @@ export default function ResidentsPage() {
       const qrUrl = await QRCode.toDataURL(cardReference, { margin: 1, width: 260 });
 
       setIssuedCard({ token, card, cardReference, qrUrl });
+      clearClientCachePrefix('admin-');
       setCardModalOpen(true);
     } catch (error) {
       const msg = String(error?.message || error || 'Unknown error');
@@ -1314,8 +1336,8 @@ export default function ResidentsPage() {
               {filteredResidents.length === 0 ? (
                 <div className={styles.emptyCard}>No beneficiaries found.</div>
               ) : (
-                filteredResidents.map((row) => (
-                  <div key={row.id} className={styles.residentCard}>
+                filteredResidents.map((row, index) => (
+                  <div key={row.id || row.control_number || index} className={styles.residentCard}>
                     <div className={styles.cardHeader}>
                       <div className={styles.cardNameSection}>
                         <div className={styles.cardName}>{buildFullName(row)}</div>
@@ -1399,8 +1421,13 @@ export default function ResidentsPage() {
 
         <DataTableFooter
           showing={filteredResidents.length}
-          total={residents.length}
+          total={pagination.total}
           itemName="beneficiaries"
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          totalPages={pagination.totalPages}
+          onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+          onPageSizeChange={(pageSize) => setPagination((prev) => ({ ...prev, page: 1, pageSize }))}
         />
       </Card>
 

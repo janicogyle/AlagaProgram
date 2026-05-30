@@ -8,6 +8,12 @@ export const runtime = 'nodejs';
 
 const LOCKED_CITIZENSHIP = 'Filipino';
 
+function parsePositiveInt(value, fallback, { min = 1, max = 100 } = {}) {
+  const parsed = Number.parseInt(String(value || ''), 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
 function normalizeContactNumber(input) {
   const digits = String(input || '').replace(/\D/g, '');
 
@@ -208,6 +214,15 @@ export async function GET(request) {
       );
     }
 
+    const { searchParams } = new URL(request.url);
+    const pageParam = searchParams.get('page');
+    const pageSizeParam = searchParams.get('pageSize');
+    const hasPagination = pageParam != null || pageSizeParam != null;
+    const page = parsePositiveInt(pageParam, 1, { min: 1, max: 100000 });
+    const pageSize = parsePositiveInt(pageSizeParam, 25, { min: 1, max: 100 });
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
     const columns = [
       'id',
       'first_name',
@@ -240,13 +255,28 @@ export async function GET(request) {
 
     let lastError = null;
     for (let attempt = 0; attempt < columns.length; attempt++) {
-      const { data, error } = await db
+      let query = db
         .from('account_requests')
-        .select(columns.join(', '))
+        .select(columns.join(', '), hasPagination ? { count: 'exact' } : undefined)
         .order('created_at', { ascending: false });
 
+      if (hasPagination) query = query.range(from, to);
+
+      const { data, error, count } = await query;
+
       if (!error) {
-        return NextResponse.json({ data, error: null });
+        return NextResponse.json({
+          data,
+          error: null,
+          meta: hasPagination
+            ? {
+                page,
+                pageSize,
+                total: count || 0,
+                totalPages: Math.ceil((count || 0) / pageSize),
+              }
+            : undefined,
+        });
       }
 
       lastError = error;

@@ -104,6 +104,7 @@ export default function AccountRequestsPage() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [modalMode, setModalMode] = useState("view"); // "view" | "approve" | "reject" | "unarchive"
   const [requests, setRequests] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, pageSize: 25, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [archiveNotes, setArchiveNotes] = useState('');
@@ -117,10 +118,14 @@ export default function AccountRequestsPage() {
   });
 
   useEffect(() => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  }, [searchTerm, statusFilter]);
+
+  useEffect(() => {
     fetchRequests();
     // fetchRequests is the existing API loader; realtimeRefreshKey re-runs it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [realtimeRefreshKey]);
+  }, [pagination.page, pagination.pageSize, realtimeRefreshKey]);
 
   useEffect(() => {
     if (!supabase) return undefined;
@@ -137,7 +142,11 @@ export default function AccountRequestsPage() {
   const fetchRequests = async () => {
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch('/api/account-requests', { headers });
+      const params = new URLSearchParams({
+        page: String(pagination.page),
+        pageSize: String(pagination.pageSize),
+      });
+      const response = await fetch(`/api/account-requests?${params.toString()}`, { headers });
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok || result?.error) {
@@ -150,6 +159,13 @@ export default function AccountRequestsPage() {
           r?.status === "Rejected" ? { ...r, status: "Archived" } : r,
         );
         setRequests(normalized);
+        setPagination((prev) => ({
+          ...prev,
+          page: result.meta?.page || prev.page,
+          pageSize: result.meta?.pageSize || prev.pageSize,
+          total: result.meta?.total ?? normalized.length,
+          totalPages: result.meta?.totalPages || 1,
+        }));
       }
     } catch (error) {
       const msg = error?.message || 'Failed to fetch account requests.';
@@ -547,7 +563,7 @@ export default function AccountRequestsPage() {
     },
   ];
 
-  const total = requests.length;
+  const total = pagination.total;
   const showing = filteredRequests.length;
 
   const isDetailsModalOpen = !!selectedRequest && modalMode === "view";
@@ -723,6 +739,11 @@ export default function AccountRequestsPage() {
           showing={showing}
           total={total}
           itemName="requests"
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          totalPages={pagination.totalPages}
+          onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+          onPageSizeChange={(pageSize) => setPagination((prev) => ({ ...prev, page: 1, pageSize }))}
         />
       </Card>
 

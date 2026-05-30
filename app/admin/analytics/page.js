@@ -10,8 +10,11 @@ import Table from '@/components/Table';
 import Badge from '@/components/Badge';
 import styles from './page.module.css';
 import { supabase } from '@/lib/supabaseClient';
+import { deleteClientCache, getClientCache, setClientCache } from '@/lib/clientCache';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const ANALYTICS_CACHE_MAX_AGE = 0;
+const STAFF_ACTIVITY_CACHE_KEY = 'admin-analytics:staff-activity';
 const MONTH_FULL_LABELS = [
   'January',
   'February',
@@ -26,6 +29,9 @@ const MONTH_FULL_LABELS = [
   'November',
   'December',
 ];
+
+const getAnalyticsCacheKey = ({ timePeriod, trendMonth, trendYear }) =>
+  `admin-analytics:${timePeriod}:${trendMonth}:${trendYear}`;
 
 export default function AnalyticsPage() {
   const currentYear = new Date().getFullYear();
@@ -52,6 +58,18 @@ export default function AnalyticsPage() {
   const [staffActivity, setStaffActivity] = useState([]);
   const [staffActivityLoading, setStaffActivityLoading] = useState(true);
 
+  const applyAnalyticsState = useCallback((nextState) => {
+    setKpiData(nextState.kpiData);
+    setTrendYearOptions(nextState.trendYearOptions);
+    setMonthlyRegistrations(nextState.monthlyRegistrations);
+    setSectorDistribution(nextState.sectorDistribution);
+    setGenderDistribution(nextState.genderDistribution);
+    setAgeDistribution(nextState.ageDistribution);
+    setPurokDistribution(nextState.purokDistribution);
+    setRecentRegistrations(nextState.recentRegistrations);
+    setRecentAccountRequests(nextState.recentAccountRequests);
+  }, []);
+
   useEffect(() => {
     const updateViewportWidth = () => {
       if (typeof window === 'undefined') return;
@@ -68,6 +86,14 @@ export default function AnalyticsPage() {
       console.warn('Database client not available');
       return;
     }
+    const cacheKey = getAnalyticsCacheKey({ timePeriod, trendMonth, trendYear });
+    const cached = getClientCache(cacheKey, { maxAge: ANALYTICS_CACHE_MAX_AGE });
+
+    if (cached) {
+      applyAnalyticsState(cached.value);
+      if (cached.isFresh) return;
+    }
+
     const periodDays = { '1month': 30, '3months': 90, '6months': 180, '12months': 365 };
     const days = periodDays[timePeriod] || 90;
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
@@ -146,7 +172,7 @@ export default function AnalyticsPage() {
       purokCounts[purokKey] = (purokCounts[purokKey] || 0) + 1;
     });
 
-    setKpiData([
+    const nextKpiData = [
       { title: 'Total Beneficiaries', current: total, previous: 0, growth: 0, icon: 'users', color: 'blue' },
       {
         title: 'New Registrations',
@@ -165,13 +191,11 @@ export default function AnalyticsPage() {
         icon: 'completion',
         color: 'purple',
       },
-    ]);
+    ];
 
-    setTrendYearOptions(
-      Array.from(availableTrendYears)
-        .sort((a, b) => a - b)
-        .map((year) => ({ value: String(year), label: String(year) })),
-    );
+    const nextTrendYearOptions = Array.from(availableTrendYears)
+      .sort((a, b) => a - b)
+      .map((year) => ({ value: String(year), label: String(year) }));
 
     const selectedMonthIndex = trendMonth === 'all' ? null : Number(trendMonth);
     const trendMonthIndexes =
@@ -179,37 +203,32 @@ export default function AnalyticsPage() {
         ? MONTH_LABELS.map((_, index) => index)
         : [selectedMonthIndex];
 
-    setMonthlyRegistrations(
-      trendMonthIndexes.map((monthIndex) => ({
-        label: MONTH_LABELS[monthIndex],
-        value: trendMonthCounts[monthIndex],
-      })),
-    );
+    const nextMonthlyRegistrations = trendMonthIndexes.map((monthIndex) => ({
+      label: MONTH_LABELS[monthIndex],
+      value: trendMonthCounts[monthIndex],
+    }));
 
-    setSectorDistribution([
+    const nextSectorDistribution = [
       { label: 'PWD', value: pwd, color: '#8b5cf6' },
       { label: 'Senior Citizen', value: senior, color: '#10b981' },
       { label: 'Solo Parent', value: soloParent, color: '#f59e0b' },
-    ]);
+    ];
 
-    setGenderDistribution([
+    const nextGenderDistribution = [
       { label: 'Male', value: male, color: '#3b82f6' },
       { label: 'Female', value: female, color: '#ec4899' },
-    ]);
+    ];
 
-    setAgeDistribution(Object.entries(ageBuckets).map(([label, value]) => ({ label, value })));
+    const nextAgeDistribution = Object.entries(ageBuckets).map(([label, value]) => ({ label, value }));
 
     const purokTotal = total || 1;
-    setPurokDistribution(
-      Object.entries(purokCounts).map(([purok, count]) => ({
-        purok,
-        count,
-        percentage: Math.round((count / purokTotal) * 100),
-      })),
-    );
+    const nextPurokDistribution = Object.entries(purokCounts).map(([purok, count]) => ({
+      purok,
+      count,
+      percentage: Math.round((count / purokTotal) * 100),
+    }));
 
-    setRecentRegistrations(
-      residents.slice(0, 5).map((r) => ({
+    const nextRecentRegistrations = residents.slice(0, 5).map((r) => ({
         id: r.id,
         name: `${r.last_name}, ${r.first_name}`,
         sector: [
@@ -220,12 +239,9 @@ export default function AnalyticsPage() {
         purok: r.purok || r.street || '—',
         date: r.created_at ? new Date(r.created_at).toLocaleDateString() : '',
         status: r.status || 'Active',
-      })),
-    );
+      }));
 
-    if (accountRequests) {
-      setRecentAccountRequests(
-        accountRequests.map((r) => ({
+    const nextRecentAccountRequests = (accountRequests || []).map((r) => ({
           id: r.id,
           name: `${r.last_name || ''}, ${r.first_name || ''}`.replace(/^,\s/, '').trim() || '—',
           sector: [
@@ -236,20 +252,42 @@ export default function AnalyticsPage() {
           purok: r.purok || r.barangay || '—',
           date: r.created_at ? new Date(r.created_at).toLocaleDateString() : '',
           status: r.status || 'Pending',
-        }))
-      );
-    }
-  }, [currentYear, timePeriod, trendMonth, trendYear]);
+        }));
+
+    const nextState = {
+      kpiData: nextKpiData,
+      trendYearOptions: nextTrendYearOptions,
+      monthlyRegistrations: nextMonthlyRegistrations,
+      sectorDistribution: nextSectorDistribution,
+      genderDistribution: nextGenderDistribution,
+      ageDistribution: nextAgeDistribution,
+      purokDistribution: nextPurokDistribution,
+      recentRegistrations: nextRecentRegistrations,
+      recentAccountRequests: nextRecentAccountRequests,
+    };
+
+    applyAnalyticsState(nextState);
+    setClientCache(cacheKey, nextState);
+  }, [applyAnalyticsState, currentYear, timePeriod, trendMonth, trendYear]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       void fetchData();
     }, 0);
     return () => clearTimeout(timeoutId);
-  }, [fetchData]);
+  }, [fetchData, timePeriod, trendMonth, trendYear]);
 
   const fetchStaffActivity = useCallback(async () => {
-    setStaffActivityLoading(true);
+    const cached = getClientCache(STAFF_ACTIVITY_CACHE_KEY, { maxAge: ANALYTICS_CACHE_MAX_AGE });
+    const hasCachedData = !!cached;
+
+    if (cached) {
+      setStaffActivity(cached.value);
+      setStaffActivityLoading(false);
+      if (cached.isFresh) return;
+    } else {
+      setStaffActivityLoading(true);
+    }
     try {
       // Only Admin should see this panel; Staff can access Analytics but shouldn’t error.
       if (typeof window !== 'undefined') {
@@ -258,6 +296,7 @@ export default function AnalyticsPage() {
           const user = raw ? JSON.parse(raw) : null;
           if (user?.role && user.role !== 'Admin') {
             setStaffActivity([]);
+            setClientCache(STAFF_ACTIVITY_CACHE_KEY, []);
             return;
           }
         } catch {
@@ -267,6 +306,7 @@ export default function AnalyticsPage() {
 
       if (!supabase) {
         setStaffActivity([]);
+        setClientCache(STAFF_ACTIVITY_CACHE_KEY, []);
         return;
       }
 
@@ -274,6 +314,7 @@ export default function AnalyticsPage() {
       const token = sessionData?.session?.access_token;
       if (!token) {
         setStaffActivity([]);
+        setClientCache(STAFF_ACTIVITY_CACHE_KEY, []);
         return;
       }
 
@@ -284,18 +325,22 @@ export default function AnalyticsPage() {
       if (res.status === 403) {
         // Not an admin; don’t surface noisy errors.
         setStaffActivity([]);
+        setClientCache(STAFF_ACTIVITY_CACHE_KEY, []);
         return;
       }
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json?.error) {
         setStaffActivity([]);
+        setClientCache(STAFF_ACTIVITY_CACHE_KEY, []);
         return;
       }
 
-      setStaffActivity(json?.data || []);
+      const nextStaffActivity = json?.data || [];
+      setStaffActivity(nextStaffActivity);
+      setClientCache(STAFF_ACTIVITY_CACHE_KEY, nextStaffActivity);
     } finally {
-      setStaffActivityLoading(false);
+      if (!hasCachedData) setStaffActivityLoading(false);
     }
   }, []);
 
@@ -304,11 +349,12 @@ export default function AnalyticsPage() {
     const channel = supabase
       .channel('analytics-residents')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'residents' }, () => {
+        deleteClientCache(getAnalyticsCacheKey({ timePeriod, trendMonth, trendYear }));
         void fetchData();
       })
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, [fetchData]);
+  }, [fetchData, timePeriod, trendMonth, trendYear]);
 
   useEffect(() => {
     void fetchStaffActivity();

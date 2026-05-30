@@ -21,6 +21,12 @@ const MISSING_REQUIREMENTS_VERIFICATION_CODE = 'MISSING_REQUIREMENTS_VERIFICATIO
 const MISSING_REQUIREMENTS_VERIFICATION_ERROR =
   'Database is missing requirements verification columns. Run setup-step10.sql in Supabase SQL Editor, then try again.';
 
+function parsePositiveInt(value, fallback, { min = 1, max = 100 } = {}) {
+  const parsed = Number.parseInt(String(value || ''), 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
 const getFileNameFromUrl = (fileUrl) => {
   const raw = String(fileUrl || '').trim();
   if (!raw) return 'Document';
@@ -141,6 +147,13 @@ export async function GET(request) {
     const residentId = searchParams.get('residentId');
     const statusParam = searchParams.get('status');
     const statusFilter = statusParam ? String(statusParam).trim() : '';
+    const pageParam = searchParams.get('page');
+    const pageSizeParam = searchParams.get('pageSize');
+    const hasPagination = pageParam != null || pageSizeParam != null;
+    const page = parsePositiveInt(pageParam, 1, { min: 1, max: 100000 });
+    const pageSize = parsePositiveInt(pageSizeParam, 25, { min: 1, max: 100 });
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
 
     const baseRequestFields = [
       'id',
@@ -193,7 +206,7 @@ export async function GET(request) {
     const runQuery = async (fields) => {
       let query = db
         .from('assistance_requests')
-        .select([fields, residentsJoin].join(','))
+        .select([fields, residentsJoin].join(','), hasPagination ? { count: 'exact' } : undefined)
         .order('request_date', { ascending: false });
 
       if (residentId) {
@@ -204,6 +217,10 @@ export async function GET(request) {
         query = query.eq('status', statusFilter);
       }
 
+      if (hasPagination) {
+        query = query.range(from, to);
+      }
+
       return await query;
     };
 
@@ -212,9 +229,10 @@ export async function GET(request) {
     let cols = [...baseRequestFields, ...optionalRequestFields];
     let data;
     let error;
+    let count = null;
 
     for (let attempt = 0; attempt < optionalRequestFields.length + 1; attempt++) {
-      ;({ data, error } = await runQuery(cols.join(',')));
+      ;({ data, error, count } = await runQuery(cols.join(',')));
       if (!error) break;
 
       const missing = getMissingAssistanceColumn(error.message);
@@ -237,7 +255,18 @@ export async function GET(request) {
       };
     });
 
-    return NextResponse.json({ data: enriched, error: null });
+    return NextResponse.json({
+      data: enriched,
+      error: null,
+      meta: hasPagination
+        ? {
+            page,
+            pageSize,
+            total: count || 0,
+            totalPages: Math.ceil((count || 0) / pageSize),
+          }
+        : undefined,
+    });
   } catch (error) {
     console.error('Fetch assistance requests error:', error);
     return NextResponse.json(

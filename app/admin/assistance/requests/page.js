@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
+import { clearClientCachePrefix, getClientCache, setClientCache } from '@/lib/clientCache';
 import { formatSmsNotificationResult } from '@/lib/smsTemplates';
 import {
   buildRequirementsMap,
@@ -28,6 +29,9 @@ import styles from './page.module.css';
 
 // Requests are loaded from the `assistance_requests` table in Supabase.
 // Shape in state: { id, controlNo, requester, requesterContact, beneficiary, beneficiaryContact, type, amount, rawAmount, status, date, processedBy }
+const REQUESTS_CACHE_MAX_AGE = 0;
+const getRequestsCacheKey = ({ requirementsByType, page, pageSize }) =>
+  `admin-assistance-requests:${page}:${pageSize}:${Object.keys(requirementsByType || {}).sort().join('|')}`;
 
 const typeOptions = [
   { value: '', label: 'All Types' },
@@ -146,6 +150,7 @@ export default function RequestsPage() {
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [requests, setRequests] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, pageSize: 25, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [alertState, setAlertState] = useState({
@@ -214,9 +219,33 @@ export default function RequestsPage() {
   const getStatusLabel = (dbStatus) => (dbStatus === 'Rejected' ? 'Archived' : dbStatus);
 
   useEffect(() => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  }, [searchTerm, typeFilter, statusFilter]);
+
+  useEffect(() => {
     const loadRequests = async () => {
+      const cacheKey = getRequestsCacheKey({
+        requirementsByType,
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+      });
+      const cached = getClientCache(cacheKey, { maxAge: REQUESTS_CACHE_MAX_AGE });
+      const hasCachedData = !!cached;
+
+      if (cached) {
+        setRequests(cached.value.requests);
+        setPagination((prev) => ({ ...prev, ...cached.value.pagination }));
+        setLoading(false);
+
+        if (cached.isFresh) return;
+      }
+
       try {
-        const response = await fetch('/api/assistance-requests');
+        const params = new URLSearchParams({
+          page: String(pagination.page),
+          pageSize: String(pagination.pageSize),
+        });
+        const response = await fetch(`/api/assistance-requests?${params.toString()}`);
         const result = await response.json();
 
         if (!response.ok || result?.error) {
@@ -418,26 +447,40 @@ export default function RequestsPage() {
         });
 
         setRequests(mapped);
+        const nextPagination = {
+          page: result.meta?.page || pagination.page,
+          pageSize: result.meta?.pageSize || pagination.pageSize,
+          total: result.meta?.total ?? mapped.length,
+          totalPages: result.meta?.totalPages || 1,
+        };
+        setPagination((prev) => ({ ...prev, ...nextPagination }));
+        setClientCache(cacheKey, { requests: mapped, pagination: nextPagination });
       } catch (err) {
         console.error('Failed to load assistance requests:', err);
-        setRequests([]);
-        openAlert({
-          title: 'Load failed',
-          message: err?.message || 'Failed to load assistance requests. Please try again.',
-          variant: 'error',
-        });
+        if (!hasCachedData) {
+          setRequests([]);
+          openAlert({
+            title: 'Load failed',
+            message: err?.message || 'Failed to load assistance requests. Please try again.',
+            variant: 'error',
+          });
+        }
       } finally {
-        setLoading(false);
+        if (!hasCachedData) setLoading(false);
       }
     };
 
     loadRequests();
-  }, [realtimeRefreshKey, requirementsByType]);
+  }, [pagination.page, pagination.pageSize, realtimeRefreshKey, requirementsByType]);
 
   useEffect(() => {
     if (!supabase) return undefined;
 
-    const refresh = () => setRealtimeRefreshKey((value) => value + 1);
+    const refresh = () => {
+      clearClientCachePrefix('admin-');
+      clearClientCachePrefix('beneficiary-dashboard:');
+      setRealtimeRefreshKey((value) => value + 1);
+    };
     const channels = [
       realtimeHelpers.subscribeToTable('assistance_requests', refresh),
       realtimeHelpers.subscribeToTable('residents', refresh),
@@ -628,6 +671,9 @@ export default function RequestsPage() {
       if (!response.ok || result?.error) {
         throw new Error(result?.error || 'Failed to update request status.');
       }
+
+      clearClientCachePrefix('admin-');
+      clearClientCachePrefix('beneficiary-dashboard:');
 
       const updatedProcessedBy = result?.data?.processed_by;
       const updatedRemarks = result?.data?.decision_remarks;
@@ -1052,8 +1098,13 @@ export default function RequestsPage() {
 
         <DataTableFooter
           showing={filteredRequests.length}
-          total={requests.length}
+          total={pagination.total}
           itemName="requests"
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          totalPages={pagination.totalPages}
+          onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+          onPageSizeChange={(pageSize) => setPagination((prev) => ({ ...prev, page: 1, pageSize }))}
         />
       </Card>
 
