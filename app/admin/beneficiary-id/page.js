@@ -78,6 +78,11 @@ function getAssistanceTypeLabel(row) {
   return String(row?.assistance_type || row?.service_type || '').trim() || 'Assistance';
 }
 
+function normalizeCardReferenceInput(value) {
+  const text = String(value || '');
+  return text.includes('.') ? text.trim() : text.trim().toUpperCase();
+}
+
 function InfoRow({ label, value }) {
   return (
     <div className={styles.infoRow}>
@@ -203,20 +208,20 @@ export default function BeneficiaryIdVerifyPage() {
     <div className={styles.page}>
       <PageHeader
         title="Verify Beneficiary ID (QR)"
-        subtitle="Paste or scan the QR token to confirm if the beneficiary ID is valid and not expired/revoked."
+        subtitle="Scan the QR or enter the card reference number to verify if the beneficiary ID is valid and not expired/revoked."
       />
 
       <Card>
-        <label className={styles.label} htmlFor="qrToken">
-          QR Token
+        <label className={styles.label} htmlFor="cardRef">
+          Card Reference
         </label>
-        <textarea
-          id="qrToken"
-          className={styles.textarea}
+        <input
+          id="cardRef"
+          className={styles.input}
+          type="text"
           value={token}
-          onChange={(e) => setToken(e.target.value)}
-          placeholder="Paste the scanned QR token here…"
-          rows={4}
+          onChange={(e) => setToken(normalizeCardReferenceInput(e.target.value))}
+          placeholder="Enter card reference"
         />
 
         <div className={styles.actions}>
@@ -253,6 +258,8 @@ export default function BeneficiaryIdVerifyPage() {
                   Reason:{' '}
                   {result.reason === 'not_setup'
                     ? 'QR ID not enabled (setup required)'
+                    : result.reason === 'card_not_found'
+                    ? 'Card reference not found'
                     : String(result.reason).replace(/_/g, ' ')}
                 </span>
               )}
@@ -631,7 +638,7 @@ function QrScanner({ onDetected, onClose }) {
       <div className={styles.scanHint}>
         {starting
           ? 'Starting camera…'
-          : 'Point the camera at the QR code. The token will be filled automatically.'}
+          : 'Point the camera at the QR code. Verification will start automatically.'}
       </div>
     </div>
   );

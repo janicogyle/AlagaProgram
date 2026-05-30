@@ -1198,11 +1198,12 @@ export default function ResidentsPage() {
         return;
       }
 
+      const cardReference = String(card.id || '').slice(0, 8).toUpperCase();
       const qrcodeMod = await import('qrcode');
       const QRCode = qrcodeMod.default ?? qrcodeMod;
-      const qrUrl = await QRCode.toDataURL(token, { margin: 1, width: 260 });
+      const qrUrl = await QRCode.toDataURL(cardReference, { margin: 1, width: 260 });
 
-      setIssuedCard({ token, card, qrUrl });
+      setIssuedCard({ token, card, cardReference, qrUrl });
       setCardModalOpen(true);
     } catch (error) {
       const msg = String(error?.message || error || 'Unknown error');

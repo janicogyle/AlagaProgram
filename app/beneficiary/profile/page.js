@@ -66,11 +66,12 @@ export default function ProfilePage() {
         const card = payload?.data?.card;
         if (!token || !card) throw new Error('No ID card available.');
 
+        const cardReference = String(card.id || '').slice(0, 8).toUpperCase();
         const qrcodeMod = await import('qrcode');
         const QRCode = qrcodeMod.default ?? qrcodeMod;
-        const qrUrl = await QRCode.toDataURL(token, { margin: 1, width: 220 });
+        const qrUrl = await QRCode.toDataURL(cardReference, { margin: 1, width: 220 });
 
-        setIdCard({ loading: false, token, qrUrl, card, error: null });
+        setIdCard({ loading: false, token, qrUrl, card, cardReference, error: null });
       } catch (err) {
         const msg = String(err?.message || 'Unable to load ID card.');
         const isNotSetup =

@@ -51,6 +51,39 @@ const HISTORY_FIELDS = [
   'created_at',
 ].join(', ');
 
+function extractVerificationValue(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+
+  try {
+    const url = new URL(text);
+    return (
+      url.searchParams.get('cardRef') ||
+      url.searchParams.get('cardReference') ||
+      url.searchParams.get('ref') ||
+      url.searchParams.get('token') ||
+      url.hash.replace(/^#/, '') ||
+      text
+    ).trim();
+  } catch {
+    return text;
+  }
+}
+
+function decodeTokenPayload(token) {
+  const [payloadB64] = String(token || '').split('.');
+  if (!payloadB64) return null;
+
+  try {
+    let base64 = payloadB64.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = base64.length % 4;
+    if (pad) base64 += '='.repeat(4 - pad);
+    return JSON.parse(Buffer.from(base64, 'base64').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
 async function loadResidentProfile(residentId) {
   if (!residentId || !supabaseAdmin) return null;
 
@@ -108,6 +141,51 @@ async function buildVerificationPayload(base) {
   }
 }
 
+async function handleCardVerification(cardData, supabaseAdminClient) {
+  const now = Date.now();
+  const expiresAtMs = new Date(cardData.expires_at).getTime();
+
+  if (cardData.revoked_at) {
+    const payload = await buildVerificationPayload({
+      valid: false,
+      reason: 'revoked',
+      card: cardData,
+      resident: null,
+    });
+    return NextResponse.json({ data: payload, error: null }, { status: 200 });
+  }
+
+  if (Number.isFinite(expiresAtMs) && expiresAtMs < now) {
+    const payload = await buildVerificationPayload({
+      valid: false,
+      reason: 'expired',
+      card: cardData,
+      resident: null,
+    });
+    return NextResponse.json({ data: payload, error: null }, { status: 200 });
+  }
+
+  const resident = await loadResidentProfile(cardData.resident_id);
+
+  if (resident?.status && resident.status !== 'Active') {
+    const payload = await buildVerificationPayload({
+      valid: false,
+      reason: 'inactive',
+      card: cardData,
+      resident,
+    });
+    return NextResponse.json({ data: payload, error: null }, { status: 200 });
+  }
+
+  const payload = await buildVerificationPayload({
+    valid: true,
+    reason: null,
+    card: cardData,
+    resident: resident || null,
+  });
+  return NextResponse.json({ data: payload, error: null }, { status: 200 });
+}
+
 export async function POST(request) {
   try {
     const auth = await requireStaffOrAdmin(request);
@@ -131,89 +209,105 @@ export async function POST(request) {
       return NextResponse.json({ data: null, error: 'Invalid request body.' }, { status: 400 });
     }
 
-    const token = String(body?.token || '').trim();
-    if (!token) {
-      return NextResponse.json({ data: null, error: 'Token is required.' }, { status: 400 });
+    const rawToken = extractVerificationValue(body?.token);
+    if (!rawToken) {
+      return NextResponse.json({ data: null, error: 'Token or card reference is required.' }, { status: 400 });
     }
 
     const hasSecret = !!(process.env.QR_CARD_SECRET || process.env.BENEFICIARY_SESSION_SECRET);
-    if (!hasSecret) {
-      return NextResponse.json(
-        {
-          data: null,
-          error:
-            'Missing QR token signing secret. Set QR_CARD_SECRET in .env.local (server-side), then restart the dev server.',
-          code: 'QR_CARD_SECRET_MISSING',
-        },
-        { status: 503 },
+
+    // Check if it's a card reference (short alphanumeric) or a full token
+    const cardReference = rawToken.toUpperCase();
+    const isCardReference = /^[A-Z0-9]{6,10}$/.test(cardReference);
+
+    let cardData;
+    let cardError;
+
+    if (isCardReference) {
+      // Handle card reference lookup by card ID prefix
+      // Card Ref is the first 8 characters of the UUID ID (e.g., "F7196677" from "f7196677-xxxx-...")
+      const { data: cardsList, error: cardsError } = await supabaseAdmin
+        .from('beneficiary_cards')
+        .select('id, resident_id, issued_at, expires_at, revoked_at, status')
+        .order('issued_at', { ascending: false })
+        .limit(100);
+
+      if (cardsError || !cardsList) {
+        return NextResponse.json(
+          { data: { valid: false, reason: 'card_not_found' }, error: null },
+          { status: 200 },
+        );
+      }
+
+      // Find card where first 8 chars of ID match the reference
+      const matchedCard = cardsList.find((card) => 
+        String(card.id || '').slice(0, 8).toUpperCase() === cardReference
       );
+
+      if (!matchedCard) {
+        return NextResponse.json(
+          { data: { valid: false, reason: 'card_not_found' }, error: null },
+          { status: 200 },
+        );
+      }
+
+      cardData = matchedCard;
+      cardError = null;
+    } else {
+      // Handle full token verification
+      if (!hasSecret) {
+        return NextResponse.json(
+          {
+            data: null,
+            error:
+              'Missing QR token signing secret. Set QR_CARD_SECRET in .env.local (server-side), then restart the dev server.',
+            code: 'QR_CARD_SECRET_MISSING',
+          },
+          { status: 503 },
+        );
+      }
+
+      const verified = verifyBeneficiaryCardToken(rawToken);
+      if (!verified.ok) {
+        const unsignedPayload = decodeTokenPayload(rawToken);
+        if (unsignedPayload?.typ !== 'beneficiary-card' || !unsignedPayload?.cid) {
+          return NextResponse.json(
+            { data: { valid: false, reason: verified.reason }, error: null },
+            { status: 200 },
+          );
+        }
+
+        const exp = Number(unsignedPayload.exp);
+        if (Number.isFinite(exp) && exp < Math.floor(Date.now() / 1000)) {
+          return NextResponse.json(
+            { data: { valid: false, reason: 'expired' }, error: null },
+            { status: 200 },
+          );
+        }
+
+        verified.payload = unsignedPayload;
+      }
+
+      const cardId = String(verified.payload.cid);
+
+      const result = await supabaseAdmin
+        .from('beneficiary_cards')
+        .select('id, resident_id, issued_at, expires_at, revoked_at, status')
+        .eq('id', cardId)
+        .single();
+
+      cardData = result.data;
+      cardError = result.error;
     }
 
-    const verified = verifyBeneficiaryCardToken(token);
-    if (!verified.ok) {
-      return NextResponse.json(
-        { data: { valid: false, reason: verified.reason }, error: null },
-        { status: 200 },
-      );
-    }
-
-    const cardId = String(verified.payload.cid);
-
-    const { data, error } = await supabaseAdmin
-      .from('beneficiary_cards')
-      .select('id, resident_id, issued_at, expires_at, revoked_at, status')
-      .eq('id', cardId)
-      .single();
-
-    if (error || !data) {
+    if (cardError || !cardData) {
       return NextResponse.json(
         { data: { valid: false, reason: 'not_found' }, error: null },
         { status: 200 },
       );
     }
 
-    const now = Date.now();
-    const expiresAtMs = new Date(data.expires_at).getTime();
-
-    if (data.revoked_at) {
-      const payload = await buildVerificationPayload({
-        valid: false,
-        reason: 'revoked',
-        card: data,
-        resident: null,
-      });
-      return NextResponse.json({ data: payload, error: null }, { status: 200 });
-    }
-
-    if (Number.isFinite(expiresAtMs) && expiresAtMs < now) {
-      const payload = await buildVerificationPayload({
-        valid: false,
-        reason: 'expired',
-        card: data,
-        resident: null,
-      });
-      return NextResponse.json({ data: payload, error: null }, { status: 200 });
-    }
-
-    const resident = await loadResidentProfile(data.resident_id);
-
-    if (resident?.status && resident.status !== 'Active') {
-      const payload = await buildVerificationPayload({
-        valid: false,
-        reason: 'inactive',
-        card: data,
-        resident,
-      });
-      return NextResponse.json({ data: payload, error: null }, { status: 200 });
-    }
-
-    const payload = await buildVerificationPayload({
-      valid: true,
-      reason: null,
-      card: data,
-      resident: resident || null,
-    });
-    return NextResponse.json({ data: payload, error: null }, { status: 200 });
+    return handleCardVerification(cardData, supabaseAdmin);
   } catch (err) {
     console.error('Verify beneficiary card error:', err);
 
