@@ -295,11 +295,7 @@ export default function ReportsPage() {
         throw new Error(errorMessage);
       }
 
-      if (selectedFormat === 'csv') {
-        const blob = await response.blob();
-        downloadBlob(blob, `${baseName}.csv`);
-        setStatus({ type: 'success', message: `CSV report "${selectedReport.title}" downloaded successfully!` });
-      } else if (selectedFormat === 'xlsx') {
+      if (selectedFormat === 'xlsx') {
         const blob = await response.blob();
         const filename = `${selectedReport.id}_summary_${reportYear}_${dateStr}.xlsx`;
         downloadBlob(blob, filename);
@@ -346,7 +342,7 @@ export default function ReportsPage() {
           {status.message}
         </div>
       )}
-      <Card title="Generate Reports" subtitle="Select a report type to generate and export reports (PDF/CSV/Excel)">
+      <Card title="Generate Reports" subtitle="Select a report type to generate and export reports (PDF/Excel)">
         <div className={styles.reportGrid}>
           {reportTypes.map((report) => (
             <button
@@ -458,19 +454,6 @@ export default function ReportsPage() {
                   Excel
                 </button>
 
-                <button
-                  type="button"
-                  className={`${styles.formatBtn} ${selectedFormat === 'csv' ? styles.formatBtnActive : ''}`}
-                  onClick={() => setSelectedFormat('csv')}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <path d="M8 13h8" />
-                    <path d="M8 17h8" />
-                  </svg>
-                  CSV
-                </button>
               </div>
             </div>
           </div>

@@ -471,8 +471,11 @@ export default function BeneficiarySignupPage() {
           setStatus({ type: 'error', message: 'Please provide a valid birthday.' });
           return false;
         }
-        if (age < 18) {
-          setStatus({ type: 'error', message: 'You must be at least 18 years old to sign up.' });
+        if (age < 18 && !form.isPwd) {
+          setStatus({
+            type: 'error',
+            message: 'You must be at least 18 years old to sign up unless classified as PWD.',
+          });
           return false;
         }
         if (form.isSeniorCitizen && age < 60) {

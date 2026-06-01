@@ -599,8 +599,8 @@ export default function RegistrationPage() {
       const ageValue = calculateAge(formData.birthday);
       if (ageValue === '' || Number.isNaN(ageValue) || ageValue < 0) {
         newErrors.birthday = 'Please provide a valid birthday.';
-      } else if (ageValue < 18) {
-        newErrors.birthday = 'Registrant must be at least 18 years old.';
+      } else if (ageValue < 18 && !formData.sectors.pwd) {
+        newErrors.birthday = 'Registrant must be at least 18 years old unless classified as PWD.';
       } else if (formData.sectors.seniorCitizen && ageValue < 60) {
         newErrors.sectors = 'Senior Citizen requires age 60 or above.';
       }

@@ -28,7 +28,8 @@ const variants = {
 };
 
 export default function Badge({ children, variant }) {
-  const displayText = children === 'Rejected' ? 'Archived' : children;
+  const displayText =
+    children === 'Rejected' || children === 'Archived' ? 'Incomplete' : children;
   const colorVariant = variant || variants[displayText] || variants[children] || 'default';
 
   return (

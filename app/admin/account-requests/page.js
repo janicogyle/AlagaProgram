@@ -22,8 +22,11 @@ const statusOptions = [
   { value: "", label: "All Status" },
   { value: "Pending", label: "Pending" },
   { value: "Approved", label: "Approved" },
-  { value: "Archived", label: "Archived" },
+  { value: "Incomplete", label: "Incomplete" },
 ];
+
+const normalizeStatus = (status) =>
+  status === "Rejected" || status === "Archived" ? "Incomplete" : status;
 
 function formatDate(dateString) {
   if (!dateString) return "-";
@@ -155,9 +158,10 @@ export default function AccountRequestsPage() {
         setRequests([]);
         openAlert({ title: 'Fetch failed', message: msg, variant: 'error' });
       } else {
-        const normalized = (result.data || []).map((r) =>
-          r?.status === "Rejected" ? { ...r, status: "Archived" } : r,
-        );
+        const normalized = (result.data || []).map((r) => ({
+          ...r,
+          status: normalizeStatus(r?.status),
+        }));
         setRequests(normalized);
         setPagination((prev) => ({
           ...prev,
@@ -204,7 +208,8 @@ export default function AccountRequestsPage() {
         throw new Error(json?.error || 'Failed to load signup details.');
       }
 
-      setRequestDetails(json?.data || null);
+      const details = json?.data || null;
+      setRequestDetails(details ? { ...details, status: normalizeStatus(details.status) } : null);
     } catch (err) {
       console.warn('Failed to load signup details:', err?.message || err);
       setRequestDetails(null);
@@ -352,7 +357,7 @@ export default function AccountRequestsPage() {
     if (!requestId) {
       console.warn('Selected request has no id:', selectedRequest);
       openAlert({
-        title: 'Archive failed',
+        title: 'Mark incomplete failed',
         message: 'Request ID is missing.',
         variant: 'error',
       });
@@ -375,20 +380,20 @@ export default function AccountRequestsPage() {
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok || result.error) {
-        throw new Error(result.error || 'Failed to archive request');
+        throw new Error(result.error || 'Failed to mark request incomplete');
       }
 
       handleCloseModal();
       await fetchRequests();
       openAlert({
-        title: 'Rejected',
-        message: 'Request rejected successfully.' + formatSmsNotificationResult(result.sms),
+        title: 'Incomplete',
+        message: 'Request marked incomplete successfully.' + formatSmsNotificationResult(result.sms),
         variant: result.sms?.ok === false && !result.sms?.skipped ? 'warning' : 'success',
       });
     } catch (error) {
-      console.warn('Archive error:', error?.message || error);
+      console.warn('Mark incomplete error:', error?.message || error);
       openAlert({
-        title: 'Archive failed',
+        title: 'Mark incomplete failed',
         message: error.message || 'Unknown error',
         variant: 'error',
       });
@@ -404,7 +409,7 @@ export default function AccountRequestsPage() {
     if (!requestId) {
       console.warn('Selected request has no id:', selectedRequest);
       openAlert({
-        title: 'Unarchive failed',
+        title: 'Reopen failed',
         message: 'Request ID is missing.',
         variant: 'error',
       });
@@ -427,20 +432,20 @@ export default function AccountRequestsPage() {
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok || result.error) {
-        throw new Error(result.error || 'Failed to unarchive request');
+        throw new Error(result.error || 'Failed to reopen request');
       }
 
       handleCloseModal();
       await fetchRequests();
       openAlert({
-        title: 'Unarchived',
+        title: 'Reopened',
         message: 'Request moved back to Pending.',
         variant: 'success',
       });
     } catch (error) {
-      console.warn('Unarchive error:', error?.message || error);
+      console.warn('Reopen error:', error?.message || error);
       openAlert({
-        title: 'Unarchive failed',
+        title: 'Reopen failed',
         message: error.message || 'Unknown error',
         variant: 'error',
       });
@@ -509,12 +514,12 @@ export default function AccountRequestsPage() {
           variant={
             status === "Approved"
               ? "success"
-              : status === "Archived" || status === "Rejected"
-              ? "secondary"
+              : status === "Incomplete"
+              ? "danger"
               : "warning"
           }
         >
-          {status === "Archived" || status === "Rejected" ? "Archived" : status}
+          {status === "Incomplete" ? "Incomplete" : status}
         </Badge>
       ),
     },
@@ -544,18 +549,18 @@ export default function AccountRequestsPage() {
                 size="small"
                 onClick={() => handleOpenReject(row)}
               >
-                Archive
+                Mark Incomplete
               </Button>
             </>
           )}
 
-          {(row.status === "Archived" || row.status === "Rejected") && (
+          {row.status === "Incomplete" && (
             <Button
               variant="outline"
               size="small"
               onClick={() => handleOpenUnarchive(row)}
             >
-              Unarchive
+              Reopen
             </Button>
           )}
         </div>
@@ -633,12 +638,12 @@ export default function AccountRequestsPage() {
                       variant={
                         request.status === "Approved"
                           ? "success"
-                          : request.status === "Archived" || request.status === "Rejected"
-                          ? "secondary"
+                          : request.status === "Incomplete"
+                          ? "danger"
                           : "warning"
                       }
                     >
-                      {request.status === "Archived" || request.status === "Rejected" ? "Archived" : request.status}
+                      {request.status === "Incomplete" ? "Incomplete" : request.status}
                     </Badge>
                   </div>
                   <div className={styles.cardActions}>
@@ -666,21 +671,21 @@ export default function AccountRequestsPage() {
                         <button 
                           className={styles.rejectBtn}
                           onClick={() => handleOpenReject(request)}
-                          title="Archive"
+                          title="Mark incomplete"
                         >
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M21 8v13H3V8" />
-                            <path d="M1 3h22v5H1z" />
-                            <path d="M10 12h4" />
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="15" y1="9" x2="9" y2="15" />
+                            <line x1="9" y1="9" x2="15" y2="15" />
                           </svg>
                         </button>
                       </>
                     )}
-                    {(request.status === "Archived" || request.status === "Rejected") && (
+                    {request.status === "Incomplete" && (
                       <button
                         className={styles.releaseBtn}
                         onClick={() => handleOpenUnarchive(request)}
-                        title="Unarchive"
+                        title="Reopen"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M21 8v13H3V8" />
@@ -768,14 +773,12 @@ export default function AccountRequestsPage() {
                 variant={
                   detailsRequest.status === "Approved"
                     ? "success"
-                    : detailsRequest.status === "Archived" || detailsRequest.status === "Rejected"
-                    ? "secondary"
+                    : detailsRequest.status === "Incomplete"
+                    ? "danger"
                     : "warning"
                 }
               >
-                {detailsRequest.status === "Archived" || detailsRequest.status === "Rejected"
-                  ? "Archived"
-                  : detailsRequest.status}
+                {detailsRequest.status === "Incomplete" ? "Incomplete" : detailsRequest.status}
               </Badge>
             </div>
 
@@ -893,7 +896,7 @@ export default function AccountRequestsPage() {
                     className={styles.detailsActionBtn}
                     onClick={() => handleOpenReject(detailsRequest)}
                   >
-                    Archive
+                    Mark Incomplete
                   </Button>
                   <Button
                     className={styles.detailsActionBtn}
@@ -909,14 +912,14 @@ export default function AccountRequestsPage() {
               </div>
             )}
 
-            {(detailsRequest.status === "Archived" || detailsRequest.status === "Rejected") && (
+            {detailsRequest.status === "Incomplete" && (
               <div className={styles.detailsActionsSection}>
                 <Button
                   variant="outline"
                   className={styles.detailsActionBtnSingle}
                   onClick={() => handleOpenUnarchive(detailsRequest)}
                 >
-                  Unarchive
+                  Reopen
                 </Button>
               </div>
             )}
@@ -958,14 +961,14 @@ export default function AccountRequestsPage() {
       <Modal
         isOpen={isRejectModalOpen}
         onClose={handleCloseModal}
-        title="Archive Signup Request"
+        title="Mark Signup Request Incomplete"
         footer={
           <>
             <Button variant="secondary" onClick={handleCloseModal} disabled={processing}>
               Cancel
             </Button>
             <Button variant="danger" onClick={handleConfirmReject} disabled={processing}>
-              {processing ? 'Archiving…' : 'Confirm Archive'}
+              {processing ? 'Marking…' : 'Confirm Mark Incomplete'}
             </Button>
           </>
         }
@@ -973,11 +976,11 @@ export default function AccountRequestsPage() {
         {selectedRequest && (
           <div className={styles.confirmStack}>
             <p className={`${styles.confirmText} ${styles.noMargin}`}>
-              Are you sure you want to archive this signup request for
+              Are you sure you want to mark this signup request as incomplete for
               <strong> {buildFullName(selectedRequest)} </strong>?
             </p>
             <Input
-              label="Rejection reason (optional, sent via SMS)"
+              label="Reason for incomplete (optional, sent via SMS)"
               name="archiveNotes"
               value={archiveNotes}
               onChange={(e) => setArchiveNotes(e.target.value)}
@@ -991,14 +994,14 @@ export default function AccountRequestsPage() {
       <Modal
         isOpen={isUnarchiveModalOpen}
         onClose={handleCloseModal}
-        title="Unarchive Signup Request"
+        title="Reopen Signup Request"
         footer={
           <>
             <Button variant="secondary" onClick={handleCloseModal} disabled={processing}>
               Cancel
             </Button>
             <Button onClick={handleConfirmUnarchive} disabled={processing}>
-              {processing ? 'Unarchiving…' : 'Confirm Unarchive'}
+              {processing ? 'Reopening…' : 'Confirm Reopen'}
             </Button>
           </>
         }
@@ -1010,11 +1013,11 @@ export default function AccountRequestsPage() {
               <strong> {buildFullName(selectedRequest)} </strong>?
             </p>
             <Input
-              label="Unarchive note (optional)"
+              label="Reopen note (optional)"
               name="unarchiveNotes"
               value={archiveNotes}
               onChange={(e) => setArchiveNotes(e.target.value)}
-              placeholder="e.g. Archived by mistake"
+              placeholder="e.g. Marked incomplete by mistake"
             />
           </div>
         )}

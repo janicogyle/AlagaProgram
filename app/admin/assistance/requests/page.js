@@ -47,7 +47,7 @@ const statusOptions = [
   { value: 'Resubmitted', label: 'Resubmitted' },
   { value: 'Approved', label: 'Approved' },
   { value: 'Released', label: 'Released' },
-  { value: 'Archived', label: 'Archived' },
+  { value: 'Incomplete', label: 'Incomplete' },
 ];
 
 const isCheckedRequirement = (item) => {
@@ -216,7 +216,9 @@ export default function RequestsPage() {
     setAlertState((prev) => ({ ...prev, open: false }));
   };
 
-  const getStatusLabel = (dbStatus) => (dbStatus === 'Rejected' ? 'Archived' : dbStatus);
+const isIncompleteStatus = (status) =>
+  status === 'Rejected' || status === 'Archived' || status === 'Incomplete';
+const getStatusLabel = (dbStatus) => (isIncompleteStatus(dbStatus) ? 'Incomplete' : dbStatus);
 
   useEffect(() => {
     setPagination((prev) => ({ ...prev, page: 1 }));
@@ -610,7 +612,7 @@ export default function RequestsPage() {
     ) {
       setStatus({
         type: 'error',
-        message: 'Only pending/resubmitted requests can be approved or archived.',
+        message: 'Only pending/resubmitted requests can be approved or marked incomplete.',
       });
       return;
     }
@@ -623,10 +625,10 @@ export default function RequestsPage() {
       return;
     }
 
-    if (decisionType === 'unarchive' && selectedRequest.status !== 'Rejected') {
+    if (decisionType === 'unarchive' && !isIncompleteStatus(selectedRequest.status)) {
       setStatus({
         type: 'error',
-        message: 'Only archived requests can be reopened.',
+        message: 'Only incomplete requests can be reopened.',
       });
       return;
     }
@@ -707,8 +709,8 @@ export default function RequestsPage() {
       const actionLabel =
         statusLabel === 'Approved'
           ? 'approved'
-          : statusLabel === 'Archived'
-            ? 'archived'
+          : statusLabel === 'Incomplete'
+            ? 'marked incomplete'
             : statusLabel === 'Pending'
               ? 'reopened'
               : statusLabel === 'Resubmitted'
@@ -831,17 +833,17 @@ export default function RequestsPage() {
               <button
                 className={styles.archiveBtn}
                 onClick={() => handleOpenDecision(row, 'archive')}
-                title="Archive request"
+                title="Mark incomplete"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 8v13H3V8" />
-                  <path d="M1 3h22v5H1z" />
-                  <path d="M10 12h4" />
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
                 </svg>
               </button>
             </>
           )}
-          {row.status === 'Rejected' && (
+          {isIncompleteStatus(row.status) && (
             <button
               className={styles.releaseBtn}
               onClick={() => handleOpenDecision(row, 'unarchive')}
@@ -862,7 +864,10 @@ export default function RequestsPage() {
               title="Mark as Released"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="M8 3h5a4 4 0 0 1 0 8H8" />
+                <line x1="8" y1="3" x2="8" y2="21" />
+                <line x1="8" y1="7" x2="16" y2="7" />
+                <line x1="8" y1="10" x2="16" y2="10" />
               </svg>
             </button>
           )}
@@ -904,7 +909,10 @@ export default function RequestsPage() {
         <div className={styles.summaryCard}>
           <div className={styles.summaryIcon} style={{ backgroundColor: '#dcfce7', color: '#16a34a' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <path d="M8 3h5a4 4 0 0 1 0 8H8" />
+              <line x1="8" y1="3" x2="8" y2="21" />
+              <line x1="8" y1="7" x2="16" y2="7" />
+              <line x1="8" y1="10" x2="16" y2="10" />
             </svg>
           </div>
           <div className={styles.summaryInfo}>
@@ -921,8 +929,10 @@ export default function RequestsPage() {
             </svg>
           </div>
           <div className={styles.summaryInfo}>
-            <span className={styles.summaryValue}>{requests.filter(r => r.status === 'Rejected').length}</span>
-            <span className={styles.summaryLabel}>Archived</span>
+            <span className={styles.summaryValue}>
+              {requests.filter((r) => isIncompleteStatus(r.status)).length}
+            </span>
+            <span className={styles.summaryLabel}>Incomplete</span>
           </div>
         </div>
       </div>
@@ -1024,17 +1034,17 @@ export default function RequestsPage() {
                         <button
                           className={styles.archiveBtn}
                           onClick={() => handleOpenDecision(request, 'archive')}
-                          title="Archive request"
+                          title="Mark incomplete"
                         >
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M21 8v13H3V8" />
-                            <path d="M1 3h22v5H1z" />
-                            <path d="M10 12h4" />
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="15" y1="9" x2="9" y2="15" />
+                            <line x1="9" y1="9" x2="15" y2="15" />
                           </svg>
                         </button>
                       </>
                     )}
-                    {request.status === 'Rejected' && (
+                    {isIncompleteStatus(request.status) && (
                       <button
                         className={styles.releaseBtn}
                         onClick={() => handleOpenDecision(request, 'unarchive')}
@@ -1055,7 +1065,10 @@ export default function RequestsPage() {
                         title="Mark as Released"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                          <path d="M8 3h5a4 4 0 0 1 0 8H8" />
+                          <line x1="8" y1="3" x2="8" y2="21" />
+                          <line x1="8" y1="7" x2="16" y2="7" />
+                          <line x1="8" y1="10" x2="16" y2="10" />
                         </svg>
                       </button>
                     )}
@@ -1121,7 +1134,7 @@ export default function RequestsPage() {
                 Close
               </Button>
               <Button variant="secondary" onClick={() => handleOpenDecision(selectedRequest, 'archive')}>
-                Archive
+                Mark Incomplete
               </Button>
               <Button onClick={() => handleOpenDecision(selectedRequest, 'approve')}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1130,7 +1143,7 @@ export default function RequestsPage() {
                 Approve
               </Button>
             </div>
-          ) : selectedRequest?.status === 'Rejected' ? (
+          ) : isIncompleteStatus(selectedRequest?.status) ? (
             <div className={styles.modalFooter}>
               <Button variant="secondary" onClick={() => setShowViewModal(false)}>
                 Close
@@ -1388,9 +1401,9 @@ export default function RequestsPage() {
           decisionType === 'approve'
             ? 'Approve Request'
             : decisionType === 'archive'
-              ? 'Archive Request'
+              ? 'Mark Incomplete Request'
               : decisionType === 'unarchive'
-                ? 'Unarchive Request'
+                ? 'Reopen Request'
                 : 'Mark as Released'
         }
         size="small"
@@ -1413,7 +1426,7 @@ export default function RequestsPage() {
                 : decisionType === 'approve'
                   ? 'Confirm Approval'
                   : decisionType === 'archive'
-                    ? 'Confirm Archive'
+                    ? 'Confirm Mark Incomplete'
                     : decisionType === 'unarchive'
                       ? 'Confirm Reopen'
                       : 'Confirm Release'}
@@ -1430,13 +1443,13 @@ export default function RequestsPage() {
                   decisionType === 'approve'
                     ? '#dcfce7'
                     : decisionType === 'archive'
-                      ? '#fef3c7'
+                      ? '#fee2e2'
                       : '#dbeafe',
                 color:
                   decisionType === 'approve'
                     ? '#16a34a'
                     : decisionType === 'archive'
-                      ? '#d97706'
+                      ? '#dc2626'
                       : '#2563eb',
               }}
             >
@@ -1446,9 +1459,9 @@ export default function RequestsPage() {
                 </svg>
               ) : decisionType === 'archive' ? (
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 8v13H3V8" />
-                  <path d="M1 3h22v5H1z" />
-                  <path d="M10 12h4" />
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
                 </svg>
               ) : decisionType === 'unarchive' ? (
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1459,7 +1472,10 @@ export default function RequestsPage() {
                 </svg>
               ) : (
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  <path d="M8 3h5a4 4 0 0 1 0 8H8" />
+                  <line x1="8" y1="3" x2="8" y2="21" />
+                  <line x1="8" y1="7" x2="16" y2="7" />
+                  <line x1="8" y1="10" x2="16" y2="10" />
                 </svg>
               )}
             </div>
@@ -1467,9 +1483,9 @@ export default function RequestsPage() {
               {decisionType === 'approve'
                 ? 'Approve this assistance request?'
                 : decisionType === 'archive'
-                  ? 'Archive this assistance request?'
+                  ? 'Mark this assistance request as incomplete?'
                   : decisionType === 'unarchive'
-                    ? 'Unarchive this assistance request?'
+                    ? 'Reopen this assistance request?'
                     : 'Mark this assistance request as released?'}
             </h4>
             <p className={styles.decisionDesc}>
@@ -1480,7 +1496,7 @@ export default function RequestsPage() {
                 <>
                   <br />
                   <br />
-                  The request will be archived, not deleted. You can reopen it from the Archived list.
+                  The request will be marked incomplete, not deleted. You can reopen it from the Incomplete list.
                 </>
               ) : null}
             </p>

@@ -43,7 +43,7 @@ export async function POST(request) {
       );
     }
 
-    const validFormats = ['csv', 'pdf', 'xlsx'];
+    const validFormats = ['pdf', 'xlsx'];
     if (!validFormats.includes(format)) {
       return NextResponse.json(
         { data: null, error: `Invalid format. Must be one of: ${validFormats.join(', ')}.` },
@@ -167,15 +167,6 @@ async function handleSectorAssistanceSummary({ db, reportType, format, year }) {
     });
   }
 
-  if (format === 'csv') {
-    const csv = generateCashAssistanceCSV(rows);
-    return new NextResponse(csv, {
-      headers: {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="${filenamePrefix}.csv"`,
-      },
-    });
-  }
 
   return NextResponse.json({
     data: { rows, reportYear, total, sectorLabel: sector?.label || null },
@@ -217,72 +208,7 @@ function toDisplayName(value) {
   return s ? s.toUpperCase() : '';
 }
 
-function generateResidentCSV(data) {
-  const headers = [
-    'Control Number',
-    'Last Name',
-    'First Name',
-    'Middle Name',
-    'Birthday',
-    'Age',
-    'Sex',
-    'Contact Number',
-    'Address',
-    'Barangay',
-    'City',
-    'PWD',
-    'Senior Citizen',
-    'Solo Parent',
-    'Status',
-  ];
 
-  const rows = data.map((row) => [
-    row.control_number || '',
-    row.last_name || '',
-    row.first_name || '',
-    row.middle_name || '',
-    row.birthday || '',
-    row.age || '',
-    row.sex || '',
-    row.contact_number || '',
-    `${row.house_no || ''} ${row.street || ''}`.trim(),
-    row.barangay || '',
-    row.city || '',
-    row.is_pwd ? 'Yes' : 'No',
-    row.is_senior_citizen ? 'Yes' : 'No',
-    row.is_solo_parent ? 'Yes' : 'No',
-    row.status || '',
-  ]);
-
-  const csvRows = [
-    headers.join(','),
-    ...rows.map((row) => row.map((field) => `"${String(field).replace(/"/g, '""')}"`).join(',')),
-  ];
-
-  return csvRows.join('\n');
-}
-
-function generateCashAssistanceCSV(rows) {
-  const headers = ['NO.', 'DATE RELEASE', 'NAME', 'CA CONTROL FORM NO.', 'TYPE OF SERVICES', 'AMOUNT'];
-  const csvRows = [headers.join(',')];
-
-  for (const r of rows) {
-    const row = [
-      r.no,
-      r.dateRelease,
-      r.name,
-      r.controlNumber,
-      r.typeOfService,
-      (Number(r.amount) || 0).toFixed(2),
-    ];
-    csvRows.push(row.map((f) => `"${String(f).replace(/"/g, '""')}"`).join(','));
-  }
-
-  const total = rows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
-  csvRows.push(['TOTAL', '', '', '', '', total.toFixed(2)].map((f) => `"${String(f)}"`).join(','));
-
-  return csvRows.join('\n');
-}
 
 async function generateCashAssistanceXLSX({ rows, reportYear, total, sectorLabel }) {
   const workbook = new ExcelJS.Workbook();
