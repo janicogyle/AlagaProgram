@@ -691,7 +691,7 @@ export default function UsersPage() {
         {detailsState.user && (
           <div className={styles.modalDetails}>
             <p className={styles.modalDetailRow}>
-              <strong>Full Name:</strong> {detailsState.user.full_name}
+              <strong>Username:</strong> {detailsState.user.full_name}
             </p>
             <p className={styles.modalDetailRow}>
               <strong>Email:</strong> {detailsState.user.email}
@@ -732,7 +732,7 @@ export default function UsersPage() {
         <div className={styles.form}>
           <div className={styles.formGrid}>
             <Input
-              label="Full Name"
+              label="Username"
               name="fullName"
               value={editState.fullName}
               onChange={handleEditFieldChange}
@@ -857,7 +857,7 @@ export default function UsersPage() {
         <div className={styles.form}>
           <div className={styles.formGrid}>
             <Input
-              label="Full Name"
+              label="Username"
               name="fullName"
               value={form.fullName}
               onChange={handleFieldChange}
