@@ -157,7 +157,7 @@ export default function BeneficiaryHistoryPage() {
         <div className={styles.headerRow}>
           <h2>Requests</h2>
           {!hasActiveRequest && (
-            <Button href="/beneficiary/requests">New Request</Button>
+            <Button href="/beneficiary/requests" disabled={!cooldownInfo.isEligible}>New Request</Button>
           )}
         </div>
         <div className={styles.cooldownRow}>
