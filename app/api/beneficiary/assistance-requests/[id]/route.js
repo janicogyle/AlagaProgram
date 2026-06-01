@@ -6,7 +6,7 @@ import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/docu
 export const runtime = 'nodejs';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const BENEFICIARY_EDITABLE_STATUSES = new Set(['Pending', 'Resubmitted', 'Rejected']);
+const BENEFICIARY_EDITABLE_STATUSES = new Set(['Rejected']);
 
 const isCheckedRequirement = (row) => {
   const value = row?.checked;
@@ -84,7 +84,7 @@ export async function PATCH(request, { params }) {
 
     if (!BENEFICIARY_EDITABLE_STATUSES.has(existing.status)) {
       return NextResponse.json(
-        { data: null, error: 'Only pending, under review, or incomplete requests can be edited.' },
+        { data: null, error: 'Only incomplete requests can be edited.' },
         { status: 400 },
       );
     }

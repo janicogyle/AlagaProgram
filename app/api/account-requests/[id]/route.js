@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { createOrUpdateResident } from '@/lib/residents';
 import { sendAccountStatusSms } from '@/lib/smsNotify.server';
 import { generateNextBeneficiaryControlNumber } from '@/lib/controlNumbers.server';
+import {
+  getBeneficiaryCardsSetupHint,
+  isMissingBeneficiaryCardsTable,
+  issueBeneficiaryCard,
+} from '@/lib/beneficiaryCards.server';
 
 export const runtime = 'nodejs';
 
@@ -135,6 +139,40 @@ function parseValidIdUrls(value) {
     }
   }
   return [];
+}
+
+async function findResidentForSignupApproval(db, { requestId, contactNumber }) {
+  let hasAccountRequestIdColumn = true;
+
+  try {
+    const { data, error } = await db
+      .from('residents')
+      .select('id, account_request_id, contact_number')
+      .eq('account_request_id', requestId)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (data?.id) return { resident: data, hasAccountRequestIdColumn };
+  } catch (err) {
+    const missing = String(err?.message || '').toLowerCase().includes('account_request_id');
+    if (!missing) throw err;
+    hasAccountRequestIdColumn = false;
+  }
+
+  if (!contactNumber) return { resident: null, hasAccountRequestIdColumn };
+
+  const selectColumns = hasAccountRequestIdColumn ? 'id, account_request_id, contact_number' : 'id, contact_number';
+  const { data, error } = await db
+    .from('residents')
+    .select(selectColumns)
+    .eq('contact_number', contactNumber)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  return { resident: data || null, hasAccountRequestIdColumn };
 }
 
 export async function GET(request, { params }) {
@@ -390,55 +428,65 @@ export async function POST(request, { params }) {
     }
 
     if (finalAction === 'approve') {
+      let residentId = null;
+      let issuedCard = null;
+
       try {
-        const controlNumber = await generateNextBeneficiaryControlNumber(db);
-
         const contactNumber = accountRequest.contact_number;
+        const { resident: existingResident, hasAccountRequestIdColumn } = await findResidentForSignupApproval(db, {
+          requestId,
+          contactNumber,
+        });
 
-        // Enforce uniqueness: do not allow a contact number to be used more than once
-        try {
-          const { data: existingResident, error: existingResidentError } = await db
-            .from('residents')
-            .select('id')
-            .eq('contact_number', contactNumber)
-            .limit(1)
-            .maybeSingle();
-
-          if (!existingResidentError && existingResident) {
+        if (existingResident?.id) {
+          if (
+            hasAccountRequestIdColumn &&
+            existingResident.account_request_id &&
+            existingResident.account_request_id === requestId
+          ) {
+            residentId = existingResident.id;
+          } else {
             return NextResponse.json(
               { data: null, error: 'This contact number is already registered' },
               { status: 409 },
             );
           }
-        } catch {
-          // If residents table isn't readable here, rely on DB uniqueness (if present)
         }
 
-        await createOrUpdateResident({
-          control_number: controlNumber,
-          account_request_id: requestId,
-          first_name: accountRequest.first_name,
-          middle_name: accountRequest.middle_name,
-          last_name: accountRequest.last_name,
-          birthday: accountRequest.birthday,
-          age: accountRequest.age,
-          birthplace: accountRequest.birthplace,
-          sex: accountRequest.sex,
-          citizenship: LOCKED_CITIZENSHIP,
-          civil_status: accountRequest.civil_status,
-          contact_number: contactNumber,
-          house_no: accountRequest.house_no,
-          purok: accountRequest.purok,
-          street: accountRequest.street,
-          barangay: accountRequest.barangay || 'Sta. Rita',
-          city: accountRequest.city || 'Olongapo City',
-          valid_id_url: accountRequest.valid_id_url || parseValidIdUrls(accountRequest.valid_id_urls)[0] || null,
-          is_pwd: accountRequest.is_pwd,
-          is_senior_citizen: accountRequest.is_senior_citizen,
-          is_solo_parent: accountRequest.is_solo_parent,
-          status: 'Active',
-          password_hash: accountRequest.password_hash || null,
-        });
+        if (!residentId) {
+          const controlNumber = await generateNextBeneficiaryControlNumber(db);
+          const createdResident = await createOrUpdateResident({
+            control_number: controlNumber,
+            account_request_id: requestId,
+            first_name: accountRequest.first_name,
+            middle_name: accountRequest.middle_name,
+            last_name: accountRequest.last_name,
+            birthday: accountRequest.birthday,
+            age: accountRequest.age,
+            birthplace: accountRequest.birthplace,
+            sex: accountRequest.sex,
+            citizenship: LOCKED_CITIZENSHIP,
+            civil_status: accountRequest.civil_status,
+            contact_number: contactNumber,
+            house_no: accountRequest.house_no,
+            purok: accountRequest.purok,
+            street: accountRequest.street,
+            barangay: accountRequest.barangay || 'Sta. Rita',
+            city: accountRequest.city || 'Olongapo City',
+            valid_id_url: accountRequest.valid_id_url || parseValidIdUrls(accountRequest.valid_id_urls)[0] || null,
+            is_pwd: accountRequest.is_pwd,
+            is_senior_citizen: accountRequest.is_senior_citizen,
+            is_solo_parent: accountRequest.is_solo_parent,
+            status: 'Active',
+            password_hash: accountRequest.password_hash || null,
+          });
+
+          residentId = createdResident?.id || null;
+        }
+
+        if (!residentId) {
+          throw new Error('Resident account was created but its ID could not be resolved.');
+        }
       } catch (residentError) {
         console.error('Failed to create resident:', residentError);
 
@@ -495,6 +543,34 @@ export async function POST(request, { params }) {
         );
       }
 
+      try {
+        issuedCard = await issueBeneficiaryCard(db, residentId, { expiresInDays: 365 });
+      } catch (cardError) {
+        console.error('Failed to issue beneficiary QR card:', cardError);
+
+        if (isMissingBeneficiaryCardsTable(cardError)) {
+          return NextResponse.json(
+            { data: null, error: getBeneficiaryCardsSetupHint(), code: 'BENEFICIARY_CARDS_TABLE_MISSING' },
+            { status: 503 },
+          );
+        }
+
+        if (cardError?.code === 'QR_CARD_SECRET_MISSING') {
+          return NextResponse.json(
+            { data: null, error: cardError.message, code: cardError.code },
+            { status: 500 },
+          );
+        }
+
+        return NextResponse.json(
+          {
+            data: null,
+            error: 'Failed to issue beneficiary QR card: ' + (cardError?.message || 'Unknown error'),
+          },
+          { status: 500 },
+        );
+      }
+
       const { data, error } = await db
         .from('account_requests')
         .update({
@@ -517,7 +593,11 @@ export async function POST(request, { params }) {
       });
 
       return NextResponse.json({ 
-        data, 
+        data: {
+          ...data,
+          beneficiary_card: issuedCard?.card || null,
+          beneficiary_card_token: issuedCard?.token || null,
+        },
         error: null, 
         message: 'Account request approved and resident account created successfully.',
         sms,

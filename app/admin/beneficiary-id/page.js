@@ -78,6 +78,19 @@ function getAssistanceTypeLabel(row) {
   return String(row?.assistance_type || row?.service_type || '').trim() || 'Assistance';
 }
 
+function getRequestStatusLabel(status) {
+  if (status === 'Rejected') return 'Incomplete';
+  if (status === 'Resubmitted') return 'Under Review';
+  return displayValue(status);
+}
+
+function getRequestStatusVariant(status) {
+  if (status === 'Released' || status === 'Approved') return 'success';
+  if (status === 'Rejected') return 'danger';
+  if (status === 'Pending' || status === 'Resubmitted') return 'warning';
+  return 'secondary';
+}
+
 function normalizeCardReferenceInput(value) {
   const text = String(value || '');
   return text.includes('.') ? text.trim() : text.trim().toUpperCase();
@@ -161,6 +174,7 @@ export default function BeneficiaryIdVerifyPage() {
   const badge = result?.valid ? styles.badgeValid : styles.badgeInvalid;
   const resident = result?.resident;
   const releasedHistory = Array.isArray(result?.releasedHistory) ? result.releasedHistory : [];
+  const latestAssistanceRequest = result?.latestAssistanceRequest || null;
   const sectors = getSectors(resident);
 
   const historyColumns = [
@@ -353,6 +367,33 @@ export default function BeneficiaryIdVerifyPage() {
                     </section>
                   )}
                 </div>
+
+                <section className={styles.latestRequestSection}>
+                  <div className={styles.historyHeader}>
+                    <h3 className={styles.sectionTitle}>Latest Assistance Request</h3>
+                    {latestAssistanceRequest?.status ? (
+                      <Badge variant={getRequestStatusVariant(latestAssistanceRequest.status)}>
+                        {getRequestStatusLabel(latestAssistanceRequest.status)}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  {latestAssistanceRequest ? (
+                    <div className={styles.infoGrid}>
+                      <InfoRow label="Request Control No." value={displayValue(latestAssistanceRequest.control_number)} />
+                      <InfoRow label="Assistance Type" value={getAssistanceTypeLabel(latestAssistanceRequest)} />
+                      <InfoRow label="Requester" value={displayValue(latestAssistanceRequest.requester_name)} />
+                      <InfoRow label="Beneficiary" value={displayValue(latestAssistanceRequest.beneficiary_name)} />
+                      <InfoRow label="Amount" value={`₱${formatAmount(latestAssistanceRequest.amount)}`} />
+                      <InfoRow label="Request Date" value={formatDate(latestAssistanceRequest.request_date)} />
+                      <InfoRow label="Request Source" value={displayValue(latestAssistanceRequest.request_source)} />
+                      <InfoRow label="Processed By" value={displayValue(latestAssistanceRequest.processed_by)} />
+                      <InfoRow label="Created" value={formatDateTime(latestAssistanceRequest.created_at)} />
+                      <InfoRow label="Remarks" value={displayValue(latestAssistanceRequest.decision_remarks)} />
+                    </div>
+                  ) : (
+                    <p className={styles.emptyHint}>No assistance request found.</p>
+                  )}
+                </section>
 
                 <section className={styles.historySection}>
                   <div className={styles.historyHeader}>

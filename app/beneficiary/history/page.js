@@ -11,7 +11,7 @@ import Modal from '../../../components/Modal';
 import { getCooldownInfo } from '@/lib/requestCooldown';
 import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
 
-const isEditableRequestStatus = (status) => ['Pending', 'Resubmitted', 'Rejected'].includes(status);
+const isEditableRequestStatus = (status) => status === 'Rejected';
 const getRequestStatusLabel = (status) => {
   if (status === 'Rejected') return 'Incomplete';
   if (status === 'Resubmitted') return 'Under Review';

@@ -51,6 +51,21 @@ const HISTORY_FIELDS = [
   'created_at',
 ].join(', ');
 
+const LATEST_REQUEST_FIELDS = [
+  'id',
+  'control_number',
+  'requester_name',
+  'beneficiary_name',
+  'assistance_type',
+  'amount',
+  'status',
+  'request_date',
+  'processed_by',
+  'decision_remarks',
+  'request_source',
+  'created_at',
+].join(', ');
+
 function extractVerificationValue(value) {
   const text = String(value || '').trim();
   if (!text) return '';
@@ -112,23 +127,41 @@ async function loadReleasedHistory(residentId) {
   return Array.isArray(data) ? data : [];
 }
 
+async function loadLatestAssistanceRequest(residentId) {
+  if (!residentId || !supabaseAdmin) return null;
+
+  const { data, error } = await supabaseAdmin
+    .from('assistance_requests')
+    .select(LATEST_REQUEST_FIELDS)
+    .eq('resident_id', residentId)
+    .order('request_date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data || null;
+}
+
 async function buildVerificationPayload(base) {
   const residentId = base?.resident?.id || base?.card?.resident_id;
   if (!residentId) {
-    return { ...base, resident: base?.resident || null, releasedHistory: [] };
+    return { ...base, resident: base?.resident || null, releasedHistory: [], latestAssistanceRequest: null };
   }
 
   try {
     const hasProfile = base?.resident && Object.prototype.hasOwnProperty.call(base.resident, 'first_name');
-    const [resident, releasedHistory] = await Promise.all([
+    const [resident, releasedHistory, latestAssistanceRequest] = await Promise.all([
       hasProfile ? Promise.resolve(base.resident) : loadResidentProfile(residentId),
       loadReleasedHistory(residentId),
+      loadLatestAssistanceRequest(residentId),
     ]);
 
     return {
       ...base,
       resident: resident || base.resident || null,
       releasedHistory,
+      latestAssistanceRequest,
     };
   } catch (profileError) {
     console.warn('Verify card profile/history load failed:', profileError?.message || profileError);
@@ -136,6 +169,7 @@ async function buildVerificationPayload(base) {
       ...base,
       resident: base?.resident || null,
       releasedHistory: [],
+      latestAssistanceRequest: null,
       profileWarning: 'Could not load full beneficiary profile or request history.',
     };
   }

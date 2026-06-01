@@ -12,11 +12,21 @@
   gap: 16px;
   color: white;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-decoration: none;
 }
 
 .kpiCard:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 3px;
 }
 
 .kpiCard.blue {

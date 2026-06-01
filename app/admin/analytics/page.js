@@ -33,6 +33,16 @@ const MONTH_FULL_LABELS = [
 const getAnalyticsCacheKey = ({ timePeriod, trendMonth, trendYear }) =>
   `admin-analytics:${timePeriod}:${trendMonth}:${trendYear}`;
 
+const readAdminRole = () => {
+  try {
+    const raw = typeof window !== 'undefined' ? window.localStorage.getItem('adminUser') : null;
+    const user = raw ? JSON.parse(raw) : null;
+    return String(user?.role || 'Staff');
+  } catch {
+    return 'Staff';
+  }
+};
+
 export default function AnalyticsPage() {
   const currentYear = new Date().getFullYear();
   const [viewportWidth, setViewportWidth] = useState(1200);
@@ -57,6 +67,7 @@ export default function AnalyticsPage() {
   const [recentAccountRequests, setRecentAccountRequests] = useState([]);
   const [staffActivity, setStaffActivity] = useState([]);
   const [staffActivityLoading, setStaffActivityLoading] = useState(true);
+  const [adminRole, setAdminRole] = useState(readAdminRole);
 
   const applyAnalyticsState = useCallback((nextState) => {
     setKpiData(nextState.kpiData);
@@ -79,6 +90,10 @@ export default function AnalyticsPage() {
     updateViewportWidth();
     window.addEventListener('resize', updateViewportWidth);
     return () => window.removeEventListener('resize', updateViewportWidth);
+  }, []);
+
+  useEffect(() => {
+    setAdminRole(readAdminRole());
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -426,6 +441,15 @@ export default function AnalyticsPage() {
   const selectedTrendMonth =
     trendMonth === 'all' ? null : MONTH_FULL_LABELS[Number(trendMonth)] || monthlyRegistrations[0]?.label || '';
   const formatRegistrationCount = (count) => `${count} registration${count === 1 ? '' : 's'}`;
+  const getKpiHref = (title) => {
+    if (title === 'Total Beneficiaries') return '/admin/residents';
+    if (title === 'New Registrations') {
+      return adminRole === 'Admin' ? '/admin/account-requests' : '/admin/residents';
+    }
+    if (title === 'Active Request') return '/admin/assistance/requests';
+    if (title === 'Released Assistance') return '/admin/assistance';
+    return undefined;
+  };
 
   return (
     <div className={styles.analyticsPage}>
@@ -446,6 +470,7 @@ export default function AnalyticsPage() {
             value={`${kpi.current}${kpi.format || ''}`}
             color={kpi.color}
             icon={kpi.icon}
+            href={getKpiHref(kpi.title)}
           />
         ))}
       </div>

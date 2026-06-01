@@ -14,6 +14,7 @@ import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
 import { deleteClientCache, getClientCache, setClientCache } from '@/lib/clientCache';
 
 const isActiveRequestStatus = (status) => status === 'Pending' || status === 'Resubmitted';
+const isEditableRequestStatus = (status) => status === 'Rejected';
 const DASHBOARD_CACHE_MAX_AGE = 0;
 const emptyStats = { total: 0, active: 0, pending: 0, completed: 0, rejected: 0, lastDate: null };
 
@@ -194,12 +195,13 @@ export default function BeneficiaryDashboardPage() {
       return 'Your assistance request has been approved and released.';
     }
     if (isRejectedStatus(status)) {
-      return 'Your request is incomplete. Please see details or contact the barangay.';
+      return 'Your request is incomplete. Please edit and resubmit it.';
     }
     return 'Status updated by the barangay office.';
   };
 
   const activeRequest = requests.find((r) => isActiveStatus(r.status));
+  const editableRequest = requests.find((r) => isEditableRequestStatus(r.status));
   const hasActiveRequest = !!activeRequest;
 
   const currentRequestRaw = requests[0] || null;
@@ -283,9 +285,12 @@ export default function BeneficiaryDashboardPage() {
           </div>
 
           <div className={styles.quickActions}>
-            <Link href={activeRequest ? `/beneficiary/requests?edit=${encodeURIComponent(activeRequest.id)}` : '/beneficiary/requests'}>
-              <Button>{activeRequest ? 'Edit Current Request' : 'New Request'}</Button>
-            </Link>
+            <Button
+              href={editableRequest ? `/beneficiary/requests?edit=${encodeURIComponent(editableRequest.id)}` : '/beneficiary/requests'}
+              disabled={!editableRequest && hasActiveRequest}
+            >
+              {editableRequest ? 'Edit Incomplete Request' : 'New Request'}
+            </Button>
             <Link href="/beneficiary/history">
               <Button variant="secondary">My Requests</Button>
             </Link>

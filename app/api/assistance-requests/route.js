@@ -326,7 +326,7 @@ export async function POST(request) {
           {
             data: null,
             error:
-              'You already have a request under review. Please edit your current request instead of creating a new one.',
+              'You already have a request under review. Please wait for the barangay office to finish reviewing it.',
             code: 'ACTIVE_REQUEST_EXISTS',
             activeRequest,
           },

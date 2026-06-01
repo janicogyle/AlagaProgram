@@ -26,7 +26,7 @@ import {
   queryNextBeneficiaryControlNumber,
 } from '@/lib/controlNumbers';
 
-const EDITABLE_REQUEST_STATUSES = new Set(['Pending', 'Resubmitted', 'Rejected']);
+const EDITABLE_REQUEST_STATUSES = new Set(['Rejected']);
 const ACTIVE_REQUEST_STATUSES = new Set(['Pending', 'Resubmitted']);
 const WIZARD_STEPS = [
   { number: 1, label: 'Review Info' },
@@ -444,7 +444,7 @@ export default function BeneficiaryRequestPage() {
         }
 
         if (!EDITABLE_REQUEST_STATUSES.has(match.status)) {
-          throw new Error('Only pending, under review, or incomplete requests can be edited.');
+          throw new Error('Only incomplete requests can be edited.');
         }
 
         setEditingRequestId(match.id);
@@ -701,7 +701,7 @@ export default function BeneficiaryRequestPage() {
   const getCooldownMessage = (info) => {
     if (!info) return 'Checking request eligibility...';
     if (activeRequest) {
-      return 'You already have a request under review. Edit your current request if you need to correct information or replace uploaded files.';
+      return 'You already have a request under review. Please wait for the barangay office to finish reviewing it.';
     }
     if (info.isEligible) return 'You can submit a new request now.';
     if (info.nextEligibleDate) {
@@ -1019,7 +1019,7 @@ export default function BeneficiaryRequestPage() {
       setStatus({
         type: 'error',
         message:
-          'You already have a request under review. Please edit your current request instead of creating a new one.',
+          'You already have a request under review. Please wait for the barangay office to finish reviewing it.',
       });
       return;
     }
@@ -1422,7 +1422,7 @@ export default function BeneficiaryRequestPage() {
   const isCooldownBlocked = !isEditMode && !cooldownLoading && (activeRequest || (cooldownInfo && !cooldownInfo.isEligible));
   const isSubmitDisabled =
     isSubmitting || isLoadingEdit || (!isEditMode && (cooldownLoading || isCooldownBlocked));
-  const editButtonLabel = editingRequestStatus === 'Rejected' ? 'Resubmit Request' : 'Save Changes';
+  const editButtonLabel = 'Resubmit Request';
   const fullName = buildFullName();
   const profileAddress = buildProfileAddress();
   const requestControlNumber = isEditMode
@@ -1914,14 +1914,6 @@ export default function BeneficiaryRequestPage() {
           <Badge variant={cooldownVariant}>
             {cooldownLoading ? 'Checking' : cooldownInfo?.status || 'Eligible'}
           </Badge>
-          {activeRequest ? (
-            <Button
-              size="small"
-              href={`/beneficiary/requests?edit=${encodeURIComponent(activeRequest.id)}`}
-            >
-              Edit Current Request
-            </Button>
-          ) : null}
         </div>
       )}
       <form onSubmit={(event) => event.preventDefault()} className={styles.wizardForm}>

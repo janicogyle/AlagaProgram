@@ -1238,6 +1238,7 @@ export default function ResidentsPage() {
   };
 
   const effectiveResident = residentDetails?.resident || selectedResident;
+  const canIssueIdQr = isAdmin && selectedResident?.registration_type === 'Walk-In';
   const signupInfo = residentDetails?.signup || null;
   const residentControlNo = effectiveResident?.control_number || '-';
   const historyTableData = historyRequests.map((row) => ({
@@ -1474,14 +1475,16 @@ export default function ResidentsPage() {
                   >
                     Reset Password
                   </Button>
-                  <Button
-                    variant="secondary"
-                    size="small"
-                    onClick={handleIssueCard}
-                    disabled={processing || issuingCard}
-                  >
-                    {issuingCard ? 'Issuing…' : 'Issue ID QR'}
-                  </Button>
+                  {canIssueIdQr ? (
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onClick={handleIssueCard}
+                      disabled={processing || issuingCard}
+                    >
+                      {issuingCard ? 'Issuing…' : 'Issue ID QR'}
+                    </Button>
+                  ) : null}
                 </>
               ) : null}
             </div>
