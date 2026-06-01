@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseClient';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { normalizeSmsContactNumber } from '@/lib/sms.server';
 import { sendAssistanceStatusSms } from '@/lib/smsNotify.server';
+import { logStaffActivity } from '@/lib/activityLogger.server';
 
 export const runtime = 'nodejs';
 
@@ -219,13 +220,36 @@ export async function PATCH(request, { params }) {
 
     if (error) throw error;
 
+    const statusLabel = data?.status ? String(data.status) : 'Updated';
+    const displayStatus = statusLabel === 'Rejected' ? 'Incomplete' : statusLabel;
+    const actionByStatus = {
+      Approved: 'Approved assistance request',
+      Released: 'Marked assistance request released',
+      Rejected: 'Marked assistance request incomplete',
+      Resubmitted: 'Reopened assistance request',
+      Pending: 'Reopened assistance request',
+    };
+
+    await logStaffActivity(
+      auth,
+      {
+        action: actionByStatus[statusLabel] || 'Updated assistance request',
+        message: `Assistance request ${displayStatus.toLowerCase()}.`,
+        entity_type: 'assistance_request',
+        entity_id: data?.id || null,
+        reference_number: data?.control_number || String(id),
+        link: '/admin/assistance/requests',
+        audience_user_id: auth?.authUser?.id || null,
+        audience_resident_id: data?.resident_id || null,
+      },
+      db,
+    );
+
     // Best-effort notifications:
     // - Actor gets their own "My Activity" entry
     // - Admins get monitoring entries for STAFF actions (not broadcast to other staff)
     if (db) {
       try {
-        const statusLabel = data?.status ? String(data.status) : 'Updated';
-        const displayStatus = statusLabel === 'Rejected' ? 'Incomplete' : statusLabel;
         const type =
           displayStatus === 'Approved' || displayStatus === 'Released'
             ? 'success'
@@ -338,6 +362,19 @@ export async function DELETE(request, { params }) {
 
     const { error: deleteError } = await db.from('assistance_requests').delete().eq('id', row.id);
     if (deleteError) throw deleteError;
+
+    await logStaffActivity(
+      auth,
+      {
+        action: 'Deleted assistance request',
+        message: 'Pending assistance request was removed.',
+        entity_type: 'assistance_request',
+        entity_id: row.id,
+        reference_number: row.control_number || String(id),
+        link: '/admin/assistance/requests',
+      },
+      db,
+    );
 
     return NextResponse.json({
       data: { id: row.id, control_number: row.control_number, removed: true },

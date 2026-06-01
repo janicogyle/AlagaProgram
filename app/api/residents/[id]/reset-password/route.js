@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { hashPassword } from '@/lib/passwords.server';
 import { requireAdmin } from '@/lib/apiAuth';
+import { logStaffActivity } from '@/lib/activityLogger.server';
 
 export const runtime = 'nodejs';
 
@@ -42,7 +43,7 @@ export async function POST(request, { params }) {
 
     const { data: existing, error: fetchError } = await db
       .from('residents')
-      .select('id')
+      .select('id, control_number, contact_number')
       .eq('id', residentId)
       .single();
 
@@ -58,6 +59,20 @@ export async function POST(request, { params }) {
       .eq('id', residentId);
 
     if (updateError) throw updateError;
+
+    await logStaffActivity(
+      auth,
+      {
+        action: 'Reset beneficiary password',
+        message: 'Beneficiary account password was reset.',
+        entity_type: 'resident',
+        entity_id: residentId,
+        reference_number: existing?.control_number || existing?.contact_number || residentId,
+        link: '/admin/residents',
+        audience_resident_id: residentId,
+      },
+      db,
+    );
 
     return NextResponse.json({ success: true, error: null, message: 'Password updated successfully.' });
   } catch (error) {

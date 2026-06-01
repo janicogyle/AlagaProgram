@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { readBeneficiarySession } from '@/lib/beneficiarySession.server';
 import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/documentUrls.server';
+import { buildBeneficiaryActor, logActivity } from '@/lib/activityLogger.server';
 
 export const runtime = 'nodejs';
 
@@ -315,6 +316,32 @@ export async function PATCH(request, { params }) {
         console.warn('Unable to create notifications for resubmitted request:', notifyError);
       }
     }
+
+    let residentProfile = { id: resident.residentId };
+    try {
+      const { data: profile } = await db
+        .from('residents')
+        .select('id, first_name, middle_name, last_name, contact_number')
+        .eq('id', resident.residentId)
+        .maybeSingle();
+      if (profile?.id) residentProfile = profile;
+    } catch {
+      // ignore
+    }
+
+    await logActivity(
+      {
+        ...buildBeneficiaryActor(residentProfile),
+        action: nextStatus === 'Resubmitted' ? 'Resubmitted assistance request' : 'Updated assistance request',
+        message: 'Beneficiary updated an incomplete assistance request.',
+        entity_type: 'assistance_request',
+        entity_id: updated?.id || existing.id,
+        reference_number: updated?.control_number || existing.control_number,
+        link: '/beneficiary/history',
+        audience_resident_id: resident.residentId,
+      },
+      supabaseAdmin ?? db,
+    );
 
     return NextResponse.json({ data: updated, error: null, meta: { residentSource: resident.source } });
   } catch (err) {

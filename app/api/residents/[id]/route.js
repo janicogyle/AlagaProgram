@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { requireAdmin, requireStaffOrAdmin } from '@/lib/apiAuth';
+import { logStaffActivity } from '@/lib/activityLogger.server';
 
 export const runtime = 'nodejs';
 
@@ -710,6 +711,20 @@ export async function PATCH(request, { params }) {
             // ignore: account_requests may be unavailable in older schemas
           }
         }
+
+        await logStaffActivity(
+          auth,
+          {
+            action: 'Updated beneficiary profile',
+            message: 'Beneficiary resident profile was updated.',
+            entity_type: 'resident',
+            entity_id: data?.id || residentId,
+            reference_number: data?.control_number || data?.contact_number || residentId,
+            link: '/admin/residents',
+            audience_resident_id: data?.id || residentId,
+          },
+          db,
+        );
 
         return NextResponse.json({ data, error: null });
       }

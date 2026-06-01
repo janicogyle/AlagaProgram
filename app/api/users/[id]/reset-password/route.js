@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { requireAdmin } from '@/lib/apiAuth';
+import { logStaffActivity } from '@/lib/activityLogger.server';
 
 export async function POST(request, { params }) {
   const auth = await requireAdmin(request);
@@ -47,6 +48,20 @@ export async function POST(request, { params }) {
       }
       throw error;
     }
+
+    await logStaffActivity(
+      auth,
+      {
+        action: 'Reset user password',
+        message: `Password for ${existingUser.full_name} was reset.`,
+        entity_type: 'user',
+        entity_id: userId,
+        reference_number: existingUser.full_name || userId,
+        link: '/admin/users',
+        audience_user_id: userId,
+      },
+      supabaseAdmin,
+    );
 
     return NextResponse.json({
       success: true,

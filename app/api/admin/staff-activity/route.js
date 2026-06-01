@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { requireAdmin } from '@/lib/apiAuth';
+import { isMissingActivityLogsTable } from '@/lib/activityLogger.server';
 
 export const runtime = 'nodejs';
 
@@ -19,6 +20,13 @@ function isMissingTableError(err, tableName) {
     msg.includes('does not exist') ||
     code === '42p01'
   );
+}
+
+function typeFromAction(action) {
+  const text = String(action || '').toLowerCase();
+  if (text.includes('approved') || text.includes('released')) return 'success';
+  if (text.includes('incomplete') || text.includes('archived') || text.includes('deleted')) return 'error';
+  return 'info';
 }
 
 export async function GET(request) {
@@ -40,7 +48,34 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const limit = parseLimit(searchParams.get('limit'));
 
-    // Preferred source: notifications written to this admin when staff processes requests.
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('activity_logs')
+        .select('id, actor_name, actor_role, action, message, reference_number, link, created_at')
+        .eq('actor_role', 'Staff')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+
+      const items = (data || []).map((row) => ({
+        id: String(row.id),
+        title: String(row.action || 'Staff activity').replace(/\bRejected\b/gi, 'Incomplete'),
+        message: [
+          row.message,
+          row.reference_number ? `Reference: ${row.reference_number}` : '',
+          row.actor_name ? `By: ${row.actor_name}` : '',
+        ].filter(Boolean).join(' • ').replace(/\bRejected\b/gi, 'Incomplete'),
+        type: typeFromAction(row.action),
+        link: row.link || '/admin/assistance/requests',
+        time: row.created_at,
+      }));
+
+      return NextResponse.json({ data: items, error: null, meta: { source: 'activity_logs' } });
+    } catch (err) {
+      if (!isMissingActivityLogsTable(err)) throw err;
+    }
+
     try {
       const { data, error } = await supabaseAdmin
         .from('notifications')
@@ -64,10 +99,8 @@ export async function GET(request) {
       return NextResponse.json({ data: items, error: null, meta: { source: 'notifications' } });
     } catch (err) {
       if (!isMissingTableError(err, 'public.notifications')) throw err;
-      // fall through
     }
 
-    // Fallback: derive from assistance_requests (works even without notifications table)
     const { data: rows, error: rowsError } = await supabaseAdmin
       .from('assistance_requests')
       .select('id, control_number, status, processed_by, updated_at, created_at')

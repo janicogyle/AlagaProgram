@@ -3,6 +3,7 @@ import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { hashPassword } from '@/lib/passwords.server';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/documentUrls.server';
+import { logActivity } from '@/lib/activityLogger.server';
 
 export const runtime = 'nodejs';
 
@@ -438,6 +439,20 @@ export async function POST(request) {
     };
 
     const { data } = await insertAccountRequestWithRetry(db, insertPayload);
+
+    await logActivity(
+      {
+        actor_name: [data?.first_name, data?.middle_name, data?.last_name].filter(Boolean).join(' ') || 'Beneficiary',
+        actor_role: 'Beneficiary',
+        action: 'Submitted account request',
+        message: 'A beneficiary submitted a signup request.',
+        entity_type: 'account_request',
+        entity_id: data?.id || null,
+        reference_number: data?.contact_number || contactNumber,
+        link: '/admin/account-requests',
+      },
+      supabaseAdmin ?? db,
+    );
 
     let otpConsumeError = null;
     if (otpCheck?.otpId) {

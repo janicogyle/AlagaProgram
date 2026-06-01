@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { requireAdmin } from '@/lib/apiAuth';
+import { logStaffActivity } from '@/lib/activityLogger.server';
 
 export async function PATCH(request, { params }) {
   const auth = await requireAdmin(request);
@@ -103,6 +104,20 @@ export async function PATCH(request, { params }) {
       throw error;
     }
 
+    await logStaffActivity(
+      auth,
+      {
+        action: 'Updated user account',
+        message: 'Admin user account details were updated.',
+        entity_type: 'user',
+        entity_id: data?.id || userId,
+        reference_number: data?.email || email || userId,
+        link: '/admin/users',
+        audience_user_id: data?.id || userId,
+      },
+      supabaseAdmin,
+    );
+
     return NextResponse.json({ data, error: null });
   } catch (error) {
     console.error('Update user error:', error);
@@ -147,6 +162,19 @@ export async function DELETE(request, { params }) {
       console.error('Auth deletion failed:', authError);
       // Continue even if auth deletion fails (user record already deleted)
     }
+
+    await logStaffActivity(
+      auth,
+      {
+        action: 'Deleted user account',
+        message: 'Admin user account was deleted.',
+        entity_type: 'user',
+        entity_id: userId,
+        reference_number: userId,
+        link: '/admin/users',
+      },
+      supabaseAdmin,
+    );
 
     return NextResponse.json({ success: true, error: null });
   } catch (error) {

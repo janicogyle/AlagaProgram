@@ -6,6 +6,7 @@ import {
   isMissingBeneficiaryCardsTable,
   issueBeneficiaryCard,
 } from '@/lib/beneficiaryCards.server';
+import { logStaffActivity } from '@/lib/activityLogger.server';
 
 export const runtime = 'nodejs';
 
@@ -73,6 +74,19 @@ export async function POST(request) {
     }
 
     const { card, token } = await issueBeneficiaryCard(supabaseAdmin, residentId, { expiresInDays });
+    await logStaffActivity(
+      auth,
+      {
+        action: 'Issued beneficiary QR card',
+        message: 'Beneficiary QR ID card was issued.',
+        entity_type: 'beneficiary_card',
+        entity_id: card?.id || null,
+        reference_number: String(card?.id || '').slice(0, 8).toUpperCase() || residentId,
+        link: '/admin/residents',
+        audience_resident_id: residentId,
+      },
+      supabaseAdmin,
+    );
     return NextResponse.json({ data: { card, token }, error: null });
   } catch (err) {
     console.error('Issue beneficiary card error:', err);

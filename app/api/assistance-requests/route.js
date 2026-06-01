@@ -3,6 +3,7 @@ import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { getCooldownInfo } from '@/lib/requestCooldown';
 import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/documentUrls.server';
 import { generateNextAssistanceControlNumber } from '@/lib/controlNumbers.server';
+import { logActivity, readOptionalStaffActor } from '@/lib/activityLogger.server';
 
 export const runtime = 'nodejs';
 
@@ -545,6 +546,29 @@ export async function POST(request) {
     }
 
     if (error) throw error;
+
+    const staffActor = await readOptionalStaffActor(request, supabaseAdmin);
+    const actor = staffActor || {
+      actor_resident_id: data?.resident_id || residentId || null,
+      actor_name: data?.requester_name || data?.beneficiary_name || 'Beneficiary',
+      actor_role: requestSource === 'walk-in' ? 'Staff' : 'Beneficiary',
+    };
+    const adminLink = '/admin/assistance/requests';
+    const beneficiaryLink = '/beneficiary/history';
+
+    await logActivity(
+      {
+        ...actor,
+        action: 'Submitted assistance request',
+        message: `${requestSource === 'walk-in' ? 'Walk-in' : 'Online'} assistance request submitted.`,
+        entity_type: 'assistance_request',
+        entity_id: data?.id || null,
+        reference_number: data?.control_number || null,
+        link: actor.actor_role === 'Beneficiary' ? beneficiaryLink : adminLink,
+        audience_resident_id: data?.resident_id || residentId || null,
+      },
+      supabaseAdmin ?? db,
+    );
 
     // Best-effort: notify all active Admin/Staff of the new request.
     if (supabaseAdmin) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { requireAdmin } from '@/lib/apiAuth';
+import { logStaffActivity } from '@/lib/activityLogger.server';
 
 export const runtime = 'nodejs';
 
@@ -127,10 +128,35 @@ export async function POST(request) {
 
         const retry = await retryQuery;
         if (retry.error) throw retry.error;
+        await logStaffActivity(
+          auth,
+          {
+            action: 'Updated assistance guideline',
+            message: 'Assistance budget ceiling was updated.',
+            entity_type: 'assistance_budget',
+            reference_number: retry.data?.assistance_type || assistanceType,
+            link: '/admin/assistance/guidelines',
+          },
+          supabaseAdmin,
+        );
         return NextResponse.json({ data: retry.data, error: null });
       }
       throw error;
     }
+
+    await logStaffActivity(
+      auth,
+      {
+        action: 'Updated assistance guideline',
+        message: hasRequirements
+          ? 'Assistance budget and requirements were updated.'
+          : 'Assistance budget ceiling was updated.',
+        entity_type: 'assistance_budget',
+        reference_number: data?.assistance_type || assistanceType,
+        link: '/admin/assistance/guidelines',
+      },
+      supabaseAdmin,
+    );
 
     return NextResponse.json({ data, error: null });
   } catch (err) {

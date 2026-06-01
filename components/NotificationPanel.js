@@ -305,7 +305,7 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnread
     // Always persist local derived read-state too.
     const readSet = readLocalReadSet();
     activities.forEach((a) => {
-      if (a?.source === 'beneficiary' || a?.source === 'system') {
+      if (a?.source === 'beneficiary' || a?.source === 'system' || a?.source === 'activity_log') {
         readSet.add(a.id);
       }
     });

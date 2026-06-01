@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { requireAdmin } from '@/lib/apiAuth';
+import { logStaffActivity } from '@/lib/activityLogger.server';
 
 export async function GET(request) {
   const auth = await requireAdmin(request);
@@ -95,6 +96,20 @@ export async function POST(request) {
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
       throw error;
     }
+
+    await logStaffActivity(
+      auth,
+      {
+        action: 'Created user account',
+        message: `Created ${data?.role || role || 'Staff'} account.`,
+        entity_type: 'user',
+        entity_id: data?.id || authData.user.id,
+        reference_number: data?.email || email,
+        link: '/admin/users',
+        audience_user_id: data?.id || authData.user.id,
+      },
+      supabaseAdmin,
+    );
 
     return NextResponse.json({ data, error: null });
   } catch (error) {

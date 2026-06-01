@@ -9,6 +9,7 @@ import {
   isMissingBeneficiaryCardsTable,
   issueBeneficiaryCard,
 } from '@/lib/beneficiaryCards.server';
+import { logStaffActivity } from '@/lib/activityLogger.server';
 
 export const runtime = 'nodejs';
 
@@ -592,6 +593,20 @@ export async function POST(request, { params }) {
         requestId,
       });
 
+      await logStaffActivity(
+        auth,
+        {
+          action: 'Approved account request',
+          message: 'Signup request approved and beneficiary account activated.',
+          entity_type: 'account_request',
+          entity_id: data?.id || requestId,
+          reference_number: accountRequest?.contact_number || requestId,
+          link: '/admin/account-requests',
+          audience_resident_id: residentId || null,
+        },
+        db,
+      );
+
       return NextResponse.json({ 
         data: {
           ...data,
@@ -624,6 +639,19 @@ export async function POST(request, { params }) {
         requestId,
       });
 
+      await logStaffActivity(
+        auth,
+        {
+          action: 'Archived account request',
+          message: 'Signup request marked incomplete.',
+          entity_type: 'account_request',
+          entity_id: data?.id || requestId,
+          reference_number: accountRequest?.contact_number || requestId,
+          link: '/admin/account-requests',
+        },
+        db,
+      );
+
       return NextResponse.json({
         data,
         error: null,
@@ -644,6 +672,19 @@ export async function POST(request, { params }) {
         .single();
 
       if (error) throw error;
+
+      await logStaffActivity(
+        auth,
+        {
+          action: 'Reopened account request',
+          message: 'Archived signup request was reopened.',
+          entity_type: 'account_request',
+          entity_id: data?.id || requestId,
+          reference_number: accountRequest?.contact_number || requestId,
+          link: '/admin/account-requests',
+        },
+        db,
+      );
 
       return NextResponse.json({
         data,
