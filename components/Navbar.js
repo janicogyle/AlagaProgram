@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import NotificationPanel from './NotificationPanel';
 import styles from './Navbar.module.css';
 
-export default function Navbar({ title, breadcrumb, onMenuClick }) {
+export default function Navbar({ title, breadcrumb, onMenuClick, activityRole }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const notificationBtnRef = useRef(null);
@@ -41,6 +41,7 @@ export default function Navbar({ title, breadcrumb, onMenuClick }) {
             onClose={() => setShowNotifications(false)}
             anchorRef={notificationBtnRef}
             onUnreadCountChange={setUnreadCount}
+            activityRole={activityRole}
           />
         </div>
       </div>

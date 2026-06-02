@@ -147,7 +147,7 @@ export default function AdminShell({ children, initialUser }) {
       )}
       <Sidebar user={user} onLogout={handleLogout} minimized={!sidebarOpen} />
       <div className={`${styles.mainContent} ${!sidebarOpen ? styles.sidebarMinimized : ''}`}>
-        <Navbar onMenuClick={() => setSidebarOpen((open) => !open)} />
+        <Navbar onMenuClick={() => setSidebarOpen((open) => !open)} activityRole={user.role} />
         <main className={styles.pageContent}>{children}</main>
       </div>
     </div>

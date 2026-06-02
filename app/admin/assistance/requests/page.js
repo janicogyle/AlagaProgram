@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
 import { clearClientCachePrefix, getClientCache, setClientCache } from '@/lib/clientCache';
@@ -145,6 +145,10 @@ const parseLegacyRequirementUrls = (value) => {
   return [raw];
 };
 
+const isIncompleteStatus = (status) =>
+  status === 'Rejected' || status === 'Archived' || status === 'Incomplete';
+const getStatusLabel = (dbStatus) => (isIncompleteStatus(dbStatus) ? 'Incomplete' : dbStatus);
+
 export default function RequestsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -168,6 +172,8 @@ export default function RequestsPage() {
   const [requirementsByType, setRequirementsByType] = useState({});
   const [documentPreview, setDocumentPreview] = useState({ open: false, url: '', path: '' });
   const [realtimeRefreshKey, setRealtimeRefreshKey] = useState(0);
+  const [autoOpenRequestRef, setAutoOpenRequestRef] = useState('');
+  const autoOpenHandledRef = useRef(false);
 
   const openDocumentPreview = (url, path = '') => {
     setDocumentPreview({
@@ -215,10 +221,6 @@ export default function RequestsPage() {
   const closeAlert = () => {
     setAlertState((prev) => ({ ...prev, open: false }));
   };
-
-const isIncompleteStatus = (status) =>
-  status === 'Rejected' || status === 'Archived' || status === 'Incomplete';
-const getStatusLabel = (dbStatus) => (isIncompleteStatus(dbStatus) ? 'Incomplete' : dbStatus);
 
   useEffect(() => {
     setPagination((prev) => ({ ...prev, page: 1 }));
@@ -526,6 +528,32 @@ const getStatusLabel = (dbStatus) => (isIncompleteStatus(dbStatus) ? 'Incomplete
     setSelectedRequest(request);
     setShowViewModal(true);
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const requestRef = String(params.get('request') || '').trim();
+    if (!requestRef) return;
+
+    setAutoOpenRequestRef(requestRef);
+    setSearchTerm(requestRef);
+  }, []);
+
+  useEffect(() => {
+    if (!autoOpenRequestRef || autoOpenHandledRef.current || requests.length === 0) return;
+
+    const target = requests.find((request) =>
+      [request.id, request.requestControlNo, request.controlNo]
+        .map((value) => String(value || '').trim())
+        .includes(autoOpenRequestRef),
+    );
+
+    if (!target) return;
+
+    autoOpenHandledRef.current = true;
+    setSelectedRequest(target);
+    setShowViewModal(true);
+  }, [autoOpenRequestRef, requests]);
 
   const toggleVerificationRequirement = (index) => {
     setSelectedRequest((prev) => {

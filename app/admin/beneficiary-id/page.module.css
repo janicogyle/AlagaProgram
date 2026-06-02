@@ -298,6 +298,348 @@
   color: #6b7280;
 }
 
+.latestRequestActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.latestRequestActionButton {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  color: #6b7280;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.latestRequestActionButton:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.latestRequestModal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modalRequestHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modalControlNo {
+  margin-top: 4px;
+  color: #111827;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.modalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.requestDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.detailsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.controlNumber {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  min-width: 0;
+}
+
+.detailSection {
+  min-width: 0;
+  padding: 20px;
+  border-radius: 12px;
+  background: #f9fafb;
+}
+
+.detailSection h4 {
+  margin: 0 0 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.detailLabel {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.detailValue {
+  color: #1f2937;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.assistanceInfo {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  min-width: 0;
+}
+
+.infoCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 10px;
+  background: #eff6ff;
+  text-align: center;
+}
+
+.infoLabel {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.infoValue {
+  color: #1e40af;
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.wideInfoCard {
+  grid-column: 1 / -1;
+  text-align: left;
+}
+
+.requirementsContent {
+  width: 100%;
+  color: #1f2937;
+}
+
+.verificationPanel {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.verificationHeading {
+  margin: 0 0 10px;
+  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.verificationChecklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.verificationRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #1f2937;
+  line-height: 1.45;
+}
+
+.verificationRow input {
+  margin-top: 2px;
+}
+
+.verificationStatus {
+  margin-top: 10px;
+  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.verificationEmpty {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.uploadedDocsSection {
+  margin-top: 12px;
+}
+
+.uploadedDocsHeading {
+  margin: 0 0 8px;
+  color: #374151;
+  font-size: 12px;
+}
+
+.uploadedDocsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.uploadedDocItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.uploadedDocMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.uploadedDocName {
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.uploadedDocType {
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.validIdLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.validIdLink:hover {
+  background: #dbeafe;
+}
+
+.walkInNotice {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 12px;
+}
+
+.decisionContent {
+  text-align: center;
+}
+
+.decisionIcon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.decisionTitle {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.decisionDesc {
+  margin: 0 0 20px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.remarksSection {
+  text-align: left;
+}
+
+.remarksLabel {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.remarksInput {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  color: #111827;
+  resize: vertical;
+}
+
+.remarksInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
 .historyTableWrap {
   overflow-x: auto;
 }
@@ -314,12 +656,57 @@
 
 @media (max-width: 768px) {
   .grid,
-  .infoGrid {
+  .infoGrid,
+  .detailsGrid {
     grid-template-columns: 1fr;
   }
 
-  .profileHeader {
+  .profileHeader,
+  .detailsHeader {
     flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .historyHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .latestRequestActions {
+    justify-content: flex-start;
+  }
+
+  .modalFooter {
+    justify-content: stretch;
+  }
+
+  .detailRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 6px 0;
+  }
+
+  .detailValue {
+    text-align: left;
+  }
+
+  .assistanceInfo {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .infoCard {
+    text-align: left;
+  }
+
+  .uploadedDocItem {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .validIdLink {
+    width: 100%;
   }
 
   .scannerControls {

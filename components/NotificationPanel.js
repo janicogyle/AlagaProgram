@@ -7,15 +7,26 @@ import styles from './NotificationPanel.module.css';
 
 const DEFAULT_ACTIVITIES = [];
 
-function getLocalReadKeys() {
+function normalizeActivityRole(role) {
+  return ['Admin', 'Staff', 'Beneficiary'].includes(role) ? role : null;
+}
+
+function getLocalReadKeys(role) {
   if (typeof window === 'undefined') return null;
-  const rid = window.localStorage.getItem('beneficiaryResidentId');
-  if (rid) return [`activityReadIds:beneficiary:${rid}`, `activityReadIds:${rid}`];
+
+  if (role === 'Beneficiary') {
+    const rid = window.localStorage.getItem('beneficiaryResidentId');
+    if (rid) return [`activityReadIds:beneficiary:${rid}`, `activityReadIds:${rid}`];
+    return ['activityReadIds:beneficiary:anon', 'activityReadIds:anon'];
+  }
 
   try {
     const rawAdmin = window.localStorage.getItem('adminUser');
     const admin = rawAdmin ? JSON.parse(rawAdmin) : null;
     const adminKey = admin?.id || admin?.email || admin?.username || admin?.name;
+    if (adminKey && role) {
+      return [`activityReadIds:${role.toLowerCase()}:${adminKey}`, `activityReadIds:admin:${adminKey}`, 'activityReadIds:anon'];
+    }
     if (adminKey) return [`activityReadIds:admin:${adminKey}`, 'activityReadIds:anon'];
   } catch {
     // Fall back to the legacy anonymous key.
@@ -24,9 +35,9 @@ function getLocalReadKeys() {
   return ['activityReadIds:anon'];
 }
 
-function readLocalReadSet() {
+function readLocalReadSet(role) {
   try {
-    const keys = getLocalReadKeys();
+    const keys = getLocalReadKeys(role);
     if (!keys?.length) return new Set();
     const values = keys.flatMap((key) => {
       const raw = window.localStorage.getItem(key);
@@ -39,9 +50,9 @@ function readLocalReadSet() {
   }
 }
 
-function writeLocalReadSet(set) {
+function writeLocalReadSet(set, role) {
   try {
-    const key = getLocalReadKeys()?.[0];
+    const key = getLocalReadKeys(role)?.[0];
     if (!key) return;
     window.localStorage.setItem(key, JSON.stringify(Array.from(set)));
   } catch {
@@ -132,8 +143,11 @@ const TYPE_COLORS = {
   red: 'red',
 };
 
-export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnreadCountChange }) {
+export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnreadCountChange, activityRole }) {
   const router = useRouter();
+  const role = normalizeActivityRole(activityRole);
+  const canUseStaffAuth = role === 'Admin' || role === 'Staff';
+  const canViewStaffActivity = role === 'Admin';
   const [activities, setActivities] = useState(DEFAULT_ACTIVITIES);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all'); // 'all' | 'unread' | 'staff'
@@ -182,16 +196,17 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnread
   }, [isOpen, onClose, anchorRef]);
 
   const getAccessToken = useCallback(async () => {
+    if (!canUseStaffAuth) return null;
     if (!supabase) return null;
     const { data, error } = await supabase.auth.getSession();
     if (error) return null;
     return data?.session?.access_token || null;
-  }, []);
+  }, [canUseStaffAuth]);
 
   const applyLocalReadState = useCallback((items) => {
-    const readSet = readLocalReadSet();
+    const readSet = readLocalReadSet(role);
     return (items || []).map((a) => ({ ...a, read: a.read || readSet.has(a.id) }));
-  }, []);
+  }, [role]);
 
   const mapLevelToIconAndColor = useCallback((level) => {
     const l = String(level || 'info');
@@ -231,7 +246,7 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnread
       setActivities(applyLocalReadState(json?.data || []));
 
       // Admin-only: load staff activity feed for monitoring
-      if (token) {
+      if (canViewStaffActivity && token) {
         setStaffLoading(true);
         try {
           const staffRes = await fetch('/api/admin/staff-activity?limit=30', { headers });
@@ -265,6 +280,10 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnread
         } finally {
           setStaffLoading(false);
         }
+      } else {
+        setIsAdmin(false);
+        setStaffActivities([]);
+        setStaffLoading(false);
       }
     } catch (err) {
       console.error('Failed to load recent activity:', err);
@@ -272,7 +291,13 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnread
     } finally {
       setLoading(false);
     }
-  }, [applyLocalReadState, getAccessToken, mapLevelToIconAndColor]);
+  }, [applyLocalReadState, canViewStaffActivity, getAccessToken, mapLevelToIconAndColor]);
+
+  useEffect(() => {
+    if (!canViewStaffActivity && filter === 'staff') {
+      setFilter('all');
+    }
+  }, [canViewStaffActivity, filter]);
 
   useEffect(() => {
     // Load once on mount so the navbar badge works even before opening.
@@ -303,16 +328,16 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnread
     }
 
     // Always persist local derived read-state too.
-    const readSet = readLocalReadSet();
+    const readSet = readLocalReadSet(role);
     activities.forEach((a) => {
       if (a?.source === 'beneficiary' || a?.source === 'system' || a?.source === 'activity_log') {
         readSet.add(a.id);
       }
     });
-    writeLocalReadSet(readSet);
+    writeLocalReadSet(readSet, role);
 
     setActivities((prev) => prev.map((a) => ({ ...a, read: true })));
-  }, [activities, getAccessToken]);
+  }, [activities, getAccessToken, role]);
 
   const markAsRead = useCallback(
     async (activity) => {
@@ -321,9 +346,9 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnread
       const next = (prev) => prev.map((a) => (a.id === activity.id ? { ...a, read: true } : a));
 
       if (activity.source === 'notification') {
-        const readSet = readLocalReadSet();
+        const readSet = readLocalReadSet(role);
         readSet.add(activity.id);
-        writeLocalReadSet(readSet);
+        writeLocalReadSet(readSet, role);
 
         const token = await getAccessToken();
         if (token) {
@@ -344,12 +369,12 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnread
         return;
       }
 
-      const readSet = readLocalReadSet();
+      const readSet = readLocalReadSet(role);
       readSet.add(activity.id);
-      writeLocalReadSet(readSet);
+      writeLocalReadSet(readSet, role);
       setActivities(next);
     },
-    [getAccessToken],
+    [getAccessToken, role],
   );
 
   const handleClickActivity = useCallback(
@@ -416,7 +441,7 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnread
           >
             Unread{unreadCount > 0 && ` (${unreadCount})`}
           </button>
-          {isAdmin && (
+          {canViewStaffActivity && isAdmin && (
             <button
               className={`${styles.filterTab} ${filter === 'staff' ? styles.filterTabActive : ''}`}
               onClick={() => setFilter('staff')}

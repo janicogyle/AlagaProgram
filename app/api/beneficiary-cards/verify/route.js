@@ -60,11 +60,40 @@ const LATEST_REQUEST_FIELDS = [
   'amount',
   'status',
   'request_date',
+  'created_at',
+];
+
+const LATEST_REQUEST_OPTIONAL_FIELDS = [
+  'requester_contact',
+  'requester_address',
+  'beneficiary_contact',
+  'beneficiary_address',
+  'valid_id_url',
+  'requirements_urls',
+  'requirements_files',
+  'requirements_checklist',
+  'requirements_completed',
   'processed_by',
   'decision_remarks',
   'request_source',
-  'created_at',
-].join(', ');
+];
+
+function getMissingAssistanceRequestsColumn(message) {
+  const msg = String(message || '');
+
+  let match = msg.match(/Could not find the '([^']+)' column of 'assistance_requests' in the schema cache/i);
+  if (match?.[1]) return match[1];
+
+  match = msg.match(/column\s+(?:public\.)?assistance_requests\.([a-zA-Z0-9_]+)\s+does\s+not\s+exist/i);
+  if (match?.[1]) return match[1];
+
+  match = msg.match(
+    /column\s+"?([a-zA-Z0-9_]+)"?\s+of\s+relation\s+"(?:public\.)?assistance_requests"\s+does\s+not\s+exist/i,
+  );
+  if (match?.[1]) return match[1];
+
+  return null;
+}
 
 function extractVerificationValue(value) {
   const text = String(value || '').trim();
@@ -130,14 +159,27 @@ async function loadReleasedHistory(residentId) {
 async function loadLatestAssistanceRequest(residentId) {
   if (!residentId || !supabaseAdmin) return null;
 
-  const { data, error } = await supabaseAdmin
-    .from('assistance_requests')
-    .select(LATEST_REQUEST_FIELDS)
-    .eq('resident_id', residentId)
-    .order('request_date', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  let fields = [...LATEST_REQUEST_FIELDS, ...LATEST_REQUEST_OPTIONAL_FIELDS];
+  let data = null;
+  let error = null;
+
+  for (let attempt = 0; attempt <= LATEST_REQUEST_OPTIONAL_FIELDS.length; attempt++) {
+    ;({ data, error } = await supabaseAdmin
+      .from('assistance_requests')
+      .select(fields.join(', '))
+      .eq('resident_id', residentId)
+      .order('request_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle());
+
+    if (!error) break;
+
+    const missing = getMissingAssistanceRequestsColumn(error.message);
+    if (!missing || !LATEST_REQUEST_OPTIONAL_FIELDS.includes(missing)) break;
+
+    fields = fields.filter((field) => field !== missing);
+  }
 
   if (error) throw error;
   return data || null;
@@ -149,30 +191,36 @@ async function buildVerificationPayload(base) {
     return { ...base, resident: base?.resident || null, releasedHistory: [], latestAssistanceRequest: null };
   }
 
-  try {
-    const hasProfile = base?.resident && Object.prototype.hasOwnProperty.call(base.resident, 'first_name');
-    const [resident, releasedHistory, latestAssistanceRequest] = await Promise.all([
-      hasProfile ? Promise.resolve(base.resident) : loadResidentProfile(residentId),
-      loadReleasedHistory(residentId),
-      loadLatestAssistanceRequest(residentId),
-    ]);
+  const next = {
+    ...base,
+    resident: base?.resident || null,
+    releasedHistory: [],
+    latestAssistanceRequest: null,
+  };
 
-    return {
-      ...base,
-      resident: resident || base.resident || null,
-      releasedHistory,
-      latestAssistanceRequest,
-    };
-  } catch (profileError) {
-    console.warn('Verify card profile/history load failed:', profileError?.message || profileError);
-    return {
-      ...base,
-      resident: base?.resident || null,
-      releasedHistory: [],
-      latestAssistanceRequest: null,
-      profileWarning: 'Could not load full beneficiary profile or request history.',
-    };
+  const hasProfile = base?.resident && Object.prototype.hasOwnProperty.call(base.resident, 'first_name');
+  if (!hasProfile) {
+    try {
+      next.resident = await loadResidentProfile(residentId);
+    } catch (profileError) {
+      console.warn('Verify card profile load failed:', profileError?.message || profileError);
+      next.profileWarning = 'Could not load full beneficiary profile.';
+    }
   }
+
+  try {
+    next.releasedHistory = await loadReleasedHistory(residentId);
+  } catch (historyError) {
+    console.warn('Verify card released assistance history load failed:', historyError?.message || historyError);
+  }
+
+  try {
+    next.latestAssistanceRequest = await loadLatestAssistanceRequest(residentId);
+  } catch (requestError) {
+    console.warn('Verify card latest assistance request load failed:', requestError?.message || requestError);
+  }
+
+  return next;
 }
 
 async function handleCardVerification(cardData, supabaseAdminClient) {

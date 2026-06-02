@@ -94,7 +94,7 @@ export default function BeneficiaryShell({ children }) {
       <div
         className={`${styles.mainContent} ${!sidebarOpen ? styles.sidebarMinimized : ''}`}
       >
-        <Navbar onMenuClick={() => setSidebarOpen((open) => !open)} />
+        <Navbar onMenuClick={() => setSidebarOpen((open) => !open)} activityRole="Beneficiary" />
         <main className={styles.pageContent}>{children}</main>
       </div>
     </div>
