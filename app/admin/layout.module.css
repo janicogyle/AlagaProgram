@@ -42,6 +42,18 @@
   background: #f8fafc;
 }
 
+.logoutOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(248, 250, 252, 0.88);
+  backdrop-filter: blur(4px);
+}
+
 .authLoadingCard {
   display: flex;
   align-items: center;
@@ -155,6 +167,10 @@
   }
 
   .authLoading {
+    padding: 16px;
+  }
+
+  .logoutOverlay {
     padding: 16px;
   }
 

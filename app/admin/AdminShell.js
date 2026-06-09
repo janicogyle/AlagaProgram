@@ -22,6 +22,20 @@ function AdminShellLoading() {
   );
 }
 
+function LogoutOverlay() {
+  return (
+    <div className={styles.logoutOverlay}>
+      <div className={styles.authLoadingCard} role="status" aria-live="polite">
+        <span className={styles.authSpinner} aria-hidden="true" />
+        <div>
+          <p className={styles.authLoadingTitle}>Signing you out...</p>
+          <p className={styles.authLoadingText}>Ending your session securely</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminShell({ children, initialUser }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -29,6 +43,7 @@ export default function AdminShell({ children, initialUser }) {
   const [authChecked, setAuthChecked] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -132,6 +147,9 @@ export default function AdminShell({ children, initialUser }) {
   };
 
   const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+
     try {
       await fetch('/api/admin/session', { method: 'DELETE' }).catch(() => {});
 
@@ -155,6 +173,7 @@ export default function AdminShell({ children, initialUser }) {
   return (
     <div className={styles.layout}>
       <WelcomeToast />
+      {loggingOut && <LogoutOverlay />}
       {isMobile && (
         <div
           className={`${styles.overlay} ${sidebarOpen ? styles.overlayVisible : ''}`}

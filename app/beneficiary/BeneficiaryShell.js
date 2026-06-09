@@ -19,10 +19,25 @@ const beneficiaryMenuItems = [
   },
 ];
 
+function LogoutOverlay() {
+  return (
+    <div className={styles.logoutOverlay}>
+      <div className={styles.logoutCard} role="status" aria-live="polite">
+        <span className={styles.logoutSpinner} aria-hidden="true" />
+        <div>
+          <p className={styles.logoutTitle}>Signing you out...</p>
+          <p className={styles.logoutText}>Ending your session securely</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function BeneficiaryShell({ children }) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [beneficiaryUser] = useState(() => {
     if (typeof window === 'undefined') return { name: 'Beneficiary', role: 'Beneficiary' };
     const name = window.localStorage.getItem('beneficiaryName');
@@ -63,6 +78,9 @@ export default function BeneficiaryShell({ children }) {
   };
 
   const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+
     await fetch('/api/beneficiary/logout', { method: 'POST' }).catch(() => {});
 
     if (typeof window !== 'undefined') {
@@ -76,6 +94,7 @@ export default function BeneficiaryShell({ children }) {
   return (
     <div className={styles.layout}>
       <WelcomeToast />
+      {loggingOut && <LogoutOverlay />}
       {isMobile && (
         <div
           className={`${styles.overlay} ${sidebarOpen ? styles.overlayVisible : ''}`}
