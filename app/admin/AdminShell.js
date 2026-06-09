@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
+import WelcomeToast from '@/components/WelcomeToast';
 import styles from './layout.module.css';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -139,6 +140,7 @@ export default function AdminShell({ children, initialUser }) {
 
   return (
     <div className={styles.layout}>
+      <WelcomeToast />
       {isMobile && (
         <div
           className={`${styles.overlay} ${sidebarOpen ? styles.overlayVisible : ''}`}

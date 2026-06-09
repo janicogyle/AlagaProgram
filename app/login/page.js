@@ -110,12 +110,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <UnifiedLoginForm
-              role="beneficiary"
-              onLogin={handleLogin}
-              loading={loading}
-              showTitle={false}
-            />
+            <UnifiedLoginForm role="beneficiary" onLogin={handleLogin} isSubmitting={loading} showTitle={false} />
             
             <p className={styles.signup}>
               Don&apos;t have an account? <Link href="/signup">Sign up</Link>

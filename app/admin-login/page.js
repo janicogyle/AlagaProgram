@@ -127,12 +127,7 @@ export default function AdminLoginPage() {
         </div>
 
         <div className={styles.adminFormContainer}>
-          <UnifiedLoginForm
-            role="admin"
-            onLogin={handleLogin}
-            loading={loading}
-            showTitle={false}
-          />
+          <UnifiedLoginForm role="admin" onLogin={handleLogin} isSubmitting={loading} showTitle={false} />
         </div>
       </div>
 

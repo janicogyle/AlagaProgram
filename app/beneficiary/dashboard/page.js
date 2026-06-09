@@ -165,6 +165,16 @@ export default function BeneficiaryDashboardPage() {
   }, [loadDashboard]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    window.dispatchEvent(
+      new CustomEvent('alaga-dashboard-loading', {
+        detail: { loading },
+      }),
+    );
+  }, [loading]);
+
+  useEffect(() => {
     if (!supabase || typeof window === 'undefined') return undefined;
     const residentId = window.localStorage.getItem('beneficiaryResidentId');
     if (!residentId) return undefined;

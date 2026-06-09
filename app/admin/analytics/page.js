@@ -67,6 +67,7 @@ export default function AnalyticsPage() {
   const [recentAccountRequests, setRecentAccountRequests] = useState([]);
   const [staffActivity, setStaffActivity] = useState([]);
   const [staffActivityLoading, setStaffActivityLoading] = useState(true);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [adminRole, setAdminRole] = useState(readAdminRole);
 
   const applyAnalyticsState = useCallback((nextState) => {
@@ -96,9 +97,20 @@ export default function AnalyticsPage() {
     setAdminRole(readAdminRole());
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    window.dispatchEvent(
+      new CustomEvent('alaga-dashboard-loading', {
+        detail: { loading: analyticsLoading || staffActivityLoading },
+      }),
+    );
+  }, [analyticsLoading, staffActivityLoading]);
+
   const fetchData = useCallback(async () => {
     if (!supabase) {
       console.warn('Database client not available');
+      setAnalyticsLoading(false);
       return;
     }
     const cacheKey = getAnalyticsCacheKey({ timePeriod, trendMonth, trendYear });
@@ -106,25 +118,29 @@ export default function AnalyticsPage() {
 
     if (cached) {
       applyAnalyticsState(cached.value);
+      setAnalyticsLoading(false);
       if (cached.isFresh) return;
+    } else {
+      setAnalyticsLoading(true);
     }
 
-    const periodDays = { '1month': 30, '3months': 90, '6months': 180, '12months': 365 };
-    const days = periodDays[timePeriod] || 90;
-    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    try {
+      const periodDays = { '1month': 30, '3months': 90, '6months': 180, '12months': 365 };
+      const days = periodDays[timePeriod] || 90;
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-    const { data: residents } = await supabase
-      .from('residents')
-      .select(
-        'id, created_at, last_name, first_name, is_pwd, is_senior_citizen, is_solo_parent, status, sex, age, birthday, purok, street',
-      )
-      .order('created_at', { ascending: false });
+      const { data: residents } = await supabase
+        .from('residents')
+        .select(
+          'id, created_at, last_name, first_name, is_pwd, is_senior_citizen, is_solo_parent, status, sex, age, birthday, purok, street',
+        )
+        .order('created_at', { ascending: false });
 
-    if (!residents) return;
+      if (!residents) return;
 
-    const { data: assistanceRequests } = await supabase
-      .from('assistance_requests')
-      .select('status, created_at');
+      const { data: assistanceRequests } = await supabase
+        .from('assistance_requests')
+        .select('status, created_at');
 
     const { data: accountRequests } = await supabase
       .from('account_requests')
@@ -281,8 +297,11 @@ export default function AnalyticsPage() {
       recentAccountRequests: nextRecentAccountRequests,
     };
 
-    applyAnalyticsState(nextState);
-    setClientCache(cacheKey, nextState);
+      applyAnalyticsState(nextState);
+      setClientCache(cacheKey, nextState);
+    } finally {
+      setAnalyticsLoading(false);
+    }
   }, [applyAnalyticsState, currentYear, timePeriod, trendMonth, trendYear]);
 
   useEffect(() => {

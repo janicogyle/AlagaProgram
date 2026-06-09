@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '../../components/Sidebar';
 import Navbar from '../../components/Navbar';
+import WelcomeToast from '../../components/WelcomeToast';
 import styles from './layout.module.css';
 
 const beneficiaryMenuItems = [
@@ -74,6 +75,7 @@ export default function BeneficiaryShell({ children }) {
 
   return (
     <div className={styles.layout}>
+      <WelcomeToast />
       {isMobile && (
         <div
           className={`${styles.overlay} ${sidebarOpen ? styles.overlayVisible : ''}`}

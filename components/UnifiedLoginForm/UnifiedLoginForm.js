@@ -11,7 +11,8 @@ import styles from './UnifiedLoginForm.module.css';
 export function UnifiedLoginForm({
   role,
   onLogin,
-  loading = false,
+  isSubmitting = false,
+  submitDisabled = false,
   extraContent = null,
   showTitle = true,
 }) {
@@ -28,7 +29,7 @@ export function UnifiedLoginForm({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (loading) {
+    if (submitDisabled || isSubmitting) {
       return;
     }
     onLogin({ username, password });
@@ -58,6 +59,7 @@ export function UnifiedLoginForm({
             id="username"
             value={displayUsername}
             onChange={handleUsernameChange}
+            disabled={isSubmitting}
             inputMode={isBeneficiary ? 'numeric' : undefined}
             autoComplete={isBeneficiary ? 'tel' : undefined}
             maxLength={isBeneficiary ? 16 : undefined}
@@ -73,6 +75,7 @@ export function UnifiedLoginForm({
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={isSubmitting}
               placeholder="your password"
               required
             />
@@ -80,6 +83,7 @@ export function UnifiedLoginForm({
               type="button"
               className={styles.passwordToggle}
               onClick={() => setShowPassword((prev) => !prev)}
+              disabled={isSubmitting}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
               aria-pressed={showPassword}
             >
@@ -101,8 +105,15 @@ export function UnifiedLoginForm({
         </div>
         {extraContent ? <div className={styles.formExtras}>{extraContent}</div> : null}
       </>
-      <button type="submit" className={styles.loginButton} disabled={loading}>
-        {loading ? 'Signing In...' : 'Sign In'}
+      <button type="submit" className={styles.loginButton} disabled={submitDisabled || isSubmitting}>
+        {isSubmitting ? (
+          <>
+            <span className={styles.spinner} aria-hidden="true" />
+            Signing in...
+          </>
+        ) : (
+          'Sign In'
+        )}
       </button>
     </form>
   );
