@@ -11,7 +11,7 @@ import styles from './UnifiedLoginForm.module.css';
 export function UnifiedLoginForm({
   role,
   onLogin,
-  submitDisabled = false,
+  loading = false,
   extraContent = null,
   showTitle = true,
 }) {
@@ -28,7 +28,7 @@ export function UnifiedLoginForm({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (submitDisabled) {
+    if (loading) {
       return;
     }
     onLogin({ username, password });
@@ -101,8 +101,8 @@ export function UnifiedLoginForm({
         </div>
         {extraContent ? <div className={styles.formExtras}>{extraContent}</div> : null}
       </>
-      <button type="submit" className={styles.loginButton} disabled={submitDisabled}>
-        Sign In
+      <button type="submit" className={styles.loginButton} disabled={loading}>
+        {loading ? 'Signing In...' : 'Sign In'}
       </button>
     </form>
   );
