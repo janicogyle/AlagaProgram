@@ -33,6 +33,58 @@
   height: 0;
 }
 
+.authLoading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #f8fafc;
+}
+
+.authLoadingCard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(360px, 100%);
+  padding: 18px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+}
+
+.authSpinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid #dbeafe;
+  border-top-color: #2563eb;
+  border-radius: 999px;
+  animation: authSpin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+.authLoadingTitle {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.authLoadingText {
+  margin: 2px 0 0;
+  color: #64748b;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+@keyframes authSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Overlay for mobile sidebar */
 .overlay {
   display: none;
@@ -100,5 +152,19 @@
 @media (max-width: 576px) {
   .pageContent {
     padding: 14px 10px 22px;
+  }
+
+  .authLoading {
+    padding: 16px;
+  }
+
+  .authLoadingCard {
+    padding: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .authSpinner {
+    animation: none;
   }
 }

@@ -8,6 +8,20 @@ import WelcomeToast from '@/components/WelcomeToast';
 import styles from './layout.module.css';
 import { supabase } from '@/lib/supabaseClient';
 
+function AdminShellLoading() {
+  return (
+    <div className={styles.authLoading}>
+      <div className={styles.authLoadingCard} role="status" aria-live="polite">
+        <span className={styles.authSpinner} aria-hidden="true" />
+        <div>
+          <p className={styles.authLoadingTitle}>Signing you in...</p>
+          <p className={styles.authLoadingText}>Preparing your dashboard</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminShell({ children, initialUser }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -136,7 +150,7 @@ export default function AdminShell({ children, initialUser }) {
     }
   };
 
-  if (!authChecked || !user) return null;
+  if (!authChecked || !user) return <AdminShellLoading />;
 
   return (
     <div className={styles.layout}>
