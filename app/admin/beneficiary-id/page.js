@@ -1459,11 +1459,15 @@ function QrScanner({ onDetected, onClose }) {
           {cameras.length === 0 ? (
             <option value="">No camera detected</option>
           ) : (
-            cameras.map((device, index) => (
-              <option key={device.deviceId} value={device.deviceId}>
-                {device.label || `Camera ${index + 1}`}
-              </option>
-            ))
+            cameras.map((device, index) => {
+              const optionKey = `${device.deviceId || device.label || 'camera'}-${index}`;
+
+              return (
+                <option key={optionKey} value={device.deviceId || ''}>
+                  {device.label || `Camera ${index + 1}`}
+                </option>
+              );
+            })
           )}
         </select>
         <Button

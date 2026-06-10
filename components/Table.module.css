@@ -3,7 +3,7 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
 }
 
 .table {
@@ -31,9 +31,9 @@
   padding: 12px 16px;
   font-size: 13px;
   font-weight: 600;
-  color: #6b7280;
-  background-color: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  color: var(--text-muted);
+  background-color: var(--surface-muted);
+  border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -44,21 +44,21 @@
 }
 
 .tr:hover {
-  background-color: #f9fafb;
+  background-color: var(--surface-muted);
 }
 
 .td {
   padding: 14px 16px;
   font-size: 14px;
-  color: #374151;
-  border-bottom: 1px solid #e5e7eb;
+  color: var(--foreground);
+  border-bottom: 1px solid var(--border-color);
   vertical-align: top;
 }
 
 .emptyCell {
   padding: 40px 16px;
   text-align: center;
-  color: #9ca3af;
+  color: var(--text-light);
   font-size: 14px;
 }
 
@@ -87,8 +87,8 @@
     margin: 0 -12px;
     padding: 0 12px;
     border: none;
-    border-top: 1px solid #e5e7eb;
-    border-bottom: 1px solid #e5e7eb;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
   }
 
   .th {

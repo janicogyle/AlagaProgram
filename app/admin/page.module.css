@@ -14,12 +14,12 @@
   margin: 0 0 4px 0;
   font-size: 28px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--foreground);
 }
 
 .header p {
   margin: 0;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 16px;
 }
 
@@ -31,10 +31,10 @@
 }
 
 .kpiCard {
-  background: white;
+  background: var(--surface-bg);
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   min-width: 0;
 }
@@ -49,7 +49,7 @@
 .kpiTitle {
   font-size: 14px;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -72,7 +72,7 @@
 .kpiValue {
   font-size: 32px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--foreground);
   margin-bottom: 8px;
 }
 
@@ -94,7 +94,7 @@
 }
 
 .kpiPrevious {
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 /* Legacy stats grid for backward compatibility */
@@ -149,14 +149,14 @@
 
 .lineLabel {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
 .lineValue {
   font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--foreground);
 }
 
 /* Pie Chart */
@@ -187,7 +187,7 @@
   left: 50%;
   width: 60px;
   height: 60px;
-  background: white;
+  background: var(--surface-bg);
   border-radius: 50%;
   transform: translate(-50%, -50%);
 }
@@ -269,7 +269,7 @@
 
 .legendLabel {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 /* Insights Section */
@@ -287,9 +287,9 @@
   display: flex;
   gap: 16px;
   padding: 20px;
-  background: #f9fafb;
+  background: var(--surface-muted);
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
   min-width: 0;
 }
 
@@ -302,13 +302,13 @@
   margin: 0 0 8px 0;
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--foreground);
 }
 
 .insightContent p {
   margin: 0;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-muted);
   line-height: 1.5;
 }
 

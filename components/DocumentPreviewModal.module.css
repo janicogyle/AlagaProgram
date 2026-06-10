@@ -21,15 +21,15 @@
 
 .zoomLabel {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .viewport {
   max-height: 70vh;
   overflow: auto;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: #f9fafb;
+  background: var(--surface-muted);
 }
 
 .scaled {
@@ -51,6 +51,10 @@
   height: 70vh;
   border: 0;
   background: #fff;
+}
+
+:global(html[data-theme='dark']) .frame {
+  background: var(--surface-bg);
 }
 
 .empty {

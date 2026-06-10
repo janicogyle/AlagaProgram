@@ -30,8 +30,8 @@
 .tooltip {
   position: absolute;
   transform: translateX(-50%);
-  background: #1f2937;
-  color: white;
+  background: var(--tooltip-bg);
+  color: var(--tooltip-text);
   padding: 10px 14px;
   border-radius: 8px;
   font-size: 12px;
@@ -40,7 +40,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border: 1px solid color-mix(in srgb, var(--tooltip-text) 16%, transparent);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.38);
   pointer-events: none;
   animation: fadeIn 0.15s ease;
 }
@@ -53,7 +54,7 @@
   transform: translateX(-50%);
   border-width: 6px 6px 0 6px;
   border-style: solid;
-  border-color: #1f2937 transparent transparent transparent;
+  border-color: var(--tooltip-bg) transparent transparent transparent;
 }
 
 .tooltipColor {
@@ -72,10 +73,11 @@
 .tooltipLabel {
   font-weight: 600;
   font-size: 13px;
+  color: var(--tooltip-text);
 }
 
 .tooltipValue {
-  color: #9ca3af;
+  color: var(--tooltip-text);
   font-size: 12px;
 }
 
@@ -109,7 +111,12 @@
 
 .legendItem:hover,
 .legendItemActive {
-  background-color: #f3f4f6;
+  background-color: var(--surface-hover);
+}
+
+.legendItem:hover .legendLabel,
+.legendItemActive .legendLabel {
+  color: var(--foreground);
 }
 
 .legendColor {
@@ -121,7 +128,7 @@
 
 .legendLabel {
   font-size: 13px;
-  color: #374151;
+  color: var(--text-muted);
 }
 
 .emptyState {
@@ -129,7 +136,7 @@
   align-items: center;
   justify-content: center;
   height: 200px;
-  color: #9ca3af;
+  color: var(--text-light);
   font-size: 14px;
 }
 

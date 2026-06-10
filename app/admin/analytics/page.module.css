@@ -17,12 +17,12 @@
   margin: 0 0 4px 0;
   font-size: 28px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--foreground);
 }
 
 .header p {
   margin: 0;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 16px;
 }
 
@@ -49,7 +49,7 @@
   gap: 10px;
   margin-top: 18px;
   padding-top: 14px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border-color);
 }
 
 .trendInsightTotal {
@@ -57,12 +57,12 @@
   align-items: baseline;
   gap: 8px;
   flex-wrap: wrap;
-  color: #374151;
+  color: var(--text-muted);
   font-size: 13px;
 }
 
 .trendInsightTotal strong {
-  color: #1f2937;
+  color: var(--foreground);
   font-size: 18px;
   font-weight: 700;
 }
@@ -85,15 +85,15 @@
 }
 
 .trendInsightItem {
-  color: #1e40af;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 10%, var(--surface-bg));
+  border: 1px solid color-mix(in srgb, var(--primary-color) 34%, var(--border-color));
 }
 
 .trendInsightMuted {
-  color: #6b7280;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  border: 1px solid var(--border-color);
 }
 
 /* KPI Cards */
@@ -106,7 +106,7 @@
 .cardMessage {
   padding: 12px;
   margin: 0;
-  color: #374151;
+  color: var(--foreground);
 }
 
 .sectorBadges {
@@ -171,11 +171,11 @@
 
 .chartCard {
   min-height: 320px;
-  background: #ffffff;
+  background: var(--card-bg);
   border-radius: 20px;
   padding: 28px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border-color);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -244,7 +244,7 @@
 
 .lineLabel {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-muted);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -285,7 +285,7 @@
   left: 50%;
   width: 80px;
   height: 80px;
-  background: white;
+  background: var(--card-bg);
   border-radius: 50%;
   transform: translate(-50%, -50%);
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -305,7 +305,7 @@
   gap: 12px;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--foreground);
   padding: 8px 0;
 }
 
@@ -355,7 +355,7 @@
 
 .barLabel {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-muted);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -364,7 +364,7 @@
 .barValue {
   font-size: 15px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--foreground);
   position: absolute;
   top: -28px;
   white-space: nowrap;
@@ -400,18 +400,18 @@
 
 .hBarLabel span:first-child {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--foreground);
   font-size: 14px;
 }
 
 .hBarCount {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
 .hBarContainer {
-  background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 100%);
+  background: linear-gradient(90deg, var(--surface-muted) 0%, var(--surface-hover) 100%);
   height: 28px;
   border-radius: 14px;
   overflow: visible;
@@ -432,16 +432,18 @@
 .hBar::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  transition: left 0.5s ease;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+  background-size: 200% 100%;
+  background-position: -100% 0;
+  opacity: 0;
+  transition: background-position 0.5s ease, opacity 0.2s ease;
 }
 
 .hBar:hover::before {
-  left: 100%;
+  background-position: 100% 0;
+  opacity: 1;
 }
 
 .hBar:hover {
@@ -454,8 +456,8 @@
   bottom: 100%;
   left: 50%;
   transform: translateX(-50%) scale(0.95);
-  background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
-  color: white;
+  background: var(--tooltip-bg);
+  color: var(--tooltip-text);
   padding: 12px 16px;
   border-radius: 12px;
   font-size: 13px;
@@ -473,7 +475,8 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  border: 1px solid color-mix(in srgb, var(--tooltip-text) 16%, transparent);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.38);
   z-index: 100;
   margin-bottom: 8px;
 }
@@ -486,7 +489,7 @@
   transform: translateX(-50%);
   border-width: 6px 6px 0 6px;
   border-style: solid;
-  border-color: #374151 transparent transparent transparent;
+  border-color: var(--tooltip-bg) transparent transparent transparent;
 }
 
 .hBarTooltip strong {
@@ -494,6 +497,10 @@
   color: #c4b5fd;
   margin-bottom: 2px;
   font-weight: 600;
+}
+
+.hBarTooltip span {
+  color: var(--tooltip-text);
 }
 
 .hBar:hover .hBarTooltip {
@@ -505,7 +512,7 @@
 .hBarPercentage {
   font-size: 13px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--foreground);
   text-align: right;
   background: linear-gradient(135deg, #8b5cf6, #a78bfa);
   -webkit-background-clip: text;
@@ -525,10 +532,10 @@
 }
 
 .assistanceItem {
-  background: #f9fafb;
+  background: var(--surface-muted);
   border-radius: 8px;
   padding: 20px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
   min-width: 0;
 }
 
@@ -543,7 +550,7 @@
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--foreground);
 }
 
 .assistanceAmount {
@@ -564,12 +571,12 @@
 .count {
   font-size: 24px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--foreground);
 }
 
 .countLabel {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 /* Insights Card */
@@ -587,9 +594,9 @@
   display: flex;
   gap: 16px;
   padding: 20px;
-  background: #f9fafb;
+  background: var(--surface-muted);
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
 }
 
 .insightIcon {
@@ -601,13 +608,13 @@
   margin: 0 0 8px 0;
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--foreground);
 }
 
 .insightContent p {
   margin: 0;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-muted);
   line-height: 1.5;
 }
 

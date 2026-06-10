@@ -1,7 +1,7 @@
 .layout {
   display: flex;
   min-height: 100vh;
-  background: #f8fafc;
+  background: var(--background);
 }
 
 .mainContent {
@@ -9,7 +9,7 @@
   margin-left: 272px;
   display: flex;
   flex-direction: column;
-  background: #f8fafc;
+  background: var(--background);
   transition: margin-left 0.2s ease;
   height: 100vh;
   overflow: hidden;
@@ -40,7 +40,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: #f8fafc;
+  background: var(--background);
 }
 
 .logoutOverlay {
@@ -51,7 +51,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(248, 250, 252, 0.88);
+  background: rgba(15, 23, 42, 0.38);
   backdrop-filter: blur(4px);
 }
 
@@ -61,18 +61,18 @@
   gap: 14px;
   width: min(360px, 100%);
   padding: 18px;
-  border: 1px solid #dbeafe;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
-  color: #0f172a;
+  background: var(--card-bg);
+  box-shadow: var(--shadow-strong);
+  color: var(--foreground);
 }
 
 .authSpinner {
   width: 34px;
   height: 34px;
-  border: 3px solid #dbeafe;
-  border-top-color: #2563eb;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--primary-color);
   border-radius: 999px;
   animation: authSpin 0.75s linear infinite;
   flex-shrink: 0;
@@ -87,7 +87,7 @@
 
 .authLoadingText {
   margin: 2px 0 0;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.86rem;
   line-height: 1.35;
 }

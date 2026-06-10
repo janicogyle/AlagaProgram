@@ -5,9 +5,21 @@
   --background: #f8fafc;
   --foreground: #1f2937;
   --card-bg: #ffffff;
+  --surface-bg: #ffffff;
+  --surface-muted: #f9fafb;
+  --surface-hover: #f3f4f6;
   --border-color: #e5e7eb;
+  --border-strong: #d1d5db;
   --text-muted: #6b7280;
   --text-light: #9ca3af;
+  --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-strong: 0 20px 60px rgba(0, 0, 0, 0.2);
+  --focus-ring: rgba(30, 64, 175, 0.1);
+  --tooltip-bg: #111827;
+  --tooltip-text: #f8fafc;
+  --media-bg: #111827;
+  --select-chevron: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  color-scheme: light;
   --success: #16a34a;
   --danger: #dc2626;
   --warning: #ea580c;
@@ -16,6 +28,30 @@
   --viewport-padding: 1rem;
   --touch-target-min: 44px;
   --input-height: 48px;
+}
+
+html[data-theme='dark'] {
+  --primary-color: #60a5fa;
+  --primary-dark: #3b82f6;
+  --primary-light: #93c5fd;
+  --background: #0f172a;
+  --foreground: #e5e7eb;
+  --card-bg: #111827;
+  --surface-bg: #111827;
+  --surface-muted: #1e293b;
+  --surface-hover: #263449;
+  --border-color: #334155;
+  --border-strong: #475569;
+  --text-muted: #cbd5e1;
+  --text-light: #94a3b8;
+  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.34);
+  --shadow-strong: 0 24px 70px rgba(0, 0, 0, 0.48);
+  --focus-ring: rgba(96, 165, 250, 0.2);
+  --tooltip-bg: #020617;
+  --tooltip-text: #f8fafc;
+  --media-bg: #020617;
+  --select-chevron: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  color-scheme: dark;
 }
 
 * {
@@ -106,16 +142,16 @@ img {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--surface-muted);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--border-strong);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--text-light);
 }
 
 /* Selection styles */
@@ -178,7 +214,7 @@ img {
   }
 
   body {
-    background: #f3f6fb;
+    background: var(--background);
     font-size: 13px;
   }
 
@@ -231,18 +267,6 @@ img {
   button:active,
   a:active {
     opacity: 0.8;
-  }
-}
-
-/* Dark mode support (optional) */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #1f2937;
-    --foreground: #f3f4f6;
-    --card-bg: #111827;
-    --border-color: #374151;
-    --text-muted: #9ca3af;
-    --text-light: #6b7280;
   }
 }
 

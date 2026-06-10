@@ -11,7 +11,7 @@
 
 .info {
   background-color: #eef2ff;
-  border-color: #e5e7eb;
+  border-color: var(--border-color);
   color: #3730a3;
 }
 
@@ -31,4 +31,28 @@
   background-color: #fee2e2;
   border-color: #fecaca;
   color: #b91c1c;
+}
+
+:global(html[data-theme='dark']) .info {
+  background-color: rgba(129, 140, 248, 0.18);
+  border-color: rgba(129, 140, 248, 0.38);
+  color: #c7d2fe;
+}
+
+:global(html[data-theme='dark']) .success {
+  background-color: rgba(34, 197, 94, 0.16);
+  border-color: rgba(74, 222, 128, 0.34);
+  color: #86efac;
+}
+
+:global(html[data-theme='dark']) .warning {
+  background-color: rgba(251, 191, 36, 0.16);
+  border-color: rgba(251, 191, 36, 0.36);
+  color: #fcd34d;
+}
+
+:global(html[data-theme='dark']) .danger {
+  background-color: rgba(248, 113, 113, 0.16);
+  border-color: rgba(248, 113, 113, 0.36);
+  color: #fca5a5;
 }

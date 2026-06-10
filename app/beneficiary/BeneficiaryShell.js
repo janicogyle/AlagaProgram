@@ -38,6 +38,12 @@ export default function BeneficiaryShell({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === 'undefined') return 'light';
+    const storedTheme = window.localStorage.getItem('alagaTheme');
+    if (storedTheme === 'dark' || storedTheme === 'light') return storedTheme;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
   const [beneficiaryUser] = useState(() => {
     if (typeof window === 'undefined') return { name: 'Beneficiary', role: 'Beneficiary' };
     const name = window.localStorage.getItem('beneficiaryName');
@@ -54,6 +60,13 @@ export default function BeneficiaryShell({ children }) {
       document.body.classList.remove('appShellActive');
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('alagaTheme', theme);
+  }, [theme]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -115,7 +128,12 @@ export default function BeneficiaryShell({ children }) {
       <div
         className={`${styles.mainContent} ${!sidebarOpen ? styles.sidebarMinimized : ''}`}
       >
-        <Navbar onMenuClick={() => setSidebarOpen((open) => !open)} activityRole="Beneficiary" />
+        <Navbar
+          onMenuClick={() => setSidebarOpen((open) => !open)}
+          activityRole="Beneficiary"
+          theme={theme}
+          onThemeToggle={() => setTheme((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'))}
+        />
         <main className={styles.pageContent}>{children}</main>
       </div>
     </div>

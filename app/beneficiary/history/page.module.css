@@ -20,13 +20,13 @@
 
 .headerRow h2 {
   margin: 0;
-  color: #111827;
+  color: var(--foreground);
   font-size: 1.15rem;
 }
 
 .muted {
   font-size: 0.9rem;
-  color: #475569;
+  color: var(--text-muted);
   line-height: 1.5;
   margin: 0 0 0.75rem;
 }
@@ -41,13 +41,13 @@
 
 .cooldownLabel {
   font-size: 0.9rem;
-  color: #374151;
+  color: var(--foreground);
   font-weight: 600;
 }
 
 .cooldownMeta {
   font-size: 0.85rem;
-  color: #475569;
+  color: var(--text-muted);
 }
 
 .tableView {
@@ -60,8 +60,8 @@
 }
 
 .requestCard {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
   padding: 16px;
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
@@ -74,13 +74,13 @@
   gap: 12px;
   margin-bottom: 12px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--surface-hover);
 }
 
 .cardControlNo {
   font-size: 14px;
   font-weight: 700;
-  color: #111827;
+  color: var(--foreground);
   font-family: 'Courier New', Courier, monospace;
   overflow-wrap: anywhere;
 }
@@ -100,7 +100,7 @@
 .cardLabel {
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -108,14 +108,14 @@
 .cardValue {
   font-size: 14px;
   font-weight: 500;
-  color: #111827;
+  color: var(--foreground);
   overflow-wrap: anywhere;
 }
 
 .cardFooter {
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--surface-hover);
 }
 
 .cardFooter a,

@@ -42,7 +42,7 @@
 
 .formSection {
   padding-bottom: 20px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .formSection:last-child {
@@ -70,7 +70,7 @@
 
 .sectionHint {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-muted);
   margin: -8px 0 16px 0;
 }
 
@@ -106,19 +106,19 @@
   flex-direction: column;
   gap: 4px;
   padding: 16px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--border-color);
   border-radius: 10px;
-  background: #fafafa;
+  background: var(--surface-muted);
   transition: all 0.2s ease;
 }
 
 .radioCard input:checked + .radioCardContent {
-  border-color: #1e40af;
-  background: #eff6ff;
+  border-color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 10%, var(--surface-bg));
 }
 
 .radioCard:hover .radioCardContent {
-  border-color: #93c5fd;
+  border-color: color-mix(in srgb, var(--primary-color) 62%, var(--border-color));
 }
 
 .radioMark {
@@ -129,16 +129,16 @@
 .radioLabel {
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-muted);
 }
 
 .radioCeiling {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .radioCard input:checked + .radioCardContent .radioLabel {
-  color: #1e40af;
+  color: var(--primary-color);
 }
 
 .otherInput {
@@ -153,8 +153,8 @@
 }
 
 .documentsCategory {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 16px 20px;
 }
@@ -165,7 +165,7 @@
   gap: 10px;
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-muted);
   margin: 0 0 12px 0;
 }
 
@@ -187,17 +187,17 @@
   align-items: center;
   gap: 10px;
   font-size: 14px;
-  color: #4b5563;
+  color: var(--text-muted);
   padding: 8px 12px;
-  background: white;
+  background: var(--surface-bg);
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
 }
 
 .emptyRequirement {
   font-style: italic;
-  color: #64748b;
-  background: #ffffff;
+  color: var(--text-muted);
+  background: var(--surface-bg);
 }
 
 .docCheck {
@@ -219,17 +219,17 @@
   justify-content: center;
   gap: 10px;
   padding: 24px;
-  background: #f3f4f6;
+  background: var(--surface-hover);
   border-radius: 12px;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-muted);
   text-align: center;
 }
 
 /* Acknowledgement Box */
 .acknowledgementBox {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 20px;
 }
@@ -238,7 +238,7 @@
   display: flex;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px dashed #e5e7eb;
+  border-bottom: 1px dashed var(--border-color);
 }
 
 .ackRow:last-of-type {
@@ -247,14 +247,14 @@
 
 .ackLabel {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-muted);
   min-width: 140px;
 }
 
 .ackValue {
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-muted);
   flex: 1;
 }
 
@@ -278,8 +278,8 @@
 }
 
 .recordCard {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 16px;
   min-width: 0;
@@ -295,7 +295,7 @@
   align-items: center;
   margin-bottom: 12px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--surface-hover);
 }
 
 .controlNo {
@@ -319,13 +319,13 @@
 
 .cardLabel {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .cardValue {
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-muted);
   text-align: right;
   overflow-wrap: anywhere;
 }
@@ -333,7 +333,7 @@
 .emptyCard {
   text-align: center;
   padding: 40px 20px;
-  color: #475569;
+  color: var(--text-muted);
   font-size: 14px;
 }
 

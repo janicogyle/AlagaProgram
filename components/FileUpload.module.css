@@ -7,7 +7,7 @@
 .label {
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-muted);
 }
 
 .required {
@@ -40,19 +40,19 @@
 }
 
 .dropZone {
-  border: 2px dashed #d1d5db;
+  border: 2px dashed var(--border-strong);
   border-radius: 12px;
   padding: 32px 20px;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  background-color: #fafafa;
+  background-color: var(--surface-muted);
   min-height: 120px;
 }
 
 .dropZone:hover {
   border-color: #1e40af;
-  background-color: #f8fafc;
+  background-color: var(--surface-muted);
 }
 
 .dragging {
@@ -70,11 +70,11 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .dropZoneContent svg {
-  color: #9ca3af;
+  color: var(--text-light);
 }
 
 .dropText {
@@ -94,7 +94,7 @@
 
 .hint {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--text-light);
   margin: 0;
 }
 
@@ -109,15 +109,15 @@
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   transition: all 0.2s ease;
   min-width: 0;
 }
 
 .fileItem:hover {
-  background-color: #f3f4f6;
+  background-color: var(--surface-hover);
 }
 
 .filePreview {
@@ -129,7 +129,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #e5e7eb;
+  background-color: var(--border-color);
 }
 
 .previewImage {
@@ -142,7 +142,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .fileDetails {
@@ -156,7 +156,7 @@
 .fileName {
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -164,7 +164,7 @@
 
 .fileSize {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--text-light);
 }
 
 .removeBtn {
@@ -172,7 +172,7 @@
   border: none;
   padding: 4px;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--text-light);
   border-radius: 4px;
   transition: all 0.2s ease;
   display: flex;
@@ -183,6 +183,31 @@
 .removeBtn:hover {
   color: #dc2626;
   background-color: #fee2e2;
+}
+
+:global(html[data-theme='dark']) .sizeWarning {
+  background-color: rgba(251, 191, 36, 0.16);
+  border-color: rgba(251, 191, 36, 0.38);
+  color: #fcd34d;
+}
+
+:global(html[data-theme='dark']) .sizeWarning svg {
+  color: #fbbf24;
+}
+
+:global(html[data-theme='dark']) .dropZone:hover,
+:global(html[data-theme='dark']) .dragging {
+  border-color: var(--primary-color);
+  background-color: color-mix(in srgb, var(--primary-color) 14%, var(--surface-muted));
+}
+
+:global(html[data-theme='dark']) .browseLink {
+  color: var(--primary-light);
+}
+
+:global(html[data-theme='dark']) .removeBtn:hover {
+  color: #fca5a5;
+  background-color: rgba(248, 113, 113, 0.16);
 }
 
 @media (max-width: 576px) {

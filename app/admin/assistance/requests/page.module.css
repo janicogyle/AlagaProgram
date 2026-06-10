@@ -37,9 +37,9 @@
   align-items: center;
   gap: 16px;
   padding: 20px;
-  background: white;
+  background: var(--surface-bg);
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
   min-width: 0;
 }
 
@@ -61,12 +61,12 @@
 .summaryValue {
   font-size: 24px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--foreground);
 }
 
 .summaryLabel {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-muted);
   overflow-wrap: anywhere;
 }
 
@@ -94,13 +94,13 @@
 }
 
 .viewBtn {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--surface-hover);
+  color: var(--text-muted);
 }
 
 .viewBtn:hover {
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--border-color);
+  color: var(--text-muted);
 }
 
 .approveBtn {
@@ -167,7 +167,7 @@
   align-items: center;
   justify-content: space-between;
   padding-bottom: 16px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .controlNumber {
@@ -184,7 +184,7 @@
 }
 
 .detailSection {
-  background: #f9fafb;
+  background: var(--surface-muted);
   padding: 20px;
   border-radius: 12px;
   min-width: 0;
@@ -193,10 +193,10 @@
 .detailSection h4 {
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-muted);
   margin: 0 0 16px 0;
   padding-bottom: 8px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .detailRow {
@@ -207,13 +207,13 @@
 
 .detailLabel {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .detailValue {
   font-size: 13px;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--foreground);
   text-align: right;
   overflow-wrap: anywhere;
 }
@@ -230,7 +230,7 @@
   flex-direction: column;
   gap: 4px;
   padding: 16px;
-  background: #eff6ff;
+  background: color-mix(in srgb, var(--primary-color) 10%, var(--surface-bg));
   border-radius: 10px;
   text-align: center;
   min-width: 0;
@@ -239,7 +239,7 @@
 .infoLabel {
   font-size: 11px;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -247,7 +247,7 @@
 .infoValue {
   font-size: 14px;
   font-weight: 600;
-  color: #1e40af;
+  color: var(--primary-color);
   overflow-wrap: anywhere;
 }
 
@@ -258,7 +258,7 @@
 
 .requirementsContent {
   width: 100%;
-  color: #1f2937;
+  color: var(--foreground);
 }
 
 .validIdLink {
@@ -267,9 +267,9 @@
   justify-content: center;
   padding: 6px 10px;
   border-radius: 8px;
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 34%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-color) 10%, var(--surface-bg));
+  color: var(--primary-color);
   text-decoration: none;
   font-size: 12px;
   font-weight: 600;
@@ -277,22 +277,22 @@
 }
 
 .validIdLink:hover {
-  background: #dbeafe;
+  background: color-mix(in srgb, var(--primary-color) 16%, var(--surface-bg));
 }
 
 .verificationPanel {
   margin-top: 12px;
   padding: 12px;
-  border: 1px solid #dbeafe;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 34%, var(--border-color));
   border-radius: 10px;
-  background: #f8fbff;
+  background: color-mix(in srgb, var(--primary-color) 8%, var(--surface-bg));
 }
 
 .verificationHeading {
   margin: 0 0 10px 0;
   font-size: 12px;
   font-weight: 700;
-  color: #1e3a8a;
+  color: var(--primary-color);
   text-transform: uppercase;
 }
 
@@ -306,7 +306,7 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  color: #1f2937;
+  color: var(--foreground);
   line-height: 1.45;
 }
 
@@ -318,12 +318,12 @@
   margin-top: 10px;
   font-size: 12px;
   font-weight: 700;
-  color: #1e3a8a;
+  color: var(--primary-color);
 }
 
 .verificationEmpty {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .uploadedDocsSection {
@@ -333,7 +333,7 @@
 .uploadedDocsHeading {
   margin: 0 0 8px 0;
   font-size: 12px;
-  color: #374151;
+  color: var(--text-muted);
 }
 
 .uploadedDocsList {
@@ -348,9 +348,9 @@
   justify-content: space-between;
   gap: 8px;
   padding: 8px 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--surface-bg);
 }
 
 .uploadedDocMeta {
@@ -363,23 +363,23 @@
 .uploadedDocName {
   font-size: 12px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--foreground);
   overflow-wrap: anywhere;
 }
 
 .uploadedDocType {
   font-size: 11px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .walkInNotice {
   margin-top: 12px;
   font-size: 12px;
-  color: #374151;
+  color: var(--text-muted);
   padding: 10px 12px;
   border-radius: 8px;
-  background: #f9fafb;
-  border: 1px dashed #d1d5db;
+  background: var(--surface-muted);
+  border: 1px dashed var(--border-strong);
 }
 
 /* Decision Modal */
@@ -404,19 +404,19 @@
 .decisionTitle {
   font-size: 18px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--foreground);
   margin: 0 0 12px 0;
 }
 
 .decisionDesc {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-muted);
   line-height: 1.6;
   margin: 0 0 20px 0;
 }
 
 .decisionDesc strong {
-  color: #374151;
+  color: var(--text-muted);
 }
 
 .remarksSection {
@@ -428,14 +428,14 @@
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 
 .remarksInput {
   width: 100%;
   padding: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 14px;
   font-family: inherit;
@@ -449,7 +449,7 @@
 }
 
 .remarksInput::placeholder {
-  color: #9ca3af;
+  color: var(--text-light);
 }
 
 .filters {
@@ -517,8 +517,8 @@
 }
 
 .requestCard {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 16px;
 }
@@ -533,7 +533,7 @@
   align-items: flex-start;
   margin-bottom: 12px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--surface-hover);
 }
 
 .cardHeaderLeft {
@@ -568,20 +568,20 @@
 
 .cardLabel {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .cardValue {
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-muted);
   text-align: right;
 }
 
 .emptyCard {
   text-align: center;
   padding: 40px 20px;
-  color: #475569;
+  color: var(--text-muted);
   font-size: 14px;
 }
 

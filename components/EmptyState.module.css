@@ -8,20 +8,20 @@
 }
 
 .icon {
-  color: #d1d5db;
+  color: var(--border-strong);
   margin-bottom: 16px;
 }
 
 .title {
   font-size: 16px;
   font-weight: 600;
-  color: #374151;
+  color: var(--foreground);
   margin: 0 0 8px 0;
 }
 
 .description {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-muted);
   margin: 0;
   max-width: 320px;
 }

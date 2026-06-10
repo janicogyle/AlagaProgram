@@ -44,6 +44,7 @@ export default function AdminShell({ children, initialUser }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [theme, setTheme] = useState('light');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -55,6 +56,23 @@ export default function AdminShell({ children, initialUser }) {
       document.body.classList.remove('appShellActive');
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const storedTheme = localStorage.getItem('alagaTheme');
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const initialTheme = storedTheme || systemTheme;
+    setTheme(initialTheme);
+    document.documentElement.dataset.theme = initialTheme;
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('alagaTheme', theme);
+  }, [theme]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -182,7 +200,12 @@ export default function AdminShell({ children, initialUser }) {
       )}
       <Sidebar user={user} onLogout={handleLogout} minimized={!sidebarOpen} />
       <div className={`${styles.mainContent} ${!sidebarOpen ? styles.sidebarMinimized : ''}`}>
-        <Navbar onMenuClick={() => setSidebarOpen((open) => !open)} activityRole={user.role} />
+        <Navbar
+          onMenuClick={() => setSidebarOpen((open) => !open)}
+          activityRole={user.role}
+          theme={theme}
+          onThemeToggle={() => setTheme((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'))}
+        />
         <main className={styles.pageContent}>{children}</main>
       </div>
     </div>

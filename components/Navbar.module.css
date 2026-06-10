@@ -4,7 +4,7 @@
   justify-content: space-between;
   padding: 14px 24px;
   padding: 14px max(24px, env(safe-area-inset-right)) 14px max(24px, env(safe-area-inset-left));
-  background: rgba(248, 250, 252, 0.62);
+  background: color-mix(in srgb, var(--background) 78%, transparent);
   border-bottom: 1px solid transparent;
   box-shadow: none;
   backdrop-filter: blur(14px);
@@ -27,12 +27,12 @@
   align-items: center;
   justify-content: center;
   padding: 8px;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(203, 213, 225, 0.78);
+  background: color-mix(in srgb, var(--surface-bg) 82%, transparent);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   cursor: pointer;
-  color: #475569;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  color: var(--text-muted);
+  box-shadow: var(--shadow-soft);
   transition: all 0.2s ease;
   min-height: 44px;
   min-width: 44px;
@@ -40,9 +40,9 @@
 }
 
 .menuToggle:hover {
-  background-color: #ffffff;
-  border-color: rgba(96, 165, 250, 0.78);
-  color: #1d4ed8;
+  background-color: var(--surface-bg);
+  border-color: var(--primary-light);
+  color: var(--primary-color);
   box-shadow: 0 12px 26px rgba(29, 78, 216, 0.1);
 }
 
@@ -52,7 +52,7 @@
 
 .breadcrumb {
   font-size: 15px;
-  color: #374151;
+  color: var(--foreground);
   font-weight: 500;
   min-width: 0;
   overflow: hidden;
@@ -76,7 +76,7 @@
 .searchIcon {
   position: absolute;
   left: 12px;
-  color: #9ca3af;
+  color: var(--text-light);
   pointer-events: none;
   display: flex;
   align-items: center;
@@ -85,7 +85,7 @@
 
 .searchInput {
   padding: 10px 16px 10px 42px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 14px;
   width: 240px;
@@ -95,12 +95,34 @@
 
 .searchInput:focus {
   outline: none;
-  border-color: #1e40af;
-  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .searchInput::placeholder {
-  color: #9ca3af;
+  color: var(--text-light);
+}
+
+.themeToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-bg) 82%, transparent);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  touch-action: manipulation;
+}
+
+.themeToggle:hover {
+  color: var(--primary-color);
+  background: var(--surface-bg);
+  border-color: var(--primary-light);
 }
 
 .notificationBtn {
@@ -112,7 +134,7 @@
   background: transparent;
   border: 1px solid transparent;
   cursor: pointer;
-  color: #64748b;
+  color: var(--text-muted);
   border-radius: 12px;
   transition: all 0.2s ease;
   min-height: 44px;
@@ -121,9 +143,9 @@
 }
 
 .notificationBtn:hover {
-  color: #1d4ed8;
-  background-color: #eff6ff;
-  border-color: rgba(191, 219, 254, 0.75);
+  color: var(--primary-color);
+  background-color: color-mix(in srgb, var(--primary-color) 12%, var(--surface-bg));
+  border-color: var(--border-color);
 }
 
 .notificationBtn:active {
@@ -131,9 +153,9 @@
 }
 
 .notificationBtnActive {
-  color: #1e40af;
-  background-color: #eff6ff;
-  border-color: rgba(147, 197, 253, 0.85);
+  color: var(--primary-color);
+  background-color: color-mix(in srgb, var(--primary-color) 14%, var(--surface-bg));
+  border-color: var(--primary-light);
 }
 
 .notificationBadge {
@@ -144,7 +166,7 @@
   height: 8px;
   background-color: #ef4444;
   border-radius: 50%;
-  border: 2px solid white;
+  border: 2px solid var(--surface-bg);
 }
 
 .notificationWrapper {
@@ -311,12 +333,14 @@
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .menuToggle,
-  .notificationBtn {
+  .notificationBtn,
+  .themeToggle {
     transition: none;
   }
 
   .menuToggle:active,
-  .notificationBtn:active {
+  .notificationBtn:active,
+  .themeToggle:active {
     transform: none;
   }
 }
@@ -324,7 +348,8 @@
 /* Touch device optimizations */
 @media (hover: none) and (pointer: coarse) {
   .menuToggle,
-  .notificationBtn {
+  .notificationBtn,
+  .themeToggle {
     min-height: 48px;
     min-width: 48px;
   }

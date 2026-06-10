@@ -9,8 +9,8 @@
 }
 
 .default {
-  background-color: #f3f4f6;
-  color: #6b7280;
+  background-color: var(--surface-hover);
+  color: var(--text-muted);
 }
 
 .primary {
@@ -19,8 +19,8 @@
 }
 
 .secondary {
-  background-color: #e5e7eb;
-  color: #4b5563;
+  background-color: var(--border-color);
+  color: var(--text-muted);
 }
 
 .success {
@@ -66,4 +66,38 @@
 .yellow {
   background-color: #fef3c7;
   color: #d97706;
+}
+
+:global(html[data-theme='dark']) .primary,
+:global(html[data-theme='dark']) .blue {
+  background-color: rgba(96, 165, 250, 0.18);
+  color: #bfdbfe;
+}
+
+:global(html[data-theme='dark']) .success,
+:global(html[data-theme='dark']) .green {
+  background-color: rgba(34, 197, 94, 0.16);
+  color: #86efac;
+}
+
+:global(html[data-theme='dark']) .danger,
+:global(html[data-theme='dark']) .red {
+  background-color: rgba(248, 113, 113, 0.16);
+  color: #fca5a5;
+}
+
+:global(html[data-theme='dark']) .warning,
+:global(html[data-theme='dark']) .yellow {
+  background-color: rgba(251, 191, 36, 0.16);
+  color: #fcd34d;
+}
+
+:global(html[data-theme='dark']) .purple {
+  background-color: rgba(167, 139, 250, 0.18);
+  color: #ddd6fe;
+}
+
+:global(html[data-theme='dark']) .orange {
+  background-color: rgba(251, 146, 60, 0.16);
+  color: #fdba74;
 }

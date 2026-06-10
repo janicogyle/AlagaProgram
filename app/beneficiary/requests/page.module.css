@@ -25,10 +25,10 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+	background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
 	padding: 16px 24px;
 	border-radius: 12px;
-	color: white;
+	color: #ffffff;
 	min-width: 0;
 }
 
@@ -66,9 +66,9 @@
 	flex-direction: column;
 	gap: 12px;
 	padding: 16px 18px;
-	border: 1px solid #e5e7eb;
+	border: 1px solid var(--border-color);
 	border-radius: 12px;
-	background: #ffffff;
+	background: var(--surface-bg);
 	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
@@ -128,22 +128,22 @@
 	justify-content: center;
 	font-size: 13px;
 	font-weight: 800;
-	border: 2px solid #d1d5db;
-	background: #ffffff;
-	color: #6b7280;
+	border: 2px solid var(--border-strong);
+	background: var(--surface-bg);
+	color: var(--text-muted);
 	transition: all 0.2s ease;
 }
 
 .activeCircle {
-	border-color: #1e40af;
-	color: #1e40af;
+	border-color: var(--primary-color);
+	color: var(--primary-color);
 	background: #eff6ff;
 	box-shadow: 0 0 0 4px rgba(30, 64, 175, 0.12);
 }
 
 .completedCircle {
-	border-color: #1e40af;
-	background: linear-gradient(135deg, #1e40af, #2563eb);
+	border-color: var(--primary-color);
+	background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
 	color: #ffffff;
 	box-shadow: 0 2px 8px rgba(30, 64, 175, 0.22);
 }
@@ -160,31 +160,31 @@
 	width: 100%;
 	height: 3px;
 	border-radius: 999px;
-	background: #e5e7eb;
+	background: var(--border-color);
 }
 
 .completedLine {
-	background: linear-gradient(90deg, #1e40af, #2563eb);
+	background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
 }
 
 .progressLabel {
 	max-width: 112px;
 	font-size: 12px;
 	font-weight: 600;
-	color: #6b7280;
+	color: var(--text-muted);
 	line-height: 1.25;
 	white-space: normal;
 }
 
 .activeLabel {
-	color: #1e40af;
+	color: var(--primary-color);
 }
 
 .stepIndicator {
 	margin: 0;
 	font-size: 13px;
 	font-weight: 700;
-	color: #475569;
+	color: var(--text-muted);
 	text-align: center;
 }
 
@@ -217,22 +217,22 @@
 }
 
 .muted {
-	color: #475569;
+	color: var(--text-muted);
 	font-size: 13px;
 	line-height: 1.4;
 }
 
 .assistanceRequirementsHint {
 	margin: 0;
-	color: #475569;
+	color: var(--text-muted);
 	font-size: 13px;
 	line-height: 1.4;
 }
 
 .assistanceRequirementsPanel {
 	padding: 12px;
-	border: 1px solid #e5e7eb;
-	background: #f9fafb;
+	border: 1px solid var(--border-color);
+	background: var(--surface-muted);
 	border-radius: 10px;
 }
 
@@ -247,13 +247,13 @@
 .assistanceRequirementsTitle {
 	font-size: 13px;
 	font-weight: 700;
-	color: #111827;
+	color: var(--foreground);
 }
 
 .assistanceRequirementsCeiling {
 	font-size: 12px;
 	font-weight: 700;
-	color: #1e40af;
+	color: var(--primary-color);
 	background: #e0e7ff;
 	padding: 3px 8px;
 	border-radius: 999px;
@@ -267,7 +267,7 @@
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
-	color: #374151;
+	color: var(--foreground);
 	font-size: 13px;
 	line-height: 1.4;
 }
@@ -276,7 +276,7 @@
 }
 
 .assistanceRequirementItemEmpty {
-	color: #475569;
+	color: var(--text-muted);
 }
 
 .requirementUploads {
@@ -286,10 +286,10 @@
 }
 
 .requirementUploadItem {
-	border: 1px solid #e5e7eb;
+	border: 1px solid var(--border-color);
 	border-radius: 10px;
 	padding: 12px;
-	background: #ffffff;
+	background: var(--surface-bg);
 }
 
 .requirementUploadHeader {
@@ -303,12 +303,12 @@
 .requirementUploadLabel {
 	font-size: 13px;
 	font-weight: 600;
-	color: #111827;
+	color: var(--foreground);
 }
 
 .requirementUploadLimit {
 	font-size: 11px;
-	color: #6b7280;
+	color: var(--text-muted);
 }
 
 .existingFileRow {
@@ -318,8 +318,8 @@
 	gap: 10px;
 	padding: 8px 10px;
 	border-radius: 8px;
-	background: #f9fafb;
-	border: 1px solid #e5e7eb;
+	background: var(--surface-muted);
+	border: 1px solid var(--border-color);
 	margin-bottom: 8px;
 }
 
@@ -332,13 +332,13 @@
 
 .existingFileName {
 	font-size: 12px;
-	color: #374151;
+	color: var(--foreground);
 	overflow-wrap: anywhere;
 }
 
 .removeExistingFileBtn {
 	border: 1px solid #fecaca;
-	background: #fff1f2;
+	background: rgba(244, 63, 94, 0.12);
 	color: #b91c1c;
 	padding: 4px 10px;
 	border-radius: 8px;
@@ -368,7 +368,7 @@
 .statusBannerInfo {
 	background: #eff6ff;
 	border-color: #bfdbfe;
-	color: #1e40af;
+	color: var(--primary-color);
 }
 
 .statusBannerError {
@@ -393,8 +393,8 @@
 	gap: 14px;
 	padding: 12px;
 	border-radius: 10px;
-	border: 1px solid #e5e7eb;
-	background: #ffffff;
+	border: 1px solid var(--border-color);
+	background: var(--surface-bg);
 }
 
 .checklistComplete {
@@ -404,7 +404,7 @@
 
 .checklistMissing {
 	border-color: #fecaca;
-	background: #fff7f7;
+	background: rgba(248, 113, 113, 0.12);
 }
 
 .reviewGrid {
@@ -415,9 +415,9 @@
 
 .summaryBlock {
 	padding: 14px;
-	border: 1px solid #e5e7eb;
+	border: 1px solid var(--border-color);
 	border-radius: 10px;
-	background: #f8fafc;
+	background: var(--surface-muted);
 	min-width: 0;
 }
 
@@ -425,7 +425,7 @@
 .uploadSummary h3 {
 	margin: 0 0 12px;
 	font-size: 15px;
-	color: #0f172a;
+	color: var(--foreground);
 }
 
 .summaryList {
@@ -445,23 +445,23 @@
 .summaryList dt {
 	font-size: 12px;
 	font-weight: 700;
-	color: #64748b;
+	color: var(--text-muted);
 }
 
 .summaryList dd {
 	margin: 0;
 	font-size: 14px;
 	font-weight: 600;
-	color: #111827;
+	color: var(--foreground);
 	overflow-wrap: anywhere;
 }
 
 .uploadSummary {
 	margin-top: 16px;
 	padding: 14px;
-	border: 1px solid #e5e7eb;
+	border: 1px solid var(--border-color);
 	border-radius: 10px;
-	background: #ffffff;
+	background: var(--surface-bg);
 }
 
 .uploadSummaryList {
@@ -480,9 +480,9 @@
 	gap: 12px;
 	padding: 12px;
 	border-radius: 10px;
-	background: #f8fafc;
-	border: 1px solid #e5e7eb;
-	color: #111827;
+	background: var(--surface-muted);
+	border: 1px solid var(--border-color);
+	color: var(--foreground);
 }
 
 .uploadSummaryItem strong {
@@ -490,7 +490,7 @@
 	font-size: 13px;
 	font-weight: 700;
 	line-height: 1.4;
-	color: #111827;
+	color: var(--foreground);
 }
 
 .fileNameList {
@@ -498,7 +498,7 @@
 	flex-direction: column;
 	gap: 4px;
 	margin-top: 6px;
-	color: #334155;
+	color: var(--foreground);
 	font-size: 13px;
 	overflow-wrap: anywhere;
 }
@@ -511,10 +511,10 @@
 	gap: 16px;
 	padding: 12px 16px;
 	border-radius: 12px;
-	border: 1px solid #e5e7eb;
-	background: #f8fafc;
+	border: 1px solid var(--border-color);
+	background: var(--surface-muted);
 	font-size: 14px;
-	color: #111827;
+	color: var(--foreground);
 }
 
 .cooldownContent {
@@ -526,11 +526,11 @@
 
 .cooldownTitle {
 	font-weight: 600;
-	color: #1f2937;
+	color: var(--foreground);
 }
 
 .cooldownMessage {
-	color: #4b5563;
+	color: var(--text-muted);
 	overflow-wrap: anywhere;
 }
 
@@ -549,7 +549,7 @@
 .label {
 	font-size: 14px;
 	font-weight: 500;
-	color: #374151;
+	color: var(--foreground);
 	display: block;
 	margin-bottom: 6px;
 }
@@ -561,11 +561,11 @@
 
 .ageDisplay {
 	padding: 12px 16px;
-	background-color: #f3f4f6;
-	border: 1px solid #d1d5db;
+	background-color: var(--surface-hover);
+	border: 1px solid var(--border-strong);
 	border-radius: 8px;
 	font-size: 14px;
-	color: #6b7280;
+	color: var(--text-muted);
 	text-align: center;
 }
 
@@ -594,7 +594,7 @@
 	gap: 12px;
 	cursor: pointer;
 	font-size: 14px;
-	color: #374151;
+	color: var(--foreground);
 	position: relative;
 	padding-left: 28px;
 	min-width: 0;
@@ -616,19 +616,19 @@
 	transform: translateY(-50%);
 	height: 18px;
 	width: 18px;
-	background-color: white;
-	border: 2px solid #d1d5db;
+	background-color: #ffffff;
+	border: 2px solid var(--border-strong);
 	border-radius: 4px;
 	transition: all 0.2s ease;
 }
 
 .checkbox:hover .checkmark {
-	border-color: #1e40af;
+	border-color: var(--primary-color);
 }
 
 .checkbox input:checked ~ .checkmark {
-	background-color: #1e40af;
-	border-color: #1e40af;
+	background-color: var(--primary-color);
+	border-color: var(--primary-color);
 }
 
 .checkmark:after {
@@ -639,7 +639,7 @@
 	top: 1px;
 	width: 4px;
 	height: 9px;
-	border: solid white;
+	border: solid var(--surface-bg);
 	border-width: 0 2px 2px 0;
 	transform: rotate(45deg);
 }
@@ -837,8 +837,8 @@
 		font-size: 13px;
 		padding: 10px;
 		padding-left: 40px;
-		background: #f9fafb;
-		border: 1px solid #e5e7eb;
+		background: var(--surface-muted);
+		border: 1px solid var(--border-color);
 		border-radius: 10px;
 		align-items: flex-start;
 	}

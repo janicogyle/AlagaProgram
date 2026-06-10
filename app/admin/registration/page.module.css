@@ -35,6 +35,12 @@
   line-height: 1.45;
 }
 
+:global(html[data-theme='dark']) .eligibilityBanner {
+  background: rgba(251, 191, 36, 0.16);
+  border-color: rgba(251, 191, 36, 0.38);
+  color: #fcd34d;
+}
+
 .controlNumberBar {
   grid-column: 1 / -1;
   display: flex;
@@ -87,22 +93,22 @@
 }
 
 .muted {
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 13px;
   line-height: 1.4;
 }
 
 .assistanceRequirementsHint {
   margin: 0;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 13px;
   line-height: 1.4;
 }
 
 .assistanceRequirementsPanel {
   padding: 12px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border: 1px solid var(--border-color);
+  background: var(--surface-muted);
   border-radius: 10px;
 }
 
@@ -117,7 +123,7 @@
 .assistanceRequirementsTitle {
   font-size: 13px;
   font-weight: 700;
-  color: #111827;
+  color: var(--foreground);
 }
 
 .assistanceRequirementsCeiling {
@@ -137,7 +143,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  color: #374151;
+  color: var(--text-muted);
   font-size: 13px;
   line-height: 1.4;
 }
@@ -147,7 +153,7 @@
 }
 
 .assistanceRequirementItemEmpty {
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .row {
@@ -165,7 +171,7 @@
 .label {
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-muted);
   display: block;
   margin-bottom: 6px;
 }
@@ -177,11 +183,11 @@
 
 .ageDisplay {
   padding: 12px 16px;
-  background-color: #f3f4f6;
-  border: 1px solid #d1d5db;
+  background-color: var(--surface-hover);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-muted);
   text-align: center;
 }
 
@@ -210,7 +216,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-muted);
   margin-top: 4px;
   animation: contactPulse 1.5s ease-in-out infinite;
 }
@@ -220,7 +226,7 @@
   display: inline-block;
   width: 12px;
   height: 12px;
-  border: 2px solid #d1d5db;
+  border: 2px solid var(--border-strong);
   border-top-color: #1e40af;
   border-radius: 50%;
   animation: contactSpin 0.7s linear infinite;
@@ -241,7 +247,7 @@
   gap: 12px;
   cursor: pointer;
   font-size: 14px;
-  color: #374151;
+  color: var(--text-muted);
   position: relative;
   padding-left: 28px;
   min-width: 0;
@@ -263,8 +269,8 @@
   transform: translateY(-50%);
   height: 18px;
   width: 18px;
-  background-color: white;
-  border: 2px solid #d1d5db;
+  background-color: var(--surface-bg);
+  border: 2px solid var(--border-strong);
   border-radius: 4px;
   transition: all 0.2s ease;
 }
@@ -302,30 +308,30 @@
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
-  background: white;
-  color: #374151;
+  background: var(--surface-bg);
+  color: var(--text-muted);
 }
 
 .editDocsBtn:hover {
-  border-color: #1e40af;
-  color: #1e40af;
-  background-color: #eff6ff;
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background-color: color-mix(in srgb, var(--primary-color) 10%, var(--surface-bg));
 }
 
 .savDocsBtn {
-  background-color: #1e40af;
+  background-color: var(--primary-color);
   color: white;
-  border-color: #1e40af;
+  border-color: var(--primary-color);
 }
 
 .savDocsBtn:hover {
-  background-color: #1e3a8a;
+  background-color: var(--primary-dark);
 }
 
 .addDocumentRow {
@@ -337,21 +343,21 @@
 .addDocumentInput {
   flex: 1;
   padding: 9px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   font-size: 13px;
-  color: #374151;
+  color: var(--text-muted);
   outline: none;
   transition: border-color 0.2s ease;
 }
 
 .addDocumentInput:focus {
-  border-color: #1e40af;
+  border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.08);
 }
 
 .addDocumentInput::placeholder {
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .addDocumentBtn {
@@ -359,7 +365,7 @@
   align-items: center;
   gap: 4px;
   padding: 9px 14px;
-  background-color: #1e40af;
+  background-color: var(--primary-color);
   color: white;
   border: none;
   border-radius: 8px;
@@ -371,7 +377,7 @@
 }
 
 .addDocumentBtn:hover {
-  background-color: #1e3a8a;
+  background-color: var(--primary-dark);
 }
 
 .addDocumentBtn:disabled {
@@ -393,16 +399,16 @@
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 13px;
-  color: #374151;
+  color: var(--text-muted);
 }
 
 .requirementItem svg {
   flex-shrink: 0;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .requirementText {
@@ -416,7 +422,7 @@
   border: none;
   padding: 4px;
   cursor: pointer;
-  color: #64748b;
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -549,16 +555,16 @@
   .checkbox {
     padding: 12px;
     padding-left: 44px;
-    background: #f9fafb;
+    background: var(--surface-muted);
     border-radius: 10px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border-color);
     margin: 0;
     align-items: flex-start;
   }
 
   .checkbox:has(input:checked) {
-    background: #eff6ff;
-    border-color: #1e40af;
+    background: color-mix(in srgb, var(--primary-color) 10%, var(--surface-bg));
+    border-color: var(--primary-color);
   }
 
   .checkmark {
