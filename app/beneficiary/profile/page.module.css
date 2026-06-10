@@ -54,41 +54,85 @@
 }
 
 .profileSummary {
+    position: relative;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 14px;
     margin-bottom: 10px;
-    padding: 14px;
-    border-radius: 16px;
-    border: 1px solid rgba(0, 0, 0, 0.04);
-    background: linear-gradient(180deg, var(--surface-bg) 0%, var(--surface-muted) 100%);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    padding: 18px 20px;
+    overflow: hidden;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.profileSummary::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--primary-color);
 }
 
 .profileIdentity {
+    position: relative;
     min-width: 0;
 }
 
 .profileName {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-weight: 700;
     color: var(--foreground);
-}
-
-.profileMeta {
-    margin: 4px 0 0;
-    font-size: 0.88rem;
-    color: var(--text-muted);
+    line-height: 1.25;
     overflow-wrap: anywhere;
 }
 
+.profileMeta {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 8px 0 0;
+    font-size: 0.88rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.profileMeta::before {
+    content: "";
+    flex: 0 0 auto;
+    width: 6px;
+    height: 6px;
+    margin-top: 0.42em;
+    border-radius: 999px;
+    background: var(--primary-color);
+    opacity: 0.88;
+}
+
+.profileContact {
+    color: var(--foreground);
+    font-weight: 500;
+}
+
+.profileAddress {
+    max-width: 68ch;
+    color: var(--text-muted);
+}
+
 .profileBadges {
+    position: relative;
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     justify-content: flex-end;
+}
+
+:global(html[data-theme='dark']) .profileSummary {
+    border-color: color-mix(in srgb, var(--border-color) 78%, var(--primary-color));
+    background: color-mix(in srgb, var(--surface-bg) 88%, var(--primary-color));
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
 .muted {

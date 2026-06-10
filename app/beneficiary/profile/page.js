@@ -144,8 +144,12 @@ export default function ProfilePage() {
           <div className={styles.profileSummary}>
             <div className={styles.profileIdentity}>
               <h2 className={styles.profileName}>{fullName || 'Beneficiary'}</h2>
-              <p className={styles.profileMeta}>{resident?.contact_number || 'No contact number on file'}</p>
-              <p className={styles.profileMeta}>{addressLine || 'No address on file'}</p>
+              <p className={`${styles.profileMeta} ${styles.profileContact}`}>
+                {resident?.contact_number || 'No contact number on file'}
+              </p>
+              <p className={`${styles.profileMeta} ${styles.profileAddress}`}>
+                {addressLine || 'No address on file'}
+              </p>
             </div>
             <div className={styles.profileBadges}>
               {sectors.length ? sectors.map((s) => <StatusChip key={s} label={s} />) : <StatusChip label="General" />}

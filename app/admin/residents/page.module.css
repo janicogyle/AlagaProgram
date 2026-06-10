@@ -270,6 +270,20 @@
   white-space: nowrap;
 }
 
+.tableBeneficiaryName {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.tableBeneficiaryContact {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 .tableMutedText {
   color: var(--text-muted);
   line-height: 1.45;
@@ -303,7 +317,7 @@
   margin-bottom: 14px;
   gap: 12px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .cardNameSection {
@@ -367,6 +381,22 @@
   padding: 12px 14px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   border-color: #dbeafe;
+}
+
+@media (prefers-color-scheme: dark) {
+  .cardEligibility {
+    background: linear-gradient(180deg, var(--surface-hover) 0%, var(--surface-muted) 100%);
+    border-color: var(--border-strong);
+  }
+
+  .cardEligibility .detailLabel,
+  .cardEligibility .detailValue {
+    color: var(--foreground);
+  }
+
+  .cardEligibility .detailValue {
+    color: #ffffff;
+  }
 }
 
 .detailLabel {
@@ -460,7 +490,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 16px;
-    padding: 0 16px 16px;
+    padding: 16px 16px 16px;
   }
 
   .residentCard {
@@ -552,7 +582,7 @@
   .mobileCardView {
     grid-template-columns: 1fr;
     gap: 12px;
-    padding: 0 12px 12px;
+    padding: 12px 12px 12px;
   }
 
   .residentCard {
