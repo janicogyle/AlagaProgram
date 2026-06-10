@@ -58,6 +58,7 @@ export default function LoginPage() {
             'beneficiaryName',
             `${resident.first_name || ''} ${resident.last_name || ''}`.trim(),
           );
+          window.sessionStorage.setItem('alaga-welcome-toast-pending', 'true');
         } catch (storageError) {
           console.warn('Unable to persist beneficiary identity in localStorage:', storageError);
         }

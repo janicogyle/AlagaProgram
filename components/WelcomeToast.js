@@ -7,6 +7,7 @@ import styles from './WelcomeToast.module.css';
 const READY_HIDE_MS = 1400;
 const DASHBOARD_PATHS = ['/admin/analytics', '/beneficiary/dashboard'];
 const TOAST_STORAGE_PREFIX = 'alaga-welcome-toast-shown';
+const TOAST_PENDING_KEY = 'alaga-welcome-toast-pending';
 
 const getToastStorageKey = (pathname) => `${TOAST_STORAGE_PREFIX}:${pathname}`;
 
@@ -23,6 +24,16 @@ const markToastShown = (pathname) => {
     window.sessionStorage.setItem(getToastStorageKey(pathname), 'true');
   } catch {
     // Ignore storage failures; the toast should still work without persistence.
+  }
+};
+
+const consumePendingToast = () => {
+  try {
+    const pending = window.sessionStorage.getItem(TOAST_PENDING_KEY) === 'true';
+    if (pending) window.sessionStorage.removeItem(TOAST_PENDING_KEY);
+    return pending;
+  } catch {
+    return false;
   }
 };
 
@@ -43,7 +54,9 @@ export default function WelcomeToast() {
       return () => window.clearTimeout(hideTimer);
     }
 
-    if (hasShownToast(pathname)) {
+    const shouldShowAfterLogin = consumePendingToast();
+
+    if (!shouldShowAfterLogin && hasShownToast(pathname)) {
       hideTimer = window.setTimeout(() => {
         setVisible(false);
         setLoading(true);

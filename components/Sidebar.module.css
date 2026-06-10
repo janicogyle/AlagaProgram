@@ -22,21 +22,32 @@
   display: block;
 }
 .sidebar {
-  width: 260px;
-  min-height: 100vh;
-  background-color: #1e3a8a;
+  --sidebar-inset: 16px;
+  --sidebar-width: 256px;
+  --sidebar-minimized-width: 88px;
+  width: var(--sidebar-width);
+  height: calc(100vh - (var(--sidebar-inset) * 2));
+  min-height: 0;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(96, 165, 250, 0.36), transparent 30%),
+    linear-gradient(180deg, #0d47d8 0%, #0736b7 48%, #082a8f 100%);
+  border: 1px solid rgba(191, 219, 254, 0.22);
+  border-radius: 24px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+  backdrop-filter: blur(18px);
   display: flex;
   flex-direction: column;
   position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
+  left: var(--sidebar-inset);
+  top: var(--sidebar-inset);
+  bottom: var(--sidebar-inset);
   z-index: 100;
-  transition: width 0.2s;
+  overflow: hidden;
+  transition: width 0.2s ease, transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .minimized {
-  width: 64px;
+  width: var(--sidebar-minimized-width);
 }
 
 .minimized .userSection {
@@ -44,20 +55,69 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16px 0;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 10px 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .minimized .userInfo {
   justify-content: center;
   width: 100%;
-/* removed stray curly brace causing build error */
+  margin-bottom: 0;
+}
+
+.minimized .userAvatar {
+  width: 48px;
+  height: 48px;
+  font-size: 14px;
+  box-shadow: 0 10px 22px rgba(59, 130, 246, 0.22);
+}
+
+.minimized .nav {
+  padding: 10px 12px;
+}
+
+.minimized .section {
+  margin-bottom: 12px;
+}
+
+.minimized .menuList {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.minimized .menuItem {
+  width: 48px;
+  height: 48px;
+  justify-content: center;
+  padding: 0;
+  border-radius: 16px;
+}
+
+.minimized .menuItem.active {
+  border-left: 0;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.minimized .menuItem:hover {
+  transform: none;
 }
 
 .logo {
   display: flex;
+  align-items: center;
   gap: 12px;
-  padding: 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 18px 22px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .logoIcon {
@@ -73,37 +133,58 @@
 .logoText {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .logoTitle {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  color: white;
+  color: #ffffff;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .logoSubtitle {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(219, 234, 254, 0.74);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .nav {
-  flex: 1;
-  padding: 16px 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px 12px;
   overflow-y: auto;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+
+.nav::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .section {
-  margin-bottom: 16px;
+  margin-bottom: 18px;
+}
+
+.section:last-child {
+  margin-bottom: 8px;
 }
 
 .sectionTitle {
   display: block;
-  padding: 8px 20px;
+  padding: 8px 10px;
   font-size: 11px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.5);
+  font-weight: 700;
+  color: rgba(219, 234, 254, 0.58);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
 }
 
 .menuList {
@@ -116,29 +197,47 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 20px;
-  color: rgba(255, 255, 255, 0.8);
+  min-height: 44px;
+  padding: 11px 12px;
+  color: rgba(219, 234, 254, 0.78);
   font-size: 14px;
+  font-weight: 600;
   text-decoration: none;
+  border-radius: 14px;
   transition: all 0.2s ease;
+  min-width: 0;
+}
+
+.menuItem span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .menuItem:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  transform: translateX(2px);
 }
 
 .menuItem.active {
-  background-color: rgba(255, 255, 255, 0.15);
-  color: white;
-  border-left: 3px solid white;
+  background: #ffffff;
+  color: #0d47d8;
+  border-left: 0;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+}
+
+.menuItem.active:hover {
+  transform: none;
 }
 
 .menuIcon {
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.8;
+  opacity: 0.9;
+  flex: 0 0 22px;
 }
 
 .menuItem.active .menuIcon,
@@ -147,8 +246,13 @@
 }
 
 .userSection {
-  padding: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 0 12px 12px;
+  padding: 14px;
+  border: 1px solid rgba(191, 219, 254, 0.18);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  flex: 0 0 auto;
 }
 
 .userInfo {
@@ -156,6 +260,7 @@
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
+  min-width: 0;
 }
 
 .userAvatar {
@@ -175,17 +280,24 @@
 .userDetails {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .userName {
   font-size: 14px;
   font-weight: 600;
-  color: white;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .userRole {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(219, 234, 254, 0.68);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .logoutButton {
@@ -194,18 +306,44 @@
   gap: 10px;
   width: 100%;
   padding: 10px 12px;
-  background-color: transparent;
-  border: none;
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(191, 219, 254, 0.14);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.88);
   font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .logoutButton:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.logoutIconButton {
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(219, 234, 254, 0.76);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.minimized .logoutIconButton {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+}
+
+.logoutIconButton:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
 }
 
 .logoutModalText {
@@ -229,11 +367,11 @@
 /* Large Tablets */
 @media (max-width: 1024px) {
   .sidebar {
-    width: 240px;
+    --sidebar-width: 240px;
   }
 
   .minimized {
-    width: 60px;
+    --sidebar-minimized-width: 80px;
   }
 
   .logo {
@@ -254,7 +392,7 @@
   }
 
   .menuItem {
-    padding: 10px 16px;
+    padding: 10px 12px;
     font-size: 13px;
   }
 
@@ -291,9 +429,10 @@
 @media (max-width: 900px) {
   .sidebar {
     position: fixed;
-    left: 0;
-    top: 0;
-    bottom: 0;
+    left: 10px;
+    top: 10px;
+    bottom: 10px;
+    height: calc(100vh - 20px);
     width: 280px;
     transform: translateX(-100%);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -303,12 +442,12 @@
 
   .sidebar:not(.minimized) {
     transform: translateX(0);
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
   }
 
   .minimized {
-    transform: translateX(-100%);
     width: 280px;
+    transform: translateX(calc(-100% - 12px));
   }
 
   .logo {
@@ -369,8 +508,9 @@
 /* Mobile */
 @media (max-width: 576px) {
   .sidebar {
-    width: 85vw;
-    max-width: 300px;
+    width: min(86vw, 300px);
+    max-width: calc(100vw - 20px);
+    border-radius: 22px;
   }
 
   .logo {

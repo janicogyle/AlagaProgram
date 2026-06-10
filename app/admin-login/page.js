@@ -90,6 +90,7 @@ export default function AdminLoginPage() {
       // Store in localStorage for persistence
       if (typeof window !== 'undefined') {
         localStorage.setItem('adminUser', JSON.stringify(userData));
+        sessionStorage.setItem('alaga-welcome-toast-pending', 'true');
       }
 
       router.push('/admin');

@@ -1,14 +1,15 @@
 .layout {
   display: flex;
   min-height: 100vh;
+  background: #f8fafc;
 }
 
 .mainContent {
   flex: 1;
-  margin-left: 260px;
+  margin-left: 272px;
   display: flex;
   flex-direction: column;
-  background-color: #f8fafc;
+  background: #f8fafc;
   transition: margin-left 0.2s ease;
   height: 100vh;
   overflow: hidden;
@@ -16,7 +17,7 @@
 }
 
 .mainContent.sidebarMinimized {
-  margin-left: 64px;
+  margin-left: 104px;
 }
 
 .pageContent {
@@ -123,11 +124,11 @@
 /* Large Tablets */
 @media (max-width: 1024px) {
   .mainContent {
-    margin-left: 240px;
+    margin-left: 256px;
   }
 
   .mainContent.sidebarMinimized {
-    margin-left: 60px;
+    margin-left: 96px;
   }
 
   .pageContent {
