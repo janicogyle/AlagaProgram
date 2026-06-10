@@ -241,6 +241,7 @@ export default function BeneficiaryDashboardPage() {
       <PageHeader
         title={beneficiaryName ? `Welcome, ${beneficiaryName}` : 'Beneficiary Dashboard'}
         subtitle="View your ALAGA assistance requests and next steps"
+        className={styles.mobileHeroHeader}
       />
 
       <div className={styles.topSection}>
