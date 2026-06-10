@@ -10,24 +10,31 @@
 /* ======================= */
 .header {
   position: fixed;
-  top: 0;
+  top: 14px;
   left: 0;
   right: 0;
   z-index: 1000;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: transparent;
+  border-bottom: 0;
   transition: all 0.3s ease;
+  pointer-events: none;
 }
 
 .headerContainer {
-  max-width: 1280px;
+  width: calc(100% - 32px);
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 28px;
   height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 999px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.14);
+  pointer-events: auto;
 }
 
 .headerLeft {
@@ -67,11 +74,11 @@
 .nav {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .navLink {
-  padding: 10px 16px;
+  padding: 12px 16px;
   font-size: 14px;
   font-weight: 500;
   color: #4b5563;
@@ -85,7 +92,7 @@
 }
 
 .navLoginBtn {
-  padding: 10px 20px;
+  padding: 14px 24px;
   font-size: 14px;
   font-weight: 600;
   color: white;
@@ -101,7 +108,7 @@
 }
 
 .navSignupBtn {
-  padding: 10px 20px;
+  padding: 14px 24px;
   font-size: 14px;
   font-weight: 600;
   color: #1e40af;
@@ -991,13 +998,15 @@
 @media (max-width: 900px) {
   .nav {
     position: fixed;
-    top: 68px;
-    left: 0;
-    right: 0;
+    top: 90px;
+    left: 16px;
+    right: 16px;
     background: white;
     flex-direction: column;
     padding: 24px;
     gap: 0;
+    border-radius: 24px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     transform: translateY(-150%);
     opacity: 0;
@@ -1092,7 +1101,7 @@
   }
 
   .nav {
-    top: 64px;
+    top: 86px;
   }
 
   .logoText {
@@ -1346,7 +1355,7 @@
   }
 
   .nav {
-    top: 60px;
+    top: 82px;
     padding: 20px 16px;
   }
 
@@ -1697,7 +1706,7 @@
   }
 
   .nav {
-    top: 56px;
+    top: 78px;
     padding: 16px 12px;
   }
 
@@ -2049,13 +2058,16 @@
 }
 
 .header {
-  background: #ffffff;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  background: transparent;
+  border-bottom: 0;
+  box-shadow: none;
 }
 
 .headerContainer {
-  max-width: 1180px;
+  max-width: 1440px;
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.18);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.14);
 }
 
 .logoImage,
