@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import styles from './NotificationPanel.module.css';
@@ -154,9 +155,14 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnread
   const [isAdmin, setIsAdmin] = useState(false);
   const [staffActivities, setStaffActivities] = useState([]);
   const [staffLoading, setStaffLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const panelRef = useRef(null);
 
   const unreadCount = useMemo(() => activities.filter((a) => !a.read).length, [activities]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (typeof onUnreadCountChange === 'function') {
@@ -388,9 +394,9 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnread
     [markAsRead, onClose, router],
   );
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
+  return createPortal(
     <>
       {/* Mobile overlay backdrop */}
       <div className={styles.backdrop} onClick={onClose} />
@@ -509,6 +515,7 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnread
           </div>
         )}
       </div>
-    </>
+    </>,
+    document.body,
   );
 }

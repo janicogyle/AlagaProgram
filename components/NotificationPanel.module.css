@@ -39,9 +39,9 @@
 /* PANEL                   */
 /* ======================= */
 .panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  position: fixed;
+  top: 72px;
+  right: 24px;
   width: 400px;
   height: 520px;
   max-height: 520px;
@@ -54,7 +54,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  z-index: 200;
+  z-index: 1600;
   animation: slideDown 0.2s ease-out;
 }
 
@@ -424,7 +424,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.4);
-    z-index: 199;
+    z-index: 1590;
     animation: fadeIn 0.2s ease;
   }
 
@@ -435,10 +435,13 @@
     left: 0;
     right: 0;
     width: 100%;
-    max-height: 85vh;
+    height: min(560px, calc(100vh - 88px));
+    height: min(560px, calc(100dvh - 88px));
+    max-height: calc(100vh - 88px);
+    max-height: calc(100dvh - 88px);
     border-radius: 20px 20px 0 0;
     animation: slideUp 0.25s ease-out;
-    z-index: 200;
+    z-index: 1600;
     box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.15);
   }
 
