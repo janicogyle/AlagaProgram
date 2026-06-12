@@ -550,7 +550,11 @@ export default function BeneficiaryIdVerifyPage() {
   const releasedHistory = Array.isArray(result?.releasedHistory) ? result.releasedHistory : [];
   const latestAssistanceRequest = result?.latestAssistanceRequest || null;
   const sectors = getSectors(resident);
-  const latestRequestFooter = latestAssistanceRequest ? (
+  const latestRequestFooter = !result?.valid ? (
+    <Button variant="secondary" onClick={() => setShowLatestRequestModal(false)}>
+      Close
+    </Button>
+  ) : latestAssistanceRequest ? (
     ['Pending', 'Resubmitted'].includes(latestAssistanceRequest.status) ? (
       <div className={styles.modalFooter}>
         <Button variant="secondary" onClick={() => setShowLatestRequestModal(false)}>
@@ -636,7 +640,7 @@ export default function BeneficiaryIdVerifyPage() {
     <div className={styles.page}>
       <PageHeader
         title="Verify Beneficiary ID (QR)"
-        subtitle="Scan the QR or enter the card reference number to verify if the beneficiary ID is valid and not expired/revoked."
+        subtitle="Scan the QR or enter the card reference number to verify if the beneficiary ID is valid and not expired."
       />
 
       <Card>
@@ -680,7 +684,7 @@ export default function BeneficiaryIdVerifyPage() {
         {result && (
           <div className={styles.resultBox}>
             <div className={styles.resultHeader}>
-              <span className={`${styles.badge} ${badge}`}>{result.valid ? 'VALID' : 'INVALID'}</span>
+              <span className={`${styles.badge} ${badge}`}>{result.scanStatus || (result.valid ? 'VALID' : 'INVALID')}</span>
               {!result.valid && result.reason && (
                 <span className={styles.reason}>
                   Reason:{' '}

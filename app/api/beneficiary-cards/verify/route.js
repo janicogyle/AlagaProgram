@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { verifyBeneficiaryCardToken } from '@/lib/beneficiaryCards.server';
+import { computeBeneficiaryIdStatus, getQrScanStatus } from '@/lib/beneficiaryIdStatus.server';
 
 export const runtime = 'nodejs';
 
@@ -224,35 +225,28 @@ async function buildVerificationPayload(base) {
 }
 
 async function handleCardVerification(cardData, supabaseAdminClient) {
-  const now = Date.now();
-  const expiresAtMs = new Date(cardData.expires_at).getTime();
+  const resident = await loadResidentProfile(cardData.resident_id);
+  const idStatus = computeBeneficiaryIdStatus({ card: cardData, residentStatus: resident?.status });
+  const scanStatus = getQrScanStatus(idStatus);
 
   if (cardData.revoked_at) {
     const payload = await buildVerificationPayload({
       valid: false,
-      reason: 'revoked',
+      reason: scanStatus.reason || 'expired',
+      idStatus,
+      scanStatus: scanStatus.label,
       card: cardData,
-      resident: null,
+      resident,
     });
     return NextResponse.json({ data: payload, error: null }, { status: 200 });
   }
 
-  if (Number.isFinite(expiresAtMs) && expiresAtMs < now) {
+  if (!scanStatus.valid) {
     const payload = await buildVerificationPayload({
       valid: false,
-      reason: 'expired',
-      card: cardData,
-      resident: null,
-    });
-    return NextResponse.json({ data: payload, error: null }, { status: 200 });
-  }
-
-  const resident = await loadResidentProfile(cardData.resident_id);
-
-  if (resident?.status && resident.status !== 'Active') {
-    const payload = await buildVerificationPayload({
-      valid: false,
-      reason: 'inactive',
+      reason: scanStatus.reason,
+      idStatus,
+      scanStatus: scanStatus.label,
       card: cardData,
       resident,
     });
@@ -262,6 +256,8 @@ async function handleCardVerification(cardData, supabaseAdminClient) {
   const payload = await buildVerificationPayload({
     valid: true,
     reason: null,
+    idStatus,
+    scanStatus: scanStatus.label,
     card: cardData,
     resident: resident || null,
   });

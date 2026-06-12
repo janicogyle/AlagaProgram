@@ -716,6 +716,7 @@ export default function RegistrationPage() {
         return;
       }
 
+      let createdAssistanceRequestId = '';
       if (formData.assistanceType && residentData) {
         if (!supabase) {
           throw new Error('Database client not available');
@@ -780,6 +781,7 @@ export default function RegistrationPage() {
         }
 
         const savedAssistance = assistanceJson?.data || null;
+        createdAssistanceRequestId = savedAssistance?.id || '';
         const insertPayload = payload;
 
         const requirementsColsInPayload =
@@ -849,10 +851,10 @@ export default function RegistrationPage() {
         message: 'Registration saved successfully. Beneficiary and request have been recorded.',
       });
 
-      // Navigate to assistance page with resident data
-      if (residentData) {
-        router.push(`/admin/assistance?residentId=${residentData.id}`);
-      }
+      const redirectUrl = createdAssistanceRequestId
+        ? `/admin/assistance/requests?request=${encodeURIComponent(createdAssistanceRequestId)}`
+        : '/admin/assistance/requests';
+      router.push(redirectUrl);
     } catch (error) {
       console.error('Error:', error);
       setStatus({

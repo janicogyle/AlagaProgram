@@ -12,6 +12,7 @@ import { getCooldownInfo } from '@/lib/requestCooldown';
 import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
 
 const isEditableRequestStatus = (status) => status === 'Rejected';
+const RESTRICTED_ID_STATUSES = new Set(['Expired', 'Renewal Pending']);
 const getRequestStatusLabel = (status) => {
   if (status === 'Rejected') return 'Incomplete';
   if (status === 'Resubmitted') return 'Under Review';
@@ -64,6 +65,7 @@ export default function BeneficiaryHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [alertState, setAlertState] = useState({ open: false, title: '', message: '' });
   const [cooldownInfo, setCooldownInfo] = useState(() => getCooldownInfo(null));
+  const [idStatus, setIdStatus] = useState('');
 
   const openAlert = useCallback(({ title, message }) => {
     setAlertState({ open: true, title, message });
@@ -125,6 +127,29 @@ export default function BeneficiaryHistoryPage() {
   }, [loadRequests]);
 
   useEffect(() => {
+    let cancelled = false;
+    const loadIdStatus = async () => {
+      try {
+        const response = await fetch('/api/beneficiary-cards/me', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!cancelled && response.ok && !payload?.error) {
+          setIdStatus(payload?.data?.idStatus || payload?.data?.residentStatus || '');
+        }
+      } catch {
+        if (!cancelled) setIdStatus('');
+      }
+    };
+
+    void loadIdStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!supabase || typeof window === 'undefined') return undefined;
     const residentId = window.localStorage.getItem('beneficiaryResidentId');
     if (!residentId) return undefined;
@@ -145,6 +170,20 @@ export default function BeneficiaryHistoryPage() {
     request_date: r.request_date ? new Date(r.request_date).toLocaleDateString() : '',
   }));
   const hasActiveRequest = requests.some((row) => ['Pending', 'Resubmitted'].includes(row.status));
+
+  if (RESTRICTED_ID_STATUSES.has(idStatus)) {
+    return (
+      <div className={styles.historyPage}>
+        <PageHeader title="Requests History" subtitle="Beneficiary ID renewal is required." />
+        <Card title="Beneficiary ID Renewal Required">
+          <p className={styles.muted}>
+            Your Beneficiary ID must be renewed before viewing or creating assistance requests.
+          </p>
+          <Button href="/beneficiary/profile">Renew ID</Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.historyPage}>

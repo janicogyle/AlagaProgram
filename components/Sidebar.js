@@ -25,6 +25,7 @@ const menuItems = [
     section: 'Administration',
     items: [
       { name: 'Account Requests', href: '/admin/account-requests', icon: 'document' },
+      { name: 'Renewal Requests', href: '/admin/renewal-requests', icon: 'qr' },
       { name: 'User Management', href: '/admin/users', icon: 'users' },
     ]
   }

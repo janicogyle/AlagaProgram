@@ -15,6 +15,7 @@ import { deleteClientCache, getClientCache, setClientCache } from '@/lib/clientC
 
 const isActiveRequestStatus = (status) => status === 'Pending' || status === 'Resubmitted';
 const isEditableRequestStatus = (status) => status === 'Rejected';
+const RESTRICTED_ID_STATUSES = new Set(['Expired', 'Renewal Pending']);
 const DASHBOARD_CACHE_MAX_AGE = 0;
 const emptyStats = { total: 0, active: 0, pending: 0, completed: 0, rejected: 0, lastDate: null };
 
@@ -78,6 +79,7 @@ export default function BeneficiaryDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all | active | completed | rejected
   const [alertState, setAlertState] = useState({ open: false, title: '', message: '' });
+  const [idStatus, setIdStatus] = useState('');
 
   const openAlert = useCallback(({ title, message }) => {
     setAlertState({ open: true, title, message });
@@ -165,6 +167,29 @@ export default function BeneficiaryDashboardPage() {
   }, [loadDashboard]);
 
   useEffect(() => {
+    let cancelled = false;
+    const loadIdStatus = async () => {
+      try {
+        const response = await fetch('/api/beneficiary-cards/me', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!cancelled && response.ok && !payload?.error) {
+          setIdStatus(payload?.data?.idStatus || payload?.data?.residentStatus || '');
+        }
+      } catch {
+        if (!cancelled) setIdStatus('');
+      }
+    };
+
+    void loadIdStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
 
     window.dispatchEvent(
@@ -213,6 +238,7 @@ export default function BeneficiaryDashboardPage() {
   const activeRequest = requests.find((r) => isActiveStatus(r.status));
   const editableRequest = requests.find((r) => isEditableRequestStatus(r.status));
   const hasActiveRequest = !!activeRequest;
+  const isIdRestricted = RESTRICTED_ID_STATUSES.has(idStatus);
 
   const currentRequestRaw = requests[0] || null;
   const currentRequest = currentRequestRaw
@@ -297,14 +323,22 @@ export default function BeneficiaryDashboardPage() {
 
           <div className={styles.quickActions}>
             <Button
-              href={editableRequest ? `/beneficiary/requests?edit=${encodeURIComponent(editableRequest.id)}` : '/beneficiary/requests'}
-              disabled={!editableRequest && hasActiveRequest}
+              href={
+                isIdRestricted
+                  ? '/beneficiary/profile'
+                  : editableRequest
+                    ? `/beneficiary/requests?edit=${encodeURIComponent(editableRequest.id)}`
+                    : '/beneficiary/requests'
+              }
+              disabled={!isIdRestricted && !editableRequest && hasActiveRequest}
             >
-              {editableRequest ? 'Edit Incomplete Request' : 'New Request'}
+              {isIdRestricted ? 'Renew ID' : editableRequest ? 'Edit Incomplete Request' : 'New Request'}
             </Button>
-            <Link href="/beneficiary/history">
-              <Button variant="secondary">My Requests</Button>
-            </Link>
+            {!isIdRestricted && (
+              <Link href="/beneficiary/history">
+                <Button variant="secondary">My Requests</Button>
+              </Link>
+            )}
             <Link href="/beneficiary/profile">
               <Button variant="secondary">My Profile</Button>
             </Link>

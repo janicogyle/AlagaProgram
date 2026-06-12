@@ -4,6 +4,7 @@ import { getCooldownInfo } from '@/lib/requestCooldown';
 import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/documentUrls.server';
 import { generateNextAssistanceControlNumber } from '@/lib/controlNumbers.server';
 import { logActivity, readOptionalStaffActor } from '@/lib/activityLogger.server';
+import { RESTRICTED_BENEFICIARY_STATUSES } from '@/lib/beneficiaryIdStatus.server';
 
 export const runtime = 'nodejs';
 
@@ -308,6 +309,25 @@ export async function POST(request) {
     const requestSource = ALLOWED_REQUEST_SOURCES.has(requestSourceRaw) ? requestSourceRaw : 'online';
 
     if (requestSource === 'online') {
+      const { data: residentStatusRow, error: residentStatusError } = await db
+        .from('residents')
+        .select('id, status')
+        .eq('id', residentId)
+        .maybeSingle();
+
+      if (residentStatusError) throw residentStatusError;
+
+      if (RESTRICTED_BENEFICIARY_STATUSES.has(String(residentStatusRow?.status || ''))) {
+        return NextResponse.json(
+          {
+            data: null,
+            error: 'Your Beneficiary ID requires renewal before submitting new assistance requests.',
+            code: 'BENEFICIARY_ID_RENEWAL_REQUIRED',
+          },
+          { status: 403 },
+        );
+      }
+
       const { data: activeRequest, error: activeRequestError } = await db
         .from('assistance_requests')
         .select('id, control_number, status, request_date, created_at')

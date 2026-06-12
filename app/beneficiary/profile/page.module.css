@@ -53,88 +53,6 @@
     gap: 1rem 1.25rem;
 }
 
-.profileSummary {
-    position: relative;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 14px;
-    margin-bottom: 10px;
-    padding: 18px 20px;
-    overflow: hidden;
-    border-radius: 14px;
-    border: 1px solid var(--border-color);
-    background: #ffffff;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-}
-
-.profileSummary::before {
-    content: "";
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 4px;
-    background: var(--primary-color);
-}
-
-.profileIdentity {
-    position: relative;
-    min-width: 0;
-}
-
-.profileName {
-    margin: 0;
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: var(--foreground);
-    line-height: 1.25;
-    overflow-wrap: anywhere;
-}
-
-.profileMeta {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    margin: 8px 0 0;
-    font-size: 0.88rem;
-    line-height: 1.35;
-    overflow-wrap: anywhere;
-}
-
-.profileMeta::before {
-    content: "";
-    flex: 0 0 auto;
-    width: 6px;
-    height: 6px;
-    margin-top: 0.42em;
-    border-radius: 999px;
-    background: var(--primary-color);
-    opacity: 0.88;
-}
-
-.profileContact {
-    color: var(--foreground);
-    font-weight: 500;
-}
-
-.profileAddress {
-    max-width: 68ch;
-    color: var(--text-muted);
-}
-
-.profileBadges {
-    position: relative;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: flex-end;
-}
-
-:global(html[data-theme='dark']) .profileSummary {
-    border-color: color-mix(in srgb, var(--border-color) 78%, var(--primary-color));
-    background: color-mix(in srgb, var(--surface-bg) 88%, var(--primary-color));
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
-}
-
 .muted {
     font-size: 0.9rem;
     color: var(--text-muted);
@@ -168,83 +86,166 @@
     font-weight: 500;
 }
 
-.qrWrap {
+.idCardWrap {
     display: flex;
     gap: 16px;
-    align-items: stretch;
+    align-items: flex-start;
     flex-wrap: wrap;
     min-width: 0;
 }
 
-.qrImageBox {
+.idCardPreviewFrame {
+    width: min(300px, 100%);
+    padding: 12px;
     border-radius: 14px;
-    border: 1px solid rgba(0, 0, 0, 0.04);
-    padding: 10px;
-    background: var(--surface-bg);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--border-color);
+    background: #f8fafc;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
 }
 
-.qrImage {
-    width: min(210px, 100%);
+.idCardPreviewImage {
+    width: 100%;
+    aspect-ratio: 50 / 85;
     height: auto;
-    aspect-ratio: 1 / 1;
-    border-radius: 8px;
-    border: 1px solid var(--surface-hover);
-    background: var(--surface-bg);
+    border-radius: 10px;
+    border: 1px solid rgba(15, 23, 42, 0.16);
+    background: #ffffff;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
+    object-fit: contain;
 }
 
-.qrMeta {
+.idCardPreviewLoading {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    aspect-ratio: 50 / 85;
+    border-radius: 10px;
+    border: 1px dashed var(--border-strong);
+    background: #ffffff;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 16px;
+}
+
+.idCardMeta {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 10px;
-    width: min(340px, 100%);
+    gap: 14px;
+    flex: 1 1 280px;
     min-width: min(260px, 100%);
-    padding: 10px 12px;
+    padding: 14px;
     border-radius: 14px;
-    border: 1px solid rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--border-color);
     background: var(--surface-bg);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
 }
 
-.qrRow {
-    display: flex;
-    gap: 10px;
+.idCardInfoGrid {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 9px 14px;
     align-items: baseline;
 }
 
-.qrLabel {
+.idCardLabel {
     color: var(--text-muted);
     font-size: 0.9rem;
 }
 
-.qrDate {
+.idCardValue {
+    min-width: 0;
     color: var(--foreground);
     font-weight: 700;
+    overflow-wrap: anywhere;
 }
 
-.qrButtons {
+.idCardButtons {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
 }
 
-.qrButtons button {
-    min-width: 120px;
+.idCardButtons button {
+    min-width: 150px;
 }
 
-.qrRef {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    font-size: 0.82rem;
-    letter-spacing: 0.04em;
-    color: var(--foreground);
-}
-
-.qrHint {
+.idCardHint {
     margin: 0;
     font-size: 0.8rem;
     line-height: 1.35;
     color: var(--text-muted);
+}
+
+.renewalStatusBox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-muted);
+}
+
+.renewalSuccess {
+    margin: 0;
+    color: #15803d;
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.renewalModalBody {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.renewalDateBox {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-muted);
+}
+
+.remarksLabel {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+.remarksInput {
+    width: 100%;
+    min-height: 92px;
+    resize: vertical;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: var(--surface-bg);
+    color: var(--foreground);
+    font: inherit;
+}
+
+.renewalError {
+    margin: 0;
+    color: #dc2626;
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.renewalModalFooter {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .footerNote {
@@ -262,26 +263,21 @@
         grid-template-columns: 1fr;
     }
 
-    .qrWrap {
+    .idCardWrap {
         justify-content: stretch;
     }
 
-    .qrImageBox {
+    .idCardPreviewFrame {
         margin-left: auto;
         margin-right: auto;
     }
 
-    .qrMeta,
-    .qrButtons,
-    .qrButtons button {
+    .idCardMeta,
+    .idCardButtons,
+    .idCardButtons button,
+    .renewalModalFooter,
+    .renewalModalFooter button {
         width: 100%;
     }
 
-    .profileSummary {
-        flex-direction: column;
-    }
-
-    .profileBadges {
-        justify-content: flex-start;
-    }
 }

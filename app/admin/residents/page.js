@@ -24,11 +24,18 @@ import {
   buildEligibilityMaps,
   getResidentEligibility,
 } from '@/lib/residentEligibility';
+import {
+  formatCardDate,
+  openBeneficiaryIdPrintWindow,
+  renderBeneficiaryIdCard,
+} from '@/lib/beneficiaryIdCard.client';
 
 const statusOptions = [
   { value: "", label: "All Status" },
   { value: "Active", label: "Active" },
-  { value: "Inactive", label: "Inactive" },
+  { value: "Expiring Soon", label: "Expiring Soon" },
+  { value: "Expired", label: "Expired" },
+  { value: "Renewal Pending", label: "Renewal Pending" },
 ];
 
 const registrationTypeOptions = [
@@ -52,6 +59,7 @@ const sectorOptions = [
 const qrOptions = [
   { value: "", label: "All QR" },
   { value: "Valid", label: "Valid" },
+  { value: "Expiring Soon", label: "Expiring Soon" },
   { value: "Expired", label: "Expired" },
   { value: "No QR", label: "No QR" },
 ];
@@ -253,7 +261,7 @@ export default function ResidentsPage() {
   const [editVerifyProcessing, setEditVerifyProcessing] = useState(false);
   const [editAdminPassword, setEditAdminPassword] = useState('');
   const [issuingCard, setIssuingCard] = useState(false);
-  const [issuedCard, setIssuedCard] = useState(null); // { token, card, qrUrl }
+  const [issuedCard, setIssuedCard] = useState(null); // { token, card, qrUrl, cardImageUrl }
   const [cardModalOpen, setCardModalOpen] = useState(false);
   const [alertState, setAlertState] = useState({ open: false, title: '', message: '' });
 
@@ -1222,9 +1230,19 @@ export default function ResidentsPage() {
       const cardReference = String(card.id || '').slice(0, 8).toUpperCase();
       const qrcodeMod = await import('qrcode');
       const QRCode = qrcodeMod.default ?? qrcodeMod;
-      const qrUrl = await QRCode.toDataURL(cardReference, { margin: 1, width: 260 });
+      const qrUrl = await QRCode.toDataURL(cardReference, { margin: 1, width: 420 });
+      const residentForCard = residentDetails?.resident || selectedResident;
+      const sectorLabel = getSectorBadges(residentForCard).join(' / ') || 'General';
+      const cardImageUrl = await renderBeneficiaryIdCard({
+        qrUrl,
+        fullName: buildFullName(residentForCard),
+        sectorLabel,
+        cardReference,
+        contactNumber: residentForCard?.contact_number || '-',
+        expiresAt: card?.expires_at,
+      });
 
-      setIssuedCard({ token, card, cardReference, qrUrl });
+      setIssuedCard({ token, card, cardReference, qrUrl, cardImageUrl });
       clearClientCachePrefix('admin-');
       setCardModalOpen(true);
     } catch (error) {
@@ -1482,7 +1500,7 @@ export default function ResidentsPage() {
                       onClick={handleIssueCard}
                       disabled={processing || issuingCard}
                     >
-                      {issuingCard ? 'Issuing…' : 'Issue ID QR'}
+                      {issuingCard ? 'Issuing…' : 'Issue ID Card'}
                     </Button>
                   ) : null}
                 </>
@@ -2012,7 +2030,7 @@ export default function ResidentsPage() {
       <Modal
         isOpen={!!selectedResident && cardModalOpen}
         onClose={() => setCardModalOpen(false)}
-        title="Beneficiary ID (QR)"
+        title="Beneficiary ID Card"
         footer={
           <>
             <Button
@@ -2030,24 +2048,47 @@ export default function ResidentsPage() {
             >
               Download QR
             </Button>
+            <Button
+              onClick={() => openBeneficiaryIdPrintWindow(issuedCard?.cardImageUrl)}
+              disabled={!issuedCard?.cardImageUrl}
+            >
+              Print ID
+            </Button>
             <Button onClick={() => setCardModalOpen(false)}>Close</Button>
           </>
         }
       >
         {issuedCard ? (
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-            <img
-              src={issuedCard.qrUrl}
-              alt="Beneficiary ID QR"
-              style={{ width: 260, height: 260, borderRadius: 12, border: '1px solid #e5e7eb', background: 'white' }}
-            />
-            <div style={{ minWidth: 240 }}>
-              <p style={{ margin: '0 0 8px', fontWeight: 700 }}>{buildFullName(selectedResident)}</p>
-              <p style={{ margin: '0 0 8px', color: '#6b7280' }}>
-                Expires: {issuedCard.card?.expires_at ? new Date(issuedCard.card.expires_at).toLocaleDateString() : '-'}
-              </p>
-              <p style={{ margin: 0, color: '#6b7280', fontSize: 13 }}>
-                Tip: You can verify this QR on the “Verify Beneficiary ID” page.
+          <div className={styles.issuedIdCardContent}>
+            <div className={styles.issuedIdCardPreviewFrame}>
+              {issuedCard.cardImageUrl ? (
+                <img
+                  src={issuedCard.cardImageUrl}
+                  alt="ALAGA Beneficiary ID Card"
+                  className={styles.issuedIdCardPreviewImage}
+                />
+              ) : (
+                <div className={styles.issuedIdCardPreviewLoading}>Preparing ID card...</div>
+              )}
+            </div>
+            <div className={styles.issuedIdCardMeta}>
+              <p className={styles.issuedIdCardName}>{buildFullName(effectiveResident)}</p>
+              <dl className={styles.issuedIdCardDetails}>
+                <div>
+                  <dt>Card No.</dt>
+                  <dd>{issuedCard.cardReference || '-'}</dd>
+                </div>
+                <div>
+                  <dt>Category</dt>
+                  <dd>{getSectorBadges(effectiveResident).join(' / ') || 'General'}</dd>
+                </div>
+                <div>
+                  <dt>Expires</dt>
+                  <dd>{formatCardDate(issuedCard.card?.expires_at)}</dd>
+                </div>
+              </dl>
+              <p className={styles.issuedIdCardHint}>
+                QR verification uses this ID card on the “Verify Beneficiary ID” page.
               </p>
             </div>
           </div>

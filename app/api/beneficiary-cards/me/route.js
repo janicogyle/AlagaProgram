@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { readBeneficiarySession } from '@/lib/beneficiarySession.server';
 import { createBeneficiaryCardToken } from '@/lib/beneficiaryCards.server';
+import {
+  computeBeneficiaryIdStatus,
+  computeBeneficiaryRenewalEligibility,
+} from '@/lib/beneficiaryIdStatus.server';
 
 export const runtime = 'nodejs';
 
@@ -37,6 +41,14 @@ export async function GET(request) {
 
     const residentId = session.residentId;
 
+    const { data: resident, error: residentError } = await supabaseAdmin
+      .from('residents')
+      .select('id, status')
+      .eq('id', residentId)
+      .maybeSingle();
+
+    if (residentError) throw residentError;
+
     const { data: card, error } = await supabaseAdmin
       .from('beneficiary_cards')
       .select('id, resident_id, issued_at, expires_at, revoked_at, status')
@@ -55,17 +67,15 @@ export async function GET(request) {
       );
     }
 
-    const now = Date.now();
-    const expiresAtMs = new Date(card.expires_at).getTime();
-    if (Number.isFinite(expiresAtMs) && expiresAtMs < now) {
-      return NextResponse.json(
-        { data: null, error: 'Your ID card is expired. Please request a renewal.' },
-        { status: 410 },
-      );
-    }
+    const idStatus = computeBeneficiaryIdStatus({ card, residentStatus: resident?.status });
+    const { canRenew, daysUntilExpiration, renewalWindowDays } = computeBeneficiaryRenewalEligibility({
+      card,
+      idStatus,
+      residentStatus: resident?.status,
+    });
 
     const hasSecret = !!(process.env.QR_CARD_SECRET || process.env.BENEFICIARY_SESSION_SECRET);
-    if (!hasSecret) {
+    if (!hasSecret && idStatus !== 'Expired') {
       return NextResponse.json(
         {
           data: null,
@@ -77,9 +87,21 @@ export async function GET(request) {
       );
     }
 
-    const token = createBeneficiaryCardToken(card.id, card.expires_at);
+    const token = idStatus === 'Expired' ? null : createBeneficiaryCardToken(card.id, card.expires_at);
 
-    return NextResponse.json({ data: { card, token }, error: null });
+    return NextResponse.json({
+      data: {
+        card,
+        token,
+        idStatus,
+        expiresAt: card.expires_at,
+        canRenew,
+        daysUntilExpiration,
+        renewalWindowDays,
+        residentStatus: resident?.status || null,
+      },
+      error: null,
+    });
   } catch (err) {
     console.error('Get beneficiary card (me) error:', err);
 

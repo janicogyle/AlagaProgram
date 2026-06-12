@@ -36,6 +36,7 @@ const WIZARD_STEPS = [
   { number: 5, label: 'Review' },
 ];
 const TOTAL_STEPS = WIZARD_STEPS.length;
+const RESTRICTED_ID_STATUSES = new Set(['Expired', 'Renewal Pending']);
 
 const getRequestStatusLabel = (status) => {
   if (status === 'Rejected') return 'Incomplete';
@@ -191,6 +192,30 @@ export default function BeneficiaryRequestPage() {
   const [cooldownInfo, setCooldownInfo] = useState(() => getCooldownInfo(null));
   const [cooldownLoading, setCooldownLoading] = useState(true);
   const [realtimeRefreshKey, setRealtimeRefreshKey] = useState(0);
+  const [idStatus, setIdStatus] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadIdStatus = async () => {
+      try {
+        const response = await fetch('/api/beneficiary-cards/me', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!cancelled && response.ok && !payload?.error) {
+          setIdStatus(payload?.data?.idStatus || payload?.data?.residentStatus || '');
+        }
+      } catch {
+        if (!cancelled) setIdStatus('');
+      }
+    };
+
+    void loadIdStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!toast.open) return;
@@ -1880,6 +1905,20 @@ export default function BeneficiaryRequestPage() {
     if (currentStep === 4) return renderStep4();
     return renderStep5();
   };
+
+  if (RESTRICTED_ID_STATUSES.has(idStatus)) {
+    return (
+      <div className={styles.registrationPage}>
+        <PageHeader title="Request Assistance" />
+        <Card title="Beneficiary ID Renewal Required">
+          <p className={styles.muted}>
+            Your Beneficiary ID must be renewed before submitting new assistance requests.
+          </p>
+          <Button href="/beneficiary/profile">Renew ID</Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.registrationPage}>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
+import { computeBeneficiaryIdStatus } from '@/lib/beneficiaryIdStatus.server';
 
 export const runtime = 'nodejs';
 
@@ -55,14 +56,9 @@ function isMissingBeneficiaryCardsTable(err) {
 function computeQrValidity({ residentStatus, card }) {
   if (!card) return 'No QR';
 
-  if (card.revoked_at) return 'Revoked';
-
-  const expiresAtMs = card.expires_at ? new Date(card.expires_at).getTime() : NaN;
-  if (Number.isFinite(expiresAtMs) && expiresAtMs < Date.now()) return 'Expired';
-
-  if (residentStatus && residentStatus !== 'Active') return 'Inactive';
-
-  return 'Valid';
+  const idStatus = computeBeneficiaryIdStatus({ card, residentStatus });
+  if (idStatus === 'Active') return 'Valid';
+  return idStatus;
 }
 
 function normalizeContactNumber(input) {

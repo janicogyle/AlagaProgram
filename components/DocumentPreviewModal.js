@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Modal from './Modal';
 import Button from './Button';
 import { isLikelyImage } from '@/lib/documentPreview';
@@ -13,23 +13,97 @@ export default function DocumentPreviewModal({
   path = '',
   title = 'Document Preview',
 }) {
-  const [zoom, setZoom] = useState(1);
-
-  useEffect(() => {
-    if (isOpen) setZoom(1);
-  }, [isOpen, url]);
+  const zoomKey = isOpen ? url : '';
+  const [zoomState, setZoomState] = useState({ key: zoomKey, value: 1 });
+  const zoom = zoomState.key === zoomKey ? zoomState.value : 1;
+  const updateZoom = (updater) => {
+    setZoomState((current) => ({
+      key: zoomKey,
+      value: typeof updater === 'function' ? updater(current.key === zoomKey ? current.value : 1) : updater,
+    }));
+  };
 
   const handleClose = () => {
-    setZoom(1);
+    updateZoom(1);
     onClose?.();
   };
 
   const zoomOut = () =>
-    setZoom((value) => Math.max(0.5, Number((value - 0.25).toFixed(2))));
+    updateZoom((value) => Math.max(0.5, Number((value - 0.25).toFixed(2))));
   const zoomIn = () =>
-    setZoom((value) => Math.min(3, Number((value + 0.25).toFixed(2))));
+    updateZoom((value) => Math.min(3, Number((value + 0.25).toFixed(2))));
 
   const renderAsImage = isLikelyImage(url, path);
+
+  const handlePrint = () => {
+    if (!url) return;
+
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) return;
+
+    const safeTitle = String(title || 'Document Preview').replace(/[<>&]/g, '');
+    const safeUrl = JSON.stringify(url).replace(/</g, '\\u003c');
+    const printContent = renderAsImage
+      ? `<img id="print-target" alt="Document preview" />`
+      : `<iframe id="print-target" title="Document preview"></iframe>`;
+
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>${safeTitle}</title>
+          <style>
+            html,
+            body {
+              margin: 0;
+              min-height: 100%;
+              background: #fff;
+            }
+
+            body {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+
+            img {
+              display: block;
+              max-width: 100%;
+              max-height: 100vh;
+              object-fit: contain;
+            }
+
+            iframe {
+              display: block;
+              width: 100vw;
+              height: 100vh;
+              border: 0;
+            }
+
+            @media print {
+              html,
+              body {
+                width: 100%;
+                height: 100%;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          ${printContent}
+          <script>
+            const target = document.getElementById('print-target');
+            target.addEventListener('load', () => {
+              window.focus();
+              window.print();
+            });
+            target.src = ${safeUrl};
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   return (
     <Modal
@@ -37,7 +111,16 @@ export default function DocumentPreviewModal({
       onClose={handleClose}
       title={title}
       size="large"
-      footer={<Button onClick={handleClose}>Close</Button>}
+      footer={
+        <>
+          {url && (
+            <Button onClick={handlePrint}>
+              Print
+            </Button>
+          )}
+          <Button onClick={handleClose}>Close</Button>
+        </>
+      }
     >
       {url ? (
         <div className={styles.shell}>
@@ -49,7 +132,7 @@ export default function DocumentPreviewModal({
               <Button variant="secondary" size="small" onClick={zoomIn}>
                 +
               </Button>
-              <Button variant="secondary" size="small" onClick={() => setZoom(1)}>
+              <Button variant="secondary" size="small" onClick={() => updateZoom(1)}>
                 Reset
               </Button>
             </div>

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { verifyPassword } from '@/lib/passwords.server';
 import { BENEFICIARY_SESSION_COOKIE, createBeneficiarySessionToken } from '@/lib/beneficiarySession.server';
+import { BENEFICIARY_RESIDENT_STATUSES } from '@/lib/beneficiaryIdStatus.server';
 
 export const runtime = 'nodejs';
 
@@ -114,7 +115,7 @@ export async function POST(request) {
       return NextResponse.json({ data: null, error: 'No beneficiary found with that contact number.' }, { status: 404 });
     }
 
-    if (resident.status && resident.status !== 'Active') {
+    if (resident.status && !BENEFICIARY_RESIDENT_STATUSES.includes(resident.status)) {
       return NextResponse.json(
         { data: null, error: 'Your account is not active. Please contact the administrator.' },
         { status: 403 },

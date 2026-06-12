@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS public.beneficiary_cards (
   issued_at TIMESTAMPTZ DEFAULT NOW(),
   expires_at TIMESTAMPTZ NOT NULL,
   revoked_at TIMESTAMPTZ,
-  status TEXT DEFAULT 'Active' CHECK (status IN ('Active', 'Revoked', 'Expired')),
+  status TEXT DEFAULT 'Active' CHECK (status IN ('Active', 'Expiring Soon', 'Expired')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

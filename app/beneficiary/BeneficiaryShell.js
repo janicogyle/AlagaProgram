@@ -19,6 +19,8 @@ const beneficiaryMenuItems = [
   },
 ];
 
+const RESTRICTED_ID_STATUSES = new Set(['Expired', 'Renewal Pending']);
+
 function LogoutOverlay() {
   return (
     <div className={styles.logoutOverlay}>
@@ -38,6 +40,7 @@ export default function BeneficiaryShell({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [idStatus, setIdStatus] = useState('');
   const [theme, setTheme] = useState(() => {
     if (typeof window === 'undefined') return 'light';
     const storedTheme = window.localStorage.getItem('alagaTheme');
@@ -58,6 +61,29 @@ export default function BeneficiaryShell({ children }) {
     return () => {
       document.documentElement.classList.remove('appShellActive');
       document.body.classList.remove('appShellActive');
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadIdStatus = async () => {
+      try {
+        const response = await fetch('/api/beneficiary-cards/me', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!cancelled && response.ok && !payload?.error) {
+          setIdStatus(payload?.data?.idStatus || payload?.data?.residentStatus || '');
+        }
+      } catch {
+        if (!cancelled) setIdStatus('');
+      }
+    };
+
+    void loadIdStatus();
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -104,6 +130,15 @@ export default function BeneficiaryShell({ children }) {
     router.push('/login');
   };
 
+  const resolvedMenuItems = RESTRICTED_ID_STATUSES.has(idStatus)
+    ? beneficiaryMenuItems.map((section) => ({
+        ...section,
+        items: section.items.filter((item) => (
+          item.href === '/beneficiary/dashboard' || item.href === '/beneficiary/profile'
+        )),
+      }))
+    : beneficiaryMenuItems;
+
   return (
     <div className={styles.layout}>
       <WelcomeToast />
@@ -119,7 +154,7 @@ export default function BeneficiaryShell({ children }) {
         user={beneficiaryUser}
         onLogout={handleLogout}
         minimized={!sidebarOpen}
-        menuItems={beneficiaryMenuItems}
+        menuItems={resolvedMenuItems}
         hideBranding
         customTitle="Beneficiary Portal"
         customSubtitle="My Services & Requests"
