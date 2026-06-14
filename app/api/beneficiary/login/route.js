@@ -79,20 +79,20 @@ export async function POST(request) {
           .maybeSingle();
 
         if (!requestError && requestRow) {
-          if (requestRow.status === 'Pending') {
+          if (requestRow.status === 'Pending' || requestRow.status === 'Resubmitted') {
             return NextResponse.json(
               {
                 data: null,
                 error:
-                  'PENDING APPROVAL: Your sign-up request is still pending admin approval. Please wait for approval before logging in.',
+                  'PENDING APPROVAL: Your sign-up request is still under admin review. Please wait for approval before logging in.',
               },
               { status: 403 },
             );
           }
 
-          if (requestRow.status === 'Archived') {
+          if (requestRow.status === 'Incomplete' || requestRow.status === 'Archived' || requestRow.status === 'Rejected') {
             return NextResponse.json(
-              { data: null, error: 'Your sign-up request was archived. Please contact the administrator.' },
+              { data: null, error: 'Your sign-up request is incomplete. Please use the resubmission code sent by SMS.' },
               { status: 403 },
             );
           }

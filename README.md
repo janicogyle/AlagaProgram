@@ -19,6 +19,9 @@ BENEFICIARY_SESSION_SECRET=...  # used for beneficiary session cookie (optional;
 UNISMS_API_KEY=...               # API **Secret** key (Basic Auth username, password empty)
 UNISMS_SENDER_ID=...             # optional (approved Sender ID only)
 UNISMS_API_URL=...               # optional (defaults to https://unismsapi.com/api)
+UNISMS_LINK_API_KEY=...          # required for account resubmission link SMS (sender-free UniSMS account)
+UNISMS_LINK_API_URL=...          # optional (defaults to UNISMS_API_URL / https://unismsapi.com/api)
+ACCOUNT_RESUBMISSION_BASE_URL=... # production public app URL for SMS links, e.g. https://your-app.vercel.app
 SMS_OTP_SECRET=...               # used to hash OTP codes (required)
 SMS_DEV_MODE=false               # set true locally to print OTP in server console (no SMS credits)
 SMS_CRON_SECRET=...              # used to authorize the eligibility reminder cron
@@ -40,6 +43,8 @@ If deploying to Vercel, add these in **Project Settings → Environment Variable
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes (signup OTP, admin actions) |
 | `CLOUDINARY_URL` | Yes (Valid ID uploads) |
 | `UNISMS_API_KEY` | Yes (SMS OTP on signup) |
+| `UNISMS_LINK_API_KEY` | Yes (account resubmission link SMS) |
+| `ACCOUNT_RESUBMISSION_BASE_URL` | Yes (public HTTPS base URL for resubmission links) |
 | `SMS_OTP_SECRET` | Yes (OTP hashing) |
 | `QR_CARD_SECRET` or `BENEFICIARY_SESSION_SECRET` | Yes (beneficiary sessions / QR) |
 | `UNISMS_SENDER_ID` | Optional |
@@ -62,6 +67,10 @@ If registration saves fail with missing requirements verification, run `setup-st
 2. Copy your **API Secret** from the dashboard (not the placeholder `your_new_secret`).
 3. Set in `.env.local`: `UNISMS_API_KEY=your_actual_secret`
 4. Restart `pnpm dev`.
+
+Account resubmission-link SMS uses a separate sender-free UniSMS key because the Sender ID route may reject messages containing links. Set `UNISMS_LINK_API_KEY` to that separate API Secret. Do not reuse the Sender ID account for this value if UniSMS blocks links on it.
+
+For production resubmission links, set `ACCOUNT_RESUBMISSION_BASE_URL` to the public HTTPS app URL. Local development falls back to the request origin.
 
 **Local testing without sending real SMS:** set `SMS_DEV_MODE=true`. The OTP is printed in the terminal when you click **Send OTP** (signup Step 4).
 

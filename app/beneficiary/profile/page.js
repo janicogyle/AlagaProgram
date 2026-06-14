@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import PageHeader from '../../../components/PageHeader';
 import Card from '../../../components/Card';
-import Input from '../../../components/Input';
-import { Badge, FileUpload, Modal, SectionHeader, HelperText, StatusChip, Button } from '@/components';
+import { Badge, FileUpload, Modal, SectionHeader, HelperText, Button } from '@/components';
 import styles from './page.module.css';
 import { supabase } from '@/lib/supabaseClient';
 import {
@@ -21,6 +20,23 @@ function getIdStatusVariant(status) {
   if (status === 'Expired') return 'danger';
   if (status === 'Renewal Pending') return 'warning';
   return 'secondary';
+}
+
+function ProfileDetailRow({ label, value }) {
+  return (
+    <div className={styles.detailRow}>
+      <span className={styles.detailLabel}>{label}</span>
+      <span className={styles.detailValue}>{value || '—'}</span>
+    </div>
+  );
+}
+
+function formatContactForDisplay(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('0')) {
+    return `+63 ${digits.slice(1, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+  }
+  return value || '';
 }
 
 export default function ProfilePage() {
@@ -197,6 +213,15 @@ export default function ProfilePage() {
   if (resident?.is_solo_parent) sectors.push('Solo Parent');
   const fullName = [resident?.first_name, resident?.middle_name, resident?.last_name].filter(Boolean).join(' ');
   const sectorLabel = sectors.length ? sectors.join(' / ') : 'General';
+  const addressParts = [
+    resident?.house_no,
+    resident?.purok,
+    formatLabel(resident?.barangay),
+    resident?.city,
+  ]
+    .map((part) => String(part || '').trim())
+    .filter(Boolean);
+  const fullAddress = addressParts.length ? addressParts.join(', ') : '-';
   const effectiveIdStatus = idCard.idStatus || resident?.status || 'Active';
   const canOpenRenewal = renewalRequest?.status === 'Incomplete' || (!!idCard.canRenew && renewalRequest?.status !== 'Pending');
   const renewalDisabledHint = renewalRequest?.status === 'Pending'
@@ -204,6 +229,31 @@ export default function ProfilePage() {
     : !canOpenRenewal
       ? 'Renewal opens 7 days before expiration.'
       : '';
+  const profileDetailRows = [
+    { label: 'Beneficiary Name', value: fullName },
+    { label: 'Sector / Category', value: sectorLabel },
+    { label: 'Card Number', value: idCard.cardReference },
+    { label: 'Phone Number', value: formatContactForDisplay(resident?.contact_number) },
+    { label: 'Address', value: fullAddress },
+    { label: 'Date Issued', value: formatCardDate(idCard.card?.issued_at) },
+    { label: 'Expiry Date', value: formatCardDate(idCard.card?.expires_at) },
+    {
+      label: 'Status',
+      value: <Badge variant={getIdStatusVariant(effectiveIdStatus)}>{effectiveIdStatus}</Badge>,
+    },
+    { label: 'Birthday', value: formatDate(resident?.birthday) },
+    {
+      label: 'Age',
+      value:
+        resident?.age != null && resident?.age !== ''
+          ? String(resident.age)
+          : String(calculateAge(resident?.birthday) || ''),
+    },
+    { label: 'Birthplace', value: resident?.birthplace },
+    { label: 'Sex', value: formatLabel(resident?.sex) },
+    { label: 'Citizenship', value: resident?.citizenship },
+    { label: 'Civil Status', value: formatLabel(resident?.civil_status) },
+  ];
 
   useEffect(() => {
     if (loading || !idCard.qrUrl || !idCard.card || idCard.error) return;
@@ -220,6 +270,8 @@ export default function ProfilePage() {
           sectorLabel,
           cardReference: idCard.cardReference,
           contactNumber: resident?.contact_number || '-',
+          address: fullAddress,
+          issuedAt: idCard.card?.issued_at,
           expiresAt: idCard.card?.expires_at,
         });
 
@@ -253,6 +305,7 @@ export default function ProfilePage() {
     resident?.contact_number,
     fullName,
     sectorLabel,
+    fullAddress,
   ]);
 
   const downloadIdPdf = async () => {
@@ -364,20 +417,12 @@ export default function ProfilePage() {
                       </div>
                     )}
                   </div>
-                  <div className={styles.idCardMeta}>
-                    <div className={styles.idCardInfoGrid}>
-                      <span className={styles.idCardLabel}>Card No.</span>
-                      <strong className={styles.idCardValue}>{idCard.cardReference || '-'}</strong>
-                      <span className={styles.idCardLabel}>Status</span>
-                      <strong className={styles.idCardValue}>
-                        <Badge variant={getIdStatusVariant(effectiveIdStatus)}>{effectiveIdStatus}</Badge>
-                      </strong>
-                      <span className={styles.idCardLabel}>Category</span>
-                      <strong className={styles.idCardValue}>{sectorLabel}</strong>
-                      <span className={styles.idCardLabel}>Expires</span>
-                      <strong className={styles.idCardValue}>
-                        {formatCardDate(idCard.card?.expires_at)}
-                      </strong>
+                  <div className={styles.idDetailsPanel}>
+                    <h3 className={styles.idDetailsTitle}>Card Details</h3>
+                    <div className={styles.idDetailsRows}>
+                      {profileDetailRows.map((row) => (
+                        <ProfileDetailRow key={row.label} label={row.label} value={row.value} />
+                      ))}
                     </div>
                     <p className={styles.idCardHint}>Keep this ID private. Share only with authorized barangay staff.</p>
                     {renewalNotice && <p className={styles.renewalSuccess}>{renewalNotice}</p>}
@@ -430,129 +475,6 @@ export default function ProfilePage() {
                   </div>
                 </div>
               )}
-            </section>
-
-            <section className={styles.sectionCard} aria-labelledby="personal-info-heading">
-              <SectionHeader
-                id="personal-info-heading"
-                title="Personal information"
-                subtitle="Basic details you shared when signing up as a beneficiary."
-              />
-              <div className={styles.formGrid}>
-                <Input
-                  label="First Name"
-                  type="text"
-                  value={resident?.first_name || ''}
-                  disabled
-                />
-                <Input
-                  label="Middle Name"
-                  type="text"
-                  value={resident?.middle_name || ''}
-                  disabled
-                />
-                <Input
-                  label="Last Name"
-                  type="text"
-                  value={resident?.last_name || ''}
-                  disabled
-                />
-                <Input
-                  label="Birthday"
-                  type="text"
-                  value={formatDate(resident?.birthday)}
-                  disabled
-                />
-                <Input
-                  label="Age"
-                  type="text"
-                  value={
-                    resident?.age != null && resident?.age !== ''
-                      ? String(resident.age)
-                      : String(calculateAge(resident?.birthday) || '')
-                  }
-                  disabled
-                />
-                <Input
-                  label="Birthplace"
-                  type="text"
-                  value={resident?.birthplace || ''}
-                  disabled
-                />
-                <Input
-                  label="Sex"
-                  type="text"
-                  value={formatLabel(resident?.sex)}
-                  disabled
-                />
-                <Input
-                  label="Citizenship"
-                  type="text"
-                  value={resident?.citizenship || ''}
-                  disabled
-                />
-                <Input
-                  label="Civil Status"
-                  type="text"
-                  value={formatLabel(resident?.civil_status)}
-                  disabled
-                />
-                <Input
-                  label="Contact Number"
-                  type="tel"
-                  value={resident?.contact_number || ''}
-                  placeholder="+63 XXX XXX XXXX"
-                  mask="ph-contact"
-                  disabled
-                />
-              </div>
-
-              <div>
-                <label className={styles.fieldLabel}>Sectors</label>
-                {sectors.length === 0 ? (
-                  <p className={styles.muted}>No sector classification on record.</p>
-                ) : (
-                  <div className={styles.chipRow}>
-                    {sectors.map((s) => (
-                      <StatusChip key={s} label={s} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className={styles.sectionCard} aria-labelledby="address-info-heading">
-              <SectionHeader
-                id="address-info-heading"
-                title="Address information"
-                subtitle="Address details from your sign up form."
-              />
-              <div className={styles.formGrid}>
-                <Input
-                  label="House Number"
-                  type="text"
-                  value={resident?.house_no || ''}
-                  disabled
-                />
-                <Input
-                  label="Purok"
-                  type="text"
-                  value={resident?.purok || ''}
-                  disabled
-                />
-                <Input
-                  label="Barangay"
-                  type="text"
-                  value={resident?.barangay || ''}
-                  disabled
-                />
-                <Input
-                  label="City / Municipality"
-                  type="text"
-                  value={resident?.city || ''}
-                  disabled
-                />
-              </div>
             </section>
 
             <HelperText className={styles.footerNote}>

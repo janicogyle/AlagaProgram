@@ -162,10 +162,14 @@ CREATE TABLE IF NOT EXISTS public.account_requests (
   civil_status TEXT,
   
   -- Request Info
-  status TEXT DEFAULT 'Pending' CHECK (status IN ('Pending', 'Approved', 'Archived')),
+  status TEXT DEFAULT 'Pending' CHECK (status IN ('Pending', 'Incomplete', 'Resubmitted', 'Approved', 'Rejected')),
   notes TEXT,
   processed_by TEXT,
   processed_at TIMESTAMPTZ,
+  resubmission_token_hash TEXT,
+  resubmission_token_created_at TIMESTAMPTZ,
+  resubmission_sent_at TIMESTAMPTZ,
+  resubmitted_at TIMESTAMPTZ,
   
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -201,7 +205,7 @@ CREATE TRIGGER update_account_requests_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
--- Normalize legacy values + ensure only Pending/Approved/Archived are allowed
+-- Normalize legacy values + ensure account request resubmission statuses are allowed
 DO $$
 DECLARE
   c RECORD;
@@ -220,15 +224,15 @@ BEGIN
 END $$;
 
 UPDATE public.account_requests
-SET status = 'Archived'
-WHERE status = 'Rejected';
+SET status = 'Incomplete'
+WHERE status = 'Archived';
 
 ALTER TABLE public.account_requests
   DROP CONSTRAINT IF EXISTS account_requests_status_check;
 
 ALTER TABLE public.account_requests
   ADD CONSTRAINT account_requests_status_check
-  CHECK (status IN ('Pending', 'Approved', 'Archived'));
+  CHECK (status IN ('Pending', 'Incomplete', 'Resubmitted', 'Approved', 'Rejected'));
 
 -- Ensure password columns exist (safe to run multiple times)
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS password_hash TEXT;
@@ -239,6 +243,13 @@ ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS birthplace TEXT;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS sex TEXT;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS citizenship TEXT;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS civil_status TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS resubmission_token_hash TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS resubmission_token_created_at TIMESTAMPTZ;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS resubmission_sent_at TIMESTAMPTZ;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS resubmitted_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_account_requests_resubmission_token_hash
+  ON public.account_requests(resubmission_token_hash)
+  WHERE resubmission_token_hash IS NOT NULL;
 DO $$
 BEGIN
   IF to_regclass('public.residents') IS NOT NULL THEN

@@ -117,6 +117,11 @@ export default function LoginPage() {
               Don&apos;t have an account? <Link href="/signup">Sign up</Link>
             </p>
 
+            <p className={styles.signup}>
+              Signup marked incomplete?{' '}
+              <Link href="/account-requests/resubmit">Resubmit your application</Link>
+            </p>
+
             <div className={styles.legalSection}>
               <p className={styles.legalInlineText}>
                 By clicking &apos;Sign In&apos;, you acknowledge and agree to the{' '}

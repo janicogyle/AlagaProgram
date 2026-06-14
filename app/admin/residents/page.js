@@ -1239,6 +1239,8 @@ export default function ResidentsPage() {
         sectorLabel,
         cardReference,
         contactNumber: residentForCard?.contact_number || '-',
+        address: formatAddressLine(residentForCard),
+        issuedAt: card?.issued_at,
         expiresAt: card?.expires_at,
       });
 

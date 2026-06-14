@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { createOrUpdateResident } from '@/lib/residents';
-import { sendAccountStatusSms } from '@/lib/smsNotify.server';
+import {
+  getAccountResubmissionSmsSetupError,
+  sendAccountResubmissionSms,
+  sendAccountStatusSms,
+} from '@/lib/smsNotify.server';
 import { generateNextBeneficiaryControlNumber } from '@/lib/controlNumbers.server';
 import {
   getBeneficiaryCardsSetupHint,
@@ -10,10 +14,19 @@ import {
   issueBeneficiaryCard,
 } from '@/lib/beneficiaryCards.server';
 import { logStaffActivity } from '@/lib/activityLogger.server';
+import {
+  createAccountResubmissionCode,
+  hashAccountResubmissionToken,
+} from '@/lib/accountResubmissionTokens.server';
 
 export const runtime = 'nodejs';
 
 const LOCKED_CITIZENSHIP = 'Filipino';
+
+function normalizeAccountRequestStatus(status) {
+  if (status === 'Archived' || status === 'Rejected') return 'Incomplete';
+  return status;
+}
 
 function getMissingAccountRequestsColumn(message) {
   const msg = String(message || '');
@@ -176,6 +189,68 @@ async function findResidentForSignupApproval(db, { requestId, contactNumber }) {
   return { resident: data || null, hasAccountRequestIdColumn };
 }
 
+async function createAndSendResubmissionLink({
+  db,
+  request,
+  requestId,
+  accountRequest,
+  processedBy,
+  notes,
+  markIncomplete = false,
+}) {
+  const smsSetupError = getAccountResubmissionSmsSetupError();
+  if (smsSetupError) {
+    const error = new Error(smsSetupError);
+    error.code = 'RESUBMISSION_SMS_NOT_CONFIGURED';
+    throw error;
+  }
+
+  const resubmissionCode = createAccountResubmissionCode();
+  const now = new Date().toISOString();
+
+  const updatePayload = {
+    resubmission_token_hash: hashAccountResubmissionToken(resubmissionCode),
+    resubmission_token_created_at: now,
+  };
+
+  if (markIncomplete) {
+    updatePayload.status = 'Incomplete';
+    updatePayload.processed_by = processedBy || 'Admin';
+    updatePayload.processed_at = now;
+    updatePayload.notes = notes || null;
+  }
+
+  const { data, error } = await db
+    .from('account_requests')
+    .update(updatePayload)
+    .eq('id', requestId)
+    .select('id, status, processed_by, processed_at, notes, resubmission_sent_at')
+    .single();
+
+  if (error) throw error;
+
+  const sms = await sendAccountResubmissionSms({
+    contactNumber: accountRequest?.contact_number,
+    notes: data?.notes || notes || accountRequest?.notes,
+    requestId,
+    resubmissionCode,
+  });
+
+  let responseData = data;
+  if (sms?.ok) {
+    const { data: sentData, error: sentError } = await db
+      .from('account_requests')
+      .update({ resubmission_sent_at: now })
+      .eq('id', requestId)
+      .select('id, status, processed_by, processed_at, notes, resubmission_sent_at')
+      .single();
+    if (sentError) throw sentError;
+    responseData = sentData;
+  }
+
+  return { data: responseData, sms };
+}
+
 export async function GET(request, { params }) {
   try {
     const auth = await requireStaffOrAdmin(request);
@@ -205,7 +280,7 @@ export async function GET(request, { params }) {
 
     let merged = accountRequest;
 
-    const normalizedStatus = accountRequest?.status === 'Rejected' ? 'Archived' : accountRequest?.status;
+    const normalizedStatus = normalizeAccountRequestStatus(accountRequest?.status);
     if (normalizedStatus === 'Approved') {
       try {
         const residentSelectWithLink = [
@@ -376,11 +451,11 @@ export async function POST(request, { params }) {
     const { action, processedBy, notes } = body;
     const rawAction = String(action || '').trim().toLowerCase();
 
-    if (!['approve', 'archive', 'reject', 'unarchive'].includes(rawAction)) {
+    if (!['approve', 'archive', 'reject', 'resend_resubmission'].includes(rawAction)) {
       return NextResponse.json(
         {
           data: null,
-          error: 'Invalid action. Must be "approve", "reject", "archive", or "unarchive".',
+          error: 'Invalid action. Must be "approve", "reject", "archive", or "resend_resubmission".',
         },
         { status: 400 },
       );
@@ -403,26 +478,25 @@ export async function POST(request, { params }) {
       throw fetchError;
     }
 
-    const currentStatus = accountRequest.status === 'Rejected' ? 'Archived' : accountRequest.status;
+    const currentStatus = normalizeAccountRequestStatus(accountRequest.status);
 
     const requiresPending = finalAction === 'approve' || finalAction === 'archive';
-    const requiresArchived = finalAction === 'unarchive';
 
-    if (requiresPending && currentStatus !== 'Pending') {
+    if (requiresPending && !['Pending', 'Resubmitted'].includes(currentStatus)) {
       return NextResponse.json(
         {
           data: null,
-          error: `This request cannot be ${finalAction}d because it is ${String(currentStatus).toLowerCase()}.`,
+          error: `This request cannot be ${finalAction === 'archive' ? 'marked incomplete' : `${finalAction}d`} because it is ${String(currentStatus).toLowerCase()}.`,
         },
         { status: 409 },
       );
     }
 
-    if (requiresArchived && currentStatus !== 'Archived') {
+    if (finalAction === 'resend_resubmission' && currentStatus !== 'Incomplete') {
       return NextResponse.json(
         {
           data: null,
-          error: `Only archived requests can be unarchived. Current status: ${currentStatus}.`,
+          error: `Only incomplete requests can receive a resubmission SMS. Current status: ${currentStatus}.`,
         },
         { status: 409 },
       );
@@ -618,34 +692,25 @@ export async function POST(request, { params }) {
         sms,
       });
     } else if (finalAction === 'archive') {
-      const { data, error } = await db
-        .from('account_requests')
-        .update({
-          status: 'Archived',
-          processed_by: processedBy || 'Admin',
-          processed_at: new Date().toISOString(),
-          notes: notes || null,
-        })
-        .eq('id', requestId)
-        .select('id, status, processed_by, processed_at, notes')
-        .single();
-
-      if (error) throw error;
-
-      const sms = await sendAccountStatusSms({
-        contactNumber: accountRequest?.contact_number,
-        status: data?.status || 'Archived',
-        notes: data?.notes || notes,
+      const result = await createAndSendResubmissionLink({
+        db,
+        request,
         requestId,
+        accountRequest,
+        processedBy,
+        notes,
+        markIncomplete: true,
       });
 
       await logStaffActivity(
         auth,
         {
-          action: 'Archived account request',
-          message: 'Signup request marked incomplete.',
+          action: 'Marked account request incomplete',
+          message: result.sms?.ok
+            ? 'Signup request marked incomplete and resubmission code sent.'
+            : 'Signup request marked incomplete and resubmission code generated, but SMS was not sent.',
           entity_type: 'account_request',
-          entity_id: data?.id || requestId,
+          entity_id: result.data?.id || requestId,
           reference_number: accountRequest?.contact_number || requestId,
           link: '/admin/account-requests',
         },
@@ -653,33 +718,31 @@ export async function POST(request, { params }) {
       );
 
       return NextResponse.json({
-        data,
+        data: result.data,
         error: null,
-        message: 'Account request archived.',
-        sms,
+        message: 'Account request marked incomplete.',
+        sms: result.sms,
       });
-    } else if (finalAction === 'unarchive') {
-      const { data, error } = await db
-        .from('account_requests')
-        .update({
-          status: 'Pending',
-          processed_by: null,
-          processed_at: null,
-          notes: notes || null,
-        })
-        .eq('id', requestId)
-        .select('id, status, processed_by, processed_at, notes')
-        .single();
-
-      if (error) throw error;
+    } else if (finalAction === 'resend_resubmission') {
+      const result = await createAndSendResubmissionLink({
+        db,
+        request,
+        requestId,
+        accountRequest,
+        processedBy,
+        notes: accountRequest?.notes,
+        markIncomplete: false,
+      });
 
       await logStaffActivity(
         auth,
         {
-          action: 'Reopened account request',
-          message: 'Archived signup request was reopened.',
+          action: 'Sent account request resubmission SMS',
+          message: result.sms?.ok
+            ? 'Resubmission code SMS sent for incomplete signup request.'
+            : 'Resubmission code was generated, but SMS was not sent.',
           entity_type: 'account_request',
-          entity_id: data?.id || requestId,
+          entity_id: result.data?.id || requestId,
           reference_number: accountRequest?.contact_number || requestId,
           link: '/admin/account-requests',
         },
@@ -687,13 +750,24 @@ export async function POST(request, { params }) {
       );
 
       return NextResponse.json({
-        data,
+        data: result.data,
         error: null,
-        message: 'Account request unarchived.',
+        message: 'Resubmission SMS processed.',
+        sms: result.sms,
       });
     }
   } catch (error) {
     console.error('Process account request error:', error);
+    if (error?.code === 'RESUBMISSION_SMS_NOT_CONFIGURED') {
+      return NextResponse.json(
+        {
+          data: null,
+          error: error.message || 'Resubmission SMS is not configured.',
+        },
+        { status: 503 },
+      );
+    }
+
     return NextResponse.json({ 
       data: null, 
       error: error.message || 'Failed to process account request.' 

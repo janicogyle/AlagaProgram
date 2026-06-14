@@ -21,12 +21,15 @@ import styles from "./page.module.css";
 const statusOptions = [
   { value: "", label: "All Status" },
   { value: "Pending", label: "Pending" },
+  { value: "Resubmitted", label: "Resubmitted" },
   { value: "Approved", label: "Approved" },
   { value: "Incomplete", label: "Incomplete" },
 ];
 
 const normalizeStatus = (status) =>
   status === "Rejected" || status === "Archived" ? "Incomplete" : status;
+
+const isReviewableStatus = (status) => status === "Pending" || status === "Resubmitted";
 
 function formatDate(dateString) {
   if (!dateString) return "-";
@@ -105,7 +108,7 @@ export default function AccountRequestsPage() {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [requestDetails, setRequestDetails] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
-  const [modalMode, setModalMode] = useState("view"); // "view" | "approve" | "reject" | "unarchive"
+  const [modalMode, setModalMode] = useState("view"); // "view" | "approve" | "reject"
   const [requests, setRequests] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 25, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
@@ -290,12 +293,6 @@ export default function AccountRequestsPage() {
     setModalMode("reject");
   };
 
-  const handleOpenUnarchive = (request) => {
-    setSelectedRequest(request);
-    setArchiveNotes('');
-    setModalMode('unarchive');
-  };
-
   const handleCloseModal = () => {
     setSelectedRequest(null);
     setRequestDetails(null);
@@ -402,14 +399,13 @@ export default function AccountRequestsPage() {
     }
   };
 
-  const handleConfirmUnarchive = async () => {
-    if (!selectedRequest || processing) return;
+  const handleSendResubmissionSms = async (request) => {
+    if (!request || processing) return;
 
-    const requestId = selectedRequest.id;
+    const requestId = request.id;
     if (!requestId) {
-      console.warn('Selected request has no id:', selectedRequest);
       openAlert({
-        title: 'Reopen failed',
+        title: 'Send SMS failed',
         message: 'Request ID is missing.',
         variant: 'error',
       });
@@ -423,29 +419,27 @@ export default function AccountRequestsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
-          action: 'unarchive',
-          processedBy: 'Admin', // TODO: Get from actual user session
-          notes: archiveNotes || null,
+          action: 'resend_resubmission',
+          processedBy: 'Admin',
         }),
       });
 
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok || result.error) {
-        throw new Error(result.error || 'Failed to reopen request');
+        throw new Error(result.error || 'Failed to send resubmission SMS');
       }
 
-      handleCloseModal();
       await fetchRequests();
       openAlert({
-        title: 'Reopened',
-        message: 'Request moved back to Pending.',
-        variant: 'success',
+        title: result.sms?.ok === false && !result.sms?.skipped ? 'SMS failed' : 'SMS sent',
+        message: 'Resubmission code SMS processed.' + formatSmsNotificationResult(result.sms),
+        variant: result.sms?.ok === false && !result.sms?.skipped ? 'warning' : 'success',
       });
     } catch (error) {
-      console.warn('Reopen error:', error?.message || error);
+      console.warn('Send resubmission SMS error:', error?.message || error);
       openAlert({
-        title: 'Reopen failed',
+        title: 'Send SMS failed',
         message: error.message || 'Unknown error',
         variant: 'error',
       });
@@ -519,7 +513,7 @@ export default function AccountRequestsPage() {
               : "warning"
           }
         >
-          {status === "Incomplete" ? "Incomplete" : status}
+          {status}
         </Badge>
       ),
     },
@@ -535,7 +529,7 @@ export default function AccountRequestsPage() {
           >
             View
           </Button>
-          {row.status === "Pending" && (
+          {isReviewableStatus(row.status) && (
             <>
               <Button
                 variant="outline"
@@ -553,14 +547,14 @@ export default function AccountRequestsPage() {
               </Button>
             </>
           )}
-
           {row.status === "Incomplete" && (
             <Button
               variant="outline"
               size="small"
-              onClick={() => handleOpenUnarchive(row)}
+              onClick={() => handleSendResubmissionSms(row)}
+              disabled={processing}
             >
-              Reopen
+              Send Resubmission SMS
             </Button>
           )}
         </div>
@@ -574,7 +568,6 @@ export default function AccountRequestsPage() {
   const isDetailsModalOpen = !!selectedRequest && modalMode === "view";
   const isApproveModalOpen = !!selectedRequest && modalMode === "approve";
   const isRejectModalOpen = !!selectedRequest && modalMode === "reject";
-  const isUnarchiveModalOpen = !!selectedRequest && modalMode === "unarchive";
   const isAlertModalOpen = !!alertState.open;
 
   const detailsRequest = requestDetails || selectedRequest;
@@ -643,7 +636,7 @@ export default function AccountRequestsPage() {
                           : "warning"
                       }
                     >
-                      {request.status === "Incomplete" ? "Incomplete" : request.status}
+                      {request.status}
                     </Badge>
                   </div>
                   <div className={styles.cardActions}>
@@ -657,7 +650,7 @@ export default function AccountRequestsPage() {
                         <circle cx="12" cy="12" r="3" />
                       </svg>
                     </button>
-                    {request.status === 'Pending' && (
+                    {isReviewableStatus(request.status) && (
                       <>
                         <button 
                           className={styles.approveBtn}
@@ -684,14 +677,13 @@ export default function AccountRequestsPage() {
                     {request.status === "Incomplete" && (
                       <button
                         className={styles.releaseBtn}
-                        onClick={() => handleOpenUnarchive(request)}
-                        title="Reopen"
+                        onClick={() => handleSendResubmissionSms(request)}
+                        disabled={processing}
+                        title="Send resubmission SMS"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 8v13H3V8" />
-                          <path d="M1 3h22v5H1z" />
-                          <path d="M12 12v5" />
-                          <path d="M9 15l3 3 3-3" />
+                          <path d="M22 2L11 13" />
+                          <path d="M22 2L15 22L11 13L2 9L22 2Z" />
                         </svg>
                       </button>
                     )}
@@ -777,8 +769,8 @@ export default function AccountRequestsPage() {
                     ? "danger"
                     : "warning"
                 }
-              >
-                {detailsRequest.status === "Incomplete" ? "Incomplete" : detailsRequest.status}
+                >
+                {detailsRequest.status}
               </Badge>
             </div>
 
@@ -888,7 +880,7 @@ export default function AccountRequestsPage() {
               </div>
             )}
 
-            {detailsRequest.status === "Pending" && (
+            {isReviewableStatus(detailsRequest.status) && (
               <div className={styles.detailsActionsSection}>
                 <div className={styles.detailsActionsButtons}>
                   <Button
@@ -917,9 +909,10 @@ export default function AccountRequestsPage() {
                 <Button
                   variant="outline"
                   className={styles.detailsActionBtnSingle}
-                  onClick={() => handleOpenUnarchive(detailsRequest)}
+                  onClick={() => handleSendResubmissionSms(detailsRequest)}
+                  disabled={processing}
                 >
-                  Reopen
+                  Send Resubmission SMS
                 </Button>
               </div>
             )}
@@ -985,39 +978,6 @@ export default function AccountRequestsPage() {
               value={archiveNotes}
               onChange={(e) => setArchiveNotes(e.target.value)}
               placeholder="e.g. Invalid ID, incomplete address proof"
-            />
-          </div>
-        )}
-      </Modal>
-
-      {/* Unarchive Confirmation Modal */}
-      <Modal
-        isOpen={isUnarchiveModalOpen}
-        onClose={handleCloseModal}
-        title="Reopen Signup Request"
-        footer={
-          <>
-            <Button variant="secondary" onClick={handleCloseModal} disabled={processing}>
-              Cancel
-            </Button>
-            <Button onClick={handleConfirmUnarchive} disabled={processing}>
-              {processing ? 'Reopening…' : 'Confirm Reopen'}
-            </Button>
-          </>
-        }
-      >
-        {selectedRequest && (
-          <div className={styles.confirmStack}>
-            <p className={`${styles.confirmText} ${styles.noMargin}`}>
-              Move this request back to <strong>Pending</strong> for
-              <strong> {buildFullName(selectedRequest)} </strong>?
-            </p>
-            <Input
-              label="Reopen note (optional)"
-              name="unarchiveNotes"
-              value={archiveNotes}
-              onChange={(e) => setArchiveNotes(e.target.value)}
-              placeholder="e.g. Marked incomplete by mistake"
             />
           </div>
         )}

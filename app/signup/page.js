@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import Input from '../../components/Input';
@@ -1406,6 +1407,11 @@ export default function BeneficiarySignupPage() {
           </div>
         </form>
       </Card>
+
+      <p className={styles.secondaryLinks}>
+        Received a resubmit code by SMS?{' '}
+        <Link href="/account-requests/resubmit">Resubmit incomplete signup</Link>
+      </p>
 
       {/* Legal Modal */}
       <Modal
