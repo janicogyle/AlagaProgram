@@ -357,9 +357,7 @@ export default function ResidentsPage() {
         ? 'success'
         : info.status === 'Almost Eligible'
           ? 'warning'
-          : info.status === 'Under Review'
-            ? 'secondary'
-            : 'danger';
+          : 'danger';
 
     // Simplified: just show "Eligible" or "Eligible on [date]"
     if (info.isEligible || info.status === 'Eligible') {
@@ -367,7 +365,7 @@ export default function ResidentsPage() {
     }
 
     if (info.status === 'Under Review') {
-      return <Badge variant={variant}>Under Review</Badge>;
+      return <Badge variant={variant}>Not Eligible</Badge>;
     }
 
     const eligibleOn = formatEligibilityDate(info.nextEligibleDate);

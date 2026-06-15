@@ -925,16 +925,12 @@ export default function RequestsPage() {
 
     { key: 'amount', label: 'Amount' },
     {
-      key: 'attachmentCount',
-      label: 'Files',
+      key: 'requestSource',
+      label: 'Registration Type',
       render: (_, row) =>
-        row.requestSource === 'online' ? (
-          <Badge variant={row.attachmentCount > 0 ? 'blue' : 'secondary'}>
-            {row.attachmentCount > 0 ? `${row.attachmentCount} file${row.attachmentCount > 1 ? 's' : ''}` : 'No files'}
-          </Badge>
-        ) : (
-          <Badge variant="secondary">Walk-in</Badge>
-        ),
+        row.requestSource === 'online'
+          ? <Badge variant="success">Online</Badge>
+          : <Badge variant="secondary">Walk-in</Badge>,
     },
     {
       key: 'status',
@@ -1274,11 +1270,9 @@ export default function RequestsPage() {
                     <span className={styles.cardValue}>{request.date}</span>
                   </div>
                   <div className={styles.cardRow}>
-                    <span className={styles.cardLabel}>Files</span>
+                    <span className={styles.cardLabel}>Registration Type</span>
                     <span className={styles.cardValue}>
-                      {request.requestSource === 'online'
-                        ? `${request.attachmentCount || 0} file${(request.attachmentCount || 0) > 1 ? 's' : ''}`
-                        : 'Walk-in'}
+                      {request.requestSource === 'online' ? 'Online' : 'Walk-in'}
                     </span>
                   </div>
                 </div>
