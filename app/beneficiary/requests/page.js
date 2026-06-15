@@ -1358,6 +1358,32 @@ export default function BeneficiaryRequestPage() {
           return;
         }
 
+        const submittedRequestRef = result?.data?.id || result?.data?.control_number || assistanceControlNumber;
+        if (typeof window !== 'undefined' && residentData) {
+          try {
+            window.localStorage.setItem('beneficiaryResidentId', String(residentData.id));
+            window.localStorage.setItem('beneficiaryContactNumber', formData.contactNumber);
+            window.localStorage.setItem('beneficiaryName', `${formData.firstName} ${formData.lastName}`);
+          } catch (storageError) {
+            console.warn('Unable to persist beneficiary identity in localStorage:', storageError);
+          }
+        }
+        setToast({
+          open: true,
+          message: 'Request submitted successfully.',
+        });
+        setStatus({
+          type: 'success',
+          message: 'Request submitted successfully! Redirecting to My Requests.',
+        });
+        setTimeout(() => {
+          const query = submittedRequestRef
+            ? `?request=${encodeURIComponent(submittedRequestRef)}`
+            : '';
+          router.push(`/beneficiary/history${query}`);
+        }, 1200);
+        return;
+
       }
 
       // Persist basic beneficiary identity locally for dashboard/profile views

@@ -59,6 +59,18 @@
   display: none;
 }
 
+.actionGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.actionGroup a,
+.actionGroup button {
+  white-space: nowrap;
+}
+
 .requestCard {
   background: var(--surface-bg);
   border: 1px solid var(--border-color);
@@ -113,6 +125,9 @@
 }
 
 .cardFooter {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
   margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid var(--surface-hover);
@@ -120,7 +135,131 @@
 
 .cardFooter a,
 .cardFooter button {
-  width: 100%;
+  flex: 1;
+  min-width: 130px;
+}
+
+.detailsContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.detailPanel {
+  min-width: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--surface-bg);
+  padding: 16px;
+}
+
+.detailPanelFull {
+  grid-column: 1 / -1;
+}
+
+.detailPanel h3,
+.detailPanelHeader h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--foreground);
+}
+
+.detailPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.detailRows {
+  display: grid;
+  gap: 0;
+  margin: 12px 0 0;
+}
+
+.detailRows div {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.45fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--surface-hover);
+}
+
+.detailRows dt {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.detailRows dd {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 0.93rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.documentList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.documentItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--surface-muted, #f8fafc);
+}
+
+.documentMeta {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.documentName {
+  color: var(--foreground);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.documentType {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.documentItem a {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.modalFooterActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 768px) {
@@ -167,6 +306,21 @@
     padding: 14px;
     border-radius: 12px;
   }
+
+  .detailsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .detailRows div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .modalFooterActions,
+  .modalFooterActions a,
+  .modalFooterActions button {
+    width: 100%;
+  }
 }
 
 @media (max-width: 576px) {
@@ -174,5 +328,14 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+  }
+
+  .documentItem {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .documentItem a {
+    width: 100%;
   }
 }
