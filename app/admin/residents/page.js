@@ -261,7 +261,7 @@ export default function ResidentsPage() {
   const [editVerifyProcessing, setEditVerifyProcessing] = useState(false);
   const [editAdminPassword, setEditAdminPassword] = useState('');
   const [issuingCard, setIssuingCard] = useState(false);
-  const [issuedCard, setIssuedCard] = useState(null); // { token, card, qrUrl, cardImageUrl }
+  const [issuedCard, setIssuedCard] = useState(null); // { token, card, qrUrl, cardImageUrl, action }
   const [cardModalOpen, setCardModalOpen] = useState(false);
   const [alertState, setAlertState] = useState({ open: false, title: '', message: '' });
 
@@ -972,15 +972,17 @@ export default function ResidentsPage() {
         const variant =
           status === 'Valid'
             ? 'success'
-            : status === 'Expired'
+            : status === 'Expiring Soon'
               ? 'warning'
+              : status === 'Expired'
+                ? 'danger'
               : status === 'No QR'
                 ? 'secondary'
                 : status === 'Not Setup'
                   ? 'secondary'
                   : status === 'Unavailable'
                     ? 'warning'
-                    : 'danger';
+                    : 'secondary';
 
         const expires = row?.qr_card?.expires_at
           ? new Date(row.qr_card.expires_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: '2-digit' })
@@ -1210,20 +1212,25 @@ export default function ResidentsPage() {
       const response = await fetch('/api/beneficiary-cards/issue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({ residentId: selectedResident.id, expiresInDays: 365 }),
+        body: JSON.stringify({
+          residentId: selectedResident.id,
+          expiresInDays: 365,
+          action: idCardAction,
+        }),
       });
 
       const payload = await readJsonSafe(response);
       if (!response.ok || payload?.error) {
-        const msg = getApiError(payload, 'Failed to issue ID card.');
-        openAlert({ title: 'Issue failed', message: msg });
+        const msg = getApiError(payload, idCardAction === 'renew' ? 'Failed to renew ID card.' : 'Failed to issue ID card.');
+        openAlert({ title: idCardAction === 'renew' ? 'Renewal failed' : 'Issue failed', message: msg });
         return;
       }
 
       const token = payload?.data?.token;
       const card = payload?.data?.card;
+      const action = payload?.data?.action || (idCardAction === 'renew' ? 'renewed' : 'issued');
       if (!token || !card) {
-        openAlert({ title: 'Issue failed', message: 'Card issued but token missing.' });
+        openAlert({ title: idCardAction === 'renew' ? 'Renewal failed' : 'Issue failed', message: 'Card saved but token missing.' });
         return;
       }
 
@@ -1244,14 +1251,31 @@ export default function ResidentsPage() {
         expiresAt: card?.expires_at,
       });
 
-      setIssuedCard({ token, card, cardReference, qrUrl, cardImageUrl });
+      setIssuedCard({ token, card, cardReference, qrUrl, cardImageUrl, action });
       clearClientCachePrefix('admin-');
+      setResidents((prev) =>
+        asArray(prev).map((resident) =>
+          resident.id === selectedResident.id
+            ? { ...resident, status: 'Active', qr_validity: 'Valid', qr_card: card }
+            : resident,
+        ),
+      );
+      setSelectedResident((prev) =>
+        prev?.id === selectedResident.id
+          ? { ...prev, status: 'Active', qr_validity: 'Valid', qr_card: card }
+          : prev,
+      );
+      setResidentDetails((prev) =>
+        prev?.resident?.id === selectedResident.id
+          ? { ...prev, resident: { ...prev.resident, status: 'Active', qr_card: card } }
+          : prev,
+      );
       setCardModalOpen(true);
     } catch (error) {
       const msg = String(error?.message || error || 'Unknown error');
       // Avoid console.error in dev overlay; we already show the message to the user.
       console.warn('Issue card failed:', msg);
-      openAlert({ title: 'Issue failed', message: msg });
+      openAlert({ title: idCardAction === 'renew' ? 'Renewal failed' : 'Issue failed', message: msg });
     } finally {
       setIssuingCard(false);
     }
@@ -1259,6 +1283,10 @@ export default function ResidentsPage() {
 
   const effectiveResident = residentDetails?.resident || selectedResident;
   const canIssueIdQr = isAdmin && selectedResident?.registration_type === 'Walk-In';
+  const hasExistingIdCard = !!selectedResident?.qr_card?.id;
+  const idCardAction = hasExistingIdCard ? 'renew' : 'issue';
+  const idCardButtonLabel = idCardAction === 'renew' ? 'Renew ID Card' : 'Issue ID Card';
+  const idCardLoadingLabel = idCardAction === 'renew' ? 'Renewing...' : 'Issuing...';
   const signupInfo = residentDetails?.signup || null;
   const residentControlNo = effectiveResident?.control_number || '-';
   const historyTableData = historyRequests.map((row) => ({
@@ -1502,7 +1530,7 @@ export default function ResidentsPage() {
                       onClick={handleIssueCard}
                       disabled={processing || issuingCard}
                     >
-                      {issuingCard ? 'Issuing…' : 'Issue ID Card'}
+                      {issuingCard ? idCardLoadingLabel : idCardButtonLabel}
                     </Button>
                   ) : null}
                 </>
@@ -2032,7 +2060,7 @@ export default function ResidentsPage() {
       <Modal
         isOpen={!!selectedResident && cardModalOpen}
         onClose={() => setCardModalOpen(false)}
-        title="Beneficiary ID Card"
+        title={issuedCard?.action === 'renewed' ? 'Beneficiary ID Renewed' : 'Beneficiary ID Card'}
         footer={
           <>
             <Button
@@ -2090,7 +2118,9 @@ export default function ResidentsPage() {
                 </div>
               </dl>
               <p className={styles.issuedIdCardHint}>
-                QR verification uses this ID card on the “Verify Beneficiary ID” page.
+                {issuedCard.action === 'renewed'
+                  ? 'The old QR/card was replaced. QR verification now uses this renewed ID card.'
+                  : 'QR verification uses this ID card on the Verify Beneficiary ID page.'}
               </p>
             </div>
           </div>

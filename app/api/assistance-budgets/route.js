@@ -5,6 +5,12 @@ import { logStaffActivity } from '@/lib/activityLogger.server';
 
 export const runtime = 'nodejs';
 
+const ALLOWED_ASSISTANCE_TYPES = new Set([
+  'Medicine Assistance',
+  'Confinement Assistance',
+  'Burial Assistance',
+]);
+
 function isMissingAssistanceBudgetsTable(err) {
   const msg = String(err?.message || err || '').toLowerCase();
   return (
@@ -53,6 +59,12 @@ export async function POST(request) {
 
     if (!assistanceType) {
       return NextResponse.json({ data: null, error: 'assistanceType is required.' }, { status: 400 });
+    }
+    if (!ALLOWED_ASSISTANCE_TYPES.has(assistanceType)) {
+      return NextResponse.json(
+        { data: null, error: 'Unsupported assistance type. Choose Medicine, Confinement, or Burial Assistance.' },
+        { status: 400 },
+      );
     }
 
     const hasCeiling = Number.isFinite(ceiling);

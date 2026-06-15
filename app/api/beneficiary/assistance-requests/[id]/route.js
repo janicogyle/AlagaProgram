@@ -3,11 +3,17 @@ import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { readBeneficiarySession } from '@/lib/beneficiarySession.server';
 import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/documentUrls.server';
 import { buildBeneficiaryActor, logActivity } from '@/lib/activityLogger.server';
+import { resolveAssistanceAmount } from '@/lib/assistanceAmounts.mjs';
 
 export const runtime = 'nodejs';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const BENEFICIARY_EDITABLE_STATUSES = new Set(['Rejected']);
+const BENEFICIARY_EDITABLE_STATUSES = new Set(['Incomplete', 'Rejected']);
+const ALLOWED_ASSISTANCE_TYPES = new Set([
+  'Medicine Assistance',
+  'Confinement Assistance',
+  'Burial Assistance',
+]);
 
 const isCheckedRequirement = (row) => {
   const value = row?.checked;
@@ -89,6 +95,45 @@ export async function PATCH(request, { params }) {
         { status: 400 },
       );
     }
+
+    const requestedAssistanceTypeRaw = body.assistance_type ?? body.assistanceType;
+    const requestedAssistanceType =
+      requestedAssistanceTypeRaw === undefined ? undefined : String(requestedAssistanceTypeRaw).trim();
+    if (
+      requestedAssistanceType !== undefined &&
+      !ALLOWED_ASSISTANCE_TYPES.has(requestedAssistanceType)
+    ) {
+      return NextResponse.json(
+        { data: null, error: 'Unsupported assistance type. Choose Medicine, Confinement, or Burial Assistance.' },
+        { status: 400 },
+      );
+    }
+
+    let selfResidentProfile = { id: resident.residentId };
+    try {
+      const { data: profile } = await db
+        .from('residents')
+        .select('id, first_name, middle_name, last_name, contact_number, house_no, purok, street, barangay, city')
+        .eq('id', resident.residentId)
+        .maybeSingle();
+      if (profile?.id) selfResidentProfile = profile;
+    } catch {
+      // Fall back to submitted values if the profile cannot be loaded.
+    }
+    const selfName = [selfResidentProfile.first_name, selfResidentProfile.middle_name, selfResidentProfile.last_name]
+      .map((part) => String(part || '').trim())
+      .filter(Boolean)
+      .join(' ');
+    const selfAddress = [
+      selfResidentProfile.house_no,
+      selfResidentProfile.purok,
+      selfResidentProfile.street,
+      selfResidentProfile.barangay,
+      selfResidentProfile.city,
+    ]
+      .map((part) => String(part || '').trim())
+      .filter(Boolean)
+      .join(', ');
 
     const parseRequirements = (value) => {
       if (value === undefined) return undefined;
@@ -198,14 +243,16 @@ export async function PATCH(request, { params }) {
     }
 
     const allowed = {
-      requester_name: body.requester_name ?? body.requesterName,
-      requester_contact: body.requester_contact ?? body.requesterContact,
-      requester_address: body.requester_address ?? body.requesterAddress,
-      beneficiary_name: body.beneficiary_name ?? body.beneficiaryName,
-      beneficiary_contact: body.beneficiary_contact ?? body.beneficiaryContact,
-      beneficiary_address: body.beneficiary_address ?? body.beneficiaryAddress,
-      assistance_type: body.assistance_type ?? body.assistanceType,
-      amount: body.amount,
+      requester_name: selfName || body.requester_name || body.requesterName,
+      requester_contact: selfResidentProfile.contact_number || body.requester_contact || body.requesterContact,
+      requester_address: selfAddress || body.requester_address || body.requesterAddress,
+      beneficiary_name: selfName || body.beneficiary_name || body.beneficiaryName,
+      beneficiary_contact: selfResidentProfile.contact_number || body.beneficiary_contact || body.beneficiaryContact,
+      beneficiary_address: selfAddress || body.beneficiary_address || body.beneficiaryAddress,
+      assistance_type: requestedAssistanceType,
+      amount: requestedAssistanceType === undefined
+        ? body.amount
+        : resolveAssistanceAmount(requestedAssistanceType, body.amount),
       request_date: body.request_date ?? body.requestDate,
       // Legacy column: always keep populated
       valid_id_url:
@@ -218,10 +265,12 @@ export async function PATCH(request, { params }) {
       requirements_files: limitedRequirementFiles,
       requirements_checklist: requirementsChecklist,
       requirements_completed: requirementsCompleted,
-      request_source: body.request_source ?? body.requestSource ?? 'online',
+      request_source: 'online',
     };
 
-    const nextStatus = existing.status === 'Rejected' ? 'Resubmitted' : existing.status;
+    const nextStatus = BENEFICIARY_EDITABLE_STATUSES.has(existing.status)
+      ? 'Resubmitted'
+      : existing.status;
     const update = {
       status: nextStatus,
       processed_by: null,
@@ -294,7 +343,7 @@ export async function PATCH(request, { params }) {
     }
 
     // Best-effort: notify Admin/Staff when an incomplete request moves back under review.
-    if (supabaseAdmin && existing.status === 'Rejected' && nextStatus === 'Resubmitted') {
+    if (supabaseAdmin && BENEFICIARY_EDITABLE_STATUSES.has(existing.status) && nextStatus === 'Resubmitted') {
       try {
         const { data: recipients } = await supabaseAdmin
           .from('users')

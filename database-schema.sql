@@ -94,9 +94,11 @@ CREATE TABLE IF NOT EXISTS public.assistance_budgets (
 INSERT INTO public.assistance_budgets (assistance_type, ceiling) VALUES
   ('Medicine Assistance', 500),
   ('Confinement Assistance', 1000),
-  ('Burial Assistance', 1000),
-  ('Others', 0)
+  ('Burial Assistance', 1000)
 ON CONFLICT (assistance_type) DO NOTHING;
+
+DELETE FROM public.assistance_budgets
+WHERE assistance_type = 'Others';
 
 CREATE TRIGGER update_assistance_budgets_updated_at
   BEFORE UPDATE ON public.assistance_budgets

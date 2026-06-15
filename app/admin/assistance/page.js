@@ -31,7 +31,6 @@ const typeOptions = [
   { value: 'Medicine Assistance', label: 'Medicine Assistance' },
   { value: 'Confinement Assistance', label: 'Confinement Assistance' },
   { value: 'Burial Assistance', label: 'Burial Assistance' },
-  { value: 'Others', label: 'Others' },
 ];
 
 const sectorOptions = [
@@ -47,7 +46,6 @@ const serviceTypes = [
   { value: 'medicine', label: 'Medicine Assistance', ceiling: '₱500' },
   { value: 'confinement', label: 'Confinement Assistance', ceiling: '₱1,000' },
   { value: 'burial', label: 'Burial Assistance', ceiling: '₱1,000' },
-  { value: 'others', label: 'Others', ceiling: 'Variable' },
 ];
 
 const ASSISTANCE_RECORDS_CACHE_KEY = 'admin-assistance-records:list';
@@ -232,7 +230,6 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
     medicine: 'Medicine Assistance',
     confinement: 'Confinement Assistance',
     burial: 'Burial Assistance',
-    others: 'Others',
   };
 
   const getRequirementsForServiceType = (serviceType) => {
@@ -288,9 +285,6 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
     }
     if (!formData.requesterAddress.trim()) newErrors.requesterAddress = 'Address is required';
     if (!formData.serviceType) newErrors.serviceType = 'Please select a service type';
-    if (formData.serviceType === 'others' && !formData.otherService.trim()) {
-      newErrors.otherService = 'Please specify the type of assistance';
-    }
     if (!formData.beneficiaryName.trim()) newErrors.beneficiaryName = 'Beneficiary name is required';
     if (!formData.beneficiaryAddress.trim()) newErrors.beneficiaryAddress = 'Beneficiary address is required';
     if (formData.beneficiaryContact && formData.beneficiaryContact.length !== 11) {
@@ -612,18 +606,6 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
               ))}
             </div>
             {errors.serviceType && <span style={{ color: '#dc2626', fontSize: '13px', fontWeight: 500, marginTop: '8px', display: 'block' }}>{errors.serviceType}</span>}
-            {formData.serviceType === 'others' && (
-              <div className={styles.otherInput}>
-                <Input
-                  label="Please specify"
-                  name="otherService"
-                  value={formData.otherService}
-                  onChange={handleChange}
-                  placeholder="Describe the type of assistance needed"
-                  error={errors.otherService}
-                />
-              </div>
-            )}
           </section>
 
           
@@ -748,31 +730,6 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
                   <ul className={styles.docList}>
                     {getRequirementsForServiceType('burial').length ? (
                       getRequirementsForServiceType('burial').map((req, idx) => (
-                        <li key={idx}>
-                          <span className={styles.docCheck}>✓</span>
-                          {req}
-                        </li>
-                      ))
-                    ) : (
-                      <li className={styles.emptyRequirement}>No requirements set.</li>
-                    )}
-                  </ul>
-                </div>
-              )}
-
-              {formData.serviceType === 'others' && (
-                <div className={styles.documentsCategory}>
-                  <h5 className={styles.categoryTitle}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10" />
-                      <line x1="12" y1="16" x2="12" y2="12" />
-                      <line x1="12" y1="8" x2="12.01" y2="8" />
-                    </svg>
-                    Other Assistance Requirements
-                  </h5>
-                  <ul className={styles.docList}>
-                    {getRequirementsForServiceType('others').length ? (
-                      getRequirementsForServiceType('others').map((req, idx) => (
                         <li key={idx}>
                           <span className={styles.docCheck}>✓</span>
                           {req}

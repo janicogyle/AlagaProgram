@@ -11,6 +11,7 @@ import {
   getRequirementsForType,
   isMissingRequirementsColumn,
 } from '@/lib/assistanceRequirements';
+import { resolveAssistanceAmount } from '@/lib/assistanceAmounts.mjs';
 import {
   Card,
   Select,
@@ -38,7 +39,6 @@ const typeOptions = [
   { value: 'Medicine Assistance', label: 'Medicine Assistance' },
   { value: 'Confinement Assistance', label: 'Confinement Assistance' },
   { value: 'Burial Assistance', label: 'Burial Assistance' },
-  { value: 'Others', label: 'Others' },
 ];
 
 const statusOptions = [
@@ -48,6 +48,27 @@ const statusOptions = [
   { value: 'Approved', label: 'Approved' },
   { value: 'Released', label: 'Released' },
   { value: 'Incomplete', label: 'Incomplete' },
+];
+
+const sortOptions = [
+  { value: 'date_desc', label: 'Latest First' },
+  { value: 'date_asc', label: 'Oldest First' },
+  { value: 'registration_type_asc', label: 'Registration Type' },
+  { value: 'sector_asc', label: 'Sector' },
+  { value: 'status_asc', label: 'Status' },
+];
+
+const registrationTypeOptions = [
+  { value: '', label: 'All Registration' },
+  { value: 'walk-in', label: 'Walk-ins' },
+  { value: 'online', label: 'Online' },
+];
+
+const sectorOptions = [
+  { value: '', label: 'All Sectors' },
+  { value: 'PWD', label: 'PWD' },
+  { value: 'Senior Citizen', label: 'Senior Citizen' },
+  { value: 'Solo Parent', label: 'Solo Parent' },
 ];
 
 const isCheckedRequirement = (item) => {
@@ -149,10 +170,22 @@ const isIncompleteStatus = (status) =>
   status === 'Rejected' || status === 'Archived' || status === 'Incomplete';
 const getStatusLabel = (dbStatus) => (isIncompleteStatus(dbStatus) ? 'Incomplete' : dbStatus);
 
+const getSectorLabels = (record) => {
+  const sectors = record?.sectors || {};
+  const labels = [];
+  if (sectors.pwd) labels.push('PWD');
+  if (sectors.seniorCitizen) labels.push('Senior Citizen');
+  if (sectors.soloParent) labels.push('Solo Parent');
+  return labels;
+};
+
 export default function RequestsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [sortBy, setSortBy] = useState('date_desc');
+  const [registrationTypeFilter, setRegistrationTypeFilter] = useState('');
+  const [sectorFilter, setSectorFilter] = useState('');
   const [requests, setRequests] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 25, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
@@ -224,7 +257,7 @@ export default function RequestsPage() {
 
   useEffect(() => {
     setPagination((prev) => ({ ...prev, page: 1 }));
-  }, [searchTerm, typeFilter, statusFilter]);
+  }, [searchTerm, typeFilter, statusFilter, registrationTypeFilter, sectorFilter, sortBy]);
 
   useEffect(() => {
     const loadRequests = async () => {
@@ -324,16 +357,11 @@ export default function RequestsPage() {
           };
 
           const savedRequirementsChecklist = parseChecklist(r.requirements_checklist);
-          const requirementsChecklistSource = savedRequirementsChecklist.length ? 'saved' : 'expected';
-          const requirementsChecklist = savedRequirementsChecklist.length
-            ? savedRequirementsChecklist
-            : getExpectedChecklist(r.assistance_type, requirementsByType);
-          // Completed is allowed only when every checklist item is checked.
-          // Missing or partially unchecked verification data is treated as Incomplete.
-          const requirementsCompleted = getRequirementsCompleted(
-            requirementsChecklist,
-            r.requirements_completed,
-          );
+          const expectedRequirementsChecklist = getRequirementsForType(r.assistance_type, requirementsByType)
+            .map((label) => ({
+              label,
+              checked: false,
+            }));
 
           const requirements = parseRequirements(r.requirements_urls);
           const requirementFileRows = parseRequirementFiles(r.requirements_files);
@@ -367,7 +395,49 @@ export default function RequestsPage() {
             if (!file?.file_url) return;
             requirementMap.set(file.file_url, file);
           });
-          const requirementFiles = Array.from(requirementMap.values());
+          const uploadedRequirementFiles = Array.from(requirementMap.values());
+          const explicitRequestSource = String(r.request_source || '').trim().toLowerCase();
+          const residentRegistrationType = String(resident.registration_type || '').trim().toLowerCase();
+          const residentRequestSource =
+            residentRegistrationType === 'walk-in'
+              ? 'walk-in'
+              : residentRegistrationType === 'online'
+                ? 'online'
+                : '';
+          const inferredRequestSource =
+            !explicitRequestSource && !residentRequestSource && savedRequirementsChecklist.length && uploadedRequirementFiles.length === 0
+              ? 'walk-in'
+              : 'online';
+          const requestSource =
+            explicitRequestSource === 'walk-in' || explicitRequestSource === 'online'
+              ? explicitRequestSource
+              : residentRequestSource || inferredRequestSource;
+          const requirementFiles = requestSource === 'walk-in' ? [] : uploadedRequirementFiles;
+          const displayRequirementUrls = requestSource === 'walk-in' ? [] : requirementUrls;
+          const checklistBase = expectedRequirementsChecklist.length
+            ? expectedRequirementsChecklist
+            : savedRequirementsChecklist;
+          const requirementsChecklist =
+            requestSource === 'online'
+              ? checklistBase.map((item, idx) => {
+                  const label = String(item?.label || '').trim();
+                  const hasUploadedFile =
+                    requirementFiles.some((file) => String(file.requirement_type || '').trim() === label) ||
+                    !!displayRequirementUrls[idx];
+                  return {
+                    ...item,
+                    checked: hasUploadedFile,
+                  };
+                })
+              : savedRequirementsChecklist.length
+                ? savedRequirementsChecklist
+                : expectedRequirementsChecklist;
+          const requirementsChecklistSource =
+            requestSource === 'online' ? 'uploads' : savedRequirementsChecklist.length ? 'saved' : 'expected';
+          const requirementsCompleted = getRequirementsCompleted(
+            requirementsChecklist,
+            r.requirements_completed,
+          );
 
           const sectors = {
             pwd: !!resident.is_pwd,
@@ -382,6 +452,7 @@ export default function RequestsPage() {
 
           const status = r.status || 'Pending';
           const requestKey = r.id || r.request_id || r.control_number;
+          const displayAmount = resolveAssistanceAmount(r.assistance_type, r.amount);
 
           const norm = (v) => String(v || '').trim().toLowerCase();
 
@@ -393,9 +464,11 @@ export default function RequestsPage() {
           let representativeContact = r.requester_contact || '';
           let representativeAddress = r.requester_address || '';
 
-          // If the request stored the beneficiary as the requester (older behavior), but the resident profile
-          // has a representative, prefer that for display.
-          if (
+          if (requestSource === 'online') {
+            representative = beneficiary;
+            representativeContact = beneficiaryContact;
+            representativeAddress = beneficiaryAddress;
+          } else if (
             (!representative || norm(representative) === norm(beneficiary)) &&
             resident.representative_name &&
             norm(resident.representative_name) !== norm(beneficiary)
@@ -421,14 +494,14 @@ export default function RequestsPage() {
             beneficiaryContact,
             beneficiaryAddress,
             type: r.assistance_type,
-            amount: r.amount,
+            amount: displayAmount,
             rawAmount: r.amount,
             requestDateRaw: r.request_date || r.created_at || null,
-            validIdUrl: r.valid_id_url || null,
-            requirementUrls,
+            validIdUrl: requestSource === 'walk-in' ? null : r.valid_id_url || null,
+            requirementUrls: displayRequirementUrls,
             requirementFiles,
             attachmentCount: requirementFiles.length,
-            requestSource: r.request_source || 'online',
+            requestSource,
             requirementsChecklist,
             requirementsCompleted,
             requirementsChecklistSource,
@@ -513,16 +586,56 @@ export default function RequestsPage() {
   }, [requirementsByType]);
 
   // Filter requests
-  const filteredRequests = requests.filter((record) => {
-    const matchesSearch =
-      record.requester.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.beneficiary.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.controlNo.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = !typeFilter || record.type === typeFilter;
-    const matchesStatus =
-      !statusFilter || getStatusLabel(record.status) === statusFilter;
-    return matchesSearch && matchesType && matchesStatus;
-  });
+  const filteredRequests = requests
+    .filter((record) => {
+      const search = searchTerm.toLowerCase();
+      const matchesSearch =
+        record.requester.toLowerCase().includes(search) ||
+        record.beneficiary.toLowerCase().includes(search) ||
+        record.controlNo.toLowerCase().includes(search);
+      const matchesType = !typeFilter || record.type === typeFilter;
+      const matchesStatus =
+        !statusFilter || getStatusLabel(record.status) === statusFilter;
+      const matchesRegistrationType =
+        !registrationTypeFilter || record.requestSource === registrationTypeFilter;
+      const matchesSector =
+        !sectorFilter || getSectorLabels(record).includes(sectorFilter);
+      return matchesSearch && matchesType && matchesStatus && matchesRegistrationType && matchesSector;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'date_asc' || sortBy === 'date_desc') {
+        const aTime = new Date(a.requestDateRaw || 0).getTime() || 0;
+        const bTime = new Date(b.requestDateRaw || 0).getTime() || 0;
+        return sortBy === 'date_asc' ? aTime - bTime : bTime - aTime;
+      }
+      if (sortBy === 'registration_type_asc') {
+        return String(a.requestSource || '').localeCompare(String(b.requestSource || ''));
+      }
+      if (sortBy === 'sector_asc') {
+        return getSectorLabels(a).join(', ').localeCompare(getSectorLabels(b).join(', '));
+      }
+      if (sortBy === 'status_asc') {
+        return getStatusLabel(a.status).localeCompare(getStatusLabel(b.status));
+      }
+      return 0;
+    });
+
+  const hasActiveFilters =
+    searchTerm ||
+    typeFilter ||
+    statusFilter ||
+    registrationTypeFilter ||
+    sectorFilter ||
+    sortBy !== 'date_desc';
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setTypeFilter('');
+    setStatusFilter('');
+    setRegistrationTypeFilter('');
+    setSectorFilter('');
+    setSortBy('date_desc');
+  };
 
   const handleViewRequest = (request) => {
     setSelectedRequest(request);
@@ -558,6 +671,7 @@ export default function RequestsPage() {
   const toggleVerificationRequirement = (index) => {
     setSelectedRequest((prev) => {
       if (!prev) return prev;
+      if (prev.requestSource !== 'walk-in') return prev;
       const current = Array.isArray(prev.requirementsChecklist) ? prev.requirementsChecklist : [];
       const next = current.map((item, idx) =>
         idx === index
@@ -994,6 +1108,33 @@ export default function RequestsPage() {
           />
           <div className={styles.filterSelects} role="group" aria-label="Filter requests">
             <Select
+              name="sortBy"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              options={sortOptions}
+              placeholder="Sort By"
+              compact
+              className={styles.filterSelectSort}
+            />
+            <Select
+              name="registrationType"
+              value={registrationTypeFilter}
+              onChange={(e) => setRegistrationTypeFilter(e.target.value)}
+              options={registrationTypeOptions}
+              placeholder="Registration Type"
+              compact
+              className={styles.filterSelectRegistration}
+            />
+            <Select
+              name="sector"
+              value={sectorFilter}
+              onChange={(e) => setSectorFilter(e.target.value)}
+              options={sectorOptions}
+              placeholder="Sector"
+              compact
+              className={styles.filterSelectSector}
+            />
+            <Select
               name="type"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
@@ -1011,6 +1152,15 @@ export default function RequestsPage() {
               compact
               className={styles.filterSelectStatus}
             />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleResetFilters}
+              disabled={!hasActiveFilters}
+              className={styles.resetFiltersBtn}
+            >
+              Reset
+            </Button>
           </div>
         </FilterBar>
 
@@ -1221,23 +1371,27 @@ export default function RequestsPage() {
               if (samePerson) {
                 return (
                   <div className={styles.detailsGrid}>
-                    <div className={styles.detailSection}>
-                      <h4>Beneficiary (Self-request)</h4>
-                      <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>Name:</span>
-                        <span className={styles.detailValue}>{selectedRequest.requester || 'Not provided'}</span>
+                    <div className={`${styles.detailSection} ${styles.selfRequestSection}`}>
+                      <div className={styles.detailSectionTitleRow}>
+                        <h4>Beneficiary (Self-request)</h4>
+                        <span className={styles.selfRequestBadge}>Self-request</span>
                       </div>
-                      <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>Contact:</span>
-                        <span className={styles.detailValue}>{selectedRequest.requesterContact || 'Not provided'}</span>
-                      </div>
-                      <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>Address:</span>
-                        <span className={styles.detailValue}>{selectedRequest.requesterAddress || 'Not provided'}</span>
-                      </div>
-                      <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>Note:</span>
-                        <span className={styles.detailValue}>No representative. The beneficiary requested directly.</span>
+                      <p className={styles.selfRequestNote}>
+                        No representative. The beneficiary requested directly.
+                      </p>
+                      <div className={styles.detailFieldsGrid}>
+                        <div className={styles.detailField}>
+                          <span className={styles.detailFieldLabel}>Name</span>
+                          <span className={styles.detailFieldValue}>{selectedRequest.requester || 'Not provided'}</span>
+                        </div>
+                        <div className={styles.detailField}>
+                          <span className={styles.detailFieldLabel}>Contact</span>
+                          <span className={styles.detailFieldValue}>{selectedRequest.requesterContact || 'Not provided'}</span>
+                        </div>
+                        <div className={`${styles.detailField} ${styles.wideDetailField}`}>
+                          <span className={styles.detailFieldLabel}>Address</span>
+                          <span className={styles.detailFieldValue}>{selectedRequest.requesterAddress || 'Not provided'}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1281,37 +1435,26 @@ export default function RequestsPage() {
               );
             })()}
 
-            <div className={styles.detailSection}>
+            <div className={`${styles.detailSection} ${styles.profileDetailSection}`}>
               <h4>Beneficiary Personal Information</h4>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Control No:</span>
-                <span className={styles.detailValue}>
-                  {selectedRequest.residentControlNumber || 'Not provided'}
-                </span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Birthday:</span>
-                <span className={styles.detailValue}>{selectedRequest.residentBirthday || 'Not provided'}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Birthplace:</span>
-                <span className={styles.detailValue}>{selectedRequest.residentBirthplace || 'Not provided'}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Sex:</span>
-                <span className={styles.detailValue}>{selectedRequest.residentSex || 'Not provided'}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Citizenship:</span>
-                <span className={styles.detailValue}>{selectedRequest.residentCitizenship || 'Not provided'}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Civil Status:</span>
-                <span className={styles.detailValue}>{selectedRequest.residentCivilStatus || 'Not provided'}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Sectors:</span>
-                <span className={styles.detailValue}>{selectedRequest.sectorText || 'None'}</span>
+              <div className={styles.detailFieldsGrid}>
+                {[
+                  ['Control No', selectedRequest.residentControlNumber || 'Not provided'],
+                  ['Birthday', selectedRequest.residentBirthday || 'Not provided'],
+                  ['Birthplace', selectedRequest.residentBirthplace || 'Not provided'],
+                  ['Sex', selectedRequest.residentSex || 'Not provided'],
+                  ['Citizenship', selectedRequest.residentCitizenship || 'Not provided'],
+                  ['Civil Status', selectedRequest.residentCivilStatus || 'Not provided'],
+                  ['Sectors', selectedRequest.sectorText || 'None'],
+                ].map(([label, value]) => (
+                  <div
+                    className={label === 'Sectors' ? `${styles.detailField} ${styles.wideDetailField}` : styles.detailField}
+                    key={label}
+                  >
+                    <span className={styles.detailFieldLabel}>{label}</span>
+                    <span className={styles.detailFieldValue}>{value}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -1357,6 +1500,7 @@ export default function RequestsPage() {
                               type="checkbox"
                               checked={isCheckedRequirement(item)}
                               onChange={() => toggleVerificationRequirement(idx)}
+                              disabled={selectedRequest.requestSource !== 'walk-in'}
                             />
                             <span>{item?.label || `Requirement ${idx + 1}`}</span>
                           </label>
@@ -1368,6 +1512,15 @@ export default function RequestsPage() {
                     <div className={styles.verificationStatus}>
                       Status: {verificationCompleted ? 'COMPLETED' : 'INCOMPLETE'}
                     </div>
+                    {selectedRequest.requestSource === 'online' ? (
+                      <p className={styles.verificationHint}>
+                        Online request checklist is auto-checked from uploaded documents.
+                      </p>
+                    ) : (
+                      <p className={styles.verificationHint}>
+                        Walk-in request checklist is verified manually from physical requirements.
+                      </p>
+                    )}
                   </div>
 
                   {selectedRequest.requestSource === 'online' ? (
@@ -1401,7 +1554,7 @@ export default function RequestsPage() {
                     </div>
                   ) : (
                     <p className={styles.walkInNotice}>
-                      Requirements submitted physically (walk-in). Please verify each item.
+                      Walk-in / physical requirements submitted. No uploaded images are required; please verify each checklist item.
                     </p>
                   )}
                 </div>

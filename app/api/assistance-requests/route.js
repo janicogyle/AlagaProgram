@@ -5,6 +5,7 @@ import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/docu
 import { generateNextAssistanceControlNumber } from '@/lib/controlNumbers.server';
 import { logActivity, readOptionalStaffActor } from '@/lib/activityLogger.server';
 import { RESTRICTED_BENEFICIARY_STATUSES } from '@/lib/beneficiaryIdStatus.server';
+import { resolveAssistanceAmount } from '@/lib/assistanceAmounts.mjs';
 
 export const runtime = 'nodejs';
 
@@ -14,6 +15,11 @@ const isCheckedRequirement = (row) => {
 };
 
 const ALLOWED_REQUEST_SOURCES = new Set(['online', 'walk-in']);
+const ALLOWED_ASSISTANCE_TYPES = new Set([
+  'Medicine Assistance',
+  'Confinement Assistance',
+  'Burial Assistance',
+]);
 const ACTIVE_ONLINE_STATUSES = ['Pending', 'Resubmitted'];
 const REQUIREMENTS_VERIFICATION_COLUMNS = new Set([
   'requirements_checklist',
@@ -22,6 +28,47 @@ const REQUIREMENTS_VERIFICATION_COLUMNS = new Set([
 const MISSING_REQUIREMENTS_VERIFICATION_CODE = 'MISSING_REQUIREMENTS_VERIFICATION_COLUMNS';
 const MISSING_REQUIREMENTS_VERIFICATION_ERROR =
   'Database is missing requirements verification columns. Run setup-step10.sql in Supabase SQL Editor, then try again.';
+
+function normalizeContactNumber(input) {
+  const digits = String(input || '').replace(/\D/g, '');
+
+  if (digits.length === 12 && digits.startsWith('63')) return `0${digits.slice(2)}`;
+  if (digits.length === 10) return `0${digits}`;
+  if (digits.length > 11) return digits.slice(-11);
+  return digits;
+}
+
+function uniqueNonEmpty(values) {
+  return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)));
+}
+
+async function loadApprovedSignupContacts(db) {
+  try {
+    const { data, error } = await db
+      .from('account_requests')
+      .select('contact_number')
+      .eq('status', 'Approved');
+
+    if (error) throw error;
+
+    return uniqueNonEmpty(
+      (data || []).flatMap((row) => {
+        const raw = String(row?.contact_number || '').trim();
+        const normalized = normalizeContactNumber(raw);
+        return [raw, normalized];
+      }),
+    );
+  } catch (err) {
+    const msg = String(err?.message || err || '').toLowerCase();
+    const missing =
+      msg.includes('account_requests') &&
+      (msg.includes('schema cache') || msg.includes('does not exist') || msg.includes('could not find the table'));
+    if (!missing) {
+      console.warn('Fetch account_requests for assistance registration type failed (continuing):', err?.message || err);
+    }
+    return [];
+  }
+}
 
 function parsePositiveInt(value, fallback, { min = 1, max = 100 } = {}) {
   const parsed = Number.parseInt(String(value || ''), 10);
@@ -203,7 +250,7 @@ export async function GET(request) {
     };
 
     const residentsJoin =
-      'residents:resident_id(id, control_number, first_name, middle_name, last_name, birthday, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, representative_name, representative_contact, is_pwd, is_senior_citizen, is_solo_parent)';
+      'residents:resident_id(id, control_number, first_name, middle_name, last_name, birthday, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, representative_name, representative_contact, is_pwd, is_senior_citizen, is_solo_parent, account_request_id)';
 
     const runQuery = async (fields) => {
       let query = db
@@ -246,13 +293,22 @@ export async function GET(request) {
     if (error) throw error;
 
     const rows = Array.isArray(data) ? data : [];
+    const approvedSignupContacts = new Set(
+      (await loadApprovedSignupContacts(db)).map((contact) => normalizeContactNumber(contact)).filter(Boolean),
+    );
     const enriched = rows.map((row) => {
       const reqFromColumn = parsePathArray(row?.requirements_urls);
       const reqFromLegacy = parsePathArray(row?.valid_id_url);
       let requirementUrls = reqFromColumn.length ? reqFromColumn : reqFromLegacy;
+      const resident = row?.residents || null;
+      const registrationType =
+        resident?.account_request_id || approvedSignupContacts.has(normalizeContactNumber(resident?.contact_number))
+          ? 'Online'
+          : 'Walk-In';
 
       return {
         ...row,
+        residents: resident ? { ...resident, registration_type: registrationType } : resident,
         requirements_urls: requirementUrls,
       };
     });
@@ -300,22 +356,30 @@ export async function POST(request) {
       return NextResponse.json({ data: null, error: 'resident_id is required.' }, { status: 400 });
     }
 
-    const assistanceType = body.assistance_type || body.assistanceType;
+    const assistanceType = String(body.assistance_type || body.assistanceType || '').trim();
     if (!assistanceType) {
       return NextResponse.json({ data: null, error: 'assistance_type is required.' }, { status: 400 });
+    }
+    if (!ALLOWED_ASSISTANCE_TYPES.has(String(assistanceType).trim())) {
+      return NextResponse.json(
+        { data: null, error: 'Unsupported assistance type. Choose Medicine, Confinement, or Burial Assistance.' },
+        { status: 400 },
+      );
     }
 
     const requestSourceRaw = String(body.request_source || body.requestSource || 'online').trim().toLowerCase();
     const requestSource = ALLOWED_REQUEST_SOURCES.has(requestSourceRaw) ? requestSourceRaw : 'online';
+    let onlineResidentProfile = null;
 
     if (requestSource === 'online') {
       const { data: residentStatusRow, error: residentStatusError } = await db
         .from('residents')
-        .select('id, status')
+        .select('id, status, first_name, middle_name, last_name, contact_number, house_no, purok, street, barangay, city')
         .eq('id', residentId)
         .maybeSingle();
 
       if (residentStatusError) throw residentStatusError;
+      onlineResidentProfile = residentStatusRow || null;
 
       if (RESTRICTED_BENEFICIARY_STATUSES.has(String(residentStatusRow?.status || ''))) {
         return NextResponse.json(
@@ -385,7 +449,7 @@ export async function POST(request) {
       );
     }
 
-    const amount = Number(body.amount || 0);
+    const amount = resolveAssistanceAmount(assistanceType, body.amount);
     const requestDate = body.request_date || body.requestDate || new Date().toISOString().split('T')[0];
 
     const parseRequirements = (value) => {
@@ -402,9 +466,11 @@ export async function POST(request) {
       return null;
     };
 
-    const requirementsUrls = parseRequirements(body.requirements_urls ?? body.requirementsUrls);
-    const requirementsFilesInput = body.requirements_files ?? body.requirementsFiles;
-    const requirementsFiles = normalizeRequirementFiles(requirementsFilesInput);
+    const requirementsUrls =
+      requestSource === 'walk-in' ? [] : parseRequirements(body.requirements_urls ?? body.requirementsUrls);
+    const requirementsFilesInput =
+      requestSource === 'walk-in' ? [] : (body.requirements_files ?? body.requirementsFiles);
+    const requirementsFiles = requestSource === 'walk-in' ? [] : normalizeRequirementFiles(requirementsFilesInput);
     const effectiveRequirementFiles = requirementsFiles.length
       ? requirementsFiles
       : (requirementsUrls || []).map((fileUrl) => ({
@@ -413,7 +479,7 @@ export async function POST(request) {
           requirement_type: null,
         }));
     const allRequirementUrls = effectiveRequirementFiles.map((file) => file.file_url).filter(Boolean);
-    const legacyValidIdUrl = body.valid_id_url || body.validIdUrl || null;
+    const legacyValidIdUrl = requestSource === 'walk-in' ? null : body.valid_id_url || body.validIdUrl || null;
 
     const urlsToValidate = [...allRequirementUrls];
     if (legacyValidIdUrl && typeof legacyValidIdUrl === 'string' && legacyValidIdUrl.startsWith('http')) {
@@ -426,7 +492,7 @@ export async function POST(request) {
       }
     }
 
-    const cloudinaryRequirementUrls = filterCloudinaryUrls(allRequirementUrls);
+    const cloudinaryRequirementUrls = requestSource === 'walk-in' ? [] : filterCloudinaryUrls(allRequirementUrls);
     const validIdUrl =
       legacyValidIdUrl ||
       (cloudinaryRequirementUrls.length > 1
@@ -478,25 +544,60 @@ export async function POST(request) {
     const requirementsCompleted = requirementsChecklist?.length
       ? requirementsChecklist.every(isCheckedRequirement)
       : legacyRequirementsCompleted;
+    const onlineResidentName = onlineResidentProfile
+      ? [onlineResidentProfile.first_name, onlineResidentProfile.middle_name, onlineResidentProfile.last_name]
+          .map((part) => String(part || '').trim())
+          .filter(Boolean)
+          .join(' ')
+      : '';
+    const onlineResidentAddress = onlineResidentProfile
+      ? [
+          onlineResidentProfile.house_no,
+          onlineResidentProfile.purok,
+          onlineResidentProfile.street,
+          onlineResidentProfile.barangay,
+          onlineResidentProfile.city,
+        ]
+          .map((part) => String(part || '').trim())
+          .filter(Boolean)
+          .join(', ')
+      : '';
+    const requesterName =
+      requestSource === 'online' ? onlineResidentName || body.requester_name || body.requesterName || null : body.requester_name || body.requesterName || null;
+    const requesterContact =
+      requestSource === 'online' ? onlineResidentProfile?.contact_number || body.requester_contact || body.requesterContact || null : body.requester_contact || body.requesterContact || null;
+    const requesterAddress =
+      requestSource === 'online' ? onlineResidentAddress || body.requester_address || body.requesterAddress || null : body.requester_address || body.requesterAddress || null;
+    const beneficiaryName =
+      requestSource === 'online' ? requesterName : body.beneficiary_name || body.beneficiaryName || null;
+    const beneficiaryContact =
+      requestSource === 'online' ? requesterContact : body.beneficiary_contact || body.beneficiaryContact || null;
+    const beneficiaryAddress =
+      requestSource === 'online' ? requesterAddress : body.beneficiary_address || body.beneficiaryAddress || null;
 
     const buildPayload = (controlNumber) => ({
       control_number: controlNumber,
       resident_id: residentId,
-      requester_name: body.requester_name || body.requesterName || null,
-      requester_contact: body.requester_contact || body.requesterContact || null,
-      requester_address: body.requester_address || body.requesterAddress || null,
-      beneficiary_name: body.beneficiary_name || body.beneficiaryName || null,
-      beneficiary_contact: body.beneficiary_contact || body.beneficiaryContact || null,
-      beneficiary_address: body.beneficiary_address || body.beneficiaryAddress || null,
+      requester_name: requesterName,
+      requester_contact: requesterContact,
+      requester_address: requesterAddress,
+      beneficiary_name: beneficiaryName,
+      beneficiary_contact: beneficiaryContact,
+      beneficiary_address: beneficiaryAddress,
       assistance_type: assistanceType,
-      amount: Number.isFinite(amount) ? amount : 0,
+      amount,
       status: body.status || 'Pending',
       request_date: requestDate,
       request_source: requestSource,
       valid_id_url:
-        limitedRequirementUrls.length > 1 ? JSON.stringify(limitedRequirementUrls) : validIdUrl,
-      ...(limitedRequirementUrls.length ? { requirements_urls: limitedRequirementUrls } : {}),
-      ...(limitedRequirementFiles.length ? { requirements_files: limitedRequirementFiles } : {}),
+        requestSource === 'walk-in'
+          ? null
+          : limitedRequirementUrls.length > 1
+            ? JSON.stringify(limitedRequirementUrls)
+            : validIdUrl,
+      ...(requestSource === 'walk-in' ? { requirements_urls: [], requirements_files: [] } : {}),
+      ...(requestSource !== 'walk-in' && limitedRequirementUrls.length ? { requirements_urls: limitedRequirementUrls } : {}),
+      ...(requestSource !== 'walk-in' && limitedRequirementFiles.length ? { requirements_files: limitedRequirementFiles } : {}),
       ...(requirementsChecklist ? { requirements_checklist: requirementsChecklist } : {}),
       ...(requirementsCompleted != null ? { requirements_completed: requirementsCompleted } : {}),
     });

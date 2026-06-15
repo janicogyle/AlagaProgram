@@ -472,7 +472,7 @@ export default function RegistrationPage() {
           acc[idx] = false;
           return acc;
         }, {}),
-        // Fallback confirmation when no checklist exists (e.g., Others)
+        // Fallback confirmation when no checklist exists.
         requirementsCompleted: false,
       }));
       return;
@@ -722,9 +722,6 @@ export default function RegistrationPage() {
           throw new Error('Database client not available');
         }
 
-        const assistanceTypeForRequest =
-          formData.assistanceType === 'Others' ? formData.otherAssistanceType : formData.assistanceType;
-
         // Admin/Staff: requirements are verified via checklist (no file uploads).
 
         const requirementsChecklist = selectedAssistanceRequirements.map((label, idx) => ({
@@ -756,8 +753,7 @@ export default function RegistrationPage() {
           beneficiary_contact: beneficiaryContact,
           beneficiary_address: beneficiaryAddress,
 
-          assistance_type:
-            formData.assistanceType === 'Others' ? formData.otherAssistanceType : formData.assistanceType,
+          assistance_type: formData.assistanceType,
           amount: formData.assistanceAmount || 0,
           status: 'Pending', // Default status
           request_date: formData.dateOfRequest,
@@ -1165,16 +1161,6 @@ export default function RegistrationPage() {
                 disabled={assistanceRequestBlocked}
                 error={errors.assistanceType}
               />
-              {formData.assistanceType === 'Others' && (
-                <Input
-                  label="Please specify"
-                  name="otherAssistanceType"
-                  value={formData.otherAssistanceType}
-                  onChange={handleChange}
-                  placeholder="Specify other assistance"
-                  required
-                />
-              )}
               <Input
                 label="Representative Name"
                 name="representativeName"

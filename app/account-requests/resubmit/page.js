@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import PageHeader from '@/components/PageHeader';
 import Card from '@/components/Card';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
@@ -286,11 +285,24 @@ function ResubmitAccountRequestPageContent() {
   return (
     <div className={styles.shell}>
       <div className={styles.page}>
-        <PageHeader
-          title="Resubmit Account Request"
-          subtitle="Update the missing or incorrect signup details requested by Barangay Sta. Rita."
-          className={styles.header}
-        />
+        <header className={styles.hero}>
+          <div className={styles.brandRow}>
+            <span className={styles.logo} aria-hidden="true" />
+            <div>
+              <p className={styles.eyebrow}>Barangay Sta. Rita</p>
+              <p className={styles.brandTitle}>ALAGA Program</p>
+            </div>
+          </div>
+          <div className={styles.heroText}>
+            <h1>Resubmit Account Request</h1>
+            <p>Update the missing or incorrect signup details requested by Barangay Sta. Rita.</p>
+          </div>
+          <div className={styles.heroSteps} aria-label="Resubmission process">
+            <span>Enter code</span>
+            <span>Correct details</span>
+            <span>Submit for review</span>
+          </div>
+        </header>
 
         <Card className={styles.card}>
           {!token && !loading ? (
@@ -300,24 +312,41 @@ function ResubmitAccountRequestPageContent() {
                   {status.message}
                 </div>
               )}
-              <SectionHeader
-                title="Enter Resubmit Code"
-                subtitle="Use the 8-character code sent to your mobile number by Barangay Sta. Rita."
-              />
-              <Input
-                label="Resubmit Code"
-                name="accessCode"
-                value={accessCode}
-                onChange={(event) =>
-                  setAccessCode(String(event.target.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))
-                }
-                placeholder="Enter 8-character code"
-                required
-              />
-              <Button type="submit">Continue</Button>
+              <div className={styles.codeLayout}>
+                <div className={styles.codeIntro}>
+                  <span className={styles.codeBadge}>SMS code</span>
+                  <h2>Enter your resubmit code</h2>
+                  <p>Use the 8-character code sent to your mobile number by Barangay Sta. Rita.</p>
+                  <div className={styles.smsHelpBox}>
+                    <strong>From your SMS</strong>
+                    <span>Codes use letters and numbers only. Spaces and symbols are removed automatically.</span>
+                  </div>
+                </div>
+                <div className={styles.codePanel}>
+                  <Input
+                    label="Resubmit Code"
+                    name="accessCode"
+                    value={accessCode}
+                    onChange={(event) =>
+                      setAccessCode(
+                        String(event.target.value || '')
+                          .toUpperCase()
+                          .replace(/[^A-Z0-9]/g, '')
+                          .slice(0, 8),
+                      )
+                    }
+                    placeholder="Enter 8-character code"
+                    required
+                  />
+                  <Button type="submit">Continue</Button>
+                </div>
+              </div>
             </form>
           ) : loading ? (
-            <div className={styles.message}>Loading resubmission details...</div>
+            <div className={styles.message}>
+              <span className={styles.loader} aria-hidden="true" />
+              <span>Loading resubmission details...</span>
+            </div>
           ) : (
             <>
               {status && (
@@ -333,6 +362,12 @@ function ResubmitAccountRequestPageContent() {
 
               {requestLoaded && status?.type !== 'success' && (
                 <form onSubmit={handleSubmit} className={styles.form}>
+                  <div className={styles.formIntro}>
+                    <span className={styles.codeBadge}>Protected request</span>
+                    <h2>Correct your signup details</h2>
+                    <p>Review each section below, update only what needs correction, then send it back for admin review.</p>
+                  </div>
+
                   {notes && (
                     <section className={styles.noteBox}>
                       <span className={styles.noteLabel}>Incomplete reason</span>
@@ -415,7 +450,7 @@ function ResubmitAccountRequestPageContent() {
                     </div>
                   </section>
 
-                  <section className={styles.section}>
+                  <section className={`${styles.section} ${styles.contactSection}`}>
                     <SectionHeader title="Contact" subtitle="Your signup contact number is kept on this request." />
                     <Input label="Contact Number" name="contactNumber" value={form.contactNumber} disabled />
                   </section>

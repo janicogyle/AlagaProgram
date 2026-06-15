@@ -26,7 +26,7 @@ import {
   queryNextBeneficiaryControlNumber,
 } from '@/lib/controlNumbers';
 
-const EDITABLE_REQUEST_STATUSES = new Set(['Rejected']);
+const EDITABLE_REQUEST_STATUSES = new Set(['Incomplete', 'Rejected']);
 const ACTIVE_REQUEST_STATUSES = new Set(['Pending', 'Resubmitted']);
 const WIZARD_STEPS = [
   { number: 1, label: 'Review Info' },
@@ -43,6 +43,8 @@ const getRequestStatusLabel = (status) => {
   if (status === 'Resubmitted') return 'Under Review';
   return status;
 };
+
+const isIncompleteRequestStatus = (status) => EDITABLE_REQUEST_STATUSES.has(status);
 
 const getFileDisplayName = (file, fallback = 'Document') => (
   file?.name || file?.file_name || file?.fileName || fallback
@@ -272,7 +274,7 @@ export default function BeneficiaryRequestPage() {
 
   const resolveAssistanceType = () => {
     if (!formData.assistanceType) return '';
-    return formData.assistanceType === 'Others' ? formData.otherAssistanceType : formData.assistanceType;
+    return formData.assistanceType;
   };
 
   useEffect(() => {
@@ -282,9 +284,7 @@ export default function BeneficiaryRequestPage() {
         return;
       }
 
-      const assistanceType = formData.assistanceType === 'Others'
-        ? formData.otherAssistanceType
-        : formData.assistanceType;
+      const assistanceType = formData.assistanceType;
       if (!assistanceType || !supabase) {
         setAssistanceControlPreview('');
         return;
@@ -531,7 +531,7 @@ export default function BeneficiaryRequestPage() {
           if (!v) return { assistanceType: '', otherAssistanceType: '' };
           const known = assistanceTypeOptions.some((o) => o.value === v);
           if (known) return { assistanceType: v, otherAssistanceType: '' };
-          return { assistanceType: 'Others', otherAssistanceType: v };
+          return { assistanceType: '', otherAssistanceType: '' };
         };
 
         const reqs = parseRequirements(match.requirements_urls);
@@ -872,18 +872,20 @@ export default function BeneficiaryRequestPage() {
 
   const validateForm = () => {
     const newErrors = {};
+    const hasValue = (value) => String(value || '').trim().length > 0;
 
     // Beneficiary request services: simplified Personal Information UI.
     // Require only name + address fields, and ensure contact number exists (managed in Profile).
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
 
-    // Address is read-only here; validate it based on what exists in profile.
-    if (!formData.houseNo.trim()) newErrors.houseNo = 'House number is required';
-    if (!String(formData.barangay || '').trim()) newErrors.barangay = 'Barangay is required';
-    if (!String(formData.city || '').trim()) newErrors.city = 'City is required';
-    if (!String(formData.street || '').trim() && !String(formData.purok || '').trim()) {
-      newErrors.street = 'Street or Purok is required';
+    // Address is read-only here; validate the same address shape shown in the review card.
+    const hasLocationPart = [formData.houseNo, formData.purok, formData.street].some(hasValue);
+    if (!hasLocationPart) newErrors.houseNo = 'Address detail is required. Please update your profile.';
+    if (!hasValue(formData.barangay)) newErrors.barangay = 'Barangay is required';
+    if (!hasValue(formData.city)) newErrors.city = 'City is required';
+    if (!hasLocationPart || !hasValue(formData.barangay) || !hasValue(formData.city)) {
+      newErrors.address = 'Complete address is required. Please update your profile.';
     }
 
     if (!formData.contactNumber.trim()) {
@@ -894,10 +896,6 @@ export default function BeneficiaryRequestPage() {
 
     if (!formData.assistanceType) {
       newErrors.assistanceType = 'Type of assistance is required.';
-    }
-
-    if (formData.assistanceType === 'Others' && !formData.otherAssistanceType.trim()) {
-      newErrors.otherAssistanceType = 'Please specify the assistance type.';
     }
 
     if (formData.assistanceType && !beneficiaryIsRequester) {
@@ -935,7 +933,39 @@ export default function BeneficiaryRequestPage() {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
+  };
+
+  const getValidationErrorStep = (validationErrors = {}) => {
+    const keys = new Set(Object.keys(validationErrors));
+    const stepOneFields = [
+      'lastName',
+      'firstName',
+      'houseNo',
+      'street',
+      'purok',
+      'barangay',
+      'city',
+      'address',
+      'contactNumber',
+    ];
+    const stepTwoFields = [
+      'assistanceType',
+      'assistanceAmount',
+      'beneficiaryName',
+      'beneficiaryContact',
+      'beneficiaryAddress',
+    ];
+
+    if (stepOneFields.some((field) => keys.has(field))) return 1;
+    if (stepTwoFields.some((field) => keys.has(field))) return 2;
+    if (keys.has('validId')) return 3;
+    return TOTAL_STEPS;
+  };
+
+  const getValidationErrorMessage = (validationErrors = {}) => {
+    const firstMessage = Object.values(validationErrors).find(Boolean);
+    return firstMessage || 'Please complete the highlighted details before resubmitting.';
   };
 
   const buildFullName = () => [formData.firstName, formData.middleName, formData.lastName]
@@ -979,9 +1009,6 @@ export default function BeneficiaryRequestPage() {
     if (step === 2) {
       if (!formData.assistanceType) {
         stepErrors.assistanceType = 'Type of assistance is required.';
-      }
-      if (formData.assistanceType === 'Others' && !formData.otherAssistanceType.trim()) {
-        stepErrors.otherAssistanceType = 'Please specify the assistance type.';
       }
       if (formData.assistanceType && !formData.assistanceAmount) {
         stepErrors.assistanceAmount = 'Budget ceiling is not configured for this assistance type.';
@@ -1036,7 +1063,14 @@ export default function BeneficiaryRequestPage() {
       return;
     }
 
-    if (!validateForm()) {
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length) {
+      const nextStep = getValidationErrorStep(validationErrors);
+      setStatus({
+        type: 'error',
+        message: getValidationErrorMessage(validationErrors),
+      });
+      goToStep(nextStep);
       return;
     }
 
@@ -1265,10 +1299,7 @@ export default function BeneficiaryRequestPage() {
           beneficiary_name: beneficiaryIsRequester ? requesterName : formData.beneficiaryName,
           beneficiary_contact: beneficiaryIsRequester ? requesterContact : formData.beneficiaryContact,
           beneficiary_address: beneficiaryIsRequester ? requesterAddress : formData.beneficiaryAddress,
-          assistance_type:
-            formData.assistanceType === 'Others'
-              ? formData.otherAssistanceType
-              : formData.assistanceType,
+          assistance_type: formData.assistanceType,
           amount: formData.assistanceAmount || 0,
           request_date: formData.dateOfRequest,
           request_source: 'online',
@@ -1296,7 +1327,7 @@ export default function BeneficiaryRequestPage() {
           },
         );
 
-        const result = await response.json();
+        const result = await response.json().catch(() => ({}));
         if (!response.ok || result?.error) {
           if (result?.code === 'ACTIVE_REQUEST_EXISTS' && result?.activeRequest) {
             setActiveRequest(result.activeRequest);
@@ -1308,15 +1339,16 @@ export default function BeneficiaryRequestPage() {
         }
 
         if (isEditMode) {
+          const wasIncompleteRequest = isIncompleteRequestStatus(editingRequestStatus);
           setToast({
             open: true,
-            message: editingRequestStatus === 'Rejected'
+            message: wasIncompleteRequest
               ? 'Request resubmitted successfully.'
               : 'Request updated successfully.',
           });
           setStatus({
             type: 'success',
-            message: editingRequestStatus === 'Rejected'
+            message: wasIncompleteRequest
               ? 'Request updated and resubmitted successfully!'
               : 'Request updated successfully!',
           });
@@ -1570,18 +1602,6 @@ export default function BeneficiaryRequestPage() {
             readOnly
           />
         </div>
-
-        {formData.assistanceType === 'Others' && (
-          <Input
-            label="Please specify"
-            name="otherAssistanceType"
-            value={formData.otherAssistanceType}
-            onChange={handleChange}
-            placeholder="Specify other assistance"
-            error={errors.otherAssistanceType}
-            required
-          />
-        )}
 
         <div className={styles.assistanceRequirementsPanel}>
           <div className={styles.assistanceRequirementsHeader}>

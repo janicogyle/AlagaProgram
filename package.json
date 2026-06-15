@@ -11,6 +11,7 @@
     "dev": "next dev",
     "build": "next build",
     "lint": "eslint .",
+    "seed:test-beneficiaries": "node scripts/seed-beneficiary-test-data.mjs",
     "start": "next start"
   },
   "dependencies": {
