@@ -1,96 +1,213 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import ConstellationBackground from '../components/ConstellationBackground';
+import { assistanceData } from '@/lib/assistanceData';
 import styles from './page.module.css';
 
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [heroInfoIndex, setHeroInfoIndex] = useState(0);
+  const [uiScale, setUiScale] = useState(1);
+
+  const closeMobileMenu = () => setMobileMenuOpen(false);
+  const magnifierLevels = [1, 1.15, 1.3];
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('homepage_ui_scale');
+      if (!raw) return;
+      const value = Number(raw);
+      if (!Number.isFinite(value)) return;
+      const nearest = magnifierLevels.reduce((best, next) =>
+        Math.abs(next - value) < Math.abs(best - value) ? next : best
+      , magnifierLevels[0]);
+      setUiScale(nearest);
+    } catch {
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('homepage_ui_scale', String(uiScale));
+    } catch {
+    }
+  }, [uiScale]);
+
+  const toggleMagnifier = () => {
+    setUiScale((value) => {
+      const idx = magnifierLevels.indexOf(value);
+      const next = magnifierLevels[(idx + 1) % magnifierLevels.length];
+      return next;
+    });
+  };
 
   const services = [
     {
       title: 'PWD Beneficiary Support',
       description: 'Apply as a PWD beneficiary, submit requirements, and track assistance updates linked to your account.',
+      icon: (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v7a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-7a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5z" />
+          <path d="M9 10V7a3 3 0 0 1 6 0v3" />
+          <path d="M12 13v4" />
+        </svg>
+      ),
     },
     {
       title: 'Senior Citizen Support',
       description: 'Register as a senior citizen beneficiary and keep your profile and assistance requests up to date.',
+      icon: (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+          <path d="M9 13l-1 8" />
+          <path d="M15 13l1 8" />
+        </svg>
+      ),
     },
     {
       title: 'Solo Parent Support',
       description: 'Apply as a solo parent beneficiary, upload supporting documents, and monitor request progress.',
+      icon: (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M17 11l2 2-2 2" />
+          <path d="M19 13h-4" />
+        </svg>
+      ),
     },
     {
       title: 'Assistance Requests',
       description: 'Submit assistance requests and track real-time status updates from review to release.',
+      icon: (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M9 11l3 3L22 4" />
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+        </svg>
+      ),
     },
     {
       title: 'Beneficiary ID / QR',
       description: 'Access your beneficiary ID/QR for quick verification and easier record lookup.',
+      icon: (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="14" width="7" height="7" rx="1" />
+          <path d="M3 14h7v7H3z" />
+        </svg>
+      ),
     },
     {
       title: 'Assistance History',
       description: 'Review your assistance history and records tied to your beneficiary account.',
+      icon: (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M3 3v18h18" />
+          <path d="M7 14l3-3 3 2 5-6" />
+        </svg>
+      ),
     },
   ];
 
   const aboutFeatures = [
     {
-      icon: (
-        /* Pill capsule icon — Medicine */
-        <svg
-          width="40"
-          height="40"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.9"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <g transform="rotate(-45 12 12)">
-            <rect x="7" y="3" width="10" height="18" rx="5" />
-            <line x1="7" y1="12" x2="17" y2="12" />
-          </g>
-        </svg>
-      ),
+      icon: assistanceData['Medicine Assistance'].icon,
       title: 'Medicine Assistance',
       description: 'Financial support for outpatient medical expenses and medication reimbursements.',
+      requirements: assistanceData['Medicine Assistance'].requirements,
     },
     {
-      icon: (
-        /* Hospital bed icon — Confinement */
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 9v6" />
-          <path d="M3 15h18" />
-          <path d="M21 9v6" />
-          <rect x="7" y="10" width="10" height="4" rx="1" />
-          <circle cx="7" cy="6.5" r="2" />
-        </svg>
-      ),
+      icon: assistanceData['Confinement Assistance'].icon,
       title: 'Confinement Assistance',
       description: 'Coverage for hospital confinement costs and related medical services.',
+      requirements: assistanceData['Confinement Assistance'].requirements,
     },
     {
-      icon: (
-        /* Tombstone with cross icon — Burial */
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M8 22V11a4 4 0 0 1 8 0v11" />
-          <path d="M5 22h14" />
-          <path d="M12 6v4" />
-          <path d="M10 8h4" />
-        </svg>
-      ),
+      icon: assistanceData['Burial Assistance'].icon,
       title: 'Burial Assistance',
       description: 'Assistance to help cover funeral and burial expenses for eligible beneficiaries.',
+      requirements: assistanceData['Burial Assistance'].requirements,
     },
   ];
+
+  const heroInfoCards = [
+    {
+      key: 'qr-verify',
+      tag: 'Benefit',
+      title: 'Medicine assistance',
+      description: 'Financial support for outpatient medical expenses and medication reimbursements for eligible beneficiaries.',
+      icon: (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="14" width="7" height="7" rx="1" />
+          <path d="M3 14h7v7H3z" />
+          <path d="M10 10h4v4h-4z" />
+        </svg>
+      ),
+      badges: ['Medicine Assistance'],
+    },
+    {
+      key: 'status-tracking',
+      tag: 'Benefit',
+      title: 'Confinement assistance',
+      description: 'Support for hospital confinement costs and related medical services when you need urgent care.',
+      icon: (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M3 3v18h18" />
+          <path d="M7 14l3-3 3 2 5-6" />
+          <path d="M18 7v4h-4" />
+        </svg>
+      ),
+      badges: ['Confinement Assistance'],
+    },
+    {
+      key: 'secure-data',
+      tag: 'Benefit',
+      title: 'Burial assistance',
+      description: 'Assistance to help cover funeral and burial expenses for eligible beneficiaries and their families.',
+      icon: (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+      ),
+      badges: ['Burial Assistance'],
+    },
+    {
+      key: 'self-service',
+      tag: 'How It Works',
+      title: 'Apply in 4 simple steps',
+      description: 'Register, upload requirements, wait for verification, then track your request and access your beneficiary details.',
+      icon: (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      ),
+      badges: ['Register', 'Upload', 'Verify', 'Track'],
+    },
+  ];
+
+  useEffect(() => {
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    if (reduceMotion) return;
+    const count = heroInfoCards.length;
+    const id = window.setInterval(() => {
+      setHeroInfoIndex((value) => (value + 1) % count);
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [heroInfoCards.length]);
 
   const processSteps = [
     {
       step: '01',
       title: 'Register Beneficiary Account',
-      description: 'Encode personal information and supporting documents in the Alaga Program system.',
+      description: 'Create an account and encode complete personal information for the selected sector (PWD, Senior, Solo Parent).',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -103,7 +220,7 @@ export default function HomePage() {
     {
       step: '02',
       title: 'Upload Documents',
-      description: 'Submit required documents for eligibility verification.',
+      description: 'Upload a clear photo/scan of your valid ID and required supporting documents for validation.',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -115,7 +232,7 @@ export default function HomePage() {
     {
       step: '03',
       title: 'Eligibility Confirmation',
-      description: 'Wait for your application to be reviewed and verified by barangay staff.',
+      description: 'Barangay staff reviews and verifies details; you may be asked for additional proof when needed.',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -125,8 +242,8 @@ export default function HomePage() {
     },
     {
       step: '04',
-      title: 'Track Assistance',
-      description: 'Monitor assistance updates and records linked to your account.',
+      title: 'Track & Use Your ID/QR',
+      description: 'View your beneficiary ID/QR and track assistance status updates and history in your account.',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -137,6 +254,23 @@ export default function HomePage() {
 
   return (
     <div className={styles.page}>
+      <button
+        type="button"
+        className={styles.magnifierButton}
+        onClick={toggleMagnifier}
+        aria-label={`Magnifier: ${Math.round(uiScale * 100)}%`}
+        aria-pressed={uiScale !== 1}
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M20 20l-3.5-3.5" />
+        </svg>
+        <span className={styles.magnifierBadge}>{Math.round(uiScale * 100)}%</span>
+      </button>
+      <div
+        className={`${styles.pageContent} ${uiScale !== 1 ? styles.pageContentZoomed : ''}`}
+        style={{ '--uiScale': uiScale }}
+      >
       {/* Header / Navigation */}
       <header className={styles.header}>
         <div className={styles.headerContainer}>
@@ -149,15 +283,18 @@ export default function HomePage() {
             </div>
           </div>
 
-          <nav className={`${styles.nav} ${mobileMenuOpen ? styles.navOpen : ''}`}>
-            <a href="#home" className={styles.navLink}>Home</a>
-            <a href="#about" className={styles.navLink}>About System</a>
-            <a href="#services" className={styles.navLink}>Services</a>
-            <a href="#contact" className={styles.navLink}>Contact</a>
-            <Link href="/login" className={styles.navLoginBtn}>
+          <nav
+            id="primaryNavigation"
+            className={`${styles.nav} ${mobileMenuOpen ? styles.navOpen : ''}`}
+          >
+            <a href="#home" className={styles.navLink} onClick={closeMobileMenu}>Home</a>
+            <a href="#about" className={styles.navLink} onClick={closeMobileMenu}>Benefits</a>
+            <a href="#how-it-works" className={styles.navLink} onClick={closeMobileMenu}>How It Works</a>
+            <a href="#contact" className={styles.navLink} onClick={closeMobileMenu}>Contact</a>
+            <Link href="/login" className={styles.navLoginBtn} onClick={closeMobileMenu}>
               Sign In
             </Link>
-            <Link href="/signup" className={styles.navSignupBtn}>
+            <Link href="/signup" className={styles.navSignupBtn} onClick={closeMobileMenu}>
               Sign Up
             </Link>
           </nav>
@@ -166,6 +303,8 @@ export default function HomePage() {
             className={styles.mobileMenuBtn} 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="primaryNavigation"
           >
             {mobileMenuOpen ? (
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -185,6 +324,7 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <section id="home" className={styles.hero}>
+        <ConstellationBackground />
         <div className={styles.heroContainer}>
           <div className={styles.heroContent}>
             <h1 className={styles.heroTitle}>
@@ -192,25 +332,17 @@ export default function HomePage() {
               <span className={styles.heroTitleHighlight}>Alaga Program</span>
             </h1>
             <p className={styles.heroDescription}>
-              A modern digital service for beneficiary registration, assistance tracking,
-              and QR-based verification for PWDs, senior citizens, and solo parents.
+              The Barangay Sta. Rita Alaga Program is our community&apos;s promise to care for one another — offering
+              compassionate support for PWDs, senior citizens, and solo parents through medicine, confinement, and burial
+              assistance when it matters most.
             </p>
             <div className={styles.heroActions}>
               <Link href="/signup" className={styles.heroBtn}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M5 12h14" />
-                  <path d="M12 5l7 7-7 7" />
-                </svg>
-                Register Account
+                Apply for Assistance
               </Link>
-              <Link href="/login" className={styles.heroBtnOutline}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                  <polyline points="10 17 15 12 10 7" />
-                  <line x1="15" y1="12" x2="3" y2="12" />
-                </svg>
-                Sign In
-              </Link>
+              <a href="#about" className={styles.heroBtnOutline}>
+                Learn More
+              </a>
             </div>
           </div>
           <div className={styles.heroVisual}>
@@ -225,19 +357,41 @@ export default function HomePage() {
                     <small>PWD&apos;s, Senior Citizens, Solo Parents</small>
                   </div>
                 </div>
-                <div className={styles.illustrationQR}>
-                  <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <rect x="3" y="3" width="7" height="7" />
-                    <rect x="14" y="3" width="7" height="7" />
-                    <rect x="14" y="14" width="7" height="7" />
-                    <rect x="3" y="14" width="7" height="7" />
-                    <rect x="7" y="7" width="3" height="3" fill="currentColor" />
-                    <rect x="17" y="7" width="3" height="3" />
-                  </svg>
+                <div className={styles.infoCarousel} aria-live="polite">
+                  {heroInfoCards.map((card, index) => (
+                    <div
+                      key={card.key}
+                      className={`${styles.infoSlide} ${index === heroInfoIndex ? styles.infoSlideActive : styles.infoSlideInactive}`}
+                    >
+                      <div className={styles.infoSlideHeader}>
+                        <div className={styles.infoSlideIcon}>{card.icon}</div>
+                        <div className={styles.infoSlideTitles}>
+                          <span className={styles.infoSlideTag}>{card.tag}</span>
+                          <div className={styles.infoSlideTitle}>{card.title}</div>
+                        </div>
+                      </div>
+                      <div className={styles.infoSlideDesc}>{card.description}</div>
+                      <div className={styles.infoSlideBadges}>
+                        {card.badges.map((badge) => (
+                          <span key={`${card.key}-${badge}`} className={styles.infoBadge}>
+                            {badge}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className={styles.illustrationInfo}>
-                  <div className={styles.illustrationLine}></div>
-                  <div className={styles.illustrationLineShort}></div>
+                <div className={styles.infoDots} role="tablist" aria-label="Highlights">
+                  {heroInfoCards.map((card, index) => (
+                    <button
+                      key={`${card.key}-dot`}
+                      type="button"
+                      className={`${styles.infoDot} ${index === heroInfoIndex ? styles.infoDotActive : ''}`}
+                      onClick={() => setHeroInfoIndex(index)}
+                      aria-label={`Show: ${card.title}`}
+                      aria-pressed={index === heroInfoIndex}
+                    />
+                  ))}
                 </div>
               </div>
               <div className={styles.floatingBadge1}>
@@ -245,13 +399,13 @@ export default function HomePage() {
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                   <polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
-                Verified
+                Benefits
               </div>
               <div className={styles.floatingBadge2}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
-                Secure
+                How it works
               </div>
             </div>
           </div>
@@ -266,50 +420,56 @@ export default function HomePage() {
       {/* About Section */}
       <section id="about" className={styles.about}>
         <div className={styles.sectionContainer}>
-          <div className={styles.sectionHeader}>
-            <span className={styles.sectionTag}>About the System</span>
-            <h2 className={styles.sectionTitle}>Beneficiary Benefits</h2>
-            <p className={styles.sectionDescription}>
-              Our Alaga Program System is built to prioritize beneficiaries with faster processing,
-              verified eligibility, and easier access to support.
-            </p>
-          </div>
-          <div className={styles.aboutGrid}>
-            {aboutFeatures.map((feature, index) => (
-              <div key={index} className={styles.aboutCard}>
-                <div className={styles.aboutIcon}>{feature.icon}</div>
-                <h3 className={styles.aboutTitle}>{feature.title}</h3>
-                <p className={styles.aboutDescription}>{feature.description}</p>
+          <div className={styles.aboutWrapper}>
+            <div className={styles.aboutLeft}>
+              <span className={styles.sectionTag}>Alagang Serbisyo</span>
+              <h2 className={styles.aboutMainTitle}>
+                Beneficiary <span className={styles.highlight}>Benefits</span>
+              </h2>
+              <p className={styles.aboutMainDesc}>
+                The Alaga Program Benefits for Barangay Sta. Rita PWD's, Senior Citizens and Solo Parents. Here are the lists of requirements for specific services:
+              </p>
+              <div className={styles.aboutKeyFeature}>
+                <div className={styles.aboutKeyIcon}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <polyline points="22 4 12 14.01 9 11.01" />
+                  </svg>
+                </div>
+                <span className={styles.aboutKeyText}>Barangay Sta. Rita - Olongapo City</span>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Services Section */}
-      <section id="services" className={styles.services}>
-        <div className={styles.sectionContainer}>
-          <div className={styles.sectionHeader}>
-            <span className={styles.sectionTag}>Our Services</span>
-            <h2 className={styles.sectionTitle}>Beneficiary Services</h2>
-            <p className={styles.sectionDescription}>
-              Explore services available for beneficiaries—registration, verification, and assistance tracking 
-              in the Alaga Program system.
-            </p>
-          </div>
-          <div className={styles.servicesGrid}>
-            {services.map((service, index) => (
-              <div key={index} className={styles.serviceCard}>
-                <h3 className={styles.serviceTitle}>{service.title}</h3>
-                <p className={styles.serviceDescription}>{service.description}</p>
+              <div className={styles.aboutMockup}>
+                <img src="/mockup.png" alt="Alaga Program Mockup" />
               </div>
-            ))}
+            </div>
+            <div className={styles.aboutRight}>
+              <div className={styles.aboutGrid}>
+                {aboutFeatures.map((feature, index) => (
+                  <div key={index} className={styles.aboutCard}>
+                    <div className={styles.aboutIcon}>
+                      {feature.icon}
+                    </div>
+                    <h3 className={styles.aboutTitle}>{feature.title}</h3>
+                    {feature.requirements && feature.requirements.length > 0 && (
+                      <div className={styles.aboutRequirements}>
+                        <p className={styles.requirementsLabel}>Requirements:</p>
+                        <ul className={styles.requirementsList}>
+                          {feature.requirements.map((req, idx) => (
+                            <li key={idx}>{req}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Process Section */}
-      <section className={styles.process}>
+      <section id="how-it-works" className={styles.process}>
         <div className={styles.sectionContainer}>
           <div className={styles.sectionHeader}>
             <span className={styles.sectionTag}>How It Works</span>
@@ -335,6 +495,84 @@ export default function HomePage() {
                 )}
               </div>
             ))}
+          </div>
+          <div className={styles.processNote}>
+            <div className={styles.processNoteBox}>
+              <div className={styles.processNoteHeader}>
+                <div className={styles.processNoteHeaderLeft}>
+                  <div className={styles.processNoteIconWrap} aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 9v4" />
+                      <path d="M12 17h.01" />
+                      <path d="M10.29 3.86l-7.4 13.14A2 2 0 0 0 4.63 20h14.74a2 2 0 0 0 1.74-2.99l-7.4-13.15a2 2 0 0 0-3.42 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className={styles.processNoteEyebrow}>Before you submit</p>
+                    <h3 className={styles.processNoteTitle}>Important reminders for registration</h3>
+                  </div>
+                </div>
+                <span className={styles.processNotePill}>Registration</span>
+              </div>
+              <ul className={styles.processNoteList}>
+                <li className={styles.processNoteItem}>
+                  <span className={styles.processNoteBullet} aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                  </span>
+                  <span className={styles.processNoteText}>Make sure your uploaded ID photo/scan is readable and matches your details.</span>
+                </li>
+                <li className={styles.processNoteItem}>
+                  <span className={styles.processNoteBullet} aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                  </span>
+                  <span className={styles.processNoteText}>
+                    Sector-based applications (PWD/Senior/Solo Parent) may require supporting documents for validation.
+                  </span>
+                </li>
+                <li className={styles.processNoteItem}>
+                  <span className={styles.processNoteBullet} aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                  </span>
+                  <span className={styles.processNoteText}>
+                    For assisted registration, a representative/guardian may register and may be asked to submit their own ID and proof of authority.
+                  </span>
+                </li>
+                <li className={styles.processNoteItem}>
+                  <span className={styles.processNoteBullet} aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                  </span>
+                  <span className={styles.processNoteText}>
+                    Walk-in applicants may be encoded offline by authorized barangay staff or coordinators, then submitted in the system for verification.
+                  </span>
+                </li>
+                <li className={styles.processNoteItem}>
+                  <span className={styles.processNoteBullet} aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                  </span>
+                  <span className={styles.processNoteText}>
+                    By signing up, you agree to the Data Privacy Notice and Terms &amp; Conditions shown in the Sign Up page.
+                  </span>
+                </li>
+              </ul>
+              <div className={styles.processNoteActions}>
+                <Link href="/signup" className={styles.processNoteButtonPrimary}>
+                  Register / Sign Up
+                </Link>
+                <Link href="/login" className={styles.processNoteButtonSecondary}>
+                  Sign In
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -434,7 +672,7 @@ export default function HomePage() {
             <div className={styles.footerLinks}>
               <a href="#home">Home</a>
               <a href="#about">About</a>
-              <a href="#services">Services</a>
+              <a href="#how-it-works">How It Works</a>
               <a href="#contact">Contact</a>
             </div>
           </div>
@@ -444,6 +682,7 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+      </div>
     </div>
   );
 }

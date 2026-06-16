@@ -303,10 +303,6 @@ export default function BeneficiaryIdVerifyPage() {
     setDocumentPreview({ open: false, url: '', path: '' });
   };
 
-  const closeScanModal = () => {
-    setScanOpen(false);
-  };
-
   const getAuthHeaders = async () => {
     if (!supabase) throw new Error('Supabase client not initialized.');
 
@@ -322,7 +318,7 @@ export default function BeneficiaryIdVerifyPage() {
     if (!scanned) return;
 
     setToken(scanned);
-    closeScanModal();
+    setScanOpen(false);
 
     try {
       await handleVerify(scanned);
@@ -550,11 +546,7 @@ export default function BeneficiaryIdVerifyPage() {
   const releasedHistory = Array.isArray(result?.releasedHistory) ? result.releasedHistory : [];
   const latestAssistanceRequest = result?.latestAssistanceRequest || null;
   const sectors = getSectors(resident);
-  const latestRequestFooter = !result?.valid ? (
-    <Button variant="secondary" onClick={() => setShowLatestRequestModal(false)}>
-      Close
-    </Button>
-  ) : latestAssistanceRequest ? (
+  const latestRequestFooter = latestAssistanceRequest ? (
     ['Pending', 'Resubmitted'].includes(latestAssistanceRequest.status) ? (
       <div className={styles.modalFooter}>
         <Button variant="secondary" onClick={() => setShowLatestRequestModal(false)}>
@@ -640,7 +632,7 @@ export default function BeneficiaryIdVerifyPage() {
     <div className={styles.page}>
       <PageHeader
         title="Verify Beneficiary ID (QR)"
-        subtitle="Scan the QR or enter the card reference number to verify if the beneficiary ID is valid and not expired."
+        subtitle="Scan the QR or enter the card reference number to verify if the beneficiary ID is valid and not expired/revoked."
       />
 
       <Card>
@@ -684,7 +676,7 @@ export default function BeneficiaryIdVerifyPage() {
         {result && (
           <div className={styles.resultBox}>
             <div className={styles.resultHeader}>
-              <span className={`${styles.badge} ${badge}`}>{result.scanStatus || (result.valid ? 'VALID' : 'INVALID')}</span>
+              <span className={`${styles.badge} ${badge}`}>{result.valid ? 'VALID' : 'INVALID'}</span>
               {!result.valid && result.reason && (
                 <span className={styles.reason}>
                   Reason:{' '}
@@ -852,10 +844,10 @@ export default function BeneficiaryIdVerifyPage() {
 
       <Modal
         isOpen={scanOpen}
-        onClose={closeScanModal}
+        onClose={() => setScanOpen(false)}
         title="Scan QR"
         footer={
-          <Button variant="secondary" onClick={closeScanModal}>
+          <Button variant="secondary" onClick={() => setScanOpen(false)}>
             Close
           </Button>
         }
@@ -864,7 +856,7 @@ export default function BeneficiaryIdVerifyPage() {
           <QrScanner
             key={`scan-${scanSession}`}
             onDetected={handleScanDetected}
-            onClose={closeScanModal}
+            onClose={() => setScanOpen(false)}
           />
         ) : null}
       </Modal>
@@ -1256,234 +1248,170 @@ export default function BeneficiaryIdVerifyPage() {
 }
 
 function QrScanner({ onDetected, onClose }) {
-  const [starting, setStarting] = useState(false);
-  const [ready, setReady] = useState(false);
+  const [starting, setStarting] = useState(true);
   const [scannerError, setScannerError] = useState('');
+  const [retryKey, setRetryKey] = useState(0);
   const [cameras, setCameras] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
-  const [hasStream, setHasStream] = useState(false);
-  const [decodingFile, setDecodingFile] = useState(false);
-  const [cameraWarning, setCameraWarning] = useState('');
   const videoRef = useRef(null);
-  const fileInputRef = useRef(null);
   const readerRef = useRef(null);
   const controlsRef = useRef(null);
-  const healthTimerRef = useRef(null);
-
-  const stop = (resetReader = true, updateState = true) => {
-    if (healthTimerRef.current) {
-      clearTimeout(healthTimerRef.current);
-      healthTimerRef.current = null;
-    }
-    try {
-      controlsRef.current?.stop?.();
-    } catch {
-    }
-    controlsRef.current = null;
-    try {
-      if (resetReader) readerRef.current?.reset?.();
-    } catch {
-    }
-    try {
-      const video = videoRef.current;
-      const stream = video?.srcObject;
-      if (stream && typeof stream.getTracks === 'function') {
-        stream.getTracks().forEach((t) => {
-          try {
-            t.stop();
-          } catch {
-          }
-        });
-      }
-      if (video) video.srcObject = null;
-      if (updateState) {
-        setHasStream(false);
-        setCameraWarning('');
-      }
-    } catch {
-    }
-  };
-
-  const choosePreferredCamera = (devices) => {
-    if (!devices?.length) return '';
-    const preferred =
-      devices.find((d) => /back|rear|environment/i.test(String(d.label || ''))) ||
-      devices[devices.length - 1] ||
-      devices[0];
-    return preferred?.deviceId || '';
-  };
-
-  const getFallbackVideoDevices = async () => {
-    if (!navigator?.mediaDevices?.enumerateDevices) return [];
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    return devices.filter((d) => d.kind === 'videoinput');
-  };
-
-  const formatScannerError = (e) => {
-    const name = String(e?.name || '');
-    const rawMsg = String(e?.message || e || 'Failed to start scanner.');
-
-    if (!window.isSecureContext) {
-      return 'Camera requires HTTPS or localhost.';
-    }
-    if (name === 'NotAllowedError' || name === 'SecurityError') {
-      return 'Camera access was blocked. Allow camera access in your browser and also check your device/OS camera privacy settings, then try again.';
-    }
-    if (name === 'NotFoundError') {
-      return 'No camera found on this device.';
-    }
-    if (name === 'NotReadableError' || name === 'TrackStartError') {
-      return 'Your camera is busy. Close other apps or browser tabs using the camera (Zoom, Teams, Camera, another Chrome tab), wait a few seconds, then tap Retry.';
-    }
-    if (name === 'NotSupportedError') {
-      return 'This browser does not support camera access.';
-    }
-    if (rawMsg.toLowerCase().includes('video source')) {
-      return 'Could not start the camera. Close other apps using it, wait a few seconds, then tap Retry.';
-    }
-    if (rawMsg.toLowerCase().includes('no camera devices')) {
-      return 'No camera found on this device.';
-    }
-    return rawMsg;
-  };
-
-  const ensureReaderAndDevices = async () => {
-    const mod = await import('@zxing/browser');
-    const { BrowserQRCodeReader } = mod;
-
-    if (!readerRef.current) {
-      readerRef.current = new BrowserQRCodeReader();
-    }
-
-    let devices = await BrowserQRCodeReader.listVideoInputDevices();
-    if (!devices?.length) {
-      devices = await getFallbackVideoDevices();
-    }
-
-    const preferredId = choosePreferredCamera(devices);
-    setCameras(devices || []);
-    setSelectedDeviceId((prev) => prev || preferredId || '');
-    return preferredId;
-  };
-
-  const scheduleVideoHealthCheck = () => {
-    if (healthTimerRef.current) clearTimeout(healthTimerRef.current);
-
-    healthTimerRef.current = setTimeout(() => {
-      const video = videoRef.current;
-      if (!video || !video.srcObject) return;
-
-      if (!video.videoWidth || !video.videoHeight) {
-        setCameraWarning(
-          'Camera permission is allowed, but no video frames are coming through. Try Restart Camera, close other apps using the camera, or choose another camera.',
-        );
-        return;
-      }
-
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = 24;
-        canvas.height = 18;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (!ctx) return;
-
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-        let totalBrightness = 0;
-        for (let i = 0; i < pixels.length; i += 4) {
-          totalBrightness += (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
-        }
-
-        const averageBrightness = totalBrightness / (pixels.length / 4);
-        setCameraWarning(
-          averageBrightness < 8
-            ? 'Camera is connected, but the preview is almost black. Check the lens cover/privacy shutter, room lighting, Windows camera privacy settings, or select another camera.'
-            : '',
-        );
-      } catch {
-        setCameraWarning('');
-      }
-    }, 1600);
-  };
-
-  const startWithDevice = async (deviceId) => {
-    const reader = readerRef.current;
-    const video = videoRef.current;
-    if (!reader || !video) throw new Error('Scanner not ready.');
-
-    stop(false);
-
-    controlsRef.current = await reader.decodeFromVideoDevice(deviceId || undefined, video, (scanResult) => {
-      if (scanResult) {
-        stop();
-        onDetected?.(scanResult.getText());
-      }
-    });
-
-    setHasStream(true);
-    setCameraWarning('');
-    scheduleVideoHealthCheck();
-  };
 
   useEffect(() => {
     let active = true;
 
-    const init = async () => {
+    const stop = (resetReader = true) => {
+      try {
+        controlsRef.current?.stop?.();
+      } catch {
+        // ignore
+      }
+      controlsRef.current = null;
+      try {
+        if (resetReader) readerRef.current?.reset?.();
+      } catch {
+        // ignore
+      }
+      try {
+        const video = videoRef.current;
+        const stream = video?.srcObject;
+        if (stream && typeof stream.getTracks === 'function') {
+          stream.getTracks().forEach((t) => {
+            try {
+              t.stop();
+            } catch {
+              // ignore
+            }
+          });
+        }
+        if (video) video.srcObject = null;
+      } catch {
+        // ignore
+      }
+    };
+
+    const choosePreferredCamera = (devices) => {
+      if (!devices?.length) return '';
+      const preferred =
+        devices.find((d) => /back|rear|environment/i.test(String(d.label || ''))) ||
+        devices[devices.length - 1] ||
+        devices[0];
+      return preferred?.deviceId || '';
+    };
+
+    const startWithDevice = async (deviceId) => {
+      const reader = readerRef.current;
+      if (!reader || !videoRef.current) return;
+
+      stop(false);
+
+      controlsRef.current = await reader.decodeFromVideoDevice(deviceId || undefined, videoRef.current, (scanResult) => {
+        if (!active) return;
+        if (scanResult) {
+          stop();
+          onDetected?.(scanResult.getText());
+        }
+      });
+    };
+
+    const getFallbackVideoDevices = async () => {
+      if (!navigator?.mediaDevices?.enumerateDevices) return [];
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      return devices.filter((d) => d.kind === 'videoinput');
+    };
+
+    const formatScannerError = (e) => {
+      const name = String(e?.name || '');
+      const rawMsg = String(e?.message || e || 'Failed to start scanner.');
+
+      if (name === 'NotAllowedError') {
+        return 'Camera permission denied. Allow camera access in your browser settings, then try again.';
+      }
+      if (name === 'NotFoundError') {
+        return 'No camera found on this device.';
+      }
+      if (name === 'NotReadableError' || name === 'TrackStartError') {
+        return 'Your camera is busy. Close other apps or browser tabs using the camera (Zoom, Teams, Camera, another Chrome tab), wait a few seconds, then tap Retry.';
+      }
+      if (!window.isSecureContext) {
+        return 'Camera requires HTTPS or localhost.';
+      }
+      if (rawMsg.toLowerCase().includes('video source')) {
+        return 'Could not start the camera. Close other apps using it, wait a few seconds, then tap Retry.';
+      }
+      if (rawMsg.toLowerCase().includes('no camera devices')) {
+        return 'No camera found on this device.';
+      }
+      return rawMsg;
+    };
+
+    const start = async () => {
       setScannerError('');
       try {
         if (!navigator?.mediaDevices?.getUserMedia) {
           throw new Error('This browser does not support camera access.');
         }
 
-        const preferredId = await ensureReaderAndDevices();
-        if (active) setSelectedDeviceId((prev) => prev || preferredId || '');
+        const mod = await import('@zxing/browser');
+        const { BrowserQRCodeReader } = mod;
+
+        readerRef.current = new BrowserQRCodeReader();
+
+        let devices = await BrowserQRCodeReader.listVideoInputDevices();
+        if (!devices?.length) {
+          devices = await getFallbackVideoDevices();
+        }
+        const preferredId = choosePreferredCamera(devices);
+
+        setCameras(devices || []);
+        setSelectedDeviceId(preferredId || '');
+        await startWithDevice(preferredId);
+        if (active) setStarting(false);
       } catch (e) {
         if (!active) return;
+        setStarting(false);
         stop();
         setScannerError(formatScannerError(e));
-      } finally {
-        if (active) setReady(true);
       }
     };
 
-    init();
+    start();
 
     return () => {
       active = false;
-      stop(true, false);
-    };
-  }, []);
-
-  const handleStart = async () => {
-    setScannerError('');
-    setCameraWarning('');
-    setStarting(true);
-    try {
-      const preferredId = await ensureReaderAndDevices();
-      const deviceId = selectedDeviceId || preferredId || '';
-      await startWithDevice(deviceId);
-    } catch (e) {
       stop();
-      setScannerError(formatScannerError(e));
-    } finally {
-      setStarting(false);
-    }
-  };
+    };
+  }, [onDetected, retryKey]);
 
   const switchCamera = async (deviceId) => {
     const nextId = String(deviceId || '');
-    if (!nextId || nextId === selectedDeviceId) return;
+    if (!nextId || nextId === selectedDeviceId || !readerRef.current || !videoRef.current) return;
 
-    setScannerError('');
-    setCameraWarning('');
     setStarting(true);
     setSelectedDeviceId(nextId);
     try {
-      await ensureReaderAndDevices();
-      await startWithDevice(nextId);
+      try {
+        controlsRef.current?.stop?.();
+      } catch {
+        // ignore
+      }
+      controlsRef.current = await readerRef.current.decodeFromVideoDevice(nextId, videoRef.current, (scanResult) => {
+        if (scanResult) {
+          try {
+            controlsRef.current?.stop?.();
+          } catch {
+            // ignore
+          }
+          try {
+            readerRef.current?.reset?.();
+          } catch {
+            // ignore
+          }
+          onDetected?.(scanResult.getText());
+        }
+      });
     } catch (e) {
-      stop();
-      setScannerError(formatScannerError(e));
+      setScannerError(String(e?.message || e || 'Failed to switch camera.'));
     } finally {
       setStarting(false);
     }
@@ -1496,35 +1424,6 @@ function QrScanner({ onDetected, onClose }) {
     await switchCamera(cameras[nextIndex]?.deviceId);
   };
 
-  const handleDecodeFile = async (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    setScannerError('');
-    setCameraWarning('');
-    setDecodingFile(true);
-    try {
-      const preferredId = await ensureReaderAndDevices();
-      setSelectedDeviceId((prev) => prev || preferredId || '');
-
-      const objectUrl = URL.createObjectURL(file);
-      try {
-        const result = await readerRef.current.decodeFromImageUrl(objectUrl);
-        const text = result?.getText?.();
-        if (!text) throw new Error('No QR code found in that image.');
-        stop();
-        onDetected?.(text);
-      } finally {
-        URL.revokeObjectURL(objectUrl);
-      }
-    } catch (e) {
-      setScannerError(formatScannerError(e));
-    } finally {
-      setDecodingFile(false);
-    }
-  };
-
   if (scannerError) {
     return (
       <div className={styles.scannerWrap}>
@@ -1534,7 +1433,8 @@ function QrScanner({ onDetected, onClose }) {
             type="button"
             onClick={() => {
               setScannerError('');
-              handleStart();
+              setStarting(true);
+              setRetryKey((value) => value + 1);
             }}
           >
             Retry
@@ -1554,7 +1454,7 @@ function QrScanner({ onDetected, onClose }) {
           className={styles.cameraSelect}
           value={selectedDeviceId}
           onChange={(e) => switchCamera(e.target.value)}
-          disabled={starting || cameras.length === 0 || !ready}
+          disabled={starting || cameras.length === 0}
         >
           {cameras.length === 0 ? (
             <option value="">No camera detected</option>
@@ -1574,38 +1474,16 @@ function QrScanner({ onDetected, onClose }) {
           type="button"
           variant="secondary"
           onClick={handleFlip}
-          disabled={starting || cameras.length < 2 || !ready}
+          disabled={starting || cameras.length < 2}
         >
           Flip Camera
         </Button>
-        <Button type="button" onClick={handleStart} disabled={starting || !ready}>
-          {starting ? 'Starting…' : hasStream ? 'Restart Camera' : 'Start Camera'}
-        </Button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleDecodeFile}
-          style={{ display: 'none' }}
-        />
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={!ready || decodingFile}
-        >
-          {decodingFile ? 'Reading...' : 'Upload QR Image'}
-        </Button>
       </div>
-      <video ref={videoRef} className={styles.video} muted playsInline autoPlay />
+      <video ref={videoRef} className={styles.video} />
       <div className={styles.scanHint}>
-        {cameraWarning ? cameraWarning : !ready
-          ? 'Preparing scanner…'
-          : starting
-            ? 'Starting camera…'
-            : hasStream
-              ? 'Point the camera at the QR code. Verification will start automatically.'
-              : 'Tap “Start Camera” to request permission and begin scanning.'}
+        {starting
+          ? 'Starting camera…'
+          : 'Point the camera at the QR code. Verification will start automatically.'}
       </div>
     </div>
   );
