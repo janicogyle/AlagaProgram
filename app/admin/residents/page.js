@@ -1306,11 +1306,12 @@ export default function ResidentsPage() {
           subtitle="Search existing beneficiaries before creating walk-in assistance requests"
         />
 
-        <FilterBar>
+        <FilterBar className={styles.beneficiaryFilterBar}>
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
             placeholder="Search by name, contact number, or control number..."
+            className={styles.beneficiarySearch}
           />
           <div className={styles.filterControls}>
             <div className={styles.filterGroup}>

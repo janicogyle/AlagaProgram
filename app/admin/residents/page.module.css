@@ -1,16 +1,28 @@
 .residentsPage {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   min-width: 0;
 }
 
+.beneficiaryFilterBar {
+  align-items: flex-end;
+  gap: 18px;
+  padding: 18px 30px 20px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-bg) 94%, #dbeafe 6%) 0%, var(--surface-bg) 100%);
+}
+
+.beneficiarySearch {
+  flex: 1 1 360px;
+  max-width: 500px;
+}
+
 .filterControls {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  flex-wrap: wrap;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) repeat(3, minmax(160px, 1fr));
+  align-items: end;
+  gap: 14px;
   min-width: 0;
   width: 100%;
 }
@@ -20,24 +32,24 @@
   flex-direction: column;
   gap: 6px;
   min-width: 0;
-  flex: 1 1 auto;
-  min-width: 140px;
 }
 
 .filterLabel {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
   margin-left: 4px;
+  letter-spacing: 0.01em;
 }
 
 .select {
-  border-radius: 8px;
+  min-height: 48px;
+  border-radius: 10px;
   border: 1px solid var(--border-strong);
-  padding: 10px 14px;
+  padding: 11px 14px;
   font-size: 14px;
   color: var(--foreground);
-  background-color: var(--surface-muted);
+  background-color: var(--surface-bg);
   cursor: pointer;
   transition: all 0.2s ease;
   appearance: none;
@@ -49,8 +61,8 @@
 }
 
 .select:hover {
-  background-color: var(--surface-bg);
-  border-color: var(--text-light);
+  border-color: #93c5fd;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
 }
 
 .select:focus {
@@ -58,6 +70,20 @@
   border-color: #3b82f6;
   background-color: var(--surface-bg);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+:global(html[data-theme='dark']) .filterLabel {
+  color: #cbd5e1;
+}
+
+:global(html[data-theme='dark']) .beneficiaryFilterBar {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-bg) 92%, #1e40af 8%) 0%, var(--surface-bg) 100%);
+}
+
+:global(html[data-theme='dark']) .select:hover {
+  border-color: #60a5fa;
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.24);
 }
 
 .badges {
@@ -70,34 +96,43 @@
 .cardActions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   flex-wrap: nowrap;
   justify-content: flex-end;
 }
 
 .cardActions {
-  gap: 4px;
+  gap: 8px;
   justify-content: flex-start;
   flex-direction: row;
 }
 
 .actionButton {
-  min-height: 34px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  gap: 4px;
+  min-height: 38px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  gap: 6px;
   white-space: nowrap;
   flex-shrink: 0;
+  font-weight: 700;
 }
 
 .iconActionButton {
-  min-width: 34px;
-  width: 34px;
+  min-width: 38px;
+  width: 38px;
   padding: 0;
+  background: var(--surface-bg);
 }
 
 .requestActionButton {
-  padding-inline: 10px;
+  min-width: 78px;
+  padding-inline: 14px;
+  box-shadow: 0 8px 18px rgba(30, 64, 175, 0.16);
+}
+
+.requestActionButton:disabled {
+  box-shadow: none;
+  opacity: 0.72;
 }
 
 .srOnly {
@@ -289,6 +324,25 @@
   width: 100%;
 }
 
+.tableView th {
+  padding-top: 14px;
+  padding-bottom: 14px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+}
+
+.tableView td {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+:global(html[data-theme='dark']) .tableView th {
+  background: #1e293b;
+  color: #dbeafe;
+}
+
 .tableView th:nth-child(1),
 .tableView td:nth-child(1) {
   width: 13%;
@@ -339,20 +393,28 @@
   align-items: center;
   width: max-content;
   max-width: 100%;
-  border-radius: 4px;
-  background-color: var(--surface-hover);
-  padding: 4px 8px;
-  color: var(--text-muted);
+  border-radius: 7px;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 5px 9px;
+  color: #475569;
   font-family: 'Courier New', monospace;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 700;
   line-height: 1.35;
   white-space: nowrap;
 }
 
+:global(html[data-theme='dark']) .controlNumberPill {
+  background-color: rgba(148, 163, 184, 0.12);
+  border-color: rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+}
+
 .tableBeneficiaryName {
   color: var(--foreground);
-  font-weight: 600;
+  font-weight: 750;
+  line-height: 1.35;
 }
 
 .tableBeneficiaryContact {
@@ -366,7 +428,7 @@
 
 .tableMutedText {
   color: var(--text-muted);
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 .tableAddress {
@@ -384,6 +446,18 @@
   padding: 16px;
   min-width: 0;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.residentCard:hover {
+  border-color: #bfdbfe;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.1);
+  transform: translateY(-1px);
+}
+
+:global(html[data-theme='dark']) .residentCard:hover {
+  border-color: #475569;
+  box-shadow: 0 14px 30px rgba(2, 6, 23, 0.35);
 }
 
 .residentCard:last-child {
@@ -547,9 +621,15 @@
 
   .filterControls {
     width: 100%;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
+  }
+
+  .beneficiarySearch {
+    flex: 0 0 auto;
+    max-width: none;
+    width: 100%;
   }
 
   .filterGroup {
@@ -646,8 +726,22 @@
     gap: 16px;
   }
 
+  .beneficiaryFilterBar {
+    align-items: stretch;
+    gap: 12px;
+  }
+
   .filterControls {
+    grid-template-columns: 1fr;
     gap: 10px;
+  }
+
+  .beneficiaryFilterBar {
+    padding: 14px 12px;
+  }
+
+  .beneficiarySearch {
+    flex-basis: auto;
   }
 
   .filterGroup {
