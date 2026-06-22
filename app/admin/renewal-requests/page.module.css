@@ -94,6 +94,14 @@
   text-decoration: underline;
 }
 
+.documentLink:hover {
+  color: var(--primary-dark);
+}
+
+:global(html[data-theme='dark']) .documentLink:hover {
+  color: #bfdbfe;
+}
+
 .modalStack {
   display: flex;
   flex-direction: column;

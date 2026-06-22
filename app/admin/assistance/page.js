@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Card,
@@ -50,6 +50,14 @@ const serviceTypes = [
 
 const ASSISTANCE_RECORDS_CACHE_KEY = 'admin-assistance-records:list';
 const ASSISTANCE_RECORDS_CACHE_MAX_AGE = 0;
+
+const formatCurrency = (value) =>
+  new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value) || 0);
 
 const generateControlNumber = () => {
   const year = new Date().getFullYear();
@@ -238,16 +246,63 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
   };
 
   // Filter assistance records
-  const filteredAssistance = records.filter((record) => {
-    const matchesSearch = 
-      record.requester.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.beneficiary.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.controlNo.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredAssistance = useMemo(() => records.filter((record) => {
+    const normalizedSearch = searchTerm.toLowerCase();
+    const matchesSearch =
+      record.requester.toLowerCase().includes(normalizedSearch) ||
+      record.beneficiary.toLowerCase().includes(normalizedSearch) ||
+      record.controlNo.toLowerCase().includes(normalizedSearch);
     const matchesType = !typeFilter || record.type === typeFilter;
     const matchesSector = !sectorFilter || (record.sectors || []).includes(sectorFilter);
     const matchesStatus = !statusFilter || record.status === statusFilter;
     return matchesSearch && matchesType && matchesSector && matchesStatus;
-  });
+  }), [records, searchTerm, typeFilter, sectorFilter, statusFilter]);
+
+  const summaryStats = useMemo(() => {
+    const uniqueEligibleBeneficiaries = new Set();
+    const uniquePendingBeneficiaries = new Set();
+
+    filteredAssistance.forEach((record) => {
+      const key = (record.beneficiary || record.id || '').toString().trim().toLowerCase();
+      if (!key || !record.cooldownInfo) return;
+      if (record.cooldownInfo.isEligible) {
+        uniqueEligibleBeneficiaries.add(key);
+      } else {
+        uniquePendingBeneficiaries.add(key);
+      }
+    });
+
+    const releasedTotal = filteredAssistance
+      .filter((record) => record.status === 'Released')
+      .reduce((total, record) => total + (Number(record.amount) || 0), 0);
+
+    return [
+      {
+        label: 'Records',
+        value: filteredAssistance.length.toLocaleString(),
+        title: 'Total Assistance Records',
+        tone: 'blue',
+      },
+      {
+        label: 'Eligible',
+        value: uniqueEligibleBeneficiaries.size.toLocaleString(),
+        title: 'Eligible Beneficiaries',
+        tone: 'green',
+      },
+      {
+        label: 'Pending',
+        value: uniquePendingBeneficiaries.size.toLocaleString(),
+        title: 'Pending Eligibility',
+        tone: 'amber',
+      },
+      {
+        label: 'Released',
+        value: formatCurrency(releasedTotal),
+        title: 'Total Amount Released',
+        tone: 'violet',
+      },
+    ];
+  }, [filteredAssistance]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -391,7 +446,11 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
       label: 'Eligibility',
       render: (_, row) => getEligibilityBadge(row.cooldownInfo),
     },
-    { key: 'amount', label: 'Amount' },
+    {
+      key: 'amount',
+      label: 'Amount',
+      render: (amount) => <span className={styles.amountValue}>{formatCurrency(amount)}</span>,
+    },
     {
       key: 'status',
       label: 'Status',
@@ -446,6 +505,16 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
             {status.message}
           </div>
         )}
+
+        <div className={styles.summaryCards} aria-label="Assistance records summary">
+          {summaryStats.map((item) => (
+            <div key={item.title} className={`${styles.summaryCard} ${styles[item.tone]}`}>
+              <span className={styles.summaryTitle}>{item.title}</span>
+              <strong className={styles.summaryValue}>{item.value}</strong>
+              <span className={styles.summaryLabel}>{item.label}</span>
+            </div>
+          ))}
+        </div>
 
         <FilterBar className={styles.filters}>
           <SearchInput
@@ -513,7 +582,7 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
                   </div>
                   <div className={styles.cardRow}>
                     <span className={styles.cardLabel}>Amount</span>
-                    <span className={styles.cardValue}>{record.amount}</span>
+                    <span className={styles.cardValue}>{formatCurrency(record.amount)}</span>
                   </div>
                   <div className={styles.cardRow}>
                     <span className={styles.cardLabel}>Date</span>

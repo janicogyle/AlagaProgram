@@ -29,6 +29,111 @@
   text-decoration: none;
 }
 
+.summaryCards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  padding: 20px 30px 8px;
+}
+
+.summaryCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.summaryTitle {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.summaryValue {
+  color: #0f172a;
+  font-size: clamp(19px, 1.8vw, 26px);
+  font-weight: 700;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.summaryLabel {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.summaryCard.blue {
+  border-color: #bfdbfe;
+  background: #f8fbff;
+}
+
+.summaryCard.green {
+  border-color: #bbf7d0;
+  background: #f7fef9;
+}
+
+.summaryCard.amber {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.summaryCard.violet {
+  border-color: #ddd6fe;
+  background: #faf8ff;
+}
+
+:global(html[data-theme='dark']) .summaryCard {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: #172133;
+  box-shadow: 0 12px 28px rgba(3, 7, 18, 0.2);
+}
+
+:global(html[data-theme='dark']) .summaryTitle,
+:global(html[data-theme='dark']) .summaryLabel {
+  color: #cbd5e1;
+}
+
+:global(html[data-theme='dark']) .summaryValue {
+  color: #f8fafc;
+}
+
+:global(html[data-theme='dark']) .summaryCard.blue {
+  border-color: rgba(96, 165, 250, 0.5);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(15, 23, 42, 0.78));
+}
+
+:global(html[data-theme='dark']) .summaryCard.green {
+  border-color: rgba(74, 222, 128, 0.5);
+  background: linear-gradient(135deg, rgba(22, 163, 74, 0.18), rgba(15, 23, 42, 0.78));
+}
+
+:global(html[data-theme='dark']) .summaryCard.amber {
+  border-color: rgba(251, 191, 36, 0.55);
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.2), rgba(15, 23, 42, 0.78));
+}
+
+:global(html[data-theme='dark']) .summaryCard.violet {
+  border-color: rgba(167, 139, 250, 0.52);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.18), rgba(15, 23, 42, 0.78));
+}
+
+.amountValue {
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  color: #0f172a;
+}
+
+:global(html[data-theme='dark']) .amountValue {
+  color: #f8fafc;
+}
+
 /* Assistance Form Styles */
 .assistanceForm {
   display: flex;
@@ -283,6 +388,19 @@
   border-radius: 12px;
   padding: 16px;
   min-width: 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.recordCard:hover {
+  background: #f8fbff;
+  border-color: #bfdbfe;
+  box-shadow: inset 3px 0 0 #93c5fd;
+}
+
+:global(html[data-theme='dark']) .recordCard:hover {
+  background: #172238;
+  border-color: #475569;
+  box-shadow: inset 3px 0 0 #60a5fa;
 }
 
 .recordCard:last-child {
@@ -412,6 +530,11 @@
 }
 
 @media (max-width: 1200px) {
+  .summaryCards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 18px 24px 8px;
+  }
+
   .tableView {
     display: none;
   }
@@ -425,6 +548,10 @@
 }
 
 @media (max-width: 768px) {
+  .summaryCards {
+    padding: 16px 16px 6px;
+  }
+
   .filters {
     flex-direction: column;
     align-items: stretch;
@@ -564,6 +691,16 @@
 @media (max-width: 576px) {
   .assistancePage {
     gap: 16px;
+  }
+
+  .summaryCards {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 14px 12px 4px;
+  }
+
+  .summaryCard {
+    padding: 14px;
   }
 
   .assistanceForm {

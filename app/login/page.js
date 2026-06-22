@@ -5,6 +5,7 @@ import Link from 'next/link';
 import styles from './login.module.css';
 import { useRouter } from 'next/navigation';
 import { UnifiedLoginForm, Modal, Button } from '@/components';
+import ConstellationBackground from '@/components/ConstellationBackground';
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -78,6 +79,7 @@ export default function LoginPage() {
 
   return (
     <div className={styles.container}>
+      <ConstellationBackground />
       <button
         type="button"
         className={styles.backButton}

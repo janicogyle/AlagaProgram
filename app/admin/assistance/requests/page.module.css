@@ -82,10 +82,10 @@
 .archiveBtn,
 .deleteBtn,
 .releaseBtn {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -96,16 +96,19 @@
 .viewBtn {
   background: var(--surface-hover);
   color: var(--text-muted);
+  border-color: var(--border-color);
 }
 
 .viewBtn:hover {
-  background: var(--border-color);
-  color: var(--text-muted);
+  background: var(--surface-muted);
+  color: var(--foreground);
+  transform: translateY(-1px);
 }
 
 .approveBtn {
   background: #dcfce7;
   color: #16a34a;
+  border-color: #bbf7d0;
 }
 
 .approveBtn:hover {
@@ -115,6 +118,7 @@
 .rejectBtn {
   background: #fee2e2;
   color: #dc2626;
+  border-color: #fecaca;
 }
 
 .rejectBtn:hover {
@@ -124,6 +128,7 @@
 .archiveBtn {
   background: #fef3c7;
   color: #d97706;
+  border-color: #fde68a;
 }
 
 .archiveBtn:hover {
@@ -133,6 +138,7 @@
 .deleteBtn {
   background: #fee2e2;
   color: #dc2626;
+  border-color: #fecaca;
 }
 
 .deleteBtn:hover {
@@ -142,6 +148,7 @@
 .releaseBtn {
   background: #e0f2fe;
   color: #0284c7;
+  border-color: #bae6fd;
 }
 
 .releaseBtn:hover {
@@ -159,7 +166,7 @@
 .requestDetails {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
 .detailsHeader {
@@ -173,7 +180,7 @@
 .controlNumber {
   font-size: 18px;
   font-weight: 700;
-  color: #1e40af;
+  color: #1d4ed8;
 }
 
 .detailsGrid {
@@ -184,27 +191,26 @@
 }
 
 .detailSection {
-  background: var(--surface-muted);
+  background: #f8fafc;
   padding: 20px;
-  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
   min-width: 0;
 }
 
 .selfRequestSection {
   grid-column: 1 / -1;
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 10%, transparent), transparent 55%),
-    var(--surface-muted);
-  border: 1px solid color-mix(in srgb, var(--primary-color) 16%, var(--border-color));
+  background: #f5f8ff;
+  border: 1px solid #bfdbfe;
 }
 
 .profileDetailSection {
-  border: 1px solid color-mix(in srgb, var(--border-color) 82%, transparent);
+  border: 1px solid #e2e8f0;
 }
 
 .detailSection h4 {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 750;
   color: var(--text-muted);
   margin: 0 0 16px 0;
   padding-bottom: 8px;
@@ -230,8 +236,8 @@
   flex: 0 0 auto;
   padding: 5px 10px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--primary-color) 12%, #ffffff);
-  color: #1e40af;
+  background: #dbeafe;
+  color: #1d4ed8;
   font-size: 12px;
   font-weight: 700;
 }
@@ -303,33 +309,34 @@
 .assistanceInfo {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  gap: 18px;
   min-width: 0;
 }
 
 .infoCard {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 16px;
-  background: color-mix(in srgb, var(--primary-color) 10%, var(--surface-bg));
-  border-radius: 10px;
+  gap: 8px;
+  padding: 18px 16px;
+  background: #f5f8ff;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
   text-align: center;
   min-width: 0;
 }
 
 .infoLabel {
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 750;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
 }
 
 .infoValue {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--primary-color);
+  font-size: 15px;
+  font-weight: 750;
+  color: #1d4ed8;
   overflow-wrap: anywhere;
 }
 
@@ -347,11 +354,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 34%, var(--border-color));
-  background: color-mix(in srgb, var(--primary-color) 10%, var(--surface-bg));
-  color: var(--primary-color);
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
   text-decoration: none;
   font-size: 12px;
   font-weight: 600;
@@ -359,37 +367,38 @@
 }
 
 .validIdLink:hover {
-  background: color-mix(in srgb, var(--primary-color) 16%, var(--surface-bg));
+  background: #dbeafe;
 }
 
 .verificationPanel {
-  margin-top: 12px;
-  padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 34%, var(--border-color));
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--primary-color) 8%, var(--surface-bg));
+  margin-top: 16px;
+  padding: 18px 16px;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #f5f8ff;
 }
 
 .verificationHeading {
-  margin: 0 0 10px 0;
+  margin: 0 0 14px 0;
   font-size: 12px;
   font-weight: 700;
-  color: var(--primary-color);
+  color: #1d4ed8;
   text-transform: uppercase;
 }
 
 .verificationChecklist {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .verificationRow {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 10px;
   color: var(--foreground);
   line-height: 1.45;
+  font-weight: 600;
 }
 
 .verificationRow input {
@@ -402,15 +411,15 @@
 }
 
 .verificationStatus {
-  margin-top: 10px;
-  font-size: 12px;
+  margin-top: 14px;
+  font-size: 13px;
   font-weight: 700;
-  color: var(--primary-color);
+  color: #1d4ed8;
 }
 
 .verificationHint {
-  margin: 6px 0 0;
-  font-size: 12px;
+  margin: 8px 0 0;
+  font-size: 13px;
   color: var(--text-muted);
 }
 
@@ -420,13 +429,13 @@
 }
 
 .uploadedDocsSection {
-  margin-top: 12px;
+  margin-top: 16px;
 }
 
 .uploadedDocsHeading {
-  margin: 0 0 8px 0;
-  font-size: 12px;
-  color: var(--text-muted);
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  color: var(--foreground);
 }
 
 .uploadedDocsList {
@@ -439,11 +448,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--surface-bg);
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
 }
 
 .uploadedDocMeta {
@@ -454,14 +463,14 @@
 }
 
 .uploadedDocName {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 750;
   color: var(--foreground);
   overflow-wrap: anywhere;
 }
 
 .uploadedDocType {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 

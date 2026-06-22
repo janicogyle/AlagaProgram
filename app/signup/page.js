@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
@@ -69,6 +68,33 @@ const STEPS = [
   { number: 6, label: 'Review' },
 ];
 const TOTAL_STEPS = STEPS.length;
+
+const signupHighlights = [
+  'Barangay Sta. Rita residents',
+  'Valid ID required',
+  'SMS verification',
+];
+
+const sectorOptions = [
+  {
+    key: 'isPwd',
+    title: 'PWD',
+    description: 'For residents with a valid PWD ID or supporting document.',
+    mark: 'P',
+  },
+  {
+    key: 'isSeniorCitizen',
+    title: 'Senior Citizen',
+    description: 'For residents aged 60 and above with a valid senior citizen ID.',
+    mark: 'S',
+  },
+  {
+    key: 'isSoloParent',
+    title: 'Solo Parent',
+    description: 'For registered solo parents with accepted proof of eligibility.',
+    mark: 'SP',
+  },
+];
 
 const CheckIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -798,39 +824,24 @@ export default function BeneficiarySignupPage() {
       <div className={styles.sectorRow}>
         <span className={styles.sectorLabel}>Select only one:</span>
         <div className={styles.sectorChips}>
-          <label
-            className={`${styles.sectorChip} ${form.isPwd ? styles.sectorChipActive : ''}`}
-          >
-            <input
-              type="checkbox"
-              name="isPwd"
-              checked={form.isPwd}
-              onChange={() => handleSectorChange('isPwd')}
-            />
-            <span>PWD</span>
-          </label>
-          <label
-            className={`${styles.sectorChip} ${form.isSeniorCitizen ? styles.sectorChipActive : ''}`}
-          >
-            <input
-              type="checkbox"
-              name="isSeniorCitizen"
-              checked={form.isSeniorCitizen}
-              onChange={() => handleSectorChange('isSeniorCitizen')}
-            />
-            <span>Senior Citizen</span>
-          </label>
-          <label
-            className={`${styles.sectorChip} ${form.isSoloParent ? styles.sectorChipActive : ''}`}
-          >
-            <input
-              type="checkbox"
-              name="isSoloParent"
-              checked={form.isSoloParent}
-              onChange={() => handleSectorChange('isSoloParent')}
-            />
-            <span>Solo Parent</span>
-          </label>
+          {sectorOptions.map((sector) => (
+            <label
+              key={sector.key}
+              className={`${styles.sectorChip} ${form[sector.key] ? styles.sectorChipActive : ''}`}
+            >
+              <input
+                type="checkbox"
+                name={sector.key}
+                checked={form[sector.key]}
+                onChange={() => handleSectorChange(sector.key)}
+              />
+              <span className={styles.sectorMark}>{sector.mark}</span>
+              <span className={styles.sectorText}>
+                <span className={styles.sectorTitle}>{sector.title}</span>
+                <span className={styles.sectorDescription}>{sector.description}</span>
+              </span>
+            </label>
+          ))}
         </div>
       </div>
     </section>
@@ -1338,13 +1349,34 @@ export default function BeneficiarySignupPage() {
         </div>
       )}
 
-      <PageHeader
-        title="ALAGA Program – Beneficiary Sign Up"
-        subtitle="Submit your information to request assistance under the Barangay Sta. Rita ALAGA Program."
-        className={styles.signupPageHeader}
-      />
+      <section className={styles.heroPanel}>
+        <div className={styles.heroContent}>
+          <div className={styles.heroEyebrow}>Barangay Sta. Rita</div>
+          <h1 className={styles.heroTitle}>ALAGA Program Beneficiary Sign Up</h1>
+          <p className={styles.heroSubtitle}>
+            Request registration for PWD, senior citizen, or solo parent assistance. Your
+            application will be reviewed by the barangay social services team.
+          </p>
+          <div className={styles.heroMeta} aria-label="Signup requirements">
+            {signupHighlights.map((item) => (
+              <span key={item} className={styles.heroPill}>{item}</span>
+            ))}
+          </div>
+        </div>
+        <div className={styles.heroAside} aria-label="Application progress">
+          <span className={styles.heroAsideLabel}>Current step</span>
+          <strong>{currentStep} of {TOTAL_STEPS}</strong>
+        </div>
+      </section>
 
       <Card className={styles.formCard}>
+        <div className={styles.cardTopper}>
+          <div>
+            <p className={styles.cardKicker}>Online application</p>
+            <h2 className={styles.cardTitle}>{STEPS[currentStep - 1]?.label || 'Sign Up'} details</h2>
+          </div>
+          <span className={styles.saveNote}>Takes about 5-10 minutes</span>
+        </div>
         <p className={styles.intro}>
           This sign up form is exclusively for the <strong>ALAGA Program</strong> of
           Barangay Sta. Rita. Provide accurate information so our social services team can review

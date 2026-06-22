@@ -7,30 +7,22 @@
   position: relative;
   min-width: 0;
   overflow: hidden;
-  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 50%, #172554 100%);
+  background: #ffffff;
   isolation: isolate;
 }
 
 .container::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url('/dashimage.jpg');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  opacity: 0.32;
-  filter: blur(2px);
-  transform: scale(1.02);
-  z-index: 0;
-  pointer-events: none;
+  content: none;
 }
 
 .container::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.66), rgba(30, 64, 175, 0.5));
+  background:
+    radial-gradient(ellipse at 18% 12%, rgba(37, 99, 235, 0.08) 0%, transparent 46%),
+    radial-gradient(ellipse at 82% 88%, rgba(29, 78, 216, 0.08) 0%, transparent 48%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.08) 0%, rgba(248, 250, 252, 0.72) 100%);
   z-index: 1;
   pointer-events: none;
 }
@@ -43,9 +35,9 @@
   z-index: 2;
   border-radius: 28px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.38);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(203, 213, 225, 0.65);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
@@ -301,7 +293,7 @@
     display: flex;
     align-items: center;
     gap: 0.45rem;
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.92);
     border-radius: 999px;
     border: 1px solid rgba(37, 99, 235, 0.35);
     padding: 0.4rem 0.9rem 0.4rem 0.45rem;
@@ -309,10 +301,10 @@
     font-size: 0.95rem;
     font-weight: 500;
     cursor: pointer;
-    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.16);
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
     transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease, border-color 0.12s ease;
     backdrop-filter: blur(6px);
-    z-index: 2;
+    z-index: 3;
   }
   .backButton:hover {
     transform: translateY(-1px);
@@ -458,10 +450,14 @@
   }
   
 .signup {
-  margin-top: 1.5rem;
+  margin-top: 1.15rem;
   color: #475569;
   font-size: 0.95rem;
   text-align: center;
+}
+
+.signup + .signup {
+  margin-top: 0.6rem;
 }
 
 .signup a {
@@ -475,7 +471,7 @@
 }
 
 .legalSection {
-  margin-top: 1.25rem;
+  margin-top: 1rem;
   text-align: center;
   font-size: 0.85rem;
   color: #475569;
@@ -692,12 +688,13 @@
   .adminPanel {
     width: 100%;
     max-width: 440px;
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.9);
     border-radius: 20px;
     padding: 3rem 2.5rem;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(203, 213, 225, 0.65);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     animation: fadeUp 0.3s ease-out;
     position: relative;
     z-index: 2;
@@ -989,8 +986,12 @@
     }
 
     .signup {
-      margin-top: 0.75rem;
+      margin-top: 0.65rem;
       font-size: 0.82rem;
+    }
+
+    .signup + .signup {
+      margin-top: 0.35rem;
     }
 
     .formPanel .legalSection {

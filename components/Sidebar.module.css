@@ -28,12 +28,12 @@
   width: var(--sidebar-width);
   height: calc(100vh - (var(--sidebar-inset) * 2));
   min-height: 0;
-  background:
-    radial-gradient(circle at 18% 8%, rgba(96, 165, 250, 0.36), transparent 30%),
-    linear-gradient(180deg, #0d47d8 0%, #0736b7 48%, #082a8f 100%);
-  border: 1px solid rgba(191, 219, 254, 0.22);
+  background: #0b2f7f;
+  border: 1px solid rgba(147, 197, 253, 0.24);
   border-radius: 24px;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+  box-shadow:
+    0 24px 58px rgba(15, 23, 42, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(18px);
   display: flex;
   flex-direction: column;
@@ -103,26 +103,28 @@
 
 .minimized .menuItem.active {
   border-left: 0;
-  background: var(--surface-muted);
-  color: #0d47d8;
+  background: #eaf2ff;
+  color: #123f92;
   box-shadow:
-    inset 0 0 0 2px rgba(13, 71, 216, 0.3),
+    inset 0 0 0 1px rgba(37, 99, 235, 0.22),
     0 10px 22px rgba(15, 23, 42, 0.18);
 }
 
 .minimized .menuItem.active .menuIcon {
-  color: #0d47d8;
+  color: #123f92;
 }
 
 :global(html[data-theme='dark']) .minimized .menuItem.active {
-  color: #ffffff;
+  background: rgba(219, 234, 254, 0.14);
+  border-color: rgba(191, 219, 254, 0.34);
+  color: #f8fafc;
   box-shadow:
-    inset 0 0 0 2px rgba(255, 255, 255, 0.22),
+    inset 0 0 0 2px rgba(147, 197, 253, 0.24),
     0 10px 22px rgba(15, 23, 42, 0.28);
 }
 
 :global(html[data-theme='dark']) .minimized .menuItem.active .menuIcon {
-  color: #ffffff;
+  color: #f8fafc;
 }
 
 .minimized .menuItem:hover {
@@ -133,8 +135,14 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 18px 22px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 18px 20px 20px;
+  border-bottom: 1px solid rgba(219, 234, 254, 0.16);
+}
+
+.logoCircle {
+  box-shadow:
+    0 10px 24px rgba(15, 23, 42, 0.24),
+    0 0 0 3px rgba(255, 255, 255, 0.18);
 }
 
 .logoIcon {
@@ -155,7 +163,7 @@
 
 .logoTitle {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 800;
   color: #ffffff;
   line-height: 1.25;
   overflow: hidden;
@@ -165,7 +173,7 @@
 
 .logoSubtitle {
   font-size: 11px;
-  color: rgba(219, 234, 254, 0.74);
+  color: rgba(219, 234, 254, 0.72);
   line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -175,7 +183,7 @@
 .nav {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 16px 12px;
+  padding: 18px 12px 14px;
   overflow-y: auto;
   scrollbar-width: none;
   overscroll-behavior: contain;
@@ -196,10 +204,10 @@
 
 .sectionTitle {
   display: block;
-  padding: 8px 10px;
+  padding: 8px 12px;
   font-size: 11px;
   font-weight: 700;
-  color: rgba(219, 234, 254, 0.58);
+  color: rgba(219, 234, 254, 0.78);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -208,20 +216,24 @@
   list-style: none;
   padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .menuItem {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 44px;
+  min-height: 46px;
   padding: 11px 12px;
-  color: rgba(219, 234, 254, 0.78);
+  color: rgba(241, 245, 249, 0.86);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 650;
   text-decoration: none;
+  border: 1px solid transparent;
   border-radius: 14px;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   min-width: 0;
 }
 
@@ -233,44 +245,55 @@
 }
 
 .menuItem:hover {
-  background-color: rgba(255, 255, 255, 0.12);
+  background-color: #153d91;
+  border-color: rgba(191, 219, 254, 0.16);
   color: #ffffff;
   transform: translateX(2px);
 }
 
 .menuItem.active {
-  background: var(--surface-muted);
-  color: #0d47d8;
+  background: #f1f6ff;
+  color: #123f92;
   border-left: 0;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  border-color: rgba(191, 219, 254, 0.78);
+  box-shadow:
+    0 12px 26px rgba(15, 23, 42, 0.14),
+    inset 3px 0 0 #2563eb;
 }
 
 .menuItem.active:hover {
-  color: #0d47d8;
+  color: #123f92;
   transform: none;
 }
 
 .menuItem.active .menuIcon {
-  color: #0d47d8;
+  color: #123f92;
 }
 
 :global(html[data-theme='dark']) .menuItem.active {
-  color: #ffffff;
+  background: rgba(219, 234, 254, 0.14);
+  border-color: rgba(191, 219, 254, 0.34);
+  color: #f8fafc;
+  box-shadow:
+    inset 3px 0 0 #93c5fd,
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 12px 26px rgba(3, 7, 18, 0.18);
 }
 
 :global(html[data-theme='dark']) .menuItem.active:hover {
+  background: rgba(219, 234, 254, 0.18);
   color: #ffffff;
 }
 
 :global(html[data-theme='dark']) .menuItem.active .menuIcon {
-  color: #ffffff;
+  color: #f8fafc;
 }
 
 .menuIcon {
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.9;
+  opacity: 0.92;
   flex: 0 0 22px;
 }
 
@@ -282,10 +305,12 @@
 .userSection {
   margin: 0 12px 12px;
   padding: 14px;
-  border: 1px solid rgba(191, 219, 254, 0.18);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(191, 219, 254, 0.16);
+  border-radius: 18px;
+  background: #123985;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 14px 34px rgba(3, 7, 18, 0.12);
   flex: 0 0 auto;
 }
 
@@ -300,7 +325,7 @@
 .userAvatar {
   width: 40px;
   height: 40px;
-  background-color: #3b82f6;
+  background: #2563eb;
   border-radius: 50% !important;
   display: flex;
   align-items: center;
@@ -309,6 +334,7 @@
   font-weight: 600;
   color: white;
   aspect-ratio: 1 / 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
 
 .userDetails {
@@ -340,8 +366,8 @@
   gap: 10px;
   width: 100%;
   padding: 10px 12px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(191, 219, 254, 0.14);
+  background-color: #173f92;
+  border: 1px solid rgba(191, 219, 254, 0.18);
   border-radius: 12px;
   color: rgba(255, 255, 255, 0.88);
   font-size: 14px;
@@ -351,7 +377,8 @@
 }
 
 .logoutButton:hover {
-  background-color: rgba(255, 255, 255, 0.18);
+  background-color: #1d4ed8;
+  border-color: rgba(255, 255, 255, 0.26);
   color: #ffffff;
 }
 

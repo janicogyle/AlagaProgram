@@ -1489,7 +1489,7 @@ export default function ResidentsPage() {
           handleCloseHistory();
         }}
         title="Beneficiary Details"
-        size="large"
+        size="xlarge"
         footer={
           selectedResident ? (
             <div className={styles.residentDetailsFooter}>
@@ -1681,7 +1681,12 @@ export default function ResidentsPage() {
                     <div className={styles.residentInfoRow}>
                       <span className={styles.residentInfoLabel}>Valid ID</span>
                       {signupInfo?.valid_id_url ? (
-                        <Button variant="secondary" size="small" onClick={() => openDocument(signupInfo.valid_id_url)}>
+                        <Button
+                          variant="secondary"
+                          size="small"
+                          className={styles.uploadedIdButton}
+                          onClick={() => openDocument(signupInfo.valid_id_url)}
+                        >
                           View Uploaded ID
                         </Button>
                       ) : (

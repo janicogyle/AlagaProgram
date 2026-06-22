@@ -1,10 +1,8 @@
 .overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(15, 23, 42, 0.56);
+  backdrop-filter: blur(5px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -21,13 +19,16 @@
 .modal {
   background: var(--card-bg);
   color: var(--foreground);
-  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  border-radius: 16px;
   width: 100%;
   max-height: calc(100vh - 32px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-strong);
+  box-shadow:
+    0 28px 80px rgba(15, 23, 42, 0.32),
+    0 1px 0 rgba(255, 255, 255, 0.55) inset;
   animation: slideIn 0.2s ease;
 }
 
@@ -63,15 +64,15 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
+  padding: 22px 28px;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
   gap: 12px;
 }
 
 .title {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 19px;
+  font-weight: 750;
   color: var(--foreground);
   margin: 0;
   flex: 1;
@@ -85,7 +86,7 @@
   height: 36px;
   background: none;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -105,7 +106,7 @@
 }
 
 .body {
-  padding: 24px;
+  padding: 24px 28px 28px;
   overflow-y: auto;
   flex: 1;
   color: var(--foreground);
@@ -122,7 +123,7 @@
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 12px;
-  padding: 16px 24px;
+  padding: 18px 28px 20px;
   border-top: 1px solid var(--border-color);
   flex-shrink: 0;
 }

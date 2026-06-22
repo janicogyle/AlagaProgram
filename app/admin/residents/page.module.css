@@ -790,36 +790,68 @@
 .residentDetailsContent {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  max-height: calc(100vh - 300px);
+  gap: 12px;
+  max-height: calc(100vh - 260px);
   overflow-y: auto;
-  padding-right: 4px;
+  padding-right: 6px;
+}
+
+.residentDetailsContent .assistanceResidentInfo {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--surface-bg) 0%, var(--surface-muted) 100%);
+}
+
+.residentDetailsContent .assistanceResidentHeader {
+  align-items: center;
+}
+
+.residentDetailsContent .assistanceResidentName {
+  margin-bottom: 6px;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.residentDetailsContent .assistanceResidentMeta {
+  gap: 6px 12px;
+}
+
+.residentDetailsContent .assistanceResidentDetail {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.residentDetailsContent .assistanceResidentDetailBreak {
+  flex-basis: auto;
 }
 
 .residentInfoCards {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+  align-items: stretch;
 }
 
 .residentInfoCard {
   background: var(--surface-bg);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 14px;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+  padding: 13px 14px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
   min-width: 0;
 }
 
 .residentInfoTitle {
-  margin: 0 0 10px;
-  font-size: 15px;
+  margin: 0 0 9px;
+  font-size: 14px;
   color: var(--foreground);
+  line-height: 1.25;
 }
 
 .residentInfoGrid {
   display: grid;
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 12px;
 }
 
 .residentInfoRow {
@@ -828,17 +860,22 @@
   gap: 2px;
 }
 
+.residentInfoCards > .residentInfoCard:first-child .residentInfoRow:first-child {
+  grid-column: 1 / -1;
+}
+
 .residentInfoLabel {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
 
 .residentInfoValue {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-muted);
   overflow-wrap: anywhere;
+  line-height: 1.35;
 }
 
 .residentInfoHint {
@@ -849,8 +886,16 @@
 
 .residentInfoEmpty {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-muted);
+}
+
+.uploadedIdButton {
+  width: max-content;
+  min-height: 36px;
+  padding-inline: 12px;
+  justify-self: start;
+  align-self: start;
 }
 
 .residentMutedText {

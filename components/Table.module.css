@@ -40,11 +40,18 @@
 }
 
 .tr {
-  transition: background-color 0.2s ease;
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .tr:hover {
-  background-color: var(--surface-muted);
+  background-color: #f0f7ff;
+  box-shadow: inset 3px 0 0 #93c5fd;
+}
+
+:global(html[data-theme='dark']) .tr:hover {
+  background-color: #172238;
+  box-shadow: inset 3px 0 0 #60a5fa;
 }
 
 .td {

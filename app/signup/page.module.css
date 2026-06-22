@@ -7,11 +7,13 @@
   min-height: 100vh;
   width: 100%;
   max-width: 100%;
-  background: #f3f6fb;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.10), transparent 32rem),
+    linear-gradient(180deg, #f6f8fc 0%, #eef3fa 100%);
   color: #1f2937;
   color-scheme: light;
   overflow-x: clip;
-  padding: 1.25rem clamp(1rem, 3vw, 1.5rem) 2rem;
+  padding: 1.5rem clamp(1rem, 3vw, 1.5rem) 2.25rem;
   padding-left: max(1rem, env(safe-area-inset-left, 0px));
   padding-right: max(1rem, env(safe-area-inset-right, 0px));
   padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
@@ -19,11 +21,11 @@
 
 .signupPage {
   width: 100%;
-  max-width: 780px;
+  max-width: 980px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
   min-width: 0;
 }
 
@@ -31,6 +33,101 @@
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
+}
+
+.heroPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.5rem;
+  align-items: end;
+  padding: clamp(1.4rem, 4vw, 2rem);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(239, 246, 255, 0.92)),
+    #ffffff;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+}
+
+.heroContent {
+  min-width: 0;
+}
+
+.heroEyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.heroTitle {
+  margin: 0.8rem 0 0;
+  color: #0f172a;
+  font-size: clamp(1.85rem, 4vw, 2.75rem);
+  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.heroSubtitle {
+  max-width: 46rem;
+  margin: 0.75rem 0 0;
+  color: #475569;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.heroMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1.1rem;
+}
+
+.heroPill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: rgba(255, 255, 255, 0.72);
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.heroAside {
+  min-width: 9.5rem;
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px solid #bfdbfe;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+
+.heroAsideLabel {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.heroAside strong {
+  display: block;
+  color: #1e40af;
+  font-size: 1.35rem;
+  line-height: 1.2;
 }
 
 .toast {
@@ -52,14 +149,63 @@
 .intro {
   margin: 0;
   color: #4b5563;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   line-height: 1.6;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
 }
 
 .formCard {
   display: flex;
   flex-direction: column;
+  gap: 1.05rem;
+  border-radius: 18px;
+  border-color: rgba(148, 163, 184, 0.38);
+  box-shadow: 0 20px 55px rgba(15, 23, 42, 0.10);
+}
+
+.formCard:hover {
+  transform: none;
+}
+
+.cardTopper {
+  display: flex;
+  justify-content: space-between;
   gap: 1rem;
+  align-items: flex-start;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.cardKicker {
+  margin: 0 0 0.25rem;
+  color: #2563eb;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.cardTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 1.15rem;
+  line-height: 1.3;
+}
+
+.saveNote {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 .secondaryLinks {
@@ -109,8 +255,10 @@
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  padding: 0.75rem 0 1rem;
-  border-bottom: 1px solid #f0f1f3;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
   margin-bottom: 0.25rem;
 }
 
@@ -152,15 +300,15 @@
 }
 
 .progressCircle {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.8rem;
   font-weight: 700;
-  border: 2.5px solid #d1d5db;
+  border: 2px solid #d1d5db;
   background: #fff;
   color: #9ca3af;
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
@@ -192,7 +340,7 @@
 }
 
 .progressLine {
-  height: 3px;
+  height: 4px;
   width: 100%;
   background: #e5e7eb;
   border-radius: 2px;
@@ -204,8 +352,8 @@
 }
 
 .progressLabel {
-  font-size: 0.65rem;
-  font-weight: 500;
+  font-size: 0.72rem;
+  font-weight: 600;
   color: #9ca3af;
   text-align: center;
   white-space: nowrap;
@@ -219,8 +367,8 @@
 
 .stepIndicator {
   margin: 0;
-  font-size: 0.78rem;
-  font-weight: 500;
+  font-size: 0.82rem;
+  font-weight: 700;
   color: #6b7280;
   text-align: center;
 }
@@ -263,7 +411,7 @@
 .section {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.95rem;
 }
 
 /* ============================= */
@@ -289,32 +437,32 @@
 }
 
 .sectorChips {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.65rem;
 }
 
 .sectorChip {
-  display: flex;
-  align-items: center;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: flex-start;
   gap: 0.6rem;
-  padding: 0.65rem 1.15rem;
+  padding: 0.9rem;
   border-radius: 12px;
-  border: 2px solid #e5e7eb;
+  border: 1px solid #dbe2ea;
   background: #fff;
-  font-size: 0.9rem;
-  font-weight: 500;
   color: #374151;
   cursor: pointer;
-  min-height: 52px;
+  min-height: 112px;
   transition: all 0.2s ease;
-  flex: 1;
-  min-width: 130px;
+  overflow: hidden;
 }
 
 .sectorChip:hover {
-  border-color: #93c5fd;
+  border-color: #60a5fa;
   background: #f8faff;
+  transform: translateY(-1px);
 }
 
 .sectorChipActive {
@@ -325,9 +473,58 @@
 }
 
 .sectorChip input {
-  width: 16px;
-  height: 16px;
-  accent-color: #1e40af;
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.sectorMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.sectorChipActive .sectorMark {
+  background: #1e40af;
+  color: #ffffff;
+}
+
+.sectorText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.sectorTitle {
+  color: #111827;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.sectorDescription {
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.sectorChipActive .sectorTitle,
+.sectorChipActive .sectorDescription {
+  color: #1e40af;
+}
+
+.sectorChip input:focus-visible + .sectorMark {
+  outline: 3px solid rgba(37, 99, 235, 0.25);
+  outline-offset: 2px;
 }
 
 /* ============================= */
@@ -883,6 +1080,37 @@
     gap: 1.25rem;
   }
 
+  .heroPanel {
+    padding: 1rem;
+    border-radius: 14px;
+  }
+
+  .heroTitle {
+    font-size: 1.7rem;
+  }
+
+  .heroSubtitle {
+    font-size: 0.9rem;
+  }
+
+  .heroMeta {
+    gap: 0.45rem;
+  }
+
+  .heroPill {
+    min-height: 30px;
+    font-size: 0.76rem;
+  }
+
+  .cardTopper {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .saveNote {
+    align-self: flex-start;
+  }
+
   .progressCircle {
     width: 32px;
     height: 32px;
@@ -920,7 +1148,7 @@
   }
 
   .sectorChips {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .sectorChip {
@@ -991,6 +1219,16 @@
     border-width: 2.2px;
   }
 
+  .heroPanel {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .heroAside {
+    width: 100%;
+    min-width: 0;
+  }
+
   .progressLineWrapper {
     padding-top: 15px;
   }
@@ -1010,12 +1248,12 @@
   }
 
   .sectorChips {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .sectorChip {
     width: 100%;
-    min-height: 50px;
+    min-height: 98px;
   }
 
   .otpRow {
@@ -1061,6 +1299,10 @@
 @media (max-width: 1024px) {
   .signupPage {
     max-width: 100%;
+  }
+
+  .sectorChips {
+    grid-template-columns: 1fr;
   }
 
   .personalGrid {

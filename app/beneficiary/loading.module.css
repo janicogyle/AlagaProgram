@@ -67,23 +67,11 @@
 }
 
 .skeletonActionCard {
-  background-color: var(--card-bg);
+  background-color: var(--surface-muted);
   border: 1px solid var(--border-color);
   border-radius: 20px;
   height: 120px;
   box-shadow: var(--shadow-soft);
-  background: linear-gradient(90deg, var(--surface-muted) 0%, var(--surface-hover) 50%, var(--surface-muted) 100%);
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
 }
 
 .skeletonRecordContent {

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styles from '../login/login.module.css';
 import { UnifiedLoginForm, Modal, Button } from '@/components';
+import ConstellationBackground from '@/components/ConstellationBackground';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function AdminLoginPage() {
@@ -107,6 +108,7 @@ export default function AdminLoginPage() {
 
   return (
     <div className={styles.container}>
+      <ConstellationBackground />
       <button
         type="button"
         className={styles.backButton}
