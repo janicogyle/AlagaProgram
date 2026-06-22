@@ -1024,7 +1024,7 @@ export default function BeneficiaryIdVerifyPage() {
                     <div className={styles.infoCard}>
                       <span className={styles.infoLabel}>Type of Assistance</span>
                       <span className={styles.infoValue}>
-                        <Badge>{getAssistanceTypeLabel(latestAssistanceRequest)}</Badge>
+                        {getAssistanceTypeLabel(latestAssistanceRequest)}
                       </span>
                     </div>
                     <div className={styles.infoCard}>

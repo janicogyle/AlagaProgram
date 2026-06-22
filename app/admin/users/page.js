@@ -685,30 +685,56 @@ export default function UsersPage() {
       <Modal
         isOpen={!!detailsState.open}
         onClose={closeDetails}
-        title={detailsState.user ? `User Details: ${detailsState.user.full_name}` : 'User Details'}
+        title="User Details"
         footer={<Button onClick={closeDetails}>Close</Button>}
       >
         {detailsState.user && (
           <div className={styles.modalDetails}>
-            <p className={styles.modalDetailRow}>
-              <strong>Username:</strong> {detailsState.user.full_name}
-            </p>
-            <p className={styles.modalDetailRow}>
-              <strong>Email:</strong> {detailsState.user.email}
-            </p>
-            <p className={styles.modalDetailRow}>
-              <strong>Contact Number:</strong> {detailsState.user.contact_number || '—'}
-            </p>
-            <p className={styles.modalDetailRow}>
-              <strong>Role:</strong> {detailsState.user.role}
-            </p>
-            <p className={styles.modalDetailRow}>
-              <strong>Status:</strong> {detailsState.user.status}
-            </p>
-            <p className={styles.modalDetailRow}>
-              <strong>Last Login:</strong>{' '}
-              {detailsState.user.last_login ? new Date(detailsState.user.last_login).toLocaleString() : 'Never'}
-            </p>
+            <div className={styles.detailsHero}>
+              <div className={styles.detailsAvatar}>
+                {detailsState.user.full_name.split(' ').map((name) => name[0]).join('').slice(0, 2)}
+              </div>
+              <div className={styles.detailsIdentity}>
+                <h4>{detailsState.user.full_name}</h4>
+                <p>{detailsState.user.email}</p>
+              </div>
+            </div>
+
+            <div className={styles.detailsGrid}>
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Username</span>
+                <span className={styles.detailValue}>{detailsState.user.full_name}</span>
+              </div>
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Email</span>
+                <span className={styles.detailValue}>{detailsState.user.email}</span>
+              </div>
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Contact Number</span>
+                <span className={styles.detailValue}>{detailsState.user.contact_number || 'Not provided'}</span>
+              </div>
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Last Login</span>
+                <span className={styles.detailValue}>
+                  {detailsState.user.last_login ? new Date(detailsState.user.last_login).toLocaleString() : 'Never'}
+                </span>
+              </div>
+            </div>
+
+            <div className={styles.detailsMeta}>
+              <div className={styles.metaPill}>
+                <span className={styles.detailLabel}>Role</span>
+                <Badge variant={detailsState.user.role === 'Admin' ? 'primary' : 'secondary'}>
+                  {detailsState.user.role}
+                </Badge>
+              </div>
+              <div className={styles.metaPill}>
+                <span className={styles.detailLabel}>Status</span>
+                <Badge variant={detailsState.user.status === 'Active' ? 'success' : 'danger'}>
+                  {detailsState.user.status}
+                </Badge>
+              </div>
+            </div>
           </div>
         )}
       </Modal>

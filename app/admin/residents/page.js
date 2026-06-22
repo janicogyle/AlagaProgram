@@ -64,6 +64,12 @@ const qrOptions = [
   { value: "No QR", label: "No QR" },
 ];
 
+const eligibilityOptions = [
+  { value: "", label: "All Eligibility" },
+  { value: "eligible", label: "Eligible" },
+  { value: "not_eligible", label: "Not Eligible" },
+];
+
 const sortOptions = [
   { value: "name_asc", label: "Name (A–Z)" },
   { value: "name_desc", label: "Name (Z–A)" },
@@ -242,6 +248,7 @@ export default function ResidentsPage() {
   const [registrationTypeFilter, setRegistrationTypeFilter] = useState("");
   const [sectorFilter, setSectorFilter] = useState("");
   const [qrFilter, setQrFilter] = useState("");
+  const [eligibilityFilter, setEligibilityFilter] = useState("");
   const [sortBy, setSortBy] = useState("created_desc");
   const [residents, setResidents] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 25, total: 0, totalPages: 1 });
@@ -352,24 +359,22 @@ export default function ResidentsPage() {
   const getEligibilityBadge = (info) => {
     if (!info) return <Badge variant="secondary">—</Badge>;
 
-    const variant =
-      info.status === 'Eligible'
-        ? 'success'
-        : info.status === 'Almost Eligible'
-          ? 'warning'
-          : 'danger';
-
-    // Simplified: just show "Eligible" or "Eligible on [date]"
     if (info.isEligible || info.status === 'Eligible') {
-      return <Badge variant={variant}>Eligible</Badge>;
+      return <Badge variant="success">Eligible</Badge>;
     }
 
-    if (info.status === 'Under Review') {
-      return <Badge variant={variant}>Not Eligible</Badge>;
-    }
+    return <Badge variant="danger">Not Eligible</Badge>;
+  };
 
+  const getEligibleAgainText = (info) => {
+    if (!info || info.isEligible || info.status === 'Eligible') return null;
     const eligibleOn = formatEligibilityDate(info.nextEligibleDate);
-    return <Badge variant={variant}>{`Eligible on ${eligibleOn}`}</Badge>;
+    return eligibleOn ? `Eligible again: ${eligibleOn}` : null;
+  };
+
+  const renderEligibleAgainText = (info) => {
+    const text = getEligibleAgainText(info);
+    return text ? <span className={styles.eligibleAgainText}>{text}</span> : null;
   };
 
   const getRowEligibility = (residentId) => {
@@ -398,23 +403,45 @@ export default function ResidentsPage() {
     const residentId = row?.id ? String(row.id) : '';
     const eligibility = getRowEligibility(residentId);
     const canRequest = !eligibilityLoading && eligibility.canCreateRequest;
+    const isLocked = !eligibilityLoading && !canRequest;
+    const requestIcon = canRequest ? (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 5v14" />
+        <path d="M5 12h14" />
+      </svg>
+    ) : (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="5" y="11" width="14" height="10" rx="2" />
+        <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+      </svg>
+    );
 
     return (
       <Button
         size="small"
-        className={`${styles.actionButton} ${styles.requestActionButton}`}
-       
-        disabled={!canRequest}
+        className={`${styles.actionButton} ${styles.requestActionButton} ${isLocked ? styles.lockedRequestActionButton : ''}`}
+        icon={requestIcon}
+        disabled={eligibilityLoading}
         href={canRequest && residentId ? `/admin/registration?residentId=${encodeURIComponent(residentId)}` : undefined}
+        onClick={
+          isLocked
+            ? () => {
+                openAlert({
+                  title: 'Request locked',
+                  message: `${buildFullName(row)} is not eligible for a new request yet.\n\n${getCooldownHint(eligibility)}`,
+                });
+              }
+            : undefined
+        }
       >
-        Request
+        {eligibilityLoading ? 'Checking' : canRequest ? 'Request' : 'Locked'}
       </Button>
     );
   };
 
   useEffect(() => {
     setPagination((prev) => ({ ...prev, page: 1 }));
-  }, [searchTerm, registrationTypeFilter, sectorFilter, qrFilter, sortBy]);
+  }, [searchTerm, registrationTypeFilter, sectorFilter, qrFilter, eligibilityFilter, sortBy]);
 
   useEffect(() => {
     try {
@@ -872,7 +899,19 @@ export default function ResidentsPage() {
     }
   };
 
-  const filteredResidents = residents;
+  const filteredResidents = useMemo(() => {
+    if (!eligibilityFilter) return residents;
+    if (eligibilityLoading) return [];
+
+    return residents.filter((resident) => {
+      const eligibility =
+        eligibilityByResidentId[resident.id] ||
+        getResidentEligibility(resident.id, eligibilityMaps);
+      return eligibilityFilter === 'eligible'
+        ? eligibility.canCreateRequest
+        : !eligibility.canCreateRequest;
+    });
+  }, [residents, eligibilityFilter, eligibilityLoading, eligibilityByResidentId, eligibilityMaps]);
 
   const historySummary = useMemo(() => {
     const totalCount = historyRequests.length;
@@ -1370,6 +1409,20 @@ export default function ResidentsPage() {
                 ))}
               </select>
             </div>
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel}>Eligibility</label>
+              <select
+                className={styles.select}
+                value={eligibilityFilter}
+                onChange={(e) => setEligibilityFilter(e.target.value)}
+              >
+                {eligibilityOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </FilterBar>
 
@@ -1559,6 +1612,7 @@ export default function ResidentsPage() {
                       className={`${styles.assistanceResidentDetail} ${styles.assistanceResidentDetailBreak}`}
                     >
                       Eligibility: {getEligibilityBadge(cooldownInfo)}
+                      {renderEligibleAgainText(cooldownInfo)}
                     </span>
                   </div>
                 </div>
@@ -1745,6 +1799,7 @@ export default function ResidentsPage() {
                     className={`${styles.assistanceResidentDetail} ${styles.assistanceResidentDetailBreak}`}
                   >
                     Eligibility: {getEligibilityBadge(cooldownInfo)}
+                    {renderEligibleAgainText(cooldownInfo)}
                   </span>
                 </div>
               </div>

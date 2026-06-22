@@ -904,8 +904,6 @@ export default function RequestsPage() {
     return <Badge variant={variants[type] || 'default'}>{type}</Badge>;
   };
 
-
-
   const formatProcessedBy = (value) => {
     const raw = String(value || '').trim();
     if (!raw) return '-';
@@ -1467,7 +1465,7 @@ export default function RequestsPage() {
             <div className={styles.assistanceInfo}>
               <div className={styles.infoCard}>
                 <span className={styles.infoLabel}>Type of Assistance</span>
-                <span className={styles.infoValue}>{getTypeBadge(selectedRequest.type)}</span>
+                <span className={styles.infoValue}>{selectedRequest.type}</span>
               </div>
               <div className={styles.infoCard}>
                 <span className={styles.infoLabel}>Amount</span>
@@ -1503,8 +1501,13 @@ export default function RequestsPage() {
                         <span className={styles.verificationEmpty}>No checklist available for this request.</span>
                       )}
                     </div>
-                    <div className={styles.verificationStatus}>
-                      Status: {verificationCompleted ? 'COMPLETED' : 'INCOMPLETE'}
+                    <div
+                      className={`${styles.verificationStatus} ${
+                        verificationCompleted ? styles.verificationStatusComplete : styles.verificationStatusIncomplete
+                      }`}
+                    >
+                      <span>Status</span>
+                      <strong>{verificationCompleted ? 'Completed' : 'Incomplete'}</strong>
                     </div>
                     {selectedRequest.requestSource === 'online' ? (
                       <p className={styles.verificationHint}>
@@ -1527,17 +1530,20 @@ export default function RequestsPage() {
                           {selectedRequest.requirementFiles.map((file, idx) => (
                             <div key={`${file.file_url}-${idx}`} className={styles.uploadedDocItem}>
                               <div className={styles.uploadedDocMeta}>
-                                <span className={styles.uploadedDocName}>{file.file_name || `Document ${idx + 1}`}</span>
+                                <span className={styles.uploadedDocName}>Document {idx + 1}</span>
                                 <span className={styles.uploadedDocType}>
                                   {isLikelyImage(file.file_url) ? 'Image' : 'Document'}
                                 </span>
+                                {file.file_name ? (
+                                  <span className={styles.uploadedDocFilename}>{file.file_name}</span>
+                                ) : null}
                               </div>
                               <button
                                 type="button"
                                 className={styles.validIdLink}
                                 onClick={() => openValidId(file.file_url)}
                               >
-                                View Document {idx + 1}
+                                View
                               </button>
                             </div>
                           ))}
