@@ -40,6 +40,13 @@ const sectorOptions = [
   { value: 'Solo Parent', label: 'Solo Parent' },
 ];
 
+const eligibilityOptions = [
+  { value: '', label: 'All Eligibility' },
+  { value: 'Eligible', label: 'Eligible' },
+  { value: 'Almost Eligible', label: 'Almost Eligible' },
+  { value: 'Not Yet Eligible', label: 'Not Eligible' },
+];
+
 
 
 const serviceTypes = [
@@ -71,6 +78,7 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
+  const [eligibilityFilter, setEligibilityFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('Released');
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -254,9 +262,11 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
       record.controlNo.toLowerCase().includes(normalizedSearch);
     const matchesType = !typeFilter || record.type === typeFilter;
     const matchesSector = !sectorFilter || (record.sectors || []).includes(sectorFilter);
+    const matchesEligibility =
+      !eligibilityFilter || record.cooldownInfo?.status === eligibilityFilter;
     const matchesStatus = !statusFilter || record.status === statusFilter;
-    return matchesSearch && matchesType && matchesSector && matchesStatus;
-  }), [records, searchTerm, typeFilter, sectorFilter, statusFilter]);
+    return matchesSearch && matchesType && matchesSector && matchesEligibility && matchesStatus;
+  }), [records, searchTerm, typeFilter, sectorFilter, eligibilityFilter, statusFilter]);
 
   const summaryStats = useMemo(() => {
     const uniqueEligibleBeneficiaries = new Set();
@@ -541,6 +551,15 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
               placeholder="All Sectors"
               compact
               className={styles.filterSelectSector}
+            />
+            <Select
+              name="eligibility"
+              value={eligibilityFilter}
+              onChange={(e) => setEligibilityFilter(e.target.value)}
+              options={eligibilityOptions}
+              placeholder="All Eligibility"
+              compact
+              className={styles.filterSelectEligibility}
             />
           </div>
         </FilterBar>

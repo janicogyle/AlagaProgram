@@ -270,7 +270,13 @@ export default function ResidentsPage() {
   const [issuingCard, setIssuingCard] = useState(false);
   const [issuedCard, setIssuedCard] = useState(null); // { token, card, qrUrl, cardImageUrl, action }
   const [cardModalOpen, setCardModalOpen] = useState(false);
-  const [alertState, setAlertState] = useState({ open: false, title: '', message: '' });
+  const [alertState, setAlertState] = useState({
+    open: false,
+    title: '',
+    message: '',
+    subject: '',
+    tone: '',
+  });
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [residentDetails, setResidentDetails] = useState(null); // { resident, signup }
@@ -304,8 +310,8 @@ export default function ResidentsPage() {
     status: 'Active',
   });
 
-  const openAlert = ({ title, message }) => {
-    setAlertState({ open: true, title, message });
+  const openAlert = ({ title, message, subject = '', tone = '' }) => {
+    setAlertState({ open: true, title, message, subject, tone });
   };
 
   const openDocumentPreview = (url, path = '') => {
@@ -428,7 +434,9 @@ export default function ResidentsPage() {
             ? () => {
                 openAlert({
                   title: 'Request locked',
-                  message: `${buildFullName(row)} is not eligible for a new request yet.\n\n${getCooldownHint(eligibility)}`,
+                  subject: buildFullName(row),
+                  message: getCooldownHint(eligibility),
+                  tone: 'locked',
                 });
               }
             : undefined
@@ -2199,7 +2207,27 @@ export default function ResidentsPage() {
           </>
         }
       >
-        <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{alertState.message}</p>
+        {alertState.tone === 'locked' ? (
+          <div className={styles.lockedRequestModal}>
+            <div className={styles.lockedRequestIcon} aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="5" y="11" width="14" height="10" rx="2" />
+                <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+              </svg>
+            </div>
+            <div className={styles.lockedRequestText}>
+              <p className={styles.lockedRequestLead}>
+                {alertState.subject || 'This beneficiary'} cannot start a new assistance request yet.
+              </p>
+              <div className={styles.lockedRequestReason}>
+                <span className={styles.lockedRequestReasonLabel}>Reason</span>
+                <span>{alertState.message || 'Request access is temporarily locked.'}</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{alertState.message}</p>
+        )}
       </Modal>
     </div>
   );

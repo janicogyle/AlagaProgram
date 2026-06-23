@@ -487,6 +487,11 @@
   --select-max-width: 10.5rem;
 }
 
+.filterSelectEligibility {
+  --select-min-width: 9.5rem;
+  --select-max-width: 12rem;
+}
+
 @media (max-width: 900px) {
   .formGrid,
   .serviceTypeGrid {
@@ -567,12 +572,13 @@
   .filterSelects {
     width: 100%;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 10px;
   }
 
   .filterSelectType,
-  .filterSelectSector {
+  .filterSelectSector,
+  .filterSelectEligibility {
     --select-min-width: 0;
     --select-max-width: none;
   }
