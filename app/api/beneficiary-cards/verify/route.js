@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseClient';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { verifyBeneficiaryCardToken } from '@/lib/beneficiaryCards.server';
 import { computeBeneficiaryIdStatus, getQrScanStatus } from '@/lib/beneficiaryIdStatus.server';
+import { forbiddenSectorResponse, rowMatchesSectorAccess } from '@/lib/sectorAccess';
 
 export const runtime = 'nodejs';
 
@@ -224,8 +225,11 @@ async function buildVerificationPayload(base) {
   return next;
 }
 
-async function handleCardVerification(cardData, supabaseAdminClient) {
+async function handleCardVerification(cardData, profile) {
   const resident = await loadResidentProfile(cardData.resident_id);
+  if (!rowMatchesSectorAccess(resident, profile)) {
+    return forbiddenSectorResponse(NextResponse, 'Beneficiary ID is outside your assigned sector access.');
+  }
   const idStatus = computeBeneficiaryIdStatus({ card: cardData, residentStatus: resident?.status });
   const scanStatus = getQrScanStatus(idStatus);
 
@@ -385,7 +389,7 @@ export async function POST(request) {
       );
     }
 
-    return handleCardVerification(cardData, supabaseAdmin);
+    return handleCardVerification(cardData, auth.profile);
   } catch (err) {
     console.error('Verify beneficiary card error:', err);
 

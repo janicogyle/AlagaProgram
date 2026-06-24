@@ -10,6 +10,12 @@ import Modal from '../../components/Modal';
 import Select from '../../components/Select';
 import FileUpload from '../../components/FileUpload';
 import SectionHeader from '@/components/SectionHeader';
+import {
+  BENEFICIARY_SECTOR_OPTIONS,
+  deriveSectorFlags,
+  getSecondarySectorOptions,
+  getSectorLabel,
+} from '@/lib/beneficiarySectors';
 import styles from './page.module.css';
 
 const purokOptions = [
@@ -59,15 +65,28 @@ const civilStatusOptions = [
   { value: 'divorced', label: 'Divorced' },
 ];
 
+const SOLO_PARENT_MARRIED_ERROR = 'Married civil status is not allowed for Solo Parent classification.';
+
+const getCivilStatusOptions = (isSoloParent) =>
+  civilStatusOptions.map((option) => ({
+    ...option,
+    disabled: isSoloParent && option.value === 'married',
+  }));
+
 const STEPS = [
   { number: 1, label: 'Sector' },
   { number: 2, label: 'Personal' },
   { number: 3, label: 'Address' },
   { number: 4, label: 'Account' },
-  { number: 5, label: 'Upload ID' },
+  { number: 5, label: 'Verify ID' },
   { number: 6, label: 'Review' },
 ];
 const TOTAL_STEPS = STEPS.length;
+const MINOR_PWD_REPRESENTATIVE_ERROR =
+  'Beneficiaries below 18 years old must provide a guardian or representative before registration can be completed.';
+const VALID_ID_BOTH_SIDES_ERROR = 'Please upload both the front and back images of your valid ID.';
+const FACE_VERIFICATION_FAILED_ERROR =
+  'Face verification failed. Please make sure your selfie clearly matches the photo on your valid ID.';
 
 const signupHighlights = [
   'Barangay Sta. Rita residents',
@@ -75,32 +94,84 @@ const signupHighlights = [
   'SMS verification',
 ];
 
-const sectorOptions = [
-  {
-    key: 'isPwd',
-    title: 'PWD',
-    description: 'For residents with a valid PWD ID or supporting document.',
-    mark: 'P',
-  },
-  {
-    key: 'isSeniorCitizen',
-    title: 'Senior Citizen',
-    description: 'For residents aged 60 and above with a valid senior citizen ID.',
-    mark: 'S',
-  },
-  {
-    key: 'isSoloParent',
-    title: 'Solo Parent',
-    description: 'For registered solo parents with accepted proof of eligibility.',
-    mark: 'SP',
-  },
-];
-
 const CheckIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
+
+function SelfieCapture({ files, onChange, disabled = false }) {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+
+  const stopCamera = () => {
+    streamRef.current?.getTracks?.().forEach((track) => track.stop());
+    streamRef.current = null;
+    setCameraActive(false);
+  };
+
+  const startCamera = async () => {
+    setCameraError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+      setCameraActive(true);
+    } catch {
+      setCameraError('Camera is unavailable. You can upload a selfie image instead.');
+    }
+  };
+
+  const captureSelfie = () => {
+    const video = videoRef.current;
+    if (!video?.videoWidth || !video?.videoHeight) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], `selfie-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      onChange([file]);
+      stopCamera();
+    }, 'image/jpeg', 0.92);
+  };
+
+  useEffect(() => () => stopCamera(), []);
+
+  return (
+    <div className={styles.validIdRow}>
+      <div className={styles.selfieActions}>
+        <Button type="button" variant="secondary" onClick={startCamera} disabled={disabled || cameraActive}>
+          Start Camera
+        </Button>
+        {cameraActive && (
+          <>
+            <Button type="button" onClick={captureSelfie} disabled={disabled}>
+              Capture Selfie
+            </Button>
+            <Button type="button" variant="outline" onClick={stopCamera}>
+              Stop
+            </Button>
+          </>
+        )}
+      </div>
+      {cameraActive && <video ref={videoRef} autoPlay playsInline muted className={styles.selfieVideo} />}
+      {cameraError && <p className={styles.fieldError}>{cameraError}</p>}
+      <FileUpload
+        label="Selfie / Face Capture"
+        documentType="selfie"
+        multiple={false}
+        files={files}
+        onChange={onChange}
+        required
+      />
+    </div>
+  );
+}
 
 export default function BeneficiarySignupPage() {
   const router = useRouter();
@@ -113,8 +184,15 @@ export default function BeneficiarySignupPage() {
   // Form state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState(null);
-  const [validIdFiles, setValidIdFiles] = useState([]);
+  const [validIdFrontFiles, setValidIdFrontFiles] = useState([]);
+  const [validIdBackFiles, setValidIdBackFiles] = useState([]);
+  const [selfieFiles, setSelfieFiles] = useState([]);
+  const [identityUrls, setIdentityUrls] = useState({ front: '', back: '', selfie: '' });
+  const [faceVerification, setFaceVerification] = useState(null);
+  const [identityVerifying, setIdentityVerifying] = useState(false);
+  const [representativeValidIdFiles, setRepresentativeValidIdFiles] = useState([]);
   const [validIdError, setValidIdError] = useState('');
+  const [representativeValidIdError, setRepresentativeValidIdError] = useState('');
   const [legalModal, setLegalModal] = useState(null);
   const [hasAgreed, setHasAgreed] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({
@@ -144,9 +222,14 @@ export default function BeneficiarySignupPage() {
     contactNumber: '',
     password: '',
     confirmPassword: '',
+    primarySector: '',
+    secondarySector: '',
     isPwd: false,
     isSeniorCitizen: false,
     isSoloParent: false,
+    representativeName: '',
+    representativeContact: '',
+    representativeRelationship: '',
     houseNo: '',
     purok: '',
     barangay: 'Sta. Rita',
@@ -154,7 +237,7 @@ export default function BeneficiarySignupPage() {
   });
 
   // Computed values
-  const hasSectorSelected = form.isPwd || form.isSeniorCitizen || form.isSoloParent;
+  const hasSectorSelected = !!form.primarySector;
   const isOtpVerified = otpVerified && otpVerifiedContact === form.contactNumber;
   const isContactValid = /^0\d{10}$/.test(String(form.contactNumber || '').trim());
   const isContactBlocked = !!contactUnavailable;
@@ -175,6 +258,9 @@ export default function BeneficiarySignupPage() {
     }
     return age;
   };
+
+  const ageValue = calculateAge(form.birthday);
+  const requiresRepresentative = ageValue !== '' && Number(ageValue) < 18 && !!form.isPwd;
 
   const resetOtpState = () => {
     setOtpCode('');
@@ -201,10 +287,8 @@ export default function BeneficiarySignupPage() {
   };
 
   const getSectorName = () => {
-    if (form.isPwd) return 'PWD';
-    if (form.isSeniorCitizen) return 'Senior Citizen';
-    if (form.isSoloParent) return 'Solo Parent';
-    return '—';
+    const sectors = [getSectorLabel(form.primarySector), getSectorLabel(form.secondarySector)].filter(Boolean);
+    return sectors.length ? sectors.join(', ') : '—';
   };
 
   const getSexDisplay = () => {
@@ -239,25 +323,64 @@ export default function BeneficiarySignupPage() {
       setContactUnavailable('');
     }
 
+    if (name === 'representativeContact') {
+      setForm((prev) => ({ ...prev, [name]: String(value || '').replace(/\D/g, '').slice(0, 11) }));
+      return;
+    }
+
     setForm((prev) => ({ ...prev, [name]: newValue }));
   };
 
-  const handleSectorChange = (sectorKey) => {
+  const handleSectorSelectChange = (event) => {
+    const { name, value } = event.target;
     if (validIdError) setValidIdError('');
     setForm((prev) => {
-      const nextValue = !prev[sectorKey];
+      const nextPrimary = name === 'primarySector' ? value : prev.primarySector;
+      let nextSecondary = name === 'secondarySector' ? value : prev.secondarySector;
+      if (nextPrimary && nextSecondary === nextPrimary) nextSecondary = '';
+      const flags = deriveSectorFlags(nextPrimary, nextSecondary);
+      const nextIsSoloParent = flags.is_solo_parent;
       return {
         ...prev,
-        isPwd: sectorKey === 'isPwd' ? nextValue : false,
-        isSeniorCitizen: sectorKey === 'isSeniorCitizen' ? nextValue : false,
-        isSoloParent: sectorKey === 'isSoloParent' ? nextValue : false,
+        primarySector: nextPrimary,
+        secondarySector: nextSecondary,
+        isPwd: flags.is_pwd,
+        isSeniorCitizen: flags.is_senior_citizen,
+        isSoloParent: flags.is_solo_parent,
+        civilStatus:
+          nextIsSoloParent && prev.civilStatus === 'married'
+            ? ''
+            : prev.civilStatus,
       };
     });
   };
 
-  const handleValidIdChange = (files) => {
-    setValidIdFiles(files);
+  const resetFaceVerification = () => {
+    setIdentityUrls({ front: '', back: '', selfie: '' });
+    setFaceVerification(null);
+  };
+
+  const handleValidIdFrontChange = (files) => {
+    setValidIdFrontFiles(files);
+    resetFaceVerification();
     if (validIdError) setValidIdError('');
+  };
+
+  const handleValidIdBackChange = (files) => {
+    setValidIdBackFiles(files);
+    resetFaceVerification();
+    if (validIdError) setValidIdError('');
+  };
+
+  const handleSelfieChange = (files) => {
+    setSelfieFiles(files);
+    resetFaceVerification();
+    if (validIdError) setValidIdError('');
+  };
+
+  const handleRepresentativeValidIdChange = (files) => {
+    setRepresentativeValidIdFiles(files);
+    if (representativeValidIdError) setRepresentativeValidIdError('');
   };
 
   // ===========================
@@ -464,6 +587,83 @@ export default function BeneficiarySignupPage() {
     }
   };
 
+  const uploadIdentityFile = async (file, documentType) => {
+    const uploadForm = new FormData();
+    uploadForm.append('file', file);
+    uploadForm.append('contactNumber', form.contactNumber);
+    uploadForm.append('documentType', documentType);
+
+    const uploadResponse = await fetch('/api/account-requests/upload-valid-id', {
+      method: 'POST',
+      body: uploadForm,
+    });
+    const uploadJson = await uploadResponse.json().catch(() => ({}));
+    if (!uploadResponse.ok) {
+      throw new Error(uploadJson.error || 'Identity document upload failed.');
+    }
+    const path = uploadJson?.data?.path || null;
+    if (!path) throw new Error('Identity document upload failed.');
+    return path;
+  };
+
+  const handleVerifyIdentity = async () => {
+    if (identityVerifying) return { ok: false };
+    setValidIdError('');
+    setFaceVerification(null);
+
+    if (!validIdFrontFiles.length || !validIdBackFiles.length) {
+      setValidIdError(VALID_ID_BOTH_SIDES_ERROR);
+      setStatus({ type: 'error', message: VALID_ID_BOTH_SIDES_ERROR });
+      return { ok: false };
+    }
+    if (!selfieFiles.length) {
+      const msg = 'Selfie/face capture is required.';
+      setValidIdError(msg);
+      setStatus({ type: 'error', message: msg });
+      return { ok: false };
+    }
+
+    setIdentityVerifying(true);
+    try {
+      const [frontUrl, backUrl, selfieUrl] = await Promise.all([
+        uploadIdentityFile(validIdFrontFiles[0], 'validIdFront'),
+        uploadIdentityFile(validIdBackFiles[0], 'validIdBack'),
+        uploadIdentityFile(selfieFiles[0], 'selfie'),
+      ]);
+      const verifyResponse = await fetch('/api/account-requests/verify-face', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactNumber: form.contactNumber,
+          validIdFrontUrl: frontUrl,
+          selfieUrl,
+        }),
+      });
+      const verifyJson = await verifyResponse.json().catch(() => ({}));
+      if (!verifyResponse.ok) {
+        throw new Error(verifyJson.error || FACE_VERIFICATION_FAILED_ERROR);
+      }
+      const verification = verifyJson.data || {};
+      const urls = { front: frontUrl, back: backUrl, selfie: selfieUrl };
+      setIdentityUrls(urls);
+      setFaceVerification(verification);
+      if (verification.status !== 'passed') {
+        setValidIdError(FACE_VERIFICATION_FAILED_ERROR);
+        setStatus({ type: 'error', message: FACE_VERIFICATION_FAILED_ERROR });
+        return { ok: false, urls, verification };
+      }
+      setStatus({ type: 'success', message: 'Face verification passed.' });
+      return { ok: true, urls, verification };
+    } catch (error) {
+      const message = error?.message || FACE_VERIFICATION_FAILED_ERROR;
+      setValidIdError(message);
+      setStatus({ type: 'error', message });
+      return { ok: false };
+    } finally {
+      setIdentityVerifying(false);
+    }
+  };
+
   // ===========================
   // STEP VALIDATION
   // ===========================
@@ -521,6 +721,25 @@ export default function BeneficiarySignupPage() {
           setStatus({ type: 'error', message: 'Please select your civil status.' });
           return false;
         }
+        if (form.isSoloParent && form.civilStatus === 'married') {
+          setStatus({ type: 'error', message: SOLO_PARENT_MARRIED_ERROR });
+          return false;
+        }
+        if (requiresRepresentative) {
+          const repContact = String(form.representativeContact || '').trim();
+          if (
+            !form.representativeName.trim() ||
+            !repContact ||
+            repContact.length !== 11 ||
+            !form.representativeRelationship.trim()
+          ) {
+            setStatus({ type: 'error', message: MINOR_PWD_REPRESENTATIVE_ERROR });
+            return false;
+          }
+        } else if (form.representativeContact && String(form.representativeContact).trim().length !== 11) {
+          setStatus({ type: 'error', message: 'Guardian/Representative contact number must be exactly 11 digits.' });
+          return false;
+        }
         return true;
       }
       case 3: {
@@ -561,9 +780,25 @@ export default function BeneficiarySignupPage() {
         return true;
       }
       case 5: {
-        if (hasSectorSelected && validIdFiles.length === 0) {
-          setValidIdError('Please upload at least one valid ID to verify your sector classification.');
-          setStatus({ type: 'error', message: 'Please upload at least one valid ID.' });
+        if (!validIdFrontFiles.length || !validIdBackFiles.length) {
+          setValidIdError(VALID_ID_BOTH_SIDES_ERROR);
+          setStatus({ type: 'error', message: VALID_ID_BOTH_SIDES_ERROR });
+          return false;
+        }
+        if (!selfieFiles.length) {
+          const msg = 'Selfie/face capture is required.';
+          setValidIdError(msg);
+          setStatus({ type: 'error', message: msg });
+          return false;
+        }
+        if (faceVerification?.status !== 'passed') {
+          setValidIdError(FACE_VERIFICATION_FAILED_ERROR);
+          setStatus({ type: 'error', message: FACE_VERIFICATION_FAILED_ERROR });
+          return false;
+        }
+        if (requiresRepresentative && representativeValidIdFiles.length === 0) {
+          setRepresentativeValidIdError(MINOR_PWD_REPRESENTATIVE_ERROR);
+          setStatus({ type: 'error', message: MINOR_PWD_REPRESENTATIVE_ERROR });
           return false;
         }
         return true;
@@ -643,46 +878,54 @@ export default function BeneficiarySignupPage() {
     try {
       const ageValue = calculateAge(form.birthday);
 
-      // Upload valid IDs
-      let validIdPaths = [];
-      if (validIdFiles.length > 0) {
-        const uploaded = [];
+      let verifiedIdentityUrls = identityUrls;
+      let verifiedFace = faceVerification;
+      let representativeValidIdPath = '';
 
-        for (const file of validIdFiles) {
-          const uploadForm = new FormData();
-          uploadForm.append('file', file);
-          uploadForm.append('contactNumber', form.contactNumber);
+      if (
+        !verifiedIdentityUrls.front ||
+        !verifiedIdentityUrls.back ||
+        !verifiedIdentityUrls.selfie ||
+        verifiedFace?.status !== 'passed'
+      ) {
+        const verified = await handleVerifyIdentity();
+        if (!verified?.ok) return;
+        verifiedIdentityUrls = verified.urls;
+        verifiedFace = verified.verification;
+      }
 
-          const uploadResponse = await fetch('/api/account-requests/upload-valid-id', {
-            method: 'POST',
-            body: uploadForm,
-          });
+      if (representativeValidIdFiles.length > 0) {
+        const uploadForm = new FormData();
+        uploadForm.append('file', representativeValidIdFiles[0]);
+        uploadForm.append('contactNumber', form.contactNumber);
+        uploadForm.append('documentType', 'representativeValidId');
 
-          const uploadJson = await uploadResponse.json().catch(() => ({}));
-          if (!uploadResponse.ok) {
-            const msg = uploadJson.error || 'Valid ID upload failed.';
-            setValidIdError(msg);
-            setStatus({ type: 'error', message: msg });
-            return;
-          }
+        const uploadResponse = await fetch('/api/account-requests/upload-valid-id', {
+          method: 'POST',
+          body: uploadForm,
+        });
 
-          const path = uploadJson?.data?.path || null;
-          if (!path) {
-            const msg = 'Valid ID upload failed.';
-            setValidIdError(msg);
-            setStatus({ type: 'error', message: msg });
-            return;
-          }
-          uploaded.push(path);
-        }
-
-        validIdPaths = uploaded.filter(Boolean);
-        if (hasSectorSelected && validIdPaths.length === 0) {
-          const msg = 'Valid ID upload failed.';
-          setValidIdError(msg);
+        const uploadJson = await uploadResponse.json().catch(() => ({}));
+        if (!uploadResponse.ok) {
+          const msg = uploadJson.error || 'Representative valid ID upload failed.';
+          setRepresentativeValidIdError(msg);
           setStatus({ type: 'error', message: msg });
           return;
         }
+
+        representativeValidIdPath = uploadJson?.data?.path || '';
+        if (!representativeValidIdPath) {
+          const msg = 'Representative valid ID upload failed.';
+          setRepresentativeValidIdError(msg);
+          setStatus({ type: 'error', message: msg });
+          return;
+        }
+      }
+
+      if (requiresRepresentative && !representativeValidIdPath) {
+        setRepresentativeValidIdError(MINOR_PWD_REPRESENTATIVE_ERROR);
+        setStatus({ type: 'error', message: MINOR_PWD_REPRESENTATIVE_ERROR });
+        return;
       }
 
       // Submit account request
@@ -696,16 +939,30 @@ export default function BeneficiarySignupPage() {
           birthday: form.birthday,
           contactNumber: form.contactNumber,
           password: form.password,
+          primarySector: form.primarySector,
+          secondarySector: form.secondarySector,
           isPwd: form.isPwd,
           isSeniorCitizen: form.isSeniorCitizen,
           isSoloParent: form.isSoloParent,
+          representativeName: form.representativeName,
+          representativeContact: form.representativeContact,
+          representativeRelationship: form.representativeRelationship,
+          representativeValidIdUrl: representativeValidIdPath || null,
           age: ageValue !== '' ? Number(ageValue) : null,
           birthplace: form.birthplace,
           sex: form.sex,
           citizenship: form.citizenship,
           civilStatus: form.civilStatus,
-          validIdUrl: validIdPaths[0] || null,
-          validIdUrls: validIdPaths,
+          validIdUrl: verifiedIdentityUrls.front || null,
+          validIdUrls: [verifiedIdentityUrls.front, verifiedIdentityUrls.back].filter(Boolean),
+          validIdFrontUrl: verifiedIdentityUrls.front,
+          validIdBackUrl: verifiedIdentityUrls.back,
+          selfieUrl: verifiedIdentityUrls.selfie,
+          faceVerificationStatus: verifiedFace?.status,
+          faceVerificationScore: verifiedFace?.score ?? null,
+          faceVerificationProvider: verifiedFace?.provider || null,
+          faceVerifiedAt: verifiedFace?.verifiedAt || null,
+          faceVerificationError: verifiedFace?.error || null,
           houseNo: form.houseNo,
           purok: form.purok,
           barangay: form.barangay,
@@ -819,29 +1076,28 @@ export default function BeneficiarySignupPage() {
       <SectionHeader
         id="sector-heading"
         title="Sector Classification"
-        subtitle="Select your sector to help us determine the appropriate assistance programs for you."
+        subtitle="Choose your Primary Sector first. You may add one optional Secondary Sector."
       />
       <div className={styles.sectorRow}>
-        <span className={styles.sectorLabel}>Select only one:</span>
-        <div className={styles.sectorChips}>
-          {sectorOptions.map((sector) => (
-            <label
-              key={sector.key}
-              className={`${styles.sectorChip} ${form[sector.key] ? styles.sectorChipActive : ''}`}
-            >
-              <input
-                type="checkbox"
-                name={sector.key}
-                checked={form[sector.key]}
-                onChange={() => handleSectorChange(sector.key)}
-              />
-              <span className={styles.sectorMark}>{sector.mark}</span>
-              <span className={styles.sectorText}>
-                <span className={styles.sectorTitle}>{sector.title}</span>
-                <span className={styles.sectorDescription}>{sector.description}</span>
-              </span>
-            </label>
-          ))}
+        <span className={styles.sectorLabel}>Primary required, secondary optional:</span>
+        <div className={styles.formGrid}>
+          <Select
+            label="Primary Sector"
+            name="primarySector"
+            value={form.primarySector}
+            onChange={handleSectorSelectChange}
+            options={BENEFICIARY_SECTOR_OPTIONS}
+            placeholder="Select primary sector"
+            required
+          />
+          <Select
+            label="Secondary Sector"
+            name="secondarySector"
+            value={form.secondarySector}
+            onChange={handleSectorSelectChange}
+            options={getSecondarySectorOptions(form.primarySector)}
+            placeholder="No secondary sector"
+          />
         </div>
       </div>
     </section>
@@ -922,9 +1178,38 @@ export default function BeneficiarySignupPage() {
           name="civilStatus"
           value={form.civilStatus}
           onChange={handleChange}
-          options={civilStatusOptions}
+          options={getCivilStatusOptions(form.isSoloParent)}
           placeholder="Select civil status"
           required
+        />
+        <Input
+          label="Guardian/Representative Full Name"
+          name="representativeName"
+          value={form.representativeName}
+          onChange={handleChange}
+          placeholder="Enter guardian or representative name"
+          required={requiresRepresentative}
+          optional={!requiresRepresentative}
+        />
+        <Input
+          label="Guardian/Representative Contact Number"
+          type="tel"
+          name="representativeContact"
+          value={form.representativeContact}
+          onChange={handleChange}
+          placeholder="+63 XXX XXX XXXX"
+          mask="ph-contact"
+          required={requiresRepresentative}
+          optional={!requiresRepresentative}
+        />
+        <Input
+          label="Relationship to Beneficiary"
+          name="representativeRelationship"
+          value={form.representativeRelationship}
+          onChange={handleChange}
+          placeholder="Parent, guardian, sibling, etc."
+          required={requiresRepresentative}
+          optional={!requiresRepresentative}
         />
       </div>
     </section>
@@ -1111,19 +1396,55 @@ export default function BeneficiarySignupPage() {
     <section className={styles.section} aria-labelledby="upload-heading">
       <SectionHeader
         id="upload-heading"
-        title="Upload Valid ID(s)"
-        subtitle="Upload a valid government-issued ID to verify your sector classification."
+        title="Identity Verification"
+        subtitle="Upload both sides of your valid ID and complete face capture."
       />
       <div className={styles.validIdRow}>
         <FileUpload
-          label="Valid ID(s)"
-          documentType="validId"
-          multiple={true}
-          files={validIdFiles}
-          onChange={handleValidIdChange}
-          required={hasSectorSelected}
+          label="Front of Valid ID"
+          documentType="validIdImage"
+          multiple={false}
+          files={validIdFrontFiles}
+          onChange={handleValidIdFrontChange}
+          required
         />
+      </div>
+      <div className={styles.validIdRow}>
+        <FileUpload
+          label="Back of Valid ID"
+          documentType="validIdImage"
+          multiple={false}
+          files={validIdBackFiles}
+          onChange={handleValidIdBackChange}
+          required
+        />
+      </div>
+      <SelfieCapture files={selfieFiles} onChange={handleSelfieChange} disabled={identityVerifying} />
+      <div className={styles.validIdRow}>
+        <Button type="button" onClick={handleVerifyIdentity} disabled={identityVerifying}>
+          {identityVerifying ? 'Verifying Face...' : 'Verify Face Match'}
+        </Button>
+        {faceVerification?.status === 'passed' && (
+          <span className={styles.verifiedBadge}>Face Match Passed</span>
+        )}
+        {faceVerification?.status === 'failed' && (
+          <p className={styles.fieldError}>{FACE_VERIFICATION_FAILED_ERROR}</p>
+        )}
+        {faceVerification?.status === 'manual_review' && (
+          <p className={styles.fieldError}>Manual Review Required</p>
+        )}
         {validIdError && <p className={styles.fieldError}>{validIdError}</p>}
+      </div>
+      <div className={styles.validIdRow}>
+        <FileUpload
+          label="Guardian/Representative Valid ID"
+          documentType="validId"
+          multiple={false}
+          files={representativeValidIdFiles}
+          onChange={handleRepresentativeValidIdChange}
+          required={requiresRepresentative}
+        />
+        {representativeValidIdError && <p className={styles.fieldError}>{representativeValidIdError}</p>}
       </div>
     </section>
   );
@@ -1196,6 +1517,38 @@ export default function BeneficiarySignupPage() {
             </div>
           </div>
 
+          {/* Guardian / Representative */}
+          <div className={styles.reviewGroup}>
+            <div className={styles.reviewGroupHeader}>
+              <h4 className={styles.reviewGroupTitle}>Guardian / Representative</h4>
+              <button type="button" className={styles.reviewEditBtn} onClick={() => goToStep(2)}>
+                Edit
+              </button>
+            </div>
+            <div className={styles.reviewGrid}>
+              <div className={`${styles.reviewItem} ${styles.reviewItemFull}`}>
+                <span className={styles.reviewLabel}>Full Name</span>
+                <span className={styles.reviewValue}>{form.representativeName || '—'}</span>
+              </div>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>Contact Number</span>
+                <span className={styles.reviewValue}>
+                  {form.representativeContact ? formatContactForDisplay(form.representativeContact) : '—'}
+                </span>
+              </div>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>Relationship</span>
+                <span className={styles.reviewValue}>{form.representativeRelationship || '—'}</span>
+              </div>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>Representative ID</span>
+                <span className={styles.reviewValue}>
+                  {representativeValidIdFiles.length ? representativeValidIdFiles[0]?.name : '—'}
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Address */}
           <div className={styles.reviewGroup}>
             <div className={styles.reviewGroupHeader}>
@@ -1256,31 +1609,41 @@ export default function BeneficiarySignupPage() {
             </div>
           </div>
 
-          {/* Uploaded IDs */}
+          {/* Identity Verification */}
           <div className={styles.reviewGroup}>
             <div className={styles.reviewGroupHeader}>
-              <h4 className={styles.reviewGroupTitle}>Uploaded Valid ID(s)</h4>
+              <h4 className={styles.reviewGroupTitle}>Identity Verification</h4>
               <button type="button" className={styles.reviewEditBtn} onClick={() => goToStep(5)}>
                 Edit
               </button>
             </div>
-            {validIdFiles.length > 0 ? (
-              <div className={styles.reviewFileList}>
-                {validIdFiles.map((file, idx) => (
-                  <span key={idx} className={styles.reviewFileBadge}>
+            <div className={styles.reviewFileList}>
+              {[
+                ['Front ID', validIdFrontFiles[0]?.name],
+                ['Back ID', validIdBackFiles[0]?.name],
+                ['Selfie', selfieFiles[0]?.name],
+              ].map(([label, name]) => (
+                <span key={label} className={styles.reviewFileBadge}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  {label}: {name || 'Missing'}
+                </span>
+              ))}
+              <span className={styles.reviewFileBadge}>
+                {faceVerification?.status === 'passed' ? (
+                  <>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
+                      <polyline points="20 6 9 17 4 12" />
                     </svg>
-                    {file.name}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <span className={styles.reviewValue} style={{ color: '#9ca3af' }}>
-                No files uploaded
+                    Face Match Passed
+                  </>
+                ) : (
+                  'Face Match Pending'
+                )}
               </span>
-            )}
+            </div>
           </div>
         </div>
 

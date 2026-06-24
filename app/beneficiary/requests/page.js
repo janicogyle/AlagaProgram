@@ -25,9 +25,10 @@ import {
   queryNextAssistanceControlNumber,
   queryNextBeneficiaryControlNumber,
 } from '@/lib/controlNumbers';
+import { buildEligibilityMaps, getResidentEligibility } from '@/lib/residentEligibility';
 
 const EDITABLE_REQUEST_STATUSES = new Set(['Incomplete', 'Rejected']);
-const ACTIVE_REQUEST_STATUSES = new Set(['Pending', 'Resubmitted']);
+const ACTIVE_REQUEST_STATUSES = new Set(['Pending', 'Resubmitted', 'Approved']);
 const WIZARD_STEPS = [
   { number: 1, label: 'Review Info' },
   { number: 2, label: 'Assistance' },
@@ -306,6 +307,14 @@ export default function BeneficiaryRequestPage() {
     const loadCooldownInfo = async () => {
       if (isEditMode) {
         setCooldownInfo(getCooldownInfo(null));
+        setActiveRequest(null);
+        setCooldownLoading(false);
+        return;
+      }
+
+      if (!formData.assistanceType) {
+        setActiveRequest(null);
+        setCooldownInfo(getCooldownInfo(null));
         setCooldownLoading(false);
         return;
       }
@@ -319,6 +328,7 @@ export default function BeneficiaryRequestPage() {
 
         if (!residentId) {
           setCooldownInfo(getCooldownInfo(null));
+          setActiveRequest(null);
           return;
         }
 
@@ -330,22 +340,10 @@ export default function BeneficiaryRequestPage() {
         }
 
         const rows = Array.isArray(result.data) ? result.data : [];
-        const active = rows.find((row) => ACTIVE_REQUEST_STATUSES.has(String(row?.status || '')));
-        setActiveRequest(active || null);
-        if (active) {
-          setCooldownInfo({
-            status: getRequestStatusLabel(active.status) || 'Under Review',
-            isEligible: false,
-            daysRemaining: 0,
-            nextEligibleDate: null,
-            lastRequestDate: active.request_date || active.created_at || null,
-          });
-          return;
-        }
-
-        const released = rows.find((row) => String(row?.status || '').toLowerCase() === 'released');
-        const lastDate = released?.request_date || released?.created_at || null;
-        setCooldownInfo(getCooldownInfo(lastDate));
+        const maps = buildEligibilityMaps(rows);
+        const eligibility = getResidentEligibility(residentId, maps, formData.assistanceType);
+        setActiveRequest(eligibility.activeRequest || null);
+        setCooldownInfo(eligibility.cooldownInfo || getCooldownInfo(null));
       } catch (err) {
         console.warn('Failed to load request eligibility:', err);
         setActiveRequest(null);
@@ -356,7 +354,7 @@ export default function BeneficiaryRequestPage() {
     };
 
     loadCooldownInfo();
-  }, [isEditMode, realtimeRefreshKey]);
+  }, [formData.assistanceType, isEditMode, realtimeRefreshKey]);
 
   // Auto-fill from beneficiary sign up/profile (still editable)
   useEffect(() => {
@@ -724,15 +722,16 @@ export default function BeneficiaryRequestPage() {
   };
 
   const getCooldownMessage = (info) => {
+    if (!formData.assistanceType) return 'Select an assistance type to check category eligibility.';
     if (!info) return 'Checking request eligibility...';
     if (activeRequest) {
-      return 'You already have a request under review. Please wait for the barangay office to finish reviewing it.';
+      return `You already have a ${formData.assistanceType} request under review. Please wait for the barangay office to finish processing it.`;
     }
-    if (info.isEligible) return 'You can submit a new request now.';
+    if (info.isEligible) return `You can submit a ${formData.assistanceType} request now.`;
     if (info.nextEligibleDate) {
-      return `Please wait ${info.daysRemaining} day(s). Next eligible on ${info.nextEligibleDate}.`;
+      return `Please wait ${info.daysRemaining} day(s) before submitting another ${formData.assistanceType} request. Next eligible on ${info.nextEligibleDate}.`;
     }
-    return `Please wait ${info.daysRemaining} day(s) before submitting another request.`;
+    return `Please wait ${info.daysRemaining} day(s) before submitting another ${formData.assistanceType} request.`;
   };
 
   const calculateAge = (dob) => {
@@ -819,11 +818,13 @@ export default function BeneficiaryRequestPage() {
     }
 
     setFormData((prev) => {
-      const cleared = { pwd: false, seniorCitizen: false, soloParent: false };
       const isSelected = !!prev?.sectors?.[sector];
       return {
         ...prev,
-        sectors: isSelected ? cleared : { ...cleared, [sector]: true },
+        sectors: {
+          ...(prev.sectors || {}),
+          [sector]: !isSelected,
+        },
       };
     });
   };
@@ -1078,7 +1079,7 @@ export default function BeneficiaryRequestPage() {
       setStatus({
         type: 'error',
         message:
-          'You already have a request under review. Please wait for the barangay office to finish reviewing it.',
+          `You already have a ${formData.assistanceType} request under review. Please wait for the barangay office to finish processing it.`,
       });
       return;
     }
@@ -1329,10 +1330,16 @@ export default function BeneficiaryRequestPage() {
 
         const result = await response.json().catch(() => ({}));
         if (!response.ok || result?.error) {
-          if (result?.code === 'ACTIVE_REQUEST_EXISTS' && result?.activeRequest) {
+          if (
+            (result?.code === 'ACTIVE_CATEGORY_REQUEST_EXISTS' || result?.code === 'ACTIVE_REQUEST_EXISTS') &&
+            result?.activeRequest
+          ) {
             setActiveRequest(result.activeRequest);
           }
-          if (result?.code === 'REQUEST_COOLDOWN' && result?.cooldown) {
+          if (
+            (result?.code === 'CATEGORY_REQUEST_COOLDOWN' || result?.code === 'REQUEST_COOLDOWN') &&
+            result?.cooldown
+          ) {
             setCooldownInfo(result.cooldown);
           }
           throw new Error(result?.error || 'Failed to submit assistance request.');
@@ -1677,7 +1684,7 @@ export default function BeneficiaryRequestPage() {
         </div>
 
         <div style={{ opacity: formData.assistanceType ? 1 : 0.6 }}>
-          <span className={styles.label}>Sector Classification (choose one)</span>
+          <span className={styles.label}>Sector Classification</span>
           <div className={styles.sectorList}>
             {errors.sectors && <span className={styles.sectorError}>{errors.sectors}</span>}
             <label className={styles.checkbox}>

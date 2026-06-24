@@ -155,8 +155,28 @@ CREATE TABLE IF NOT EXISTS public.account_requests (
   is_pwd BOOLEAN DEFAULT FALSE,
   is_senior_citizen BOOLEAN DEFAULT FALSE,
   is_solo_parent BOOLEAN DEFAULT FALSE,
+  primary_sector TEXT CHECK (primary_sector IS NULL OR primary_sector IN ('pwd', 'senior_citizen', 'solo_parent')),
+  secondary_sector TEXT CHECK (
+    secondary_sector IS NULL OR secondary_sector IN ('pwd', 'senior_citizen', 'solo_parent')
+  ),
+  CHECK (primary_sector IS NULL OR secondary_sector IS NULL OR primary_sector <> secondary_sector),
   valid_id_url TEXT,
   valid_id_urls JSONB DEFAULT '[]'::jsonb,
+  valid_id_front_url TEXT,
+  valid_id_back_url TEXT,
+  selfie_url TEXT,
+  face_verification_status TEXT CHECK (
+    face_verification_status IS NULL
+    OR face_verification_status IN ('passed', 'failed', 'manual_review')
+  ),
+  face_verification_score NUMERIC,
+  face_verification_provider TEXT,
+  face_verified_at TIMESTAMPTZ,
+  face_verification_error TEXT,
+  representative_name TEXT,
+  representative_contact TEXT,
+  representative_relationship TEXT,
+  representative_valid_id_url TEXT,
   age INTEGER,
   birthplace TEXT,
   sex TEXT,
@@ -240,6 +260,20 @@ ALTER TABLE public.account_requests
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS password_hash TEXT;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS valid_id_url TEXT;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS valid_id_urls JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS valid_id_front_url TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS valid_id_back_url TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS selfie_url TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS face_verification_status TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS face_verification_score NUMERIC;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS face_verification_provider TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS face_verified_at TIMESTAMPTZ;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS face_verification_error TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS primary_sector TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS secondary_sector TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS representative_name TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS representative_contact TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS representative_relationship TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS representative_valid_id_url TEXT;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS age INTEGER;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS birthplace TEXT;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS sex TEXT;
@@ -252,6 +286,16 @@ ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS resubmitted_at TIME
 CREATE INDEX IF NOT EXISTS idx_account_requests_resubmission_token_hash
   ON public.account_requests(resubmission_token_hash)
   WHERE resubmission_token_hash IS NOT NULL;
+ALTER TABLE public.account_requests
+  DROP CONSTRAINT IF EXISTS account_requests_face_verification_status_check;
+ALTER TABLE public.account_requests
+  ADD CONSTRAINT account_requests_face_verification_status_check
+  CHECK (
+    face_verification_status IS NULL
+    OR face_verification_status IN ('passed', 'failed', 'manual_review')
+  );
+CREATE INDEX IF NOT EXISTS idx_account_requests_face_verification_status
+  ON public.account_requests(face_verification_status);
 DO $$
 BEGIN
   IF to_regclass('public.residents') IS NOT NULL THEN
@@ -277,6 +321,12 @@ BEGIN
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS is_pwd BOOLEAN DEFAULT FALSE;
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS is_senior_citizen BOOLEAN DEFAULT FALSE;
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS is_solo_parent BOOLEAN DEFAULT FALSE;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS primary_sector TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS secondary_sector TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS representative_name TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS representative_contact TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS representative_relationship TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS representative_valid_id_url TEXT;
 
     -- Some existing DBs may not have timestamps on residents yet
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();

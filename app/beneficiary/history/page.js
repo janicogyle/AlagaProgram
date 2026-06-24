@@ -246,7 +246,6 @@ export default function BeneficiaryHistoryPage() {
     request_date: r.request_date ? new Date(r.request_date).toLocaleDateString() : '',
     amount_display: formatCurrency(resolveAssistanceAmount(r.assistance_type, r.amount)),
   }));
-  const hasActiveRequest = requests.some((row) => ['Pending', 'Resubmitted'].includes(row.status));
   const selectedDocuments = selectedRequest ? getRequirementDocuments(selectedRequest) : [];
   const selectedAmount = selectedRequest
     ? resolveAssistanceAmount(selectedRequest.assistance_type, selectedRequest.amount)
@@ -303,9 +302,7 @@ export default function BeneficiaryHistoryPage() {
       <Card className={styles.historyCard}>
         <div className={styles.headerRow}>
           <h2>Requests</h2>
-          {!hasActiveRequest && (
-            <Button href="/beneficiary/requests" disabled={!cooldownInfo.isEligible}>New Request</Button>
-          )}
+          <Button href="/beneficiary/requests">New Request</Button>
         </div>
         <div className={styles.cooldownRow}>
           <span className={styles.cooldownLabel}>Request Eligibility</span>

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { computeBeneficiaryIdStatus } from '@/lib/beneficiaryIdStatus.server';
+import { applyDirectSectorFilter } from '@/lib/sectorAccess';
 
 export const runtime = 'nodejs';
 
@@ -281,6 +282,12 @@ export async function GET(request) {
       'is_pwd',
       'is_senior_citizen',
       'is_solo_parent',
+      'primary_sector',
+      'secondary_sector',
+      'representative_name',
+      'representative_contact',
+      'representative_relationship',
+      'representative_valid_id_url',
       'account_request_id',
       'status',
       'created_at',
@@ -306,6 +313,11 @@ export async function GET(request) {
         approvedSignupContacts: approvedSignupContactValues,
         qrResidentFilter,
       });
+      if (!query) {
+        residentsCount = 0;
+        break;
+      }
+      query = applyDirectSectorFilter(query, auth.profile);
       if (!query) {
         residentsCount = 0;
         break;

@@ -29,6 +29,25 @@ const formRoleOptions = [
   { value: 'Staff', label: 'Staff' },
 ];
 
+const sectorAccessOptions = [
+  { value: 'pwd', label: 'PWD' },
+  { value: 'senior_citizen', label: 'Senior Citizen' },
+  { value: 'solo_parent', label: 'Solo Parent' },
+];
+
+const normalizeSectorAccess = (value) => {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item) => sectorAccessOptions.some((option) => option.value === item));
+};
+
+const formatSectorAccess = (value, role) => {
+  if (role === 'Admin') return 'All sectors';
+  const labels = normalizeSectorAccess(value)
+    .map((key) => sectorAccessOptions.find((option) => option.value === key)?.label)
+    .filter(Boolean);
+  return labels.length ? labels.join(', ') : 'No sectors assigned';
+};
+
 export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -40,6 +59,7 @@ export default function UsersPage() {
     email: '',
     contactNumber: '',
     role: '',
+    sectorAccess: [],
     password: '',
   });
   const [errors, setErrors] = useState({});
@@ -77,6 +97,7 @@ export default function UsersPage() {
     email: '',
     contactNumber: '',
     role: 'Staff',
+    sectorAccess: [],
     errors: {},
     submitting: false,
   });
@@ -166,8 +187,19 @@ export default function UsersPage() {
 
   const handleRoleChange = (e) => {
     const value = e.target.value;
-    setForm((prev) => ({ ...prev, role: value }));
+    setForm((prev) => ({ ...prev, role: value, sectorAccess: value === 'Staff' ? prev.sectorAccess : [] }));
     setErrors((prev) => ({ ...prev, role: '' }));
+  };
+
+  const toggleFormSectorAccess = (sector) => {
+    setForm((prev) => {
+      const current = normalizeSectorAccess(prev.sectorAccess);
+      const next = current.includes(sector)
+        ? current.filter((item) => item !== sector)
+        : [...current, sector];
+      return { ...prev, sectorAccess: next };
+    });
+    setErrors((prev) => ({ ...prev, sectorAccess: '' }));
   };
 
   const handleOpenModal = () => {
@@ -182,6 +214,7 @@ export default function UsersPage() {
       email: '',
       contactNumber: '',
       role: '',
+      sectorAccess: [],
       password: '',
     });
   };
@@ -190,6 +223,9 @@ export default function UsersPage() {
     const newErrors = {};
     if (!form.fullName.trim()) newErrors.fullName = 'Full name is required';
     if (!form.role) newErrors.role = 'Role is required';
+    if (form.role === 'Staff' && normalizeSectorAccess(form.sectorAccess).length === 0) {
+      newErrors.sectorAccess = 'Assign at least one sector';
+    }
     if (!form.email.trim()) newErrors.email = 'Email is required';
     if (!form.password || form.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
@@ -211,6 +247,7 @@ export default function UsersPage() {
           email: form.email.trim(),
           contactNumber: form.contactNumber.trim() || null,
           role: form.role,
+          sectorAccess: form.role === 'Staff' ? normalizeSectorAccess(form.sectorAccess) : [],
           password: form.password,
         }),
       });
@@ -251,6 +288,7 @@ export default function UsersPage() {
       email: user.email || '',
       contactNumber: user.contact_number || '',
       role: user.role || 'Staff',
+      sectorAccess: user.role === 'Staff' ? normalizeSectorAccess(user.sector_access) : [],
       errors: {},
       submitting: false,
     });
@@ -264,6 +302,7 @@ export default function UsersPage() {
       email: '',
       contactNumber: '',
       role: 'Staff',
+      sectorAccess: [],
       errors: {},
       submitting: false,
     });
@@ -291,7 +330,22 @@ export default function UsersPage() {
 
   const handleEditRoleChange = (e) => {
     const value = e.target.value;
-    setEditState((prev) => ({ ...prev, role: value, errors: { ...prev.errors, role: '' } }));
+    setEditState((prev) => ({
+      ...prev,
+      role: value,
+      sectorAccess: value === 'Staff' ? prev.sectorAccess : [],
+      errors: { ...prev.errors, role: '', sectorAccess: '' },
+    }));
+  };
+
+  const toggleEditSectorAccess = (sector) => {
+    setEditState((prev) => {
+      const current = normalizeSectorAccess(prev.sectorAccess);
+      const next = current.includes(sector)
+        ? current.filter((item) => item !== sector)
+        : [...current, sector];
+      return { ...prev, sectorAccess: next, errors: { ...prev.errors, sectorAccess: '' } };
+    });
   };
 
   const submitEdit = async () => {
@@ -301,6 +355,9 @@ export default function UsersPage() {
     const nextErrors = {};
     if (!editState.fullName.trim()) nextErrors.fullName = 'Full name is required';
     if (!editState.role) nextErrors.role = 'Role is required';
+    if (editState.role === 'Staff' && normalizeSectorAccess(editState.sectorAccess).length === 0) {
+      nextErrors.sectorAccess = 'Assign at least one sector';
+    }
 
     const email = editState.email.trim();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -324,6 +381,7 @@ export default function UsersPage() {
           email,
           contact_number: editState.contactNumber.trim() || null,
           role: editState.role,
+          sector_access: editState.role === 'Staff' ? normalizeSectorAccess(editState.sectorAccess) : [],
         }),
       });
 
@@ -512,6 +570,30 @@ export default function UsersPage() {
     resetPwState.password.length >= 6 &&
     !resetPwState.submitting;
 
+  const renderSectorAccessPicker = ({ role, value, onToggle, error }) => {
+    if (role !== 'Staff') return null;
+
+    const selected = normalizeSectorAccess(value);
+    return (
+      <div className={styles.sectorAccessGroup}>
+        <span className={styles.sectorAccessLabel}>Assigned sectors</span>
+        <div className={styles.sectorAccessOptions}>
+          {sectorAccessOptions.map((option) => (
+            <label key={option.value} className={styles.sectorAccessOption}>
+              <input
+                type="checkbox"
+                checked={selected.includes(option.value)}
+                onChange={() => onToggle(option.value)}
+              />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </div>
+        {error && <span className={styles.sectorAccessError}>{error}</span>}
+      </div>
+    );
+  };
+
   const columns = [
     {
       key: 'user',
@@ -530,6 +612,11 @@ export default function UsersPage() {
       key: 'role',
       label: 'Role',
       render: (role) => <Badge variant={role === 'Admin' ? 'primary' : 'secondary'}>{role}</Badge>,
+    },
+    {
+      key: 'sector_access',
+      label: 'Sector Access',
+      render: (sectorAccess, row) => formatSectorAccess(sectorAccess, row.role),
     },
     { 
       key: 'last_login', 
@@ -623,6 +710,10 @@ export default function UsersPage() {
                   <span className={styles.cardValue}>
                     <Badge variant={user.status === 'Active' ? 'success' : 'danger'}>{user.status}</Badge>
                   </span>
+                </div>
+                <div className={styles.cardRow}>
+                  <span className={styles.cardLabel}>Sector Access</span>
+                  <span className={styles.cardValue}>{formatSectorAccess(user.sector_access, user.role)}</span>
                 </div>
                 <div className={styles.cardRow}>
                   <span className={styles.cardLabel}>Last Login</span>
@@ -719,6 +810,12 @@ export default function UsersPage() {
                   {detailsState.user.last_login ? new Date(detailsState.user.last_login).toLocaleString() : 'Never'}
                 </span>
               </div>
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Sector Access</span>
+                <span className={styles.detailValue}>
+                  {formatSectorAccess(detailsState.user.sector_access, detailsState.user.role)}
+                </span>
+              </div>
             </div>
 
             <div className={styles.detailsMeta}>
@@ -800,6 +897,13 @@ export default function UsersPage() {
               error={editState.errors.role}
             />
           </div>
+
+          {renderSectorAccessPicker({
+            role: editState.role,
+            value: editState.sectorAccess,
+            onToggle: toggleEditSectorAccess,
+            error: editState.errors.sectorAccess,
+          })}
 
           <p className={styles.formHelperText} style={{ margin: 0 }}>
             This updates the user’s login email (Supabase Auth) and the Users table.
@@ -924,6 +1028,13 @@ export default function UsersPage() {
               error={errors.role}
             />
           </div>
+
+          {renderSectorAccessPicker({
+            role: form.role,
+            value: form.sectorAccess,
+            onToggle: toggleFormSectorAccess,
+            error: errors.sectorAccess,
+          })}
 
           <Input
             label="Initial Password"

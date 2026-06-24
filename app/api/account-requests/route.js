@@ -4,10 +4,18 @@ import { hashPassword } from '@/lib/passwords.server';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/documentUrls.server';
 import { logActivity } from '@/lib/activityLogger.server';
+import { applyDirectSectorFilter } from '@/lib/sectorAccess';
+import { validateSectorPair } from '@/lib/beneficiarySectors';
 
 export const runtime = 'nodejs';
 
 const LOCKED_CITIZENSHIP = 'Filipino';
+const SOLO_PARENT_MARRIED_ERROR = 'Married civil status is not allowed for Solo Parent classification.';
+const MINOR_PWD_REPRESENTATIVE_ERROR =
+  'Beneficiaries below 18 years old must provide a guardian or representative before registration can be completed.';
+const VALID_ID_BOTH_SIDES_ERROR = 'Please upload both the front and back images of your valid ID.';
+const FACE_VERIFICATION_FAILED_ERROR =
+  'Face verification failed. Please make sure your selfie clearly matches the photo on your valid ID.';
 
 function parsePositiveInt(value, fallback, { min = 1, max = 100 } = {}) {
   const parsed = Number.parseInt(String(value || ''), 10);
@@ -145,6 +153,10 @@ async function insertAccountRequestWithRetry(db, payload) {
     'city',
     // Stored when sector classification requires verification.
     'valid_id_url',
+    'valid_id_front_url',
+    'valid_id_back_url',
+    'selfie_url',
+    'face_verification_status',
     // Do not silently drop password_hash; approval/login flow depends on it.
     'password_hash',
   ]);
@@ -244,8 +256,22 @@ export async function GET(request) {
       'is_pwd',
       'is_senior_citizen',
       'is_solo_parent',
+      'primary_sector',
+      'secondary_sector',
       'valid_id_url',
       'valid_id_urls',
+      'valid_id_front_url',
+      'valid_id_back_url',
+      'selfie_url',
+      'face_verification_status',
+      'face_verification_score',
+      'face_verification_provider',
+      'face_verified_at',
+      'face_verification_error',
+      'representative_name',
+      'representative_contact',
+      'representative_relationship',
+      'representative_valid_id_url',
       'status',
       'notes',
       'processed_by',
@@ -260,6 +286,17 @@ export async function GET(request) {
         .from('account_requests')
         .select(columns.join(', '), hasPagination ? { count: 'exact' } : undefined)
         .order('created_at', { ascending: false });
+
+      query = applyDirectSectorFilter(query, auth.profile);
+      if (!query) {
+        return NextResponse.json({
+          data: [],
+          error: null,
+          meta: hasPagination
+            ? { page, pageSize, total: 0, totalPages: 0 }
+            : undefined,
+        });
+      }
 
       if (hasPagination) query = query.range(from, to);
 
@@ -342,19 +379,55 @@ export async function POST(request) {
       return NextResponse.json({ data: null, error: otpCheck.error }, { status: 403 });
     }
 
-    const sectorCount = [!!body.isPwd, !!body.isSeniorCitizen, !!body.isSoloParent].filter(Boolean).length;
-    if (sectorCount > 1) {
-      return NextResponse.json(
-        { data: null, error: 'Only one sector classification can be selected.' },
-        { status: 400 },
-      );
+    const sectorValidation = validateSectorPair(body);
+    if (!sectorValidation.ok) {
+      return NextResponse.json({ data: null, error: sectorValidation.error }, { status: 400 });
+    }
+    const { primarySector, secondarySector, flags: sectorFlags } = sectorValidation;
+    const sectorCount = Object.values(sectorFlags).filter(Boolean).length;
+    const civilStatus = String(body.civilStatus || body.civil_status || '').trim().toLowerCase();
+    if (sectorFlags.is_solo_parent && civilStatus === 'married') {
+      return NextResponse.json({ data: null, error: SOLO_PARENT_MARRIED_ERROR }, { status: 400 });
     }
 
-    const validIdUrl = body.validIdUrl || body.valid_id_url || null;
+    const validIdFrontUrl = body.validIdFrontUrl || body.valid_id_front_url || null;
+    const validIdBackUrl = body.validIdBackUrl || body.valid_id_back_url || null;
+    const selfieUrl = body.selfieUrl || body.selfie_url || null;
+    const faceVerificationStatus = String(
+      body.faceVerificationStatus || body.face_verification_status || '',
+    ).trim();
+    const faceVerificationScore = body.faceVerificationScore ?? body.face_verification_score ?? null;
+    const faceVerificationProvider = body.faceVerificationProvider || body.face_verification_provider || null;
+    const faceVerifiedAt = body.faceVerifiedAt || body.face_verified_at || null;
+    const faceVerificationError = body.faceVerificationError || body.face_verification_error || null;
+
+    if (!validIdFrontUrl || !validIdBackUrl) {
+      return NextResponse.json({ data: null, error: VALID_ID_BOTH_SIDES_ERROR }, { status: 400 });
+    }
+    if (!selfieUrl) {
+      return NextResponse.json({ data: null, error: 'Selfie/face capture is required.' }, { status: 400 });
+    }
+
+    const identityDocCheck = validateCloudinaryDocumentUrls([validIdFrontUrl, validIdBackUrl, selfieUrl], {
+      label: 'Identity document',
+    });
+    if (!identityDocCheck.ok) {
+      return NextResponse.json({ data: null, error: identityDocCheck.error }, { status: 400 });
+    }
+
+    const cloudinaryIdentityUrls = filterCloudinaryUrls([validIdFrontUrl, validIdBackUrl, selfieUrl]);
+    if (cloudinaryIdentityUrls.length !== 3) {
+      return NextResponse.json({ data: null, error: 'Identity documents must be uploaded to Cloudinary.' }, { status: 400 });
+    }
+    if (faceVerificationStatus !== 'passed') {
+      return NextResponse.json({ data: null, error: FACE_VERIFICATION_FAILED_ERROR }, { status: 400 });
+    }
+
+    const validIdUrl = body.validIdUrl || body.valid_id_url || validIdFrontUrl || null;
     const validIdUrls = parseValidIdUrls(body.validIdUrls ?? body.valid_id_urls);
     const effectiveValidIdUrls = validIdUrls.length
       ? validIdUrls
-      : (validIdUrl ? [String(validIdUrl)] : []);
+      : [validIdFrontUrl, validIdBackUrl].filter(Boolean);
 
     if (effectiveValidIdUrls.length) {
       const docCheck = validateCloudinaryDocumentUrls(effectiveValidIdUrls, { label: 'Valid ID' });
@@ -373,6 +446,54 @@ export async function POST(request) {
     }
 
     const age = calculateAge(body.birthday);
+    if (age === null || age < 0) {
+      return NextResponse.json({ data: null, error: 'Please provide a valid birthday.' }, { status: 400 });
+    }
+    if (age < 18 && !sectorFlags.is_pwd) {
+      return NextResponse.json(
+        { data: null, error: 'You must be at least 18 years old unless classified as PWD.' },
+        { status: 400 },
+      );
+    }
+    if (sectorFlags.is_senior_citizen && age < 60) {
+      return NextResponse.json(
+        { data: null, error: 'Senior Citizen selection requires age 60 or above.' },
+        { status: 400 },
+      );
+    }
+
+    const representativeName = String(body.representativeName || body.representative_name || '').trim();
+    const representativeContact = normalizeContactNumber(body.representativeContact || body.representative_contact || '');
+    const representativeRelationship = String(
+      body.representativeRelationship || body.representative_relationship || '',
+    ).trim();
+    const representativeValidIdUrl =
+      body.representativeValidIdUrl || body.representative_valid_id_url || null;
+    const representativeUrls = representativeValidIdUrl ? [String(representativeValidIdUrl)] : [];
+    if (representativeUrls.length) {
+      const docCheck = validateCloudinaryDocumentUrls(representativeUrls, { label: 'Representative valid ID' });
+      if (!docCheck.ok) {
+        return NextResponse.json({ data: null, error: docCheck.error }, { status: 400 });
+      }
+    }
+    const cloudinaryRepresentativeUrls = filterCloudinaryUrls(representativeUrls);
+    const requiresRepresentative = age < 18 && sectorFlags.is_pwd;
+    if (
+      requiresRepresentative &&
+      (!representativeName ||
+        !representativeContact ||
+        representativeContact.length !== 11 ||
+        !representativeRelationship ||
+        cloudinaryRepresentativeUrls.length === 0)
+    ) {
+      return NextResponse.json({ data: null, error: MINOR_PWD_REPRESENTATIVE_ERROR }, { status: 400 });
+    }
+    if (representativeContact && representativeContact.length !== 11) {
+      return NextResponse.json(
+        { data: null, error: 'Guardian/Representative contact number must be exactly 11 digits.' },
+        { status: 400 },
+      );
+    }
     const passwordHash = await hashPassword(password);
 
     // Enforce uniqueness: contact number cannot be used more than once
@@ -429,11 +550,25 @@ export async function POST(request) {
       street: body.street || null,
       barangay: body.barangay || 'Sta. Rita',
       city: body.city || 'Olongapo City',
-      is_pwd: !!body.isPwd,
-      is_senior_citizen: !!body.isSeniorCitizen,
-      is_solo_parent: !!body.isSoloParent,
-      valid_id_url: cloudinaryValidIdUrls[0] || null,
-      valid_id_urls: cloudinaryValidIdUrls,
+      primary_sector: primarySector,
+      secondary_sector: secondarySector || null,
+      is_pwd: sectorFlags.is_pwd,
+      is_senior_citizen: sectorFlags.is_senior_citizen,
+      is_solo_parent: sectorFlags.is_solo_parent,
+      valid_id_url: validIdFrontUrl || cloudinaryValidIdUrls[0] || null,
+      valid_id_urls: cloudinaryValidIdUrls.length ? cloudinaryValidIdUrls : [validIdFrontUrl, validIdBackUrl],
+      valid_id_front_url: validIdFrontUrl,
+      valid_id_back_url: validIdBackUrl,
+      selfie_url: selfieUrl,
+      face_verification_status: faceVerificationStatus,
+      face_verification_score: faceVerificationScore,
+      face_verification_provider: faceVerificationProvider || null,
+      face_verified_at: faceVerifiedAt || new Date().toISOString(),
+      face_verification_error: faceVerificationError || null,
+      representative_name: representativeName || null,
+      representative_contact: representativeContact || null,
+      representative_relationship: representativeRelationship || null,
+      representative_valid_id_url: cloudinaryRepresentativeUrls[0] || null,
       status: 'Pending',
       password_hash: passwordHash,
     };

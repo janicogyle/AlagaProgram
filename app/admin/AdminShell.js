@@ -115,6 +115,7 @@ export default function AdminShell({ children, initialUser }) {
             role: profile.role || 'Staff',
             email: profile.email,
             id: profile.id,
+            sector_access: profile.sector_access || [],
           });
         }, 0);
       } catch (e) {
@@ -152,7 +153,7 @@ export default function AdminShell({ children, initialUser }) {
     const isStaff = user.role === 'Staff';
     if (!isStaff) return;
 
-    const adminOnlyPaths = ['/admin/account-requests', '/admin/users'];
+    const adminOnlyPaths = ['/admin/account-requests', '/admin/renewal-requests', '/admin/users'];
     if (adminOnlyPaths.some((p) => pathname.startsWith(p))) {
       router.replace('/admin/analytics');
     }

@@ -53,9 +53,12 @@ export default function AdminLoginPage() {
       const userData = profileJson?.data;
 
       if (!profileRes.ok || !userData) {
+        const isMissingProfile = profileRes.status === 404;
         openAlert({
-          title: 'Admin account not found',
-          message: profileJson?.error || 'Please contact the administrator.',
+          title: isMissingProfile ? 'Account profile not found' : 'Login error',
+          message: isMissingProfile
+            ? (profileJson?.error || 'Please contact the administrator.')
+            : (profileJson?.error || 'Unable to resolve staff/admin profile. Please try again.'),
         });
         await supabase.auth.signOut();
         return;

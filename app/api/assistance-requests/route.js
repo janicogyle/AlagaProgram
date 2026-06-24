@@ -6,6 +6,8 @@ import { generateNextAssistanceControlNumber } from '@/lib/controlNumbers.server
 import { logActivity, readOptionalStaffActor } from '@/lib/activityLogger.server';
 import { RESTRICTED_BENEFICIARY_STATUSES } from '@/lib/beneficiaryIdStatus.server';
 import { resolveAssistanceAmount } from '@/lib/assistanceAmounts.mjs';
+import { requireStaffOrAdmin } from '@/lib/apiAuth';
+import { forbiddenSectorResponse, getAllowedSectorKeys, rowMatchesSectorAccess } from '@/lib/sectorAccess';
 
 export const runtime = 'nodejs';
 
@@ -20,7 +22,7 @@ const ALLOWED_ASSISTANCE_TYPES = new Set([
   'Confinement Assistance',
   'Burial Assistance',
 ]);
-const ACTIVE_ONLINE_STATUSES = ['Pending', 'Resubmitted'];
+const ACTIVE_CATEGORY_STATUSES = ['Pending', 'Resubmitted', 'Approved'];
 const REQUIREMENTS_VERIFICATION_COLUMNS = new Set([
   'requirements_checklist',
   'requirements_completed',
@@ -203,6 +205,27 @@ export async function GET(request) {
     const pageSize = parsePositiveInt(pageSizeParam, 25, { min: 1, max: 100 });
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
+    let staffAuth = null;
+    if (authHeader) {
+      const auth = await requireStaffOrAdmin(request);
+      if (!auth.ok) return auth.response;
+      staffAuth = auth;
+      if (auth.profile?.role !== 'Admin' && getAllowedSectorKeys(auth.profile).length === 0) {
+        return NextResponse.json({
+          data: [],
+          error: null,
+          meta: hasPagination
+            ? {
+                page,
+                pageSize,
+                total: 0,
+                totalPages: 0,
+              }
+            : undefined,
+        });
+      }
+    }
 
     const baseRequestFields = [
       'id',
@@ -311,7 +334,7 @@ export async function GET(request) {
         residents: resident ? { ...resident, registration_type: registrationType } : resident,
         requirements_urls: requirementUrls,
       };
-    });
+    }).filter((row) => !staffAuth || rowMatchesSectorAccess(row, staffAuth.profile));
 
     return NextResponse.json({
       data: enriched,
@@ -370,18 +393,29 @@ export async function POST(request) {
     const requestSourceRaw = String(body.request_source || body.requestSource || 'online').trim().toLowerCase();
     const requestSource = ALLOWED_REQUEST_SOURCES.has(requestSourceRaw) ? requestSourceRaw : 'online';
     let onlineResidentProfile = null;
+    let staffAuth = null;
 
-    if (requestSource === 'online') {
+    if (requestSource === 'walk-in') {
+      const auth = await requireStaffOrAdmin(request);
+      if (!auth.ok) return auth.response;
+      staffAuth = auth;
+    }
+
+    if (requestSource === 'online' || staffAuth) {
       const { data: residentStatusRow, error: residentStatusError } = await db
         .from('residents')
-        .select('id, status, first_name, middle_name, last_name, contact_number, house_no, purok, street, barangay, city')
+        .select('id, status, first_name, middle_name, last_name, contact_number, house_no, purok, street, barangay, city, is_pwd, is_senior_citizen, is_solo_parent')
         .eq('id', residentId)
         .maybeSingle();
 
       if (residentStatusError) throw residentStatusError;
       onlineResidentProfile = residentStatusRow || null;
 
-      if (RESTRICTED_BENEFICIARY_STATUSES.has(String(residentStatusRow?.status || ''))) {
+      if (staffAuth && !rowMatchesSectorAccess(onlineResidentProfile, staffAuth.profile)) {
+        return forbiddenSectorResponse(NextResponse, 'Beneficiary is outside your assigned sector access.');
+      }
+
+      if (requestSource === 'online' && RESTRICTED_BENEFICIARY_STATUSES.has(String(residentStatusRow?.status || ''))) {
         return NextResponse.json(
           {
             data: null,
@@ -392,38 +426,41 @@ export async function POST(request) {
         );
       }
 
-      const { data: activeRequest, error: activeRequestError } = await db
-        .from('assistance_requests')
-        .select('id, control_number, status, request_date, created_at')
-        .eq('resident_id', residentId)
-        .in('status', ACTIVE_ONLINE_STATUSES)
-        .order('request_date', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    }
 
-      if (activeRequestError) {
-        throw activeRequestError;
-      }
+    const { data: activeRequest, error: activeRequestError } = await db
+      .from('assistance_requests')
+      .select('id, control_number, status, request_date, created_at, assistance_type')
+      .eq('resident_id', residentId)
+      .eq('assistance_type', assistanceType)
+      .in('status', ACTIVE_CATEGORY_STATUSES)
+      .order('request_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-      if (activeRequest) {
-        return NextResponse.json(
-          {
-            data: null,
-            error:
-              'You already have a request under review. Please wait for the barangay office to finish reviewing it.',
-            code: 'ACTIVE_REQUEST_EXISTS',
-            activeRequest,
-          },
-          { status: 409 },
-        );
-      }
+    if (activeRequestError) {
+      throw activeRequestError;
+    }
+
+    if (activeRequest) {
+      return NextResponse.json(
+        {
+          data: null,
+          error:
+            `This beneficiary already has a ${assistanceType} request under review. Please wait for the barangay office to finish processing it.`,
+          code: 'ACTIVE_CATEGORY_REQUEST_EXISTS',
+          activeRequest,
+        },
+        { status: 409 },
+      );
     }
 
     const { data: lastRequest, error: lastRequestError } = await db
       .from('assistance_requests')
       .select('request_date, created_at')
       .eq('resident_id', residentId)
+      .eq('assistance_type', assistanceType)
       .eq('status', 'Released')
       .order('request_date', { ascending: false })
       .order('created_at', { ascending: false })
@@ -437,12 +474,12 @@ export async function POST(request) {
     const lastRequestDate = lastRequest?.request_date || lastRequest?.created_at || null;
     const cooldownInfo = getCooldownInfo(lastRequestDate);
 
-    if (requestSource === 'online' && !cooldownInfo.isEligible) {
+    if (!cooldownInfo.isEligible) {
       return NextResponse.json(
         {
           data: null,
-          error: `Please wait ${cooldownInfo.daysRemaining} day(s) before submitting another request. Next eligible on ${cooldownInfo.nextEligibleDate}.`,
-          code: 'REQUEST_COOLDOWN',
+          error: `Please wait ${cooldownInfo.daysRemaining} day(s) before submitting another ${assistanceType} request. Next eligible on ${cooldownInfo.nextEligibleDate}.`,
+          code: 'CATEGORY_REQUEST_COOLDOWN',
           cooldown: cooldownInfo,
         },
         { status: 429 },

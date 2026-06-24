@@ -7,10 +7,7 @@ import { Badge, FileUpload, Modal, SectionHeader, HelperText, Button } from '@/c
 import styles from './page.module.css';
 import { supabase } from '@/lib/supabaseClient';
 import {
-  ID_CARD_HEIGHT_MM,
-  ID_CARD_WIDTH_MM,
   formatCardDate,
-  openBeneficiaryIdPrintWindow,
   renderBeneficiaryIdCard,
 } from '@/lib/beneficiaryIdCard.client';
 
@@ -78,7 +75,7 @@ export default function ProfilePage() {
         const { data, error } = await supabase
           .from('residents')
           .select(
-            'id, first_name, middle_name, last_name, birthday, age, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, is_pwd, is_senior_citizen, is_solo_parent, status',
+            'id, first_name, middle_name, last_name, birthday, age, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, is_pwd, is_senior_citizen, is_solo_parent, representative_name, representative_contact, representative_relationship, representative_valid_id_url, status',
           )
           .eq('id', residentId)
           .single();
@@ -253,6 +250,9 @@ export default function ProfilePage() {
     { label: 'Sex', value: formatLabel(resident?.sex) },
     { label: 'Citizenship', value: resident?.citizenship },
     { label: 'Civil Status', value: formatLabel(resident?.civil_status) },
+    { label: 'Guardian/Representative', value: resident?.representative_name },
+    { label: 'Representative Contact', value: formatContactForDisplay(resident?.representative_contact) },
+    { label: 'Relationship', value: resident?.representative_relationship },
   ];
 
   useEffect(() => {
@@ -307,23 +307,6 @@ export default function ProfilePage() {
     sectorLabel,
     fullAddress,
   ]);
-
-  const downloadIdPdf = async () => {
-    if (!idCard.cardImageUrl) return;
-    const { jsPDF } = await import('jspdf');
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: [ID_CARD_WIDTH_MM, ID_CARD_HEIGHT_MM],
-    });
-    doc.addImage(idCard.cardImageUrl, 'PNG', 0, 0, ID_CARD_WIDTH_MM, ID_CARD_HEIGHT_MM);
-    doc.save(`alaga-beneficiary-id-${idCard.cardReference || 'card'}.pdf`);
-  };
-
-  const printIdCard = () => {
-    if (!idCard.cardImageUrl) return;
-    openBeneficiaryIdPrintWindow(idCard.cardImageUrl);
-  };
 
   const openRenewalModal = () => {
     setRenewalFiles([]);
@@ -395,7 +378,7 @@ export default function ProfilePage() {
               <SectionHeader
                 id="id-card-heading"
                 title="Beneficiary ID Card Preview"
-                subtitle="Your printable ALAGA Program beneficiary identification card."
+                subtitle="Your ALAGA Program beneficiary identification card preview."
               />
 
               {idCard.loading && <p className={styles.muted}>Loading your ID card…</p>}
@@ -446,21 +429,6 @@ export default function ProfilePage() {
                       </div>
                     )}
                     <div className={styles.idCardButtons}>
-                      <Button
-                        variant="secondary"
-                        size="small"
-                        onClick={downloadIdPdf}
-                        disabled={!idCard.cardImageUrl}
-                      >
-                        Download ID (PDF)
-                      </Button>
-                      <Button
-                        size="small"
-                        onClick={printIdCard}
-                        disabled={!idCard.cardImageUrl}
-                      >
-                        Print ID
-                      </Button>
                       <Button
                         size="small"
                         onClick={openRenewalModal}

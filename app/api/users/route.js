@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { requireAdmin } from '@/lib/apiAuth';
 import { logStaffActivity } from '@/lib/activityLogger.server';
+import { normalizeSectorAccess } from '@/lib/sectorAccess';
 
 export async function GET(request) {
   const auth = await requireAdmin(request);
@@ -10,7 +11,7 @@ export async function GET(request) {
   try {
     const { data, error } = await supabaseAdmin
       .from('users')
-      .select('id, full_name, email, contact_number, role, status, created_at, last_login')
+      .select('id, full_name, email, contact_number, role, status, sector_access, created_at, last_login')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -38,6 +39,7 @@ export async function POST(request) {
     }
 
     const { email, password, fullName, contactNumber, role } = body;
+    const sectorAccess = role === 'Staff' ? normalizeSectorAccess(body.sectorAccess ?? body.sector_access) : [];
 
     // Validate input
     if (!email || !password || !fullName || !role) {
@@ -56,6 +58,13 @@ export async function POST(request) {
     if (password.length < 6) {
       return NextResponse.json(
         { data: null, error: 'Password must be at least 6 characters long.' },
+        { status: 400 },
+      );
+    }
+
+    if (role === 'Staff' && sectorAccess.length === 0) {
+      return NextResponse.json(
+        { data: null, error: 'Assign at least one sector for Staff accounts.' },
         { status: 400 },
       );
     }
@@ -86,6 +95,7 @@ export async function POST(request) {
         email,
         contact_number: contactNumber || null,
         role: role || 'Staff',
+        sector_access: role === 'Admin' ? [] : sectorAccess,
         status: 'Active',
       })
       .select()

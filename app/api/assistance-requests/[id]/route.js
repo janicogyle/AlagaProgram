@@ -4,6 +4,7 @@ import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { normalizeSmsContactNumber } from '@/lib/sms.server';
 import { sendAssistanceStatusSms } from '@/lib/smsNotify.server';
 import { logStaffActivity } from '@/lib/activityLogger.server';
+import { forbiddenSectorResponse, rowMatchesSectorAccess } from '@/lib/sectorAccess';
 
 export const runtime = 'nodejs';
 
@@ -155,6 +156,19 @@ export async function PATCH(request, { params }) {
     }
 
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
+
+    let accessLookup = db
+      .from('assistance_requests')
+      .select('id, resident_id, residents:resident_id(id, is_pwd, is_senior_citizen, is_solo_parent)');
+    accessLookup = isUuid ? accessLookup.eq('id', String(id)) : accessLookup.eq('control_number', String(id));
+    const { data: accessRow, error: accessError } = await accessLookup.maybeSingle();
+    if (accessError) throw accessError;
+    if (!accessRow?.id) {
+      return NextResponse.json({ data: null, error: 'Assistance request not found.' }, { status: 404 });
+    }
+    if (!rowMatchesSectorAccess(accessRow, auth.profile)) {
+      return forbiddenSectorResponse(NextResponse, 'Assistance request is outside your assigned sector access.');
+    }
 
     const status = body.status;
     if (status && !ALLOWED_STATUSES.has(status)) {
@@ -341,13 +355,18 @@ export async function DELETE(request, { params }) {
 
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
 
-    let lookup = db.from('assistance_requests').select('id, status, control_number');
+    let lookup = db
+      .from('assistance_requests')
+      .select('id, status, control_number, resident_id, residents:resident_id(id, is_pwd, is_senior_citizen, is_solo_parent)');
     lookup = isUuid ? lookup.eq('id', String(id)) : lookup.eq('control_number', String(id));
 
     const { data: row, error: lookupError } = await lookup.maybeSingle();
     if (lookupError) throw lookupError;
     if (!row?.id) {
       return NextResponse.json({ data: null, error: 'Assistance request not found.' }, { status: 404 });
+    }
+    if (!rowMatchesSectorAccess(row, auth.profile)) {
+      return forbiddenSectorResponse(NextResponse, 'Assistance request is outside your assigned sector access.');
     }
 
     if (!DELETABLE_STATUSES.has(String(row.status || ''))) {

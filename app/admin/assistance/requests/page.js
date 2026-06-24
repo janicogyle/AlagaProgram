@@ -282,7 +282,11 @@ export default function RequestsPage() {
           page: String(pagination.page),
           pageSize: String(pagination.pageSize),
         });
-        const response = await fetch(`/api/assistance-requests?${params.toString()}`);
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        const response = await fetch(`/api/assistance-requests?${params.toString()}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         const result = await response.json();
 
         if (!response.ok || result?.error) {

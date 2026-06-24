@@ -120,41 +120,17 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
         if (!supabase) {
           throw new Error('Database client not available');
         }
-        const { data, error } = await supabase
-          .from('assistance_requests')
-          .select(
-            'id, control_number, resident_id, requester_name, beneficiary_name, assistance_type, amount, status, request_date, created_at',
-          )
-          .eq('status', 'Released')
-          .order('request_date', { ascending: false });
-
-        if (error) throw error;
-
-        const rows = Array.isArray(data) ? data : [];
-        const residentIds = Array.from(
-          new Set(rows.map((row) => row?.resident_id).filter(Boolean)),
-        );
-
-        let residentSectorsById = new Map();
-        if (residentIds.length > 0) {
-          const { data: residentRows, error: residentsError } = await supabase
-            .from('residents')
-            .select('id, is_pwd, is_senior_citizen, is_solo_parent')
-            .in('id', residentIds);
-
-          if (!residentsError && Array.isArray(residentRows)) {
-            residentSectorsById = new Map(
-              residentRows.map((resident) => {
-                const sectors = [
-                  resident?.is_pwd ? 'PWD' : null,
-                  resident?.is_senior_citizen ? 'Senior Citizen' : null,
-                  resident?.is_solo_parent ? 'Solo Parent' : null,
-                ].filter(Boolean);
-                return [resident.id, sectors];
-              }),
-            );
-          }
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        const response = await fetch('/api/assistance-requests?status=Released', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || result?.error) {
+          throw new Error(result?.error || 'Failed to load assistance records.');
         }
+
+        const rows = Array.isArray(result.data) ? result.data : [];
 
         const latestByResident = new Map();
 
@@ -169,18 +145,27 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
           }
         });
 
-        const mapped = rows.map((r) => ({
-          id: r.id,
-          controlNo: r.control_number,
-          requester: r.requester_name,
-          beneficiary: r.beneficiary_name,
-          type: r.assistance_type,
-          amount: r.amount,
-          status: r.status || 'Released',
-          date: r.request_date ? new Date(r.request_date).toLocaleDateString() : '',
-          cooldownInfo: getCooldownInfo(latestByResident.get(r.resident_id) || null),
-          sectors: residentSectorsById.get(r.resident_id) || [],
-        }));
+        const mapped = rows.map((r) => {
+          const resident = Array.isArray(r.residents) ? r.residents[0] : r.residents || {};
+          const sectors = [
+            resident?.is_pwd ? 'PWD' : null,
+            resident?.is_senior_citizen ? 'Senior Citizen' : null,
+            resident?.is_solo_parent ? 'Solo Parent' : null,
+          ].filter(Boolean);
+
+          return {
+            id: r.id,
+            controlNo: r.control_number,
+            requester: r.requester_name,
+            beneficiary: r.beneficiary_name,
+            type: r.assistance_type,
+            amount: r.amount,
+            status: r.status || 'Released',
+            date: r.request_date ? new Date(r.request_date).toLocaleDateString() : '',
+            cooldownInfo: getCooldownInfo(latestByResident.get(r.resident_id) || null),
+            sectors,
+          };
+        });
 
         setRecords(mapped);
         setClientCache(ASSISTANCE_RECORDS_CACHE_KEY, mapped);

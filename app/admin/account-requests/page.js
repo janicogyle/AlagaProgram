@@ -16,6 +16,7 @@ import {
 } from "@/components";
 import { realtimeHelpers, supabase } from "@/lib/supabaseClient";
 import { formatSmsNotificationResult } from "@/lib/smsTemplates";
+import { buildSectorPairFromSource, getSectorLabel } from "@/lib/beneficiarySectors";
 import styles from "./page.module.css";
 
 const statusOptions = [
@@ -71,10 +72,12 @@ function buildFullName(request) {
 }
 
 function getSectorBadges(request) {
-  const sectors = [];
-  if (request.is_pwd || request.isPwd) sectors.push("PWD");
-  if (request.is_senior_citizen || request.isSeniorCitizen) sectors.push("Senior Citizen");
-  if (request.is_solo_parent || request.isSoloParent) sectors.push("Solo Parent");
+  const pair = buildSectorPairFromSource(request);
+  const sectors = [getSectorLabel(pair.primarySector), getSectorLabel(pair.secondarySector)].filter(Boolean);
+  const present = new Set(sectors);
+  if ((request.is_pwd || request.isPwd) && !present.has("PWD")) sectors.push("PWD");
+  if ((request.is_senior_citizen || request.isSeniorCitizen) && !present.has("Senior Citizen")) sectors.push("Senior Citizen");
+  if ((request.is_solo_parent || request.isSoloParent) && !present.has("Solo Parent")) sectors.push("Solo Parent");
   return sectors;
 }
 
@@ -100,6 +103,18 @@ function parseValidIdUrls(value, fallbackValue) {
   }
 
   return list.map((item) => String(item || "").trim()).filter(Boolean);
+}
+
+function getFaceVerificationLabel(status) {
+  if (status === 'passed') return 'Face Match Passed';
+  if (status === 'failed') return 'Face Match Failed';
+  return 'Manual Review Required';
+}
+
+function getFaceVerificationBadgeVariant(status) {
+  if (status === 'passed') return 'success';
+  if (status === 'failed') return 'danger';
+  return 'warning';
 }
 
 export default function AccountRequestsPage() {
@@ -828,21 +843,93 @@ export default function AccountRequestsPage() {
                   </div>
                 </div>
                 <div>
-                  <span className={styles.label}>Valid ID</span>
+                  <span className={styles.label}>Identity Documents</span>
                   <div className={styles.value}>
-                    {parseValidIdUrls(detailsRequest.valid_id_urls, detailsRequest.valid_id_url).length ? (
+                    {detailsRequest.valid_id_front_url || detailsRequest.valid_id_back_url || detailsRequest.selfie_url ? (
                       <div className={styles.validIdList}>
-                        {parseValidIdUrls(detailsRequest.valid_id_urls, detailsRequest.valid_id_url).map((file, idx) => (
+                        {detailsRequest.valid_id_front_url && (
                           <Button
-                            key={`${file}-${idx}`}
                             variant="outline"
                             size="small"
-                            onClick={() => openDocument(file)}
+                            onClick={() => openDocument(detailsRequest.valid_id_front_url)}
                           >
+                            View Front ID
+                          </Button>
+                        )}
+                        {detailsRequest.valid_id_back_url && (
+                          <Button
+                            variant="outline"
+                            size="small"
+                            onClick={() => openDocument(detailsRequest.valid_id_back_url)}
+                          >
+                            View Back ID
+                          </Button>
+                        )}
+                        {detailsRequest.selfie_url && (
+                          <Button
+                            variant="outline"
+                            size="small"
+                            onClick={() => openDocument(detailsRequest.selfie_url)}
+                          >
+                            View Selfie
+                          </Button>
+                        )}
+                      </div>
+                    ) : parseValidIdUrls(detailsRequest.valid_id_urls, detailsRequest.valid_id_url).length ? (
+                      <div className={styles.validIdList}>
+                        {parseValidIdUrls(detailsRequest.valid_id_urls, detailsRequest.valid_id_url).map((file, idx) => (
+                          <Button key={`${file}-${idx}`} variant="outline" size="small" onClick={() => openDocument(file)}>
                             {`View Valid ID ${idx + 1}`}
                           </Button>
                         ))}
                       </div>
+                    ) : (
+                      <span className={styles.subtleText}>-</span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <span className={styles.label}>Face Verification</span>
+                  <div className={styles.value}>
+                    <Badge variant={getFaceVerificationBadgeVariant(detailsRequest.face_verification_status)}>
+                      {getFaceVerificationLabel(detailsRequest.face_verification_status)}
+                    </Badge>
+                    {detailsRequest.face_verification_score != null && (
+                      <span className={styles.subtleText}>
+                        Score: {Number(detailsRequest.face_verification_score).toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.detailsSection}>
+              <h3>Guardian / Representative</h3>
+              <div className={styles.detailsGrid}>
+                <div>
+                  <span className={styles.label}>Full Name</span>
+                  <span className={styles.value}>{detailsRequest.representative_name || "-"}</span>
+                </div>
+                <div>
+                  <span className={styles.label}>Contact Number</span>
+                  <span className={styles.value}>{detailsRequest.representative_contact || "-"}</span>
+                </div>
+                <div>
+                  <span className={styles.label}>Relationship</span>
+                  <span className={styles.value}>{detailsRequest.representative_relationship || "-"}</span>
+                </div>
+                <div>
+                  <span className={styles.label}>Representative ID</span>
+                  <div className={styles.value}>
+                    {detailsRequest.representative_valid_id_url ? (
+                      <Button
+                        variant="outline"
+                        size="small"
+                        onClick={() => openDocument(detailsRequest.representative_valid_id_url)}
+                      >
+                        View Representative ID
+                      </Button>
                     ) : (
                       <span className={styles.subtleText}>-</span>
                     )}

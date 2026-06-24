@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Card from '@/components/Card';
 import Input from '@/components/Input';
@@ -20,6 +20,12 @@ import { createOrUpdateResident } from '@/lib/residents';
 import { queryNextBeneficiaryControlNumber } from '@/lib/controlNumbers';
 import { getCooldownInfo } from '@/lib/requestCooldown';
 import { buildEligibilityMaps, getResidentEligibility } from '@/lib/residentEligibility';
+import {
+  BENEFICIARY_SECTOR_OPTIONS,
+  buildSectorPairFromSource,
+  deriveSectorFlags,
+  getSecondarySectorOptions,
+} from '@/lib/beneficiarySectors';
 
 const sexOptions = [
   { value: 'male', label: 'Male' },
@@ -76,6 +82,7 @@ const MISSING_REQUIREMENTS_VERIFICATION_CODE = 'MISSING_REQUIREMENTS_VERIFICATIO
 const MISSING_REQUIREMENTS_VERIFICATION_ERROR =
   'Database is missing requirements verification columns. Run setup-step10.sql in Supabase SQL Editor, then try again.';
 const LOCKED_CITIZENSHIP = 'Filipino';
+const SOLO_PARENT_MARRIED_ERROR = 'Married civil status is not allowed for Solo Parent classification.';
 
 const isCheckedRequirement = (item) => {
   if (item === true || item === 'true' || item === 1 || item === '1') return true;
@@ -135,6 +142,8 @@ export default function RegistrationPage() {
     civilStatus: '',
     contactNumber: '',
     // Sector Classification
+    primarySector: '',
+    secondarySector: '',
     sectors: {
       pwd: false,
       seniorCitizen: false,
@@ -143,6 +152,7 @@ export default function RegistrationPage() {
     // Representative Information
     representativeName: '',
     representativeContact: '',
+    representativeRelationship: '',
     // Assistance Request
     assistanceType: '',
     otherAssistanceType: '',
@@ -165,8 +175,12 @@ export default function RegistrationPage() {
     cooldownInfo: getCooldownInfo(null),
     blockReason: null,
   });
+  const civilStatusOptionsForSectors = civilStatusOptions.map((option) => ({
+    ...option,
+    disabled: option.value === 'married' && !!formData.sectors?.soloParent,
+  }));
 
-  const getAuthHeaders = async () => {
+  const getAuthHeaders = useCallback(async () => {
     if (!supabase) throw new Error('Supabase client not initialized.');
 
     const { data, error } = await supabase.auth.getSession();
@@ -176,7 +190,7 @@ export default function RegistrationPage() {
     }
 
     return { Authorization: `Bearer ${session.access_token}` };
-  };
+  }, []);
 
   // Check whether a contact number is already registered (walk-in duplicate check)
   const checkContactAvailability = async (contactDigits) => {
@@ -238,59 +252,26 @@ export default function RegistrationPage() {
       .join(', ');
   };
 
-  const refreshResidentControlNumber = async () => {
+  const refreshResidentControlNumber = useCallback(async () => {
     const next = await queryNextBeneficiaryControlNumber(supabase);
     setControlNumber(next);
-  };
-
-  const loadRequestEligibility = async (residentId) => {
-    if (!residentId) {
-      setRequestEligibility({
-        loading: false,
-        canCreateRequest: true,
-        cooldownInfo: getCooldownInfo(null),
-        blockReason: null,
-      });
-      return;
-    }
-
-    setRequestEligibility((prev) => ({ ...prev, loading: true }));
-    try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(
-        `/api/assistance-requests?residentId=${encodeURIComponent(residentId)}`,
-        { headers },
-      );
-      const json = await res.json().catch(() => ({}));
-      const rows = Array.isArray(json?.data) ? json.data : [];
-      const maps = buildEligibilityMaps(rows);
-      const eligibility = getResidentEligibility(residentId, maps);
-      setRequestEligibility({
-        loading: false,
-        ...eligibility,
-      });
-    } catch {
-      setRequestEligibility({
-        loading: false,
-        canCreateRequest: true,
-        cooldownInfo: getCooldownInfo(null),
-        blockReason: null,
-      });
-    }
-  };
+  }, []);
 
   const assistanceRequestBlocked =
-    !!existingResidentId && !requestEligibility.loading && !requestEligibility.canCreateRequest;
+    !!existingResidentId &&
+    !!formData.assistanceType &&
+    !requestEligibility.loading &&
+    !requestEligibility.canCreateRequest;
 
   const getAssistanceBlockMessage = () => {
     if (requestEligibility.blockReason === 'active') {
-      return 'This beneficiary already has a request under review. Wait for processing before creating a new request.';
+      return `This beneficiary already has a ${formData.assistanceType} request under review. Wait for processing before creating another request in this category.`;
     }
     const info = requestEligibility.cooldownInfo;
     if (info?.nextEligibleDate) {
-      return `This beneficiary must wait ${info.daysRemaining} more day(s). Next eligible on ${info.nextEligibleDate}.`;
+      return `This beneficiary must wait ${info.daysRemaining} more day(s) before another ${formData.assistanceType} request. Next eligible on ${info.nextEligibleDate}.`;
     }
-    return 'This beneficiary is not eligible for a new assistance request yet.';
+    return `This beneficiary is not eligible for another ${formData.assistanceType} request yet.`;
   };
 
   useEffect(() => {
@@ -308,6 +289,8 @@ export default function RegistrationPage() {
           throw new Error('Beneficiary not found.');
         }
 
+        const sectorPair = buildSectorPairFromSource(resident);
+        const sectorFlags = deriveSectorFlags(sectorPair.primarySector, sectorPair.secondarySector);
         setExistingResidentId(String(resident.id));
         setControlNumber(resident.control_number || '');
         setFormData((prev) => ({
@@ -325,15 +308,17 @@ export default function RegistrationPage() {
           citizenship: LOCKED_CITIZENSHIP,
           civilStatus: resident.civil_status || '',
           contactNumber: resident.contact_number || '',
+          primarySector: sectorPair.primarySector,
+          secondarySector: sectorPair.secondarySector,
           sectors: {
-            pwd: !!resident.is_pwd,
-            seniorCitizen: !!resident.is_senior_citizen,
-            soloParent: !!resident.is_solo_parent,
+            pwd: sectorFlags.is_pwd,
+            seniorCitizen: sectorFlags.is_senior_citizen,
+            soloParent: sectorFlags.is_solo_parent,
           },
           representativeName: resident.representative_name || '',
           representativeContact: resident.representative_contact || '',
+          representativeRelationship: resident.representative_relationship || '',
         }));
-        await loadRequestEligibility(String(resident.id));
         setStatus({
           type: 'success',
           message: 'Existing beneficiary loaded. Add the new walk-in request below.',
@@ -364,9 +349,56 @@ export default function RegistrationPage() {
     } else {
       void refreshResidentControlNumber();
     }
-    // Initial registration load only; helper functions read current page state as needed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [getAuthHeaders, refreshResidentControlNumber]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadRequestEligibility = async () => {
+      if (!existingResidentId || !formData.assistanceType) {
+        setRequestEligibility({
+          loading: false,
+          canCreateRequest: true,
+          cooldownInfo: getCooldownInfo(null),
+          blockReason: null,
+        });
+        return;
+      }
+
+      setRequestEligibility((prev) => ({ ...prev, loading: true }));
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(
+          `/api/assistance-requests?residentId=${encodeURIComponent(existingResidentId)}`,
+          { headers },
+        );
+        const json = await res.json().catch(() => ({}));
+        const rows = Array.isArray(json?.data) ? json.data : [];
+        const maps = buildEligibilityMaps(rows);
+        const eligibility = getResidentEligibility(existingResidentId, maps, formData.assistanceType);
+        if (!cancelled) {
+          setRequestEligibility({
+            loading: false,
+            ...eligibility,
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setRequestEligibility({
+            loading: false,
+            canCreateRequest: true,
+            cooldownInfo: getCooldownInfo(null),
+            blockReason: null,
+          });
+        }
+      }
+    };
+
+    void loadRequestEligibility();
+    return () => {
+      cancelled = true;
+    };
+  }, [existingResidentId, formData.assistanceType, getAuthHeaders]);
 
   useEffect(() => {
     const loadBudgets = async () => {
@@ -526,20 +558,33 @@ export default function RegistrationPage() {
     }));
   };
 
-  const handleSectorChange = (sector) => {
-    // Clear sector error when user selects
-    if (errors.sectors) {
-      setErrors((prev) => ({ ...prev, sectors: '' }));
+  const handleSectorSelectChange = (event) => {
+    const { name, value } = event.target;
+    const nextPrimary = name === 'primarySector' ? value : formData.primarySector;
+    let nextSecondary = name === 'secondarySector' ? value : formData.secondarySector;
+    if (nextPrimary && nextSecondary === nextPrimary) nextSecondary = '';
+    const flags = deriveSectorFlags(nextPrimary, nextSecondary);
+    const shouldClearMarried = flags.is_solo_parent && formData.civilStatus === 'married';
+
+    if (errors.sectors || shouldClearMarried) {
+      setErrors((prev) => ({
+        ...prev,
+        sectors: '',
+        civilStatus: shouldClearMarried ? '' : prev.civilStatus,
+      }));
     }
 
-    setFormData((prev) => {
-      const cleared = { pwd: false, seniorCitizen: false, soloParent: false };
-      const isSelected = !!prev?.sectors?.[sector];
-      return {
-        ...prev,
-        sectors: isSelected ? cleared : { ...cleared, [sector]: true },
-      };
-    });
+    setFormData((prev) => ({
+      ...prev,
+      primarySector: nextPrimary,
+      secondarySector: nextSecondary,
+      civilStatus: shouldClearMarried ? '' : prev.civilStatus,
+      sectors: {
+        pwd: flags.is_pwd,
+        seniorCitizen: flags.is_senior_citizen,
+        soloParent: flags.is_solo_parent,
+      },
+    }));
   };
 
   const toggleRequirement = (index) => {
@@ -587,6 +632,13 @@ export default function RegistrationPage() {
     if (!formData.sex) newErrors.sex = 'Sex is required';
     if (!formData.citizenship.trim()) newErrors.citizenship = 'Citizenship is required';
     if (!formData.civilStatus) newErrors.civilStatus = 'Civil status is required';
+    if (!formData.primarySector) newErrors.sectors = 'Primary Sector is required.';
+    if (formData.primarySector && formData.secondarySector && formData.primarySector === formData.secondarySector) {
+      newErrors.sectors = 'Secondary Sector must be different from Primary Sector.';
+    }
+    if (formData.sectors.soloParent && formData.civilStatus === 'married') {
+      newErrors.civilStatus = SOLO_PARENT_MARRIED_ERROR;
+    }
     if (!formData.contactNumber.trim()) {
       newErrors.contactNumber = 'Contact number is required';
     } else if (formData.contactNumber.length !== 11) {
@@ -702,11 +754,14 @@ export default function RegistrationPage() {
         citizenship: LOCKED_CITIZENSHIP,
         civil_status: formData.civilStatus,
         contact_number: formData.contactNumber,
+        primary_sector: formData.primarySector,
+        secondary_sector: formData.secondarySector || null,
         is_pwd: formData.sectors.pwd,
         is_senior_citizen: formData.sectors.seniorCitizen,
         is_solo_parent: formData.sectors.soloParent,
         representative_name: formData.representativeName,
         representative_contact: formData.representativeContact,
+        representative_relationship: formData.representativeRelationship,
         status: 'Active',
       }, { allowContactMerge: !!existingResidentId });
 
@@ -762,9 +817,10 @@ export default function RegistrationPage() {
           requirements_checklist: requirementsChecklist,
         };
 
+        const authHeaders = await getAuthHeaders();
         const assistanceResponse = await fetch('/api/assistance-requests', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
           body: JSON.stringify(payload),
         });
         const assistanceJson = await assistanceResponse.json().catch(() => ({}));
@@ -830,8 +886,11 @@ export default function RegistrationPage() {
           seniorCitizen: false,
           soloParent: false,
         },
+        primarySector: '',
+        secondarySector: '',
         representativeName: '',
         representativeContact: '',
+        representativeRelationship: '',
         assistanceType: '',
         otherAssistanceType: '',
         assistanceAmount: '',
@@ -884,6 +943,7 @@ export default function RegistrationPage() {
       },
       representativeName: '',
       representativeContact: '',
+      representativeRelationship: '',
       assistanceType: '',
       otherAssistanceType: '',
       assistanceAmount: '',
@@ -1051,7 +1111,7 @@ export default function RegistrationPage() {
                 name="civilStatus"
                 value={formData.civilStatus}
                 onChange={handleChange}
-                options={civilStatusOptions}
+                options={civilStatusOptionsForSectors}
                 placeholder="Select civil status"
                 error={errors.civilStatus}
                 required
@@ -1158,7 +1218,6 @@ export default function RegistrationPage() {
                 onChange={handleChange}
                 options={[{ value: '', label: 'Select type (if any)' }, ...assistanceTypeOptions]}
                 optional
-                disabled={assistanceRequestBlocked}
                 error={errors.assistanceType}
               />
               <Input
@@ -1181,38 +1240,37 @@ export default function RegistrationPage() {
                 disabled={!formData.assistanceType}
                 optional
               />
+              <Input
+                label="Relationship to Beneficiary"
+                name="representativeRelationship"
+                value={formData.representativeRelationship}
+                onChange={handleChange}
+                placeholder="Parent, guardian, sibling, etc."
+                disabled={!formData.assistanceType}
+                optional
+              />
 
               <div>
-                <span className={styles.label}>Sector Classification (choose one)</span>
+                <span className={styles.label}>Sector Classification</span>
                 <div className={styles.sectorList}>
                   {errors.sectors && <span className={styles.sectorError}>{errors.sectors}</span>}
-                  <label className={styles.checkbox}>
-                    <input
-                      type="checkbox"
-                      checked={formData.sectors.pwd}
-                      onChange={() => handleSectorChange('pwd')}
-                    />
-                    <span className={styles.checkmark}></span>
-                    <span>PWD (Person with Disability)</span>
-                  </label>
-                  <label className={styles.checkbox}>
-                    <input
-                      type="checkbox"
-                      checked={formData.sectors.seniorCitizen}
-                      onChange={() => handleSectorChange('seniorCitizen')}
-                    />
-                    <span className={styles.checkmark}></span>
-                    <span>Senior Citizen (60 years old and above)</span>
-                  </label>
-                  <label className={styles.checkbox}>
-                    <input
-                      type="checkbox"
-                      checked={formData.sectors.soloParent}
-                      onChange={() => handleSectorChange('soloParent')}
-                    />
-                    <span className={styles.checkmark}></span>
-                    <span>Solo Parent</span>
-                  </label>
+                  <Select
+                    label="Primary Sector"
+                    name="primarySector"
+                    value={formData.primarySector}
+                    onChange={handleSectorSelectChange}
+                    options={BENEFICIARY_SECTOR_OPTIONS}
+                    placeholder="Select primary sector"
+                    required
+                  />
+                  <Select
+                    label="Secondary Sector"
+                    name="secondarySector"
+                    value={formData.secondarySector}
+                    onChange={handleSectorSelectChange}
+                    options={getSecondarySectorOptions(formData.primarySector)}
+                    placeholder="No secondary sector"
+                  />
                 </div>
               </div>
 

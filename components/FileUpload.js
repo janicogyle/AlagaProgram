@@ -7,6 +7,8 @@ const documentTypes = {
   prescription: { label: 'Prescription', accept: '.pdf,.jpg,.jpeg,.png' },
   officialReceipt: { label: 'Official Receipt', accept: '.pdf,.jpg,.jpeg,.png' },
   validId: { label: 'Valid ID', accept: '.pdf,.jpg,.jpeg,.png' },
+  validIdImage: { label: 'Valid ID Image', accept: '.jpg,.jpeg,.png,image/jpeg,image/png' },
+  selfie: { label: 'Selfie', accept: '.jpg,.jpeg,.png,image/jpeg,image/png' },
   confinementCert: { label: 'Certificate of Confinement', accept: '.pdf,.jpg,.jpeg,.png' },
   deathCert: { label: 'Death Certificate', accept: '.pdf,.jpg,.jpeg,.png' },
   other: { label: 'Other Documents', accept: '.pdf,.jpg,.jpeg,.png,.doc,.docx' },

@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { requireAdmin, requireStaffOrAdmin } from '@/lib/apiAuth';
 import { logStaffActivity } from '@/lib/activityLogger.server';
+import { forbiddenSectorResponse, rowMatchesSectorAccess } from '@/lib/sectorAccess';
+import { validateSectorPair } from '@/lib/beneficiarySectors';
 
 export const runtime = 'nodejs';
 
 const LOCKED_CITIZENSHIP = 'Filipino';
+const SOLO_PARENT_MARRIED_ERROR = 'Married civil status is not allowed for Solo Parent classification.';
 
 function normalizeContactNumber(input) {
   const digits = String(input || '').replace(/\D/g, '');
@@ -151,6 +154,12 @@ async function fetchSignupWithRetry(db, { accountRequestId, contactNumber }) {
     'is_pwd',
     'is_senior_citizen',
     'is_solo_parent',
+    'primary_sector',
+    'secondary_sector',
+    'representative_name',
+    'representative_contact',
+    'representative_relationship',
+    'representative_valid_id_url',
     'valid_id_url',
   ];
 
@@ -267,6 +276,13 @@ export async function GET(request, { params }) {
       'is_pwd',
       'is_senior_citizen',
       'is_solo_parent',
+      'primary_sector',
+      'secondary_sector',
+      'representative_name',
+      'representative_contact',
+      'representative_relationship',
+      'representative_valid_id_url',
+      'valid_id_url',
       'status',
       'created_at',
       'updated_at',
@@ -298,6 +314,10 @@ export async function GET(request, { params }) {
         return NextResponse.json({ data: null, error: 'Beneficiary not found.' }, { status: 404 });
       }
       throw residentError;
+    }
+
+    if (!rowMatchesSectorAccess(resident, auth.profile)) {
+      return forbiddenSectorResponse(NextResponse, 'Beneficiary is outside your assigned sector access.');
     }
 
     let accountRequestId = null;
@@ -356,6 +376,25 @@ export async function GET(request, { params }) {
         if (reflected[k] == null && signupData[k] != null) {
           reflected[k] = !!signupData[k];
           backfill[k] = !!signupData[k];
+        }
+      }
+
+      for (const k of ['primary_sector', 'secondary_sector']) {
+        if (reflected[k] == null && signupData[k] != null) {
+          reflected[k] = signupData[k];
+          backfill[k] = signupData[k];
+        }
+      }
+
+      for (const k of [
+        'representative_name',
+        'representative_contact',
+        'representative_relationship',
+        'representative_valid_id_url',
+      ]) {
+        if (reflected[k] == null && signupData[k] != null) {
+          reflected[k] = signupData[k];
+          backfill[k] = signupData[k];
         }
       }
 
@@ -485,6 +524,10 @@ export async function PATCH(request, { params }) {
     const sex = body?.sex ?? null;
     const citizenship = LOCKED_CITIZENSHIP;
     const civil_status = body?.civil_status ?? body?.civilStatus ?? null;
+    const representative_name = body?.representative_name ?? body?.representativeName ?? null;
+    const representative_contact = normalizeContactNumber(body?.representative_contact ?? body?.representativeContact ?? '');
+    const representative_relationship = body?.representative_relationship ?? body?.representativeRelationship ?? null;
+    const representative_valid_id_url = body?.representative_valid_id_url ?? body?.representativeValidIdUrl ?? null;
 
     const house_no = body?.house_no ?? body?.houseNo ?? null;
     const purok = body?.purok ?? null;
@@ -492,9 +535,18 @@ export async function PATCH(request, { params }) {
     const barangay = body?.barangay ?? null;
     const city = body?.city ?? null;
 
-    const is_pwd = !!(body?.is_pwd ?? body?.isPwd);
-    const is_senior_citizen = !!(body?.is_senior_citizen ?? body?.isSeniorCitizen);
-    const is_solo_parent = !!(body?.is_solo_parent ?? body?.isSoloParent);
+    const sectorValidation = validateSectorPair(body);
+    if (!sectorValidation.ok) {
+      return NextResponse.json({ data: null, error: sectorValidation.error }, { status: 400 });
+    }
+    const {
+      primarySector,
+      secondarySector,
+      flags: { is_pwd, is_senior_citizen, is_solo_parent },
+    } = sectorValidation;
+    if (is_solo_parent && String(civil_status || '').trim().toLowerCase() === 'married') {
+      return NextResponse.json({ data: null, error: SOLO_PARENT_MARRIED_ERROR }, { status: 400 });
+    }
 
     const status = body?.status ?? null;
 
@@ -505,11 +557,9 @@ export async function PATCH(request, { params }) {
     if (!contact_number || contact_number.length !== 11) {
       return NextResponse.json({ data: null, error: 'Contact number must be 11 digits.' }, { status: 400 });
     }
-
-    const sectorCount = [is_pwd, is_senior_citizen, is_solo_parent].filter(Boolean).length;
-    if (sectorCount > 1) {
+    if (representative_contact && representative_contact.length !== 11) {
       return NextResponse.json(
-        { data: null, error: 'Only one sector classification can be selected.' },
+        { data: null, error: 'Guardian/Representative contact number must be exactly 11 digits.' },
         { status: 400 },
       );
     }
@@ -573,12 +623,18 @@ export async function PATCH(request, { params }) {
       sex,
       citizenship,
       civil_status,
+      representative_name,
+      representative_contact: representative_contact || null,
+      representative_relationship,
+      representative_valid_id_url,
       contact_number,
       house_no,
       purok,
       street,
       barangay,
       city,
+      primary_sector: primarySector,
+      secondary_sector: secondarySector || null,
       is_pwd,
       is_senior_citizen,
       is_solo_parent,
@@ -618,6 +674,12 @@ export async function PATCH(request, { params }) {
       'is_pwd',
       'is_senior_citizen',
       'is_solo_parent',
+      'primary_sector',
+      'secondary_sector',
+      'representative_name',
+      'representative_contact',
+      'representative_relationship',
+      'representative_valid_id_url',
       'status',
       'created_at',
       'updated_at',

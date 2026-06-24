@@ -7,6 +7,7 @@ import {
   issueBeneficiaryCard,
 } from '@/lib/beneficiaryCards.server';
 import { logStaffActivity } from '@/lib/activityLogger.server';
+import { forbiddenSectorResponse, rowMatchesSectorAccess } from '@/lib/sectorAccess';
 
 export const runtime = 'nodejs';
 
@@ -24,7 +25,7 @@ function normalizeContactNumber(input) {
 }
 
 async function loadResident(residentId) {
-  const baseColumns = 'id, first_name, last_name, status, contact_number';
+  const baseColumns = 'id, first_name, last_name, status, contact_number, is_pwd, is_senior_citizen, is_solo_parent';
   const { data, error } = await supabaseAdmin
     .from('residents')
     .select(`${baseColumns}, account_request_id`)
@@ -132,6 +133,9 @@ export async function POST(request) {
 
     if (residentError || !resident) {
       return NextResponse.json({ data: null, error: 'Beneficiary not found.' }, { status: 404 });
+    }
+    if (!rowMatchesSectorAccess(resident, auth.profile)) {
+      return forbiddenSectorResponse(NextResponse, 'Beneficiary is outside your assigned sector access.');
     }
 
     const currentCard = await loadCurrentCard(residentId);

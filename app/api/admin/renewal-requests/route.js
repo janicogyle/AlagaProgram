@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
-import { requireAdmin } from '@/lib/apiAuth';
+import { requireStaffOrAdmin } from '@/lib/apiAuth';
+import { rowMatchesSectorAccess } from '@/lib/sectorAccess';
 
 export const runtime = 'nodejs';
 
@@ -26,7 +27,7 @@ function isMissingRenewalTableError(error) {
 
 export async function GET(request) {
   try {
-    const auth = await requireAdmin(request);
+    const auth = await requireStaffOrAdmin(request);
     if (!auth.ok) return auth.response;
 
     if (!supabaseAdmin) {
@@ -51,7 +52,7 @@ export async function GET(request) {
         processed_at,
         created_at,
         updated_at,
-        residents:resident_id(id, control_number, first_name, middle_name, last_name, contact_number, status),
+        residents:resident_id(id, control_number, first_name, middle_name, last_name, contact_number, status, is_pwd, is_senior_citizen, is_solo_parent),
         beneficiary_cards:card_id(id, issued_at, expires_at, status, revoked_at)
       `)
       .order('created_at', { ascending: false });
@@ -61,7 +62,8 @@ export async function GET(request) {
     const { data, error } = await query;
     if (error) throw error;
 
-    return NextResponse.json({ data: (data || []).map(mapRequest), error: null });
+    const rows = (data || []).map(mapRequest).filter((row) => rowMatchesSectorAccess(row.resident, auth.profile));
+    return NextResponse.json({ data: rows, error: null });
   } catch (error) {
     console.error('Fetch renewal requests error:', error);
     if (isMissingRenewalTableError(error)) {

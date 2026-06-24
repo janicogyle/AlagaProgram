@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { requireAdmin } from '@/lib/apiAuth';
 import { logStaffActivity } from '@/lib/activityLogger.server';
+import { normalizeSectorAccess } from '@/lib/sectorAccess';
 
 export async function PATCH(request, { params }) {
   const auth = await requireAdmin(request);
@@ -25,10 +26,28 @@ export async function PATCH(request, { params }) {
     delete updates.id;
     delete updates.created_at;
 
-    const allowedKeys = new Set(['full_name', 'contact_number', 'role', 'status', 'email']);
+    const requestedRole = updates.role;
+    const sectorAccess = requestedRole === 'Staff'
+      ? normalizeSectorAccess(updates.sector_access ?? updates.sectorAccess)
+      : [];
+    const allowedKeys = new Set(['full_name', 'contact_number', 'role', 'status', 'email', 'sector_access']);
     Object.keys(updates).forEach((key) => {
       if (!allowedKeys.has(key)) delete updates[key];
     });
+
+    if (requestedRole === 'Staff') {
+      if ((updates.status || 'Active') === 'Active' && sectorAccess.length === 0) {
+        return NextResponse.json(
+          { data: null, error: 'Assign at least one sector for active Staff accounts.' },
+          { status: 400 },
+        );
+      }
+      updates.sector_access = sectorAccess;
+    } else if (requestedRole === 'Admin') {
+      updates.sector_access = [];
+    } else {
+      delete updates.sector_access;
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ data: null, error: 'No valid fields to update.' }, { status: 400 });
@@ -47,7 +66,7 @@ export async function PATCH(request, { params }) {
     // Fetch current profile for rollback + to detect no-op email change
     const { data: existingUser, error: existingError } = await supabaseAdmin
       .from('users')
-      .select('id, email')
+      .select('id, email, role, status, sector_access')
       .eq('id', userId)
       .single();
 
@@ -57,6 +76,25 @@ export async function PATCH(request, { params }) {
 
     const oldEmail = existingUser.email;
     const wantsEmailChange = email !== undefined && email !== oldEmail;
+    const effectiveRole = updates.role || existingUser.role;
+    const effectiveStatus = updates.status || existingUser.status;
+    const effectiveSectorAccess =
+      effectiveRole === 'Staff'
+        ? (updates.sector_access ? normalizeSectorAccess(updates.sector_access) : normalizeSectorAccess(existingUser.sector_access))
+        : [];
+
+    if (effectiveRole === 'Staff' && effectiveStatus === 'Active' && effectiveSectorAccess.length === 0) {
+      return NextResponse.json(
+        { data: null, error: 'Assign at least one sector for active Staff accounts.' },
+        { status: 400 },
+      );
+    }
+
+    if (effectiveRole === 'Staff') {
+      updates.sector_access = effectiveSectorAccess;
+    } else if (effectiveRole === 'Admin') {
+      updates.sector_access = [];
+    }
 
     // 1) Update auth email first (so login is updated)
     if (wantsEmailChange) {

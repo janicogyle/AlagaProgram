@@ -1,7 +1,51 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
+import { normalizeSectorAccess } from '@/lib/sectorAccess';
 
 export const runtime = 'nodejs';
+
+const USER_PROFILE_FIELDS = 'id, email, full_name, contact_number, role, status, last_login, created_at, updated_at, sector_access';
+const USER_PROFILE_FALLBACK_FIELDS = 'id, email, full_name, contact_number, role, status, last_login, created_at, updated_at';
+const ALLOWED_PORTAL_ROLES = new Set(['Admin', 'Staff']);
+
+async function selectUserProfile(column, value) {
+  let { data, error } = await supabaseAdmin
+    .from('users')
+    .select(USER_PROFILE_FIELDS)
+    .eq(column, value)
+    .maybeSingle();
+
+  if (error && String(error.message || '').includes('sector_access')) {
+    ;({ data, error } = await supabaseAdmin
+      .from('users')
+      .select(USER_PROFILE_FALLBACK_FIELDS)
+      .eq(column, value)
+      .maybeSingle());
+  }
+
+  if (data) data.sector_access = data.role === 'Admin' ? [] : normalizeSectorAccess(data.sector_access);
+  return { data, error };
+}
+
+function validatePortalProfile(profile) {
+  if (!ALLOWED_PORTAL_ROLES.has(profile?.role)) {
+    return { ok: false, error: 'Account is not authorized for the staff/admin portal.', status: 403 };
+  }
+
+  if (profile.status !== 'Active') {
+    return { ok: false, error: 'Account inactive.', status: 403 };
+  }
+
+  if (profile.role === 'Staff' && normalizeSectorAccess(profile.sector_access).length === 0) {
+    return {
+      ok: false,
+      error: 'Staff account has no assigned sectors. Please contact an administrator.',
+      status: 403,
+    };
+  }
+
+  return { ok: true };
+}
 
 function getBearerToken(request) {
   const auth = request.headers.get('authorization') || '';
@@ -35,15 +79,12 @@ export async function GET(request) {
     }
 
     // 1) Prefer lookup by auth UID (expected schema)
-    const { data: byId, error: byIdError } = await supabaseAdmin
-      .from('users')
-      .select('id, email, full_name, contact_number, role, status, last_login, created_at, updated_at')
-      .eq('id', authUser.id)
-      .maybeSingle();
+    const { data: byId, error: byIdError } = await selectUserProfile('id', authUser.id);
 
     if (!byIdError && byId) {
-      if (byId.status !== 'Active') {
-        return NextResponse.json({ data: null, error: 'Account inactive.' }, { status: 403 });
+      const validation = validatePortalProfile(byId);
+      if (!validation.ok) {
+        return NextResponse.json({ data: null, error: validation.error }, { status: validation.status });
       }
 
       await supabaseAdmin
@@ -57,21 +98,18 @@ export async function GET(request) {
     // 2) Back-compat: if users table was created with random IDs, try lookup by email and repair
     const email = authUser.email;
     if (!email) {
-      return NextResponse.json({ data: null, error: 'Admin account not found.' }, { status: 404 });
+      return NextResponse.json({ data: null, error: 'Account profile not found.' }, { status: 404 });
     }
 
-    const { data: byEmail, error: byEmailError } = await supabaseAdmin
-      .from('users')
-      .select('id, email, full_name, contact_number, role, status, last_login, created_at, updated_at')
-      .eq('email', email)
-      .maybeSingle();
+    const { data: byEmail, error: byEmailError } = await selectUserProfile('email', email);
 
     if (byEmailError || !byEmail) {
-      return NextResponse.json({ data: null, error: 'Admin account not found.' }, { status: 404 });
+      return NextResponse.json({ data: null, error: 'Account profile not found.' }, { status: 404 });
     }
 
-    if (byEmail.status !== 'Active') {
-      return NextResponse.json({ data: null, error: 'Account inactive.' }, { status: 403 });
+    const emailValidation = validatePortalProfile(byEmail);
+    if (!emailValidation.ok) {
+      return NextResponse.json({ data: null, error: emailValidation.error }, { status: emailValidation.status });
     }
 
     // If IDs mismatch, repair by re-inserting with correct auth UID.
@@ -86,6 +124,7 @@ export async function GET(request) {
         email: byEmail.email,
         contact_number: byEmail.contact_number || null,
         role: byEmail.role || 'Staff',
+        sector_access: byEmail.role === 'Admin' ? [] : normalizeSectorAccess(byEmail.sector_access),
         status: byEmail.status || 'Active',
         last_login: new Date().toISOString(),
         created_at: byEmail.created_at || undefined,
@@ -95,7 +134,7 @@ export async function GET(request) {
       const { data: repaired, error: insError } = await supabaseAdmin
         .from('users')
         .insert(insertPayload)
-        .select('id, email, full_name, contact_number, role, status, last_login, created_at, updated_at')
+        .select(USER_PROFILE_FIELDS)
         .single();
 
       if (insError) throw insError;

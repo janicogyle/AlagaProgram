@@ -67,6 +67,46 @@
   color: var(--text-muted);
 }
 
+.sectorAccessGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.sectorAccessLabel {
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sectorAccessOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sectorAccessOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-bg);
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.sectorAccessOption input {
+  margin: 0;
+}
+
+.sectorAccessError {
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 650;
+}
+
 .modalDetails {
   display: grid;
   gap: 18px;

@@ -29,6 +29,13 @@ import {
   openBeneficiaryIdPrintWindow,
   renderBeneficiaryIdCard,
 } from '@/lib/beneficiaryIdCard.client';
+import {
+  BENEFICIARY_SECTOR_OPTIONS,
+  buildSectorPairFromSource,
+  deriveSectorFlags,
+  getSecondarySectorOptions,
+  getSectorLabel,
+} from '@/lib/beneficiarySectors';
 
 const statusOptions = [
   { value: "", label: "All Status" },
@@ -215,10 +222,12 @@ function computeAgeFromBirthday(birthday) {
 
 function getSectorBadges(resident) {
   if (!resident) return [];
-  const sectors = [];
-  if (resident.is_pwd) sectors.push("PWD");
-  if (resident.is_senior_citizen) sectors.push("Senior Citizen");
-  if (resident.is_solo_parent) sectors.push("Solo Parent");
+  const pair = buildSectorPairFromSource(resident);
+  const sectors = [getSectorLabel(pair.primarySector), getSectorLabel(pair.secondarySector)].filter(Boolean);
+  const present = new Set(sectors);
+  if (resident.is_pwd && !present.has("PWD")) sectors.push("PWD");
+  if (resident.is_senior_citizen && !present.has("Senior Citizen")) sectors.push("Senior Citizen");
+  if (resident.is_solo_parent && !present.has("Solo Parent")) sectors.push("Solo Parent");
   return sectors;
 }
 
@@ -299,6 +308,10 @@ export default function ResidentsPage() {
     sex: '',
     citizenship: LOCKED_CITIZENSHIP,
     civil_status: '',
+    representative_name: '',
+    representative_contact: '',
+    representative_relationship: '',
+    representative_valid_id_url: '',
     contact_number: '',
     house_no: '',
     purok: '',
@@ -307,6 +320,8 @@ export default function ResidentsPage() {
     is_pwd: false,
     is_senior_citizen: false,
     is_solo_parent: false,
+    primary_sector: '',
+    secondary_sector: '',
     status: 'Active',
   });
 
@@ -772,6 +787,8 @@ export default function ResidentsPage() {
     }
 
     const base = residentDetails?.resident || selectedResident;
+    const sectorPair = buildSectorPairFromSource(base);
+    const sectorFlags = deriveSectorFlags(sectorPair.primarySector, sectorPair.secondarySector);
 
     setEditErrors({ contact_number: '' });
     setEditForm({
@@ -783,14 +800,20 @@ export default function ResidentsPage() {
       sex: base.sex || '',
       citizenship: LOCKED_CITIZENSHIP,
       civil_status: base.civil_status || '',
+      representative_name: base.representative_name || '',
+      representative_contact: base.representative_contact || '',
+      representative_relationship: base.representative_relationship || '',
+      representative_valid_id_url: base.representative_valid_id_url || '',
       contact_number: base.contact_number || '',
       house_no: base.house_no || '',
       purok: base.purok || '',
       barangay: base.barangay || '',
       city: base.city || '',
-      is_pwd: !!base.is_pwd,
-      is_senior_citizen: !!base.is_senior_citizen,
-      is_solo_parent: !!base.is_solo_parent,
+      primary_sector: sectorPair.primarySector,
+      secondary_sector: sectorPair.secondarySector,
+      is_pwd: sectorFlags.is_pwd,
+      is_senior_citizen: sectorFlags.is_senior_citizen,
+      is_solo_parent: sectorFlags.is_solo_parent,
       status: base.status || 'Active',
     });
 
@@ -801,14 +824,26 @@ export default function ResidentsPage() {
     const { name, type, checked, value } = e.target;
     const nextValue = type === 'checkbox' ? checked : value;
 
-    if (name === 'is_pwd' || name === 'is_senior_citizen' || name === 'is_solo_parent') {
-      // Only one sector classification is allowed
-      setEditForm((prev) => ({
-        ...prev,
-        is_pwd: name === 'is_pwd' ? !!nextValue : false,
-        is_senior_citizen: name === 'is_senior_citizen' ? !!nextValue : false,
-        is_solo_parent: name === 'is_solo_parent' ? !!nextValue : false,
-      }));
+    if (name === 'primary_sector' || name === 'secondary_sector') {
+      setEditForm((prev) => {
+        const nextPrimary = name === 'primary_sector' ? value : prev.primary_sector;
+        let nextSecondary = name === 'secondary_sector' ? value : prev.secondary_sector;
+        if (nextPrimary && nextSecondary === nextPrimary) nextSecondary = '';
+        const flags = deriveSectorFlags(nextPrimary, nextSecondary);
+        return {
+          ...prev,
+          primary_sector: nextPrimary,
+          secondary_sector: nextSecondary,
+          is_pwd: flags.is_pwd,
+          is_senior_citizen: flags.is_senior_citizen,
+          is_solo_parent: flags.is_solo_parent,
+        };
+      });
+      return;
+    }
+
+    if (name === 'representative_contact') {
+      setEditForm((prev) => ({ ...prev, representative_contact: String(value || '').replace(/\D/g, '').slice(0, 11) }));
       return;
     }
 
@@ -827,9 +862,17 @@ export default function ResidentsPage() {
       setEditErrors({ contact_number: 'Contact number must be 11 digits.' });
       return;
     }
+    if (editForm.representative_contact && String(editForm.representative_contact).trim().length !== 11) {
+      openAlert({ title: 'Save failed', message: 'Guardian/Representative contact number must be exactly 11 digits.' });
+      return;
+    }
 
     if (!editForm.first_name?.trim() || !editForm.last_name?.trim()) {
       openAlert({ title: 'Save failed', message: 'First name and last name are required.' });
+      return;
+    }
+    if (!editForm.primary_sector) {
+      openAlert({ title: 'Save failed', message: 'Primary Sector is required.' });
       return;
     }
 
@@ -1716,6 +1759,46 @@ export default function ResidentsPage() {
                   <p className={styles.residentInfoEmpty}>General</p>
                 )}
               </section>
+
+              <section className={styles.residentInfoCard}>
+                <h3 className={styles.residentInfoTitle}>Guardian / Representative</h3>
+                {(effectiveResident?.representative_name ||
+                  effectiveResident?.representative_contact ||
+                  effectiveResident?.representative_relationship ||
+                  effectiveResident?.representative_valid_id_url) ? (
+                  <div className={styles.residentInfoGrid}>
+                    <div className={styles.residentInfoRow}>
+                      <span className={styles.residentInfoLabel}>Full Name</span>
+                      <strong className={styles.residentInfoValue}>{effectiveResident?.representative_name || '-'}</strong>
+                    </div>
+                    <div className={styles.residentInfoRow}>
+                      <span className={styles.residentInfoLabel}>Contact Number</span>
+                      <strong className={styles.residentInfoValue}>{effectiveResident?.representative_contact || '-'}</strong>
+                    </div>
+                    <div className={styles.residentInfoRow}>
+                      <span className={styles.residentInfoLabel}>Relationship</span>
+                      <strong className={styles.residentInfoValue}>{effectiveResident?.representative_relationship || '-'}</strong>
+                    </div>
+                    <div className={styles.residentInfoRow}>
+                      <span className={styles.residentInfoLabel}>Representative ID</span>
+                      {effectiveResident?.representative_valid_id_url ? (
+                        <Button
+                          variant="secondary"
+                          size="small"
+                          className={styles.uploadedIdButton}
+                          onClick={() => openDocument(effectiveResident.representative_valid_id_url)}
+                        >
+                          View Representative ID
+                        </Button>
+                      ) : (
+                        <strong className={styles.residentInfoValue}>-</strong>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className={styles.residentInfoEmpty}>No guardian or representative recorded.</p>
+                )}
+              </section>
             </div>
 
             {isAdmin ? (
@@ -1980,6 +2063,41 @@ export default function ResidentsPage() {
             error={editErrors.contact_number}
           />
 
+          <div style={{ display: 'grid', gap: 8 }}>
+            <p style={{ margin: 0, fontWeight: 600, color: '#374151' }}>Guardian / Representative</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+              <Input
+                label="Full Name"
+                name="representative_name"
+                value={editForm.representative_name}
+                onChange={handleEditChange}
+                optional
+              />
+              <Input
+                label="Contact Number"
+                name="representative_contact"
+                value={editForm.representative_contact}
+                onChange={handleEditChange}
+                placeholder="+63 XXX XXX XXXX"
+                optional
+              />
+              <Input
+                label="Relationship"
+                name="representative_relationship"
+                value={editForm.representative_relationship}
+                onChange={handleEditChange}
+                optional
+              />
+              <Input
+                label="Representative Valid ID URL"
+                name="representative_valid_id_url"
+                value={editForm.representative_valid_id_url}
+                onChange={handleEditChange}
+                optional
+              />
+            </div>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Input
               label="House No."
@@ -2016,30 +2134,25 @@ export default function ResidentsPage() {
           </div>
 
           <div style={{ display: 'grid', gap: 8 }}>
-            <p style={{ margin: 0, fontWeight: 600, color: '#374151' }}>Sector Classification (choose one)</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#374151' }}>
-                <input type="checkbox" name="is_pwd" checked={!!editForm.is_pwd} onChange={handleEditChange} />
-                PWD
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#374151' }}>
-                <input
-                  type="checkbox"
-                  name="is_senior_citizen"
-                  checked={!!editForm.is_senior_citizen}
-                  onChange={handleEditChange}
-                />
-                Senior Citizen
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#374151' }}>
-                <input
-                  type="checkbox"
-                  name="is_solo_parent"
-                  checked={!!editForm.is_solo_parent}
-                  onChange={handleEditChange}
-                />
-                Solo Parent
-              </label>
+            <p style={{ margin: 0, fontWeight: 600, color: '#374151' }}>Sector Classification</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+              <Select
+                label="Primary Sector"
+                name="primary_sector"
+                value={editForm.primary_sector}
+                onChange={handleEditChange}
+                options={BENEFICIARY_SECTOR_OPTIONS}
+                placeholder="Select primary sector"
+                required
+              />
+              <Select
+                label="Secondary Sector"
+                name="secondary_sector"
+                value={editForm.secondary_sector}
+                onChange={handleEditChange}
+                options={getSecondarySectorOptions(editForm.primary_sector)}
+                placeholder="No secondary sector"
+              />
             </div>
           </div>
 

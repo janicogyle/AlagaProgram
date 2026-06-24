@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
-import { requireAdmin } from '@/lib/apiAuth';
+import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { logActivity, logStaffActivity } from '@/lib/activityLogger.server';
 import { computeRenewedExpiration } from '@/lib/beneficiaryIdStatus.server';
 import {
   sendBeneficiaryIdRenewalApprovedSms,
   sendBeneficiaryIdRenewalIncompleteSms,
 } from '@/lib/smsNotify.server';
+import { forbiddenSectorResponse, rowMatchesSectorAccess } from '@/lib/sectorAccess';
 
 export const runtime = 'nodejs';
 
@@ -23,7 +24,7 @@ function staffName(auth) {
 
 export async function PATCH(request, { params }) {
   try {
-    const auth = await requireAdmin(request);
+    const auth = await requireStaffOrAdmin(request);
     if (!auth.ok) return auth.response;
 
     if (!supabaseAdmin) {
@@ -61,11 +62,14 @@ export async function PATCH(request, { params }) {
 
     const { data: resident, error: residentError } = await supabaseAdmin
       .from('residents')
-      .select('id, control_number, first_name, middle_name, last_name, contact_number, status')
+      .select('id, control_number, first_name, middle_name, last_name, contact_number, status, is_pwd, is_senior_citizen, is_solo_parent')
       .eq('id', renewal.resident_id)
       .single();
     if (residentError || !resident) {
       return NextResponse.json({ data: null, error: 'Beneficiary not found.' }, { status: 404 });
+    }
+    if (!rowMatchesSectorAccess(resident, auth.profile)) {
+      return forbiddenSectorResponse(NextResponse, 'Renewal request is outside your assigned sector access.');
     }
 
     const processedBy = staffName(auth);

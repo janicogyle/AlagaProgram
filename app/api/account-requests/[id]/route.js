@@ -18,10 +18,14 @@ import {
   createAccountResubmissionCode,
   hashAccountResubmissionToken,
 } from '@/lib/accountResubmissionTokens.server';
+import { forbiddenSectorResponse, rowMatchesSectorAccess } from '@/lib/sectorAccess';
 
 export const runtime = 'nodejs';
 
 const LOCKED_CITIZENSHIP = 'Filipino';
+const VALID_ID_BOTH_SIDES_ERROR = 'Please upload both the front and back images of your valid ID.';
+const FACE_VERIFICATION_FAILED_ERROR =
+  'Face verification failed. Please make sure your selfie clearly matches the photo on your valid ID.';
 
 function normalizeAccountRequestStatus(status) {
   if (status === 'Archived' || status === 'Rejected') return 'Incomplete';
@@ -77,8 +81,22 @@ async function fetchAccountRequestWithRetry(db, requestId) {
     'is_pwd',
     'is_senior_citizen',
     'is_solo_parent',
+    'primary_sector',
+    'secondary_sector',
     'valid_id_url',
     'valid_id_urls',
+    'valid_id_front_url',
+    'valid_id_back_url',
+    'selfie_url',
+    'face_verification_status',
+    'face_verification_score',
+    'face_verification_provider',
+    'face_verified_at',
+    'face_verification_error',
+    'representative_name',
+    'representative_contact',
+    'representative_relationship',
+    'representative_valid_id_url',
     'notes',
     'processed_by',
     'processed_at',
@@ -278,6 +296,10 @@ export async function GET(request, { params }) {
       throw fetchError;
     }
 
+    if (!rowMatchesSectorAccess(accountRequest, auth.profile)) {
+      return forbiddenSectorResponse(NextResponse, 'Account request is outside your assigned sector access.');
+    }
+
     let merged = accountRequest;
 
     const normalizedStatus = normalizeAccountRequestStatus(accountRequest?.status);
@@ -373,6 +395,14 @@ export async function GET(request, { params }) {
           'city',
           'valid_id_url',
           'valid_id_urls',
+          'valid_id_front_url',
+          'valid_id_back_url',
+          'selfie_url',
+          'face_verification_status',
+          'face_verification_score',
+          'face_verification_provider',
+          'face_verified_at',
+          'face_verification_error',
         ]);
 
         // Best-effort: backfill missing signup fields from the resident profile so the modal shows complete info.
@@ -391,6 +421,14 @@ export async function GET(request, { params }) {
             'city',
             'valid_id_url',
             'valid_id_urls',
+            'valid_id_front_url',
+            'valid_id_back_url',
+            'selfie_url',
+            'face_verification_status',
+            'face_verification_score',
+            'face_verification_provider',
+            'face_verified_at',
+            'face_verification_error',
           ]) {
             if (isBlank(accountRequest?.[f]) && !isBlank(resident?.[f])) backfill[f] = resident[f];
           }
@@ -478,6 +516,10 @@ export async function POST(request, { params }) {
       throw fetchError;
     }
 
+    if (!rowMatchesSectorAccess(accountRequest, auth.profile)) {
+      return forbiddenSectorResponse(NextResponse, 'Account request is outside your assigned sector access.');
+    }
+
     const currentStatus = normalizeAccountRequestStatus(accountRequest.status);
 
     const requiresPending = finalAction === 'approve' || finalAction === 'archive';
@@ -503,6 +545,13 @@ export async function POST(request, { params }) {
     }
 
     if (finalAction === 'approve') {
+      if (!accountRequest.valid_id_front_url || !accountRequest.valid_id_back_url) {
+        return NextResponse.json({ data: null, error: VALID_ID_BOTH_SIDES_ERROR }, { status: 409 });
+      }
+      if (!accountRequest.selfie_url || accountRequest.face_verification_status !== 'passed') {
+        return NextResponse.json({ data: null, error: FACE_VERIFICATION_FAILED_ERROR }, { status: 409 });
+      }
+
       let residentId = null;
       let issuedCard = null;
 
@@ -549,6 +598,12 @@ export async function POST(request, { params }) {
             barangay: accountRequest.barangay || 'Sta. Rita',
             city: accountRequest.city || 'Olongapo City',
             valid_id_url: accountRequest.valid_id_url || parseValidIdUrls(accountRequest.valid_id_urls)[0] || null,
+            representative_name: accountRequest.representative_name || null,
+            representative_contact: accountRequest.representative_contact || null,
+            representative_relationship: accountRequest.representative_relationship || null,
+            representative_valid_id_url: accountRequest.representative_valid_id_url || null,
+            primary_sector: accountRequest.primary_sector,
+            secondary_sector: accountRequest.secondary_sector,
             is_pwd: accountRequest.is_pwd,
             is_senior_citizen: accountRequest.is_senior_citizen,
             is_solo_parent: accountRequest.is_solo_parent,

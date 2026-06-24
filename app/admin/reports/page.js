@@ -40,6 +40,70 @@ const defaultReportTypes = [
     color: '#7c3aed',
     bgColor: '#ede9fe',
   },
+  {
+    id: 'expiring_ids',
+    title: 'Expiring IDs',
+    description: 'Beneficiary ID cards expiring within 7 or 30 days',
+    count: 0,
+    color: '#0f766e',
+    bgColor: '#ccfbf1',
+  },
+  {
+    id: 'eligible_beneficiaries',
+    title: 'Eligible Beneficiaries',
+    description: 'Active beneficiaries eligible for assistance now',
+    count: 0,
+    color: '#047857',
+    bgColor: '#d1fae5',
+  },
+  {
+    id: 'not_yet_eligible',
+    title: 'Not Yet Eligible',
+    description: 'Beneficiaries blocked by cooldown or active requests',
+    count: 0,
+    color: '#b45309',
+    bgColor: '#fef3c7',
+  },
+  {
+    id: 'pending_requests',
+    title: 'Pending Requests',
+    description: 'Assistance requests awaiting processing or release',
+    count: 0,
+    color: '#4f46e5',
+    bgColor: '#e0e7ff',
+  },
+  {
+    id: 'online_registration',
+    title: 'Online Registration',
+    description: 'Beneficiaries approved from online signups',
+    count: 0,
+    color: '#2563eb',
+    bgColor: '#dbeafe',
+  },
+  {
+    id: 'walkin_registration',
+    title: 'Walk-In Registration',
+    description: 'Beneficiaries encoded by staff walk-in registration',
+    count: 0,
+    color: '#9333ea',
+    bgColor: '#f3e8ff',
+  },
+  {
+    id: 'renewal_summary',
+    title: 'Renewal Requests Summary',
+    description: 'Beneficiary ID renewal requests by status',
+    count: 0,
+    color: '#c2410c',
+    bgColor: '#ffedd5',
+  },
+  {
+    id: 'coordinator_performance',
+    title: 'Coordinator Performance Report',
+    description: 'Processed request totals by coordinator',
+    count: 0,
+    color: '#be123c',
+    bgColor: '#ffe4e6',
+  },
 ];
 
 export default function ReportsPage() {
@@ -48,6 +112,7 @@ export default function ReportsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState('pdf');
   const [reportYear, setReportYear] = useState(new Date().getFullYear());
+  const [rangeDays, setRangeDays] = useState(30);
   const [status, setStatus] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -57,10 +122,20 @@ export default function ReportsPage() {
     if (report.id === 'senior') return 'SC';
     if (report.id === 'soloparent') return 'SP';
     if (report.id === 'all') return 'ALL';
+    if (report.id === 'expiring_ids') return 'ID';
+    if (report.id === 'eligible_beneficiaries') return 'ELG';
+    if (report.id === 'not_yet_eligible') return 'NYE';
+    if (report.id === 'pending_requests') return 'PEN';
+    if (report.id === 'online_registration') return 'ON';
+    if (report.id === 'walkin_registration') return 'WI';
+    if (report.id === 'renewal_summary') return 'REN';
+    if (report.id === 'coordinator_performance') return 'CP';
     return String(report.title || '').slice(0, 3).toUpperCase();
   };
 
-  // Fetch counts from Supabase
+  const isExpiringIdsReport = selectedReport?.id === 'expiring_ids';
+
+  // Fetch report counts through the authenticated API so sector access is enforced server-side.
   useEffect(() => {
     const fetchCounts = async () => {
       if (!supabase) {
@@ -68,59 +143,24 @@ export default function ReportsPage() {
         return;
       }
 
-      const start = `${reportYear}-01-01`;
-      const end = `${reportYear + 1}-01-01`;
-
-      const fetchCount = async ({ sectorColumn }) => {
-        // Try new schema first (request_date)
-        const baseSelect = sectorColumn
-          ? 'id, residents:resident_id!inner(id)'
-          : 'id';
-
-        const base = supabase
-          .from('assistance_requests')
-          .select(baseSelect, { count: 'exact', head: true })
-          .eq('status', 'Released');
-
-        const applySector = (q) => (sectorColumn ? q.eq(`residents.${sectorColumn}`, true) : q);
-
-        let q = applySector(base).gte('request_date', start).lt('request_date', end);
-        let res = await q;
-
-        if (res.error) {
-          const msg = String(res.error.message || '').toLowerCase();
-          const missingRequestDate = msg.includes('request_date') && msg.includes('does not exist');
-          if (missingRequestDate) {
-            res = await applySector(base).gte('date', start).lt('date', end);
-          }
-        }
-
-        return res?.count || 0;
-      };
-
       try {
-        const [pwdCount, seniorCount, soloParentCount, allCount] = await Promise.all([
-          fetchCount({ sectorColumn: 'is_pwd' }),
-          fetchCount({ sectorColumn: 'is_senior_citizen' }),
-          fetchCount({ sectorColumn: 'is_solo_parent' }),
-          fetchCount({ sectorColumn: null }),
-        ]);
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        const params = new URLSearchParams({
+          year: String(reportYear),
+          rangeDays: String(rangeDays),
+        });
+        const response = await fetch(`/api/reports?${params.toString()}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload?.error) {
+          throw new Error(payload?.error || 'Failed to fetch report counts.');
+        }
+        const counts = payload?.data?.counts || {};
 
         setReportTypes((prev) =>
-          prev.map((report) => {
-            switch (report.id) {
-              case 'pwd':
-                return { ...report, count: pwdCount };
-              case 'senior':
-                return { ...report, count: seniorCount };
-              case 'soloparent':
-                return { ...report, count: soloParentCount };
-              case 'all':
-                return { ...report, count: allCount };
-              default:
-                return report;
-            }
-          }),
+          prev.map((report) => ({ ...report, count: Number(counts[report.id] || 0) })),
         );
 
       } catch (err) {
@@ -129,7 +169,7 @@ export default function ReportsPage() {
     };
 
     fetchCounts();
-  }, [reportYear]);
+  }, [reportYear, rangeDays]);
 
   const handleReportClick = (report) => {
     setSelectedReport(report);
@@ -258,6 +298,30 @@ export default function ReportsPage() {
     return doc;
   };
 
+  const generateTablePdf = async ({ title, columns, rows }) => {
+    const { jsPDF } = await import('jspdf');
+    const autoTableMod = await import('jspdf-autotable');
+    const autoTable = autoTableMod.default ?? autoTableMod;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+
+    doc.setFontSize(14);
+    doc.text(String(title || 'Report').toUpperCase(), doc.internal.pageSize.getWidth() / 2, 42, {
+      align: 'center',
+    });
+
+    autoTable(doc, {
+      startY: 64,
+      head: [columns || []],
+      body: rows || [],
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 3, valign: 'middle', overflow: 'linebreak' },
+      headStyles: { fillColor: [217, 217, 217], textColor: 20, halign: 'center' },
+      margin: { left: 28, right: 28 },
+    });
+
+    return doc;
+  };
+
   const handleConfirmGenerate = async () => {
     if (!selectedReport || isGenerating) return;
 
@@ -270,11 +334,14 @@ export default function ReportsPage() {
         reportType: selectedReport.id,
         format: selectedFormat,
         year: reportYear,
+        rangeDays,
       };
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
 
       const response = await fetch('/api/reports', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify(body),
       });
 
@@ -305,8 +372,11 @@ export default function ReportsPage() {
         if (payload?.error) throw new Error(payload.error);
 
         if (selectedFormat === 'pdf') {
-          const doc = await generateCashAssistancePdf({ ...(payload?.data || {}), sectorLabel: selectedReport.title });
-          doc.save(`${selectedReport.id}_summary_${payload?.data?.reportYear || reportYear}_${dateStr}.pdf`);
+          const payloadData = payload?.data || {};
+          const doc = payloadData.table
+            ? await generateTablePdf(payloadData.table)
+            : await generateCashAssistancePdf({ ...payloadData, sectorLabel: selectedReport.title });
+          doc.save(`${selectedReport.id}_summary_${payloadData.reportYear || reportYear}_${dateStr}.pdf`);
 
           setStatus({ type: 'success', message: `PDF report "${selectedReport.title}" downloaded successfully!` });
         } else {
@@ -422,6 +492,24 @@ export default function ReportsPage() {
                 </strong>
               </div>
             </div>
+
+            {isExpiringIdsReport && (
+              <div className={styles.confirmDetails}>
+                <div className={styles.confirmDetail}>
+                  <span>Expiry Window:</span>
+                  <strong>
+                    <select
+                      value={rangeDays}
+                      onChange={(e) => setRangeDays(Number(e.target.value) === 7 ? 7 : 30)}
+                      className={styles.yearInput}
+                    >
+                      <option value={7}>7 days</option>
+                      <option value={30}>30 days</option>
+                    </select>
+                  </strong>
+                </div>
+              </div>
+            )}
 
             <div className={styles.formatSection}>
               <span className={styles.formatLabel}>Export Format:</span>

@@ -3,7 +3,7 @@ import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
 
-const ELIGIBILITY_STATUSES = ['Pending', 'Resubmitted', 'Released'];
+const ELIGIBILITY_STATUSES = ['Pending', 'Resubmitted', 'Approved', 'Released'];
 
 export async function GET() {
   try {
@@ -17,7 +17,7 @@ export async function GET() {
 
     const { data, error } = await db
       .from('assistance_requests')
-      .select('resident_id, status, request_date, created_at')
+      .select('resident_id, assistance_type, status, request_date, created_at')
       .in('status', ELIGIBILITY_STATUSES);
 
     if (error) throw error;
