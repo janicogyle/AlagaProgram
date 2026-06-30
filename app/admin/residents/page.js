@@ -1369,9 +1369,46 @@ export default function ResidentsPage() {
     }
   };
 
+  const handleViewExistingCard = async () => {
+    if (!effectiveResident?.qr_card || issuingCard) return;
+
+    setIssuingCard(true);
+    try {
+      const card = effectiveResident.qr_card;
+      const cardReference = String(card.id || '').slice(0, 8).toUpperCase();
+      const qrcodeMod = await import('qrcode');
+      const QRCode = qrcodeMod.default ?? qrcodeMod;
+      const qrUrl = await QRCode.toDataURL(cardReference, { margin: 1, width: 420 });
+      const sectorLabel = getSectorBadges(effectiveResident).join(' / ') || 'General';
+      const cardImageUrl = await renderBeneficiaryIdCard({
+        qrUrl,
+        fullName: buildFullName(effectiveResident),
+        sectorLabel,
+        cardReference,
+        contactNumber: effectiveResident?.contact_number || '-',
+        address: formatAddressLine(effectiveResident),
+        issuedAt: card?.issued_at,
+        expiresAt: card?.expires_at,
+      });
+
+      setIssuedCard({ token: null, card, cardReference, qrUrl, cardImageUrl, action: 'viewed' });
+      setCardModalOpen(true);
+    } catch (error) {
+      const msg = String(error?.message || error || 'Unknown error');
+      console.warn('View ID card failed:', msg);
+      openAlert({ title: 'Preview failed', message: msg });
+    } finally {
+      setIssuingCard(false);
+    }
+  };
+
   const effectiveResident = residentDetails?.resident || selectedResident;
-  const canIssueIdQr = isAdmin && selectedResident?.registration_type === 'Walk-In';
-  const hasExistingIdCard = !!selectedResident?.qr_card?.id;
+  const hasExistingIdCard = !!effectiveResident?.qr_card?.id;
+  const isWalkInResident = effectiveResident?.registration_type === 'Walk-In';
+  const canIssueNewIdCard = isAdmin && !hasExistingIdCard && effectiveResident?.status === 'Active';
+  const canRenewWalkInIdCard = isAdmin && hasExistingIdCard && isWalkInResident;
+  const canViewExistingIdCard = isAdmin && hasExistingIdCard && !isWalkInResident;
+  const canIssueIdQr = canIssueNewIdCard || canRenewWalkInIdCard;
   const idCardAction = hasExistingIdCard ? 'renew' : 'issue';
   const idCardButtonLabel = idCardAction === 'renew' ? 'Renew ID Card' : 'Issue ID Card';
   const idCardLoadingLabel = idCardAction === 'renew' ? 'Renewing...' : 'Issuing...';
