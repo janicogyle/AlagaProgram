@@ -9,24 +9,23 @@ import styles from './page.module.css';
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [heroInfoIndex, setHeroInfoIndex] = useState(0);
-  const [uiScale, setUiScale] = useState(1);
-
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const magnifierLevels = [1, 1.15, 1.3];
-
-  useEffect(() => {
+  const [uiScale, setUiScale] = useState(() => {
+    if (typeof window === 'undefined') return magnifierLevels[0];
     try {
       const raw = window.localStorage.getItem('homepage_ui_scale');
-      if (!raw) return;
+      if (!raw) return magnifierLevels[0];
       const value = Number(raw);
-      if (!Number.isFinite(value)) return;
-      const nearest = magnifierLevels.reduce((best, next) =>
-        Math.abs(next - value) < Math.abs(best - value) ? next : best
-      , magnifierLevels[0]);
-      setUiScale(nearest);
+      if (!Number.isFinite(value)) return magnifierLevels[0];
+      return magnifierLevels.reduce(
+        (best, next) => (Math.abs(next - value) < Math.abs(best - value) ? next : best),
+        magnifierLevels[0]
+      );
     } catch {
+      return magnifierLevels[0];
     }
-  }, []);
+  });
 
   useEffect(() => {
     try {
@@ -427,7 +426,7 @@ export default function HomePage() {
                 Beneficiary <span className={styles.highlight}>Benefits</span>
               </h2>
               <p className={styles.aboutMainDesc}>
-                The Alaga Program Benefits for Barangay Sta. Rita PWD's, Senior Citizens and Solo Parents. Here are the lists of requirements for specific services:
+                The Alaga Program Benefits for Barangay Sta. Rita PWDs, Senior Citizens and Solo Parents. Here are the lists of requirements for specific services:
               </p>
               <div className={styles.aboutKeyFeature}>
                 <div className={styles.aboutKeyIcon}>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import styles from './CookieConsentBanner.module.css';
 import Button from './Button';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
@@ -9,20 +9,17 @@ const COOKIE_CONSENT_KEY = 'cookie_consent';
 const COOKIE_DECLINED_KEY = 'cookie_declined';
 
 export default function CookieConsentBanner() {
-  const [showBanner, setShowBanner] = useState(false);
-  const [isPrivacyModalOpen, setPrivacyModalOpen] = useState(false);
-
-  useEffect(() => {
+  const [showBanner, setShowBanner] = useState(() => {
+    if (typeof window === 'undefined') return false;
     try {
       const consent = window.localStorage.getItem(COOKIE_CONSENT_KEY);
       const declined = window.sessionStorage.getItem(COOKIE_DECLINED_KEY);
-      if (consent !== 'true' && declined !== 'true') {
-        setShowBanner(true);
-      }
-    } catch (error) {
-      console.error('Could not access storage:', error);
+      return consent !== 'true' && declined !== 'true';
+    } catch {
+      return false;
     }
-  }, []);
+  });
+  const [isPrivacyModalOpen, setPrivacyModalOpen] = useState(false);
 
   const handleAccept = () => {
     try {
