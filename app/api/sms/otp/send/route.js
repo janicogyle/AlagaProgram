@@ -5,10 +5,9 @@ import {
   OTP_RESEND_COOLDOWN_SECONDS,
   OTP_MAX_SENDS_PER_WINDOW,
   OTP_SEND_LOCKOUT_MINUTES,
-  canSendSms,
   evaluateOtpSendLimit,
   generateOtpCode,
-  getSmsSetupError,
+  getOtpSetupError,
   hashOtp,
   isSmsDevModeEnabled,
   normalizeSmsContactNumber,
@@ -24,6 +23,14 @@ const ALLOWED_PURPOSES = new Set(['signup', 'login']);
 function parsePurpose(value) {
   const normalized = String(value || '').trim().toLowerCase();
   return ALLOWED_PURPOSES.has(normalized) ? normalized : 'signup';
+}
+
+async function deleteUndeliveredOtp(otpId) {
+  if (!otpId) return;
+  const { error } = await supabaseAdmin.from('sms_otps').delete().eq('id', otpId);
+  if (error) {
+    console.warn(`[SMS] Failed to delete undelivered OTP ${otpId}:`, error.message || error);
+  }
 }
 
 export async function POST(request) {
@@ -56,9 +63,10 @@ export async function POST(request) {
       }
     }
 
-    if (!canSendSms()) {
+    const setupError = getOtpSetupError();
+    if (setupError) {
       return NextResponse.json(
-        { data: null, error: getSmsSetupError() || 'SMS is not configured.' },
+        { data: null, error: setupError },
         { status: 503 },
       );
     }
@@ -105,13 +113,25 @@ export async function POST(request) {
     if (devMode) {
       console.info(`[SMS DEV] OTP (${purpose}) for ${contactNumber}: ${otpCode}`);
     } else {
-      await sendSms({
-        to: contactNumber,
-        message,
-        referenceType: 'otp',
-        referenceId: otpRow?.id || null,
-        referenceKey: otpRow?.id || null,
-      });
+      try {
+        await sendSms({
+          to: contactNumber,
+          message,
+          referenceType: 'otp',
+          referenceId: otpRow?.id || null,
+          referenceKey: otpRow?.id || null,
+        });
+      } catch (smsError) {
+        await deleteUndeliveredOtp(otpRow?.id);
+        console.error('Send OTP provider error:', smsError);
+        return NextResponse.json(
+          {
+            data: null,
+            error: 'SMS service could not send the OTP. Please contact support or try again later.',
+          },
+          { status: 502 },
+        );
+      }
     }
 
     const sendsAfter = (rateLimit.sendsInWindow || 0) + 1;

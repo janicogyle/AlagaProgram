@@ -17,7 +17,7 @@ BENEFICIARY_SESSION_SECRET=...  # used for beneficiary session cookie (optional;
 
 # SMS (UniSMS) — https://unismsapi.com/register
 UNISMS_API_KEY=...               # API **Secret** key (Basic Auth username, password empty)
-UNISMS_SENDER_ID=...             # optional (approved Sender ID only)
+UNISMS_SENDER_ID=...             # required for real SMS (approved Sender ID only)
 UNISMS_API_URL=...               # optional (defaults to https://unismsapi.com/api)
 UNISMS_LINK_API_KEY=...          # required for account resubmission link SMS (sender-free UniSMS account)
 UNISMS_LINK_API_URL=...          # optional (defaults to UNISMS_API_URL / https://unismsapi.com/api)
@@ -43,14 +43,14 @@ If deploying to Vercel, add these in **Project Settings → Environment Variable
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes (signup OTP, admin actions) |
 | `CLOUDINARY_URL` | Yes (Valid ID uploads) |
 | `UNISMS_API_KEY` | Yes (SMS OTP on signup) |
+| `UNISMS_SENDER_ID` | Yes (real SMS OTP/status messages) |
 | `UNISMS_LINK_API_KEY` | Yes (account resubmission link SMS) |
 | `ACCOUNT_RESUBMISSION_BASE_URL` | Yes (public HTTPS base URL for resubmission links) |
 | `SMS_OTP_SECRET` | Yes (OTP hashing) |
 | `QR_CARD_SECRET` or `BENEFICIARY_SESSION_SECRET` | Yes (beneficiary sessions / QR) |
-| `UNISMS_SENDER_ID` | Optional |
 | `SMS_DEV_MODE` | **Do not** set `true` on Vercel (local only) |
 
-Without `UNISMS_API_KEY` and `SMS_OTP_SECRET`, signup Step 4 shows “SMS is not configured”. `.env.local` is **not** uploaded to Vercel — copy values manually into the dashboard.
+Without `UNISMS_API_KEY`, `UNISMS_SENDER_ID`, and `SMS_OTP_SECRET`, signup Step 4 shows “SMS is not configured”. `.env.local` is **not** uploaded to Vercel — copy values manually into the dashboard.
 
 ### Database
 
@@ -65,8 +65,9 @@ If registration saves fail with missing requirements verification, run `setup-st
 
 1. Register at [UniSMS](https://unismsapi.com/register) and add credits.
 2. Copy your **API Secret** from the dashboard (not the placeholder `your_new_secret`).
-3. Set in `.env.local`: `UNISMS_API_KEY=your_actual_secret`
-4. Restart `pnpm dev`.
+3. Create or confirm an approved Sender ID in UniSMS.
+4. Set in `.env.local`: `UNISMS_API_KEY=your_actual_secret`, `UNISMS_SENDER_ID=your_approved_sender_id`, and `SMS_OTP_SECRET=your_random_secret`.
+5. Restart `pnpm dev`.
 
 Account resubmission-link SMS uses a separate sender-free UniSMS key because the Sender ID route may reject messages containing links. Set `UNISMS_LINK_API_KEY` to that separate API Secret. Do not reuse the Sender ID account for this value if UniSMS blocks links on it.
 
@@ -74,7 +75,7 @@ For production resubmission links, set `ACCOUNT_RESUBMISSION_BASE_URL` to the pu
 
 **Local testing without sending real SMS:** set `SMS_DEV_MODE=true`. The OTP is printed in the terminal when you click **Send OTP** (signup Step 4).
 
-**Troubleshooting:** `401 Unauthorized` means `UNISMS_API_KEY` is wrong or still a placeholder. Check `sms_logs` in Supabase for failed send details.
+**Troubleshooting:** `401 Unauthorized` means `UNISMS_API_KEY` is wrong or still a placeholder. `sender_id can't be blank` means `UNISMS_SENDER_ID` is missing or not loaded after restart. Check `sms_logs` in Supabase for failed send details.
 
 **Automatic status SMS** (sent immediately after admin/staff updates status):
 
