@@ -41,14 +41,6 @@ const defaultReportTypes = [
     bgColor: '#ede9fe',
   },
   {
-    id: 'expiring_ids',
-    title: 'Expiring IDs',
-    description: 'Beneficiary ID cards expiring within 7 or 30 days',
-    count: 0,
-    color: '#0f766e',
-    bgColor: '#ccfbf1',
-  },
-  {
     id: 'eligible_beneficiaries',
     title: 'Eligible Beneficiaries',
     description: 'Active beneficiaries eligible for assistance now',
@@ -63,14 +55,6 @@ const defaultReportTypes = [
     count: 0,
     color: '#b45309',
     bgColor: '#fef3c7',
-  },
-  {
-    id: 'pending_requests',
-    title: 'Pending Requests',
-    description: 'Assistance requests awaiting processing or release',
-    count: 0,
-    color: '#4f46e5',
-    bgColor: '#e0e7ff',
   },
   {
     id: 'online_registration',
@@ -88,22 +72,6 @@ const defaultReportTypes = [
     color: '#9333ea',
     bgColor: '#f3e8ff',
   },
-  {
-    id: 'renewal_summary',
-    title: 'Renewal Requests Summary',
-    description: 'Beneficiary ID renewal requests by status',
-    count: 0,
-    color: '#c2410c',
-    bgColor: '#ffedd5',
-  },
-  {
-    id: 'coordinator_performance',
-    title: 'Coordinator Performance Report',
-    description: 'Processed request totals by coordinator',
-    count: 0,
-    color: '#be123c',
-    bgColor: '#ffe4e6',
-  },
 ];
 
 export default function ReportsPage() {
@@ -112,7 +80,6 @@ export default function ReportsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState('pdf');
   const [reportYear, setReportYear] = useState(new Date().getFullYear());
-  const [rangeDays, setRangeDays] = useState(30);
   const [status, setStatus] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -122,18 +89,13 @@ export default function ReportsPage() {
     if (report.id === 'senior') return 'SC';
     if (report.id === 'soloparent') return 'SP';
     if (report.id === 'all') return 'ALL';
-    if (report.id === 'expiring_ids') return 'ID';
     if (report.id === 'eligible_beneficiaries') return 'ELG';
     if (report.id === 'not_yet_eligible') return 'NYE';
-    if (report.id === 'pending_requests') return 'PEN';
     if (report.id === 'online_registration') return 'ON';
     if (report.id === 'walkin_registration') return 'WI';
-    if (report.id === 'renewal_summary') return 'REN';
-    if (report.id === 'coordinator_performance') return 'CP';
     return String(report.title || '').slice(0, 3).toUpperCase();
   };
 
-  const isExpiringIdsReport = selectedReport?.id === 'expiring_ids';
 
   // Fetch report counts through the authenticated API so sector access is enforced server-side.
   useEffect(() => {
@@ -148,7 +110,6 @@ export default function ReportsPage() {
         const token = sessionData?.session?.access_token;
         const params = new URLSearchParams({
           year: String(reportYear),
-          rangeDays: String(rangeDays),
         });
         const response = await fetch(`/api/reports?${params.toString()}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -169,7 +130,7 @@ export default function ReportsPage() {
     };
 
     fetchCounts();
-  }, [reportYear, rangeDays]);
+  }, [reportYear]);
 
   const handleReportClick = (report) => {
     setSelectedReport(report);
@@ -334,7 +295,6 @@ export default function ReportsPage() {
         reportType: selectedReport.id,
         format: selectedFormat,
         year: reportYear,
-        rangeDays,
       };
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
@@ -492,24 +452,6 @@ export default function ReportsPage() {
                 </strong>
               </div>
             </div>
-
-            {isExpiringIdsReport && (
-              <div className={styles.confirmDetails}>
-                <div className={styles.confirmDetail}>
-                  <span>Expiry Window:</span>
-                  <strong>
-                    <select
-                      value={rangeDays}
-                      onChange={(e) => setRangeDays(Number(e.target.value) === 7 ? 7 : 30)}
-                      className={styles.yearInput}
-                    >
-                      <option value={7}>7 days</option>
-                      <option value={30}>30 days</option>
-                    </select>
-                  </strong>
-                </div>
-              </div>
-            )}
 
             <div className={styles.formatSection}>
               <span className={styles.formatLabel}>Export Format:</span>

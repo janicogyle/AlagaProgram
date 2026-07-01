@@ -12,14 +12,10 @@ export const runtime = 'nodejs';
 const ASSISTANCE_TYPES = ['Medicine Assistance', 'Confinement Assistance', 'Burial Assistance'];
 const SECTOR_REPORT_TYPES = ['pwd', 'senior', 'soloparent', 'all'];
 const TABLE_REPORT_TYPES = [
-  'expiring_ids',
   'eligible_beneficiaries',
   'not_yet_eligible',
-  'pending_requests',
   'online_registration',
   'walkin_registration',
-  'renewal_summary',
-  'coordinator_performance',
 ];
 const VALID_REPORT_TYPES = [...SECTOR_REPORT_TYPES, ...TABLE_REPORT_TYPES];
 
@@ -38,7 +34,6 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const year = normalizeYear(searchParams.get('year'));
-    const rangeDays = normalizeRangeDays(searchParams.get('rangeDays'));
     const counts = {};
 
     await Promise.all(
@@ -48,14 +43,10 @@ export async function GET(request) {
             counts[type] = 0;
             return;
           }
-          if (type === 'coordinator_performance' && !isAdminProfile(auth.profile)) {
-            counts[type] = 0;
-            return;
-          }
 
           const result = SECTOR_REPORT_TYPES.includes(type)
             ? await getSectorAssistanceRows({ db, reportType: type, year, profile: auth.profile })
-            : await buildTableReport({ db, reportType: type, year, rangeDays, profile: auth.profile, countOnly: true });
+            : await buildTableReport({ db, reportType: type, year, profile: auth.profile, countOnly: true });
           counts[type] = Array.isArray(result?.rows) ? result.rows.length : 0;
         } catch (error) {
           console.warn(`Report count failed for ${type}:`, error?.message || error);
@@ -64,7 +55,7 @@ export async function GET(request) {
       }),
     );
 
-    return NextResponse.json({ data: { counts, year, rangeDays }, error: null });
+    return NextResponse.json({ data: { counts, year }, error: null });
   } catch (error) {
     console.error('Fetch report counts error:', error);
     return NextResponse.json(
@@ -121,7 +112,7 @@ export async function POST(request) {
     }
 
     if (!isAdminProfile(auth.profile)) {
-      if (reportType === 'all' || reportType === 'coordinator_performance') {
+      if (reportType === 'all') {
         return NextResponse.json({ data: null, error: 'All-sector reports are Admin-only.' }, { status: 403 });
       }
       const reportSector = sectorReportAccessKey(reportType);
@@ -134,7 +125,7 @@ export async function POST(request) {
       return handleSectorAssistanceSummary({ db, reportType, format, year, profile: auth.profile });
     }
 
-    return handleTableReport({ db, reportType, format, year, rangeDays: body?.rangeDays, profile: auth.profile });
+    return handleTableReport({ db, reportType, format, year, profile: auth.profile });
   } catch (error) {
     console.error('Generate report error:', error);
     return NextResponse.json(
@@ -220,13 +211,6 @@ function yearWindow(year) {
   };
 }
 
-function todayWindow(days) {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + normalizeRangeDays(days) + 1);
-  return { startIso: start.toISOString(), endIso: end.toISOString() };
-}
 
 function formatLongDate(value) {
   if (!value) return '';
@@ -319,10 +303,9 @@ async function getSectorAssistanceRows({ db, reportType, year, profile }) {
   return { rows };
 }
 
-async function handleTableReport({ db, reportType, format, year, rangeDays, profile }) {
+async function handleTableReport({ db, reportType, format, year, profile }) {
   const reportYear = normalizeYear(year);
-  const normalizedRangeDays = normalizeRangeDays(rangeDays);
-  const table = await buildTableReport({ db, reportType, year: reportYear, rangeDays: normalizedRangeDays, profile });
+  const table = await buildTableReport({ db, reportType, year: reportYear, profile });
   const filenamePrefix = `${reportType}_${reportYear}_${new Date().toISOString().split('T')[0]}`;
 
   if (format === 'xlsx') {
@@ -336,58 +319,25 @@ async function handleTableReport({ db, reportType, format, year, rangeDays, prof
   }
 
   return NextResponse.json({
-    data: { table, reportYear, rangeDays: normalizedRangeDays },
+    data: { table, reportYear },
     error: null,
     message: `${table.rows.length} records found.`,
   });
 }
 
-async function buildTableReport({ db, reportType, year, rangeDays, profile, countOnly = false }) {
+async function buildTableReport({ db, reportType, year, profile, countOnly = false }) {
   switch (reportType) {
-    case 'expiring_ids':
-      return buildExpiringIdsReport({ db, rangeDays, profile, countOnly });
     case 'eligible_beneficiaries':
       return buildEligibleBeneficiariesReport({ db, profile, countOnly });
     case 'not_yet_eligible':
       return buildNotYetEligibleReport({ db, profile, countOnly });
-    case 'pending_requests':
-      return buildPendingRequestsReport({ db, profile, countOnly });
     case 'online_registration':
       return buildRegistrationReport({ db, year, profile, online: true, countOnly });
     case 'walkin_registration':
       return buildRegistrationReport({ db, year, profile, online: false, countOnly });
-    case 'renewal_summary':
-      return buildRenewalSummaryReport({ db, year, profile, countOnly });
-    case 'coordinator_performance':
-      return buildCoordinatorPerformanceReport({ db, year });
     default:
       return { title: 'Report', columns: [], rows: [] };
   }
-}
-
-async function buildExpiringIdsReport({ db, rangeDays, profile, countOnly }) {
-  const days = normalizeRangeDays(rangeDays);
-  const { startIso, endIso } = todayWindow(days);
-  const { data, error } = await db
-    .from('beneficiary_cards')
-    .select('id, issued_at, expires_at, status, revoked_at, residents:resident_id(control_number, first_name, middle_name, last_name, is_pwd, is_senior_citizen, is_solo_parent)')
-    .is('revoked_at', null)
-    .gte('expires_at', startIso)
-    .lt('expires_at', endIso)
-    .order('expires_at', { ascending: true });
-  if (error) throw error;
-
-  const matches = (data || []).filter((row) => rowMatchesSectorAccess(row, profile));
-  if (countOnly) return { rows: matches };
-
-  return {
-    title: `Expiring IDs (${days} Days)`,
-    columns: ['No.', 'Control Number', 'Name', 'Sectors', 'Issued At', 'Expires At', 'Status'],
-    rows: matches.map((row, idx) => {
-      const resident = Array.isArray(row.residents) ? row.residents[0] : row.residents || {};
-      return [idx + 1, resident.control_number || '', residentName(resident), sectorList(resident), dateOnly(row.issued_at), dateOnly(row.expires_at), row.status || ''];
-    }),
-  };
 }
 
 async function buildEligibleBeneficiariesReport({ db, profile, countOnly }) {
@@ -487,37 +437,6 @@ async function buildNotYetEligibleReport({ db, profile, countOnly }) {
   };
 }
 
-async function buildPendingRequestsReport({ db, profile, countOnly }) {
-  const { data, error } = await db
-    .from('assistance_requests')
-    .select('id, control_number, assistance_type, status, request_date, processed_by, beneficiary_name, residents:resident_id(control_number, first_name, middle_name, last_name, is_pwd, is_senior_citizen, is_solo_parent)')
-    .in('status', ['Pending', 'Resubmitted', 'Approved'])
-    .order('request_date', { ascending: true });
-  if (error) throw error;
-
-  const matches = (data || []).filter((row) => rowMatchesSectorAccess(row, profile));
-  if (countOnly) return { rows: matches };
-
-  return {
-    title: 'Pending Assistance Requests',
-    columns: ['No.', 'Request Control No.', 'Beneficiary Control No.', 'Beneficiary Name', 'Sectors', 'Assistance Type', 'Status', 'Request Date', 'Processed By'],
-    rows: matches.map((row, idx) => {
-      const resident = Array.isArray(row.residents) ? row.residents[0] : row.residents || {};
-      return [
-        idx + 1,
-        row.control_number || '',
-        resident.control_number || '',
-        row.beneficiary_name || residentName(resident),
-        sectorList(resident),
-        row.assistance_type || '',
-        row.status || '',
-        dateOnly(row.request_date),
-        row.processed_by || '',
-      ];
-    }),
-  };
-}
-
 async function buildRegistrationReport({ db, year, profile, online, countOnly }) {
   const { reportYear, start, end } = yearWindow(year);
   let query = db
@@ -537,77 +456,6 @@ async function buildRegistrationReport({ db, year, profile, online, countOnly })
     title: `${online ? 'Online' : 'Walk-In'} Registration ${reportYear}`,
     columns: ['No.', 'Control Number', 'Name', 'Sectors', 'Contact Number', 'Status', 'Registration Date'],
     rows: matches.map((row, idx) => [idx + 1, row.control_number || '', residentName(row), sectorList(row), row.contact_number || '', row.status || '', dateOnly(row.created_at)]),
-  };
-}
-
-async function buildRenewalSummaryReport({ db, year, profile, countOnly }) {
-  const { reportYear, start, end } = yearWindow(year);
-  const { data, error } = await db
-    .from('beneficiary_id_renewal_requests')
-    .select('id, current_expires_at, remarks, status, admin_remarks, processed_by, processed_at, created_at, residents:resident_id(control_number, first_name, middle_name, last_name, is_pwd, is_senior_citizen, is_solo_parent)')
-    .gte('created_at', start)
-    .lt('created_at', end)
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-
-  const matches = (data || []).filter((row) => rowMatchesSectorAccess(row, profile));
-  if (countOnly) return { rows: matches };
-
-  return {
-    title: `Renewal Requests Summary ${reportYear}`,
-    columns: ['No.', 'Control Number', 'Name', 'Sectors', 'Current Expiry', 'Requested At', 'Status', 'Processed By', 'Processed At', 'Remarks'],
-    rows: matches.map((row, idx) => {
-      const resident = Array.isArray(row.residents) ? row.residents[0] : row.residents || {};
-      return [idx + 1, resident.control_number || '', residentName(resident), sectorList(resident), dateOnly(row.current_expires_at), dateOnly(row.created_at), row.status || '', row.processed_by || '', dateOnly(row.processed_at), row.admin_remarks || row.remarks || ''];
-    }),
-  };
-}
-
-async function buildCoordinatorPerformanceReport({ db, year }) {
-  const { reportYear, start, end } = yearWindow(year);
-  const byName = new Map();
-  const ensure = (name) => {
-    const key = String(name || 'Unassigned').trim() || 'Unassigned';
-    if (!byName.has(key)) {
-      byName.set(key, { name: key, assistanceApproved: 0, assistanceReleased: 0, assistanceIncomplete: 0, accountApproved: 0, accountIncomplete: 0, renewalApproved: 0, renewalIncomplete: 0, total: 0 });
-    }
-    return byName.get(key);
-  };
-
-  const [assistance, accounts, renewals] = await Promise.all([
-    db.from('assistance_requests').select('processed_by, status, updated_at').not('processed_by', 'is', null).gte('updated_at', start).lt('updated_at', end),
-    db.from('account_requests').select('processed_by, status, processed_at').not('processed_by', 'is', null).gte('processed_at', start).lt('processed_at', end),
-    db.from('beneficiary_id_renewal_requests').select('processed_by, status, processed_at').not('processed_by', 'is', null).gte('processed_at', start).lt('processed_at', end),
-  ]);
-  if (assistance.error) throw assistance.error;
-  if (accounts.error) throw accounts.error;
-  if (renewals.error) throw renewals.error;
-
-  (assistance.data || []).forEach((row) => {
-    const entry = ensure(row.processed_by);
-    if (row.status === 'Approved') entry.assistanceApproved += 1;
-    else if (row.status === 'Released') entry.assistanceReleased += 1;
-    else if (row.status === 'Rejected') entry.assistanceIncomplete += 1;
-    entry.total += 1;
-  });
-  (accounts.data || []).forEach((row) => {
-    const entry = ensure(row.processed_by);
-    if (row.status === 'Approved') entry.accountApproved += 1;
-    else if (['Incomplete', 'Rejected'].includes(row.status)) entry.accountIncomplete += 1;
-    entry.total += 1;
-  });
-  (renewals.data || []).forEach((row) => {
-    const entry = ensure(row.processed_by);
-    if (row.status === 'Approved') entry.renewalApproved += 1;
-    else if (row.status === 'Incomplete') entry.renewalIncomplete += 1;
-    entry.total += 1;
-  });
-
-  const matches = Array.from(byName.values()).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
-  return {
-    title: `Coordinator Performance Report ${reportYear}`,
-    columns: ['No.', 'Coordinator', 'Assistance Approved', 'Assistance Released', 'Assistance Incomplete', 'Accounts Approved', 'Accounts Incomplete', 'Renewals Approved', 'Renewals Incomplete', 'Total'],
-    rows: matches.map((row, idx) => [idx + 1, row.name, row.assistanceApproved, row.assistanceReleased, row.assistanceIncomplete, row.accountApproved, row.accountIncomplete, row.renewalApproved, row.renewalIncomplete, row.total]),
   };
 }
 
