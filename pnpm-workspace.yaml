@@ -5,3 +5,11 @@ allowBuilds:
   core-js: true
   sharp: true
   unrs-resolver: true
+
+overrides:
+  brace-expansion: 1.1.13
+  flatted: 3.4.2
+  minimatch@^3.0.0: 3.1.4
+  minimatch@^9.0.0: 9.0.7
+  picomatch@^2.0.0: 2.3.2
+  picomatch@^4.0.0: 4.0.4
