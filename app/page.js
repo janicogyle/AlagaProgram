@@ -6,33 +6,47 @@ import ConstellationBackground from '../components/ConstellationBackground';
 import { assistanceData } from '@/lib/assistanceData';
 import styles from './page.module.css';
 
+const magnifierLevels = [1, 1.15, 1.3];
+const defaultMagnifierLevel = magnifierLevels[0];
+
+function getSavedMagnifierLevel() {
+  try {
+    const raw = window.localStorage.getItem('homepage_ui_scale');
+    if (!raw) return defaultMagnifierLevel;
+    const value = Number(raw);
+    if (!Number.isFinite(value)) return defaultMagnifierLevel;
+    return magnifierLevels.reduce(
+      (best, next) => (Math.abs(next - value) < Math.abs(best - value) ? next : best),
+      defaultMagnifierLevel
+    );
+  } catch {
+    return defaultMagnifierLevel;
+  }
+}
+
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [heroInfoIndex, setHeroInfoIndex] = useState(0);
   const closeMobileMenu = () => setMobileMenuOpen(false);
-  const magnifierLevels = [1, 1.15, 1.3];
-  const [uiScale, setUiScale] = useState(() => {
-    if (typeof window === 'undefined') return magnifierLevels[0];
-    try {
-      const raw = window.localStorage.getItem('homepage_ui_scale');
-      if (!raw) return magnifierLevels[0];
-      const value = Number(raw);
-      if (!Number.isFinite(value)) return magnifierLevels[0];
-      return magnifierLevels.reduce(
-        (best, next) => (Math.abs(next - value) < Math.abs(best - value) ? next : best),
-        magnifierLevels[0]
-      );
-    } catch {
-      return magnifierLevels[0];
-    }
-  });
+  const [uiScale, setUiScale] = useState(defaultMagnifierLevel);
+  const [magnifierReady, setMagnifierReady] = useState(false);
 
   useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setUiScale(getSavedMagnifierLevel());
+      setMagnifierReady(true);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  useEffect(() => {
+    if (!magnifierReady) return;
     try {
       window.localStorage.setItem('homepage_ui_scale', String(uiScale));
     } catch {
     }
-  }, [uiScale]);
+  }, [magnifierReady, uiScale]);
 
   const toggleMagnifier = () => {
     setUiScale((value) => {
