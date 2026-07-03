@@ -72,6 +72,7 @@ export default function ProfilePage() {
   const [renewalSubmitting, setRenewalSubmitting] = useState(false);
   const [renewalError, setRenewalError] = useState('');
   const [renewalNotice, setRenewalNotice] = useState('');
+  const [isIdCardVisible, setIsIdCardVisible] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -265,7 +266,7 @@ export default function ProfilePage() {
   ];
 
   useEffect(() => {
-    if (loading || !idCard.qrUrl || !idCard.card || idCard.error) return;
+    if (!isIdCardVisible || loading || !idCard.qrUrl || !idCard.card || idCard.error) return;
 
     let cancelled = false;
 
@@ -308,6 +309,7 @@ export default function ProfilePage() {
     };
   }, [
     loading,
+    isIdCardVisible,
     idCard.qrUrl,
     idCard.card,
     idCard.cardReference,
@@ -388,8 +390,8 @@ export default function ProfilePage() {
             <section className={styles.sectionCard} aria-labelledby="id-card-heading">
               <SectionHeader
                 id="id-card-heading"
-                title="Beneficiary ID Card Preview"
-                subtitle="Your ALAGA Program beneficiary identification card preview."
+                title="Profile Details"
+                subtitle="These details are saved in your beneficiary profile."
               />
 
               {idCard.loading && <p className={styles.muted}>Loading your ID card…</p>}
@@ -397,63 +399,90 @@ export default function ProfilePage() {
                 <p className={styles.muted}>{idCard.error}</p>
               )}
               {!idCard.loading && !idCard.error && idCard.qrUrl && (
-                <div className={styles.idCardWrap}>
-                  <div className={styles.idCardPreviewFrame}>
-                    {idCard.cardImageUrl ? (
-                      <img
-                        className={styles.idCardPreviewImage}
-                        src={idCard.cardImageUrl}
-                        alt="ALAGA Beneficiary ID Card"
-                      />
-                    ) : (
-                      <div className={styles.idCardPreviewLoading}>
-                        {idCard.cardImageLoading ? 'Rendering ID card...' : 'Preparing ID card...'}
-                      </div>
-                    )}
-                  </div>
-                  <div className={styles.idDetailsPanel}>
-                    <h3 className={styles.idDetailsTitle}>Card Details</h3>
-                    <div className={styles.idDetailsRows}>
-                      {profileDetailRows.map((row) => (
-                        <ProfileDetailRow key={row.label} label={row.label} value={row.value} />
-                      ))}
+                <>
+                  <div className={styles.idPrivacyPanel}>
+                    <div className={styles.idPrivacyContent}>
+                      <span className={styles.idPrivacyLabel}>Actual ID Card</span>
+                      <strong>{isIdCardVisible ? 'Actual ID is visible' : 'Actual ID hidden'}</strong>
+                      <p>
+                        The QR code and card image are hidden by default. View the actual ID only when you need to present it.
+                      </p>
                     </div>
-                    <p className={styles.idCardHint}>Keep this ID private. Share only with authorized barangay staff.</p>
-                    {renewalNotice && <p className={styles.renewalSuccess}>{renewalNotice}</p>}
-                    {renewalRequest?.status && (
-                      <div className={styles.renewalStatusBox}>
-                        <span className={styles.idCardLabel}>Latest renewal</span>
-                        <Badge
-                          variant={
-                            renewalRequest.status === 'Approved'
-                              ? 'success'
-                              : renewalRequest.status === 'Incomplete'
-                                ? 'danger'
-                                : 'warning'
-                          }
-                        >
-                          {renewalRequest.status}
-                        </Badge>
-                        {renewalRequest.admin_remarks && (
-                          <p className={styles.idCardHint}>{renewalRequest.admin_remarks}</p>
-                        )}
-                      </div>
-                    )}
-                    <div className={styles.idCardButtons}>
+                    <div className={styles.idPrivacyMeta}>
+                      <Badge variant={getIdStatusVariant(effectiveIdStatus)}>{effectiveIdStatus}</Badge>
+                      <span>Expires {formatCardDate(idCard.card?.expires_at) || '—'}</span>
+                    </div>
+                    <div className={styles.idPrivacyActions}>
                       <Button
                         size="small"
+                        variant={isIdCardVisible ? 'secondary' : 'primary'}
+                        onClick={() => setIsIdCardVisible((visible) => !visible)}
+                      >
+                        {isIdCardVisible ? 'Hide Actual ID' : 'View Actual ID'}
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="secondary"
                         onClick={openRenewalModal}
                         disabled={!canOpenRenewal}
                       >
                         Renew ID
                       </Button>
                     </div>
-                    {renewalDisabledHint && (
-                      <p className={styles.idCardHint}>{renewalDisabledHint}</p>
-                    )}
                   </div>
-                </div>
+
+                  {isIdCardVisible && (
+                    <div className={styles.idCardWrap}>
+                      <div className={styles.idCardPreviewFrame}>
+                        {idCard.cardImageUrl ? (
+                          <img
+                            className={styles.idCardPreviewImage}
+                            src={idCard.cardImageUrl}
+                            alt="ALAGA Beneficiary ID Card"
+                          />
+                        ) : (
+                          <div className={styles.idCardPreviewLoading}>
+                            {idCard.cardImageLoading ? 'Rendering ID card...' : 'Preparing ID card...'}
+                          </div>
+                        )}
+                      </div>
+                      <p className={styles.idCardHint}>Keep this ID private. Share only with authorized barangay staff.</p>
+                    </div>
+                  )}
+
+                  {renewalNotice && <p className={styles.renewalSuccess}>{renewalNotice}</p>}
+                  {renewalRequest?.status && (
+                    <div className={styles.renewalStatusBox}>
+                      <span className={styles.idCardLabel}>Latest renewal</span>
+                      <Badge
+                        variant={
+                          renewalRequest.status === 'Approved'
+                            ? 'success'
+                            : renewalRequest.status === 'Incomplete'
+                              ? 'danger'
+                              : 'warning'
+                        }
+                      >
+                        {renewalRequest.status}
+                      </Badge>
+                      {renewalRequest.admin_remarks && (
+                        <p className={styles.idCardHint}>{renewalRequest.admin_remarks}</p>
+                      )}
+                    </div>
+                  )}
+                  {renewalDisabledHint && (
+                    <p className={styles.idCardHint}>{renewalDisabledHint}</p>
+                  )}
+                </>
               )}
+              <div className={styles.idDetailsPanel}>
+                <h3 className={styles.idDetailsTitle}>Profile Information</h3>
+                <div className={styles.idDetailsRows}>
+                  {profileDetailRows.map((row) => (
+                    <ProfileDetailRow key={row.label} label={row.label} value={row.value} />
+                  ))}
+                </div>
+              </div>
             </section>
 
             <HelperText className={styles.footerNote}>

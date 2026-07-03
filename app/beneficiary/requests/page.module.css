@@ -1,7 +1,7 @@
 .registrationPage {
 	display: flex;
 	flex-direction: column;
-	gap: 24px;
+	gap: 20px;
 	min-width: 0;
 }
 
@@ -25,11 +25,15 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	background: #123f92;
-	padding: 16px 24px;
-	border-radius: 12px;
+	gap: 20px;
+	background:
+		linear-gradient(135deg, rgba(30, 64, 175, 0.98), rgba(37, 99, 235, 0.9)),
+		var(--primary-color);
+	padding: 18px 22px;
+	border-radius: 14px;
 	color: #ffffff;
 	min-width: 0;
+	box-shadow: 0 14px 28px rgba(30, 64, 175, 0.22);
 }
 
 .controlNumberLabel {
@@ -39,9 +43,10 @@
 }
 
 .controlNumberValue {
-	font-size: 18px;
+	margin-top: 4px;
+	font-size: 20px;
 	font-weight: 700;
-	letter-spacing: 1px;
+	letter-spacing: 0.02em;
 	font-family: 'Courier New', monospace;
 	overflow-wrap: anywhere;
 }
@@ -65,11 +70,68 @@
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
-	padding: 16px 18px;
+	padding: 18px;
 	border: 1px solid var(--border-color);
-	border-radius: 12px;
+	border-radius: 16px;
 	background: var(--surface-bg);
-	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+	box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+.progressSummary {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 14px;
+}
+
+.progressSummary > div {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.progressEyebrow {
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--text-muted);
+}
+
+.progressSummary strong {
+	font-size: 16px;
+	line-height: 1.25;
+	color: var(--foreground);
+	overflow-wrap: anywhere;
+}
+
+.progressCount {
+	flex-shrink: 0;
+	border: 1px solid rgba(30, 64, 175, 0.18);
+	background: #eff6ff;
+	color: var(--primary-color);
+	border-radius: 999px;
+	padding: 5px 10px;
+	font-size: 12px;
+	font-weight: 800;
+	white-space: nowrap;
+}
+
+.progressTrack {
+	width: 100%;
+	height: 8px;
+	overflow: hidden;
+	border-radius: 999px;
+	background: var(--surface-hover);
+}
+
+.progressTrack span {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: linear-gradient(90deg, #1d4ed8, #22c55e);
+	transition: width 0.24s ease;
 }
 
 .progressBarScroll {
@@ -85,7 +147,7 @@
 .progressBar {
 	display: flex;
 	align-items: flex-start;
-	min-width: 720px;
+	min-width: 680px;
 }
 
 .progressSegment {
@@ -120,8 +182,8 @@
 }
 
 .progressCircle {
-	width: 36px;
-	height: 36px;
+	width: 34px;
+	height: 34px;
 	border-radius: 999px;
 	display: flex;
 	align-items: center;
@@ -138,12 +200,12 @@
 	border-color: var(--primary-color);
 	color: var(--primary-color);
 	background: #eff6ff;
-	box-shadow: 0 0 0 4px rgba(30, 64, 175, 0.12);
+	box-shadow: 0 0 0 5px rgba(30, 64, 175, 0.1);
 }
 
 .completedCircle {
 	border-color: var(--primary-color);
-	background: #1d4ed8;
+	background: var(--primary-color);
 	color: #ffffff;
 	box-shadow: 0 2px 8px rgba(30, 64, 175, 0.22);
 }
@@ -164,7 +226,7 @@
 }
 
 .completedLine {
-	background: #1d4ed8;
+	background: var(--primary-color);
 }
 
 .progressLabel {
@@ -186,6 +248,48 @@
 	font-weight: 700;
 	color: var(--text-muted);
 	text-align: center;
+}
+
+.profileDetails {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 14px;
+}
+
+.profileDetailItem {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+	padding: 14px 16px;
+	border: 1px solid var(--border-color);
+	border-radius: 12px;
+	background: var(--surface-muted);
+}
+
+.profileDetailLabel {
+	font-size: 12px;
+	font-weight: 800;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+}
+
+.profileDetailItem strong {
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--foreground);
+	line-height: 1.35;
+	overflow-wrap: anywhere;
+}
+
+:global(html[data-theme='dark']) .progressCount {
+	background: rgba(96, 165, 250, 0.14);
+	border-color: rgba(96, 165, 250, 0.28);
+}
+
+:global(html[data-theme='dark']) .activeCircle {
+	background: rgba(96, 165, 250, 0.14);
 }
 
 .stepContainer {
@@ -230,10 +334,12 @@
 }
 
 .assistanceRequirementsPanel {
-	padding: 12px;
+	padding: 14px;
 	border: 1px solid var(--border-color);
-	background: var(--surface-muted);
-	border-radius: 10px;
+	background:
+		linear-gradient(180deg, rgba(30, 64, 175, 0.04), transparent),
+		var(--surface-muted);
+	border-radius: 12px;
 }
 
 .assistanceRequirementsHeader {
@@ -273,6 +379,19 @@
 }
 
 .assistanceRequirementItem {
+	position: relative;
+	padding-left: 18px;
+}
+
+.assistanceRequirementItem::before {
+	content: '';
+	position: absolute;
+	left: 2px;
+	top: 0.65em;
+	width: 6px;
+	height: 6px;
+	border-radius: 999px;
+	background: var(--primary-color);
 }
 
 .assistanceRequirementItemEmpty {
@@ -287,9 +406,10 @@
 
 .requirementUploadItem {
 	border: 1px solid var(--border-color);
-	border-radius: 10px;
-	padding: 12px;
+	border-radius: 12px;
+	padding: 14px;
 	background: var(--surface-bg);
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .requirementUploadHeader {
@@ -392,7 +512,7 @@
 	justify-content: space-between;
 	gap: 14px;
 	padding: 12px;
-	border-radius: 10px;
+	border-radius: 12px;
 	border: 1px solid var(--border-color);
 	background: var(--surface-bg);
 }
@@ -414,9 +534,9 @@
 }
 
 .summaryBlock {
-	padding: 14px;
+	padding: 16px;
 	border: 1px solid var(--border-color);
-	border-radius: 10px;
+	border-radius: 12px;
 	background: var(--surface-muted);
 	min-width: 0;
 }
@@ -458,9 +578,9 @@
 
 .uploadSummary {
 	margin-top: 16px;
-	padding: 14px;
+	padding: 16px;
 	border: 1px solid var(--border-color);
-	border-radius: 10px;
+	border-radius: 12px;
 	background: var(--surface-bg);
 }
 
@@ -479,7 +599,7 @@
 	justify-content: space-between;
 	gap: 12px;
 	padding: 12px;
-	border-radius: 10px;
+	border-radius: 12px;
 	background: var(--surface-muted);
 	border: 1px solid var(--border-color);
 	color: var(--foreground);
@@ -509,10 +629,13 @@
 	justify-content: space-between;
 	flex-wrap: wrap;
 	gap: 16px;
-	padding: 12px 16px;
-	border-radius: 12px;
+	padding: 16px 18px;
+	border-radius: 16px;
 	border: 1px solid var(--border-color);
-	background: var(--surface-muted);
+	background:
+		linear-gradient(90deg, rgba(34, 197, 94, 0.08), transparent 55%),
+		var(--surface-bg);
+	box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
 	font-size: 14px;
 	color: var(--foreground);
 }
@@ -525,11 +648,13 @@
 }
 
 .cooldownTitle {
-	font-weight: 600;
+	font-size: 13px;
+	font-weight: 800;
 	color: var(--foreground);
 }
 
 .cooldownMessage {
+	font-size: 14px;
 	color: var(--text-muted);
 	overflow-wrap: anywhere;
 }
@@ -652,6 +777,7 @@
 	display: flex;
 	justify-content: flex-end;
 	gap: 12px;
+	padding-top: 2px;
 }
 
 @media (max-width: 1200px) {
@@ -736,6 +862,10 @@
 	.row {
 		grid-template-columns: 1fr;
 		gap: 12px;
+	}
+
+	.profileDetails {
+		grid-template-columns: 1fr;
 	}
 
 	.row3 {

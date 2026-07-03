@@ -42,10 +42,6 @@ export default function DocumentPreviewModal({
     if (!printWindow) return;
 
     const safeTitle = String(title || 'Document Preview').replace(/[<>&]/g, '');
-    const safeUrl = JSON.stringify(url).replace(/</g, '\\u003c');
-    const printContent = renderAsImage
-      ? `<img id="print-target" alt="Document preview" />`
-      : `<iframe id="print-target" title="Document preview"></iframe>`;
 
     printWindow.document.write(`
       <!doctype html>
@@ -89,20 +85,21 @@ export default function DocumentPreviewModal({
             }
           </style>
         </head>
-        <body>
-          ${printContent}
-          <script>
-            const target = document.getElementById('print-target');
-            target.addEventListener('load', () => {
-              window.focus();
-              window.print();
-            });
-            target.src = ${safeUrl};
-          </script>
-        </body>
+        <body></body>
       </html>
     `);
     printWindow.document.close();
+
+    const target = printWindow.document.createElement(renderAsImage ? 'img' : 'iframe');
+    target.id = 'print-target';
+    target.title = 'Document preview';
+    if (renderAsImage) target.alt = 'Document preview';
+    target.addEventListener('load', () => {
+      printWindow.focus();
+      printWindow.print();
+    });
+    printWindow.document.body.appendChild(target);
+    target.src = url;
   };
 
   return (

@@ -6,6 +6,7 @@ import Card from '../../../components/Card';
 import Table from '../../../components/Table';
 import Badge from '../../../components/Badge';
 import Button from '../../../components/Button';
+import DocumentPreviewModal from '../../../components/DocumentPreviewModal';
 import styles from './page.module.css';
 import Modal from '../../../components/Modal';
 import { getCooldownInfo } from '@/lib/requestCooldown';
@@ -108,6 +109,7 @@ export default function BeneficiaryHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [alertState, setAlertState] = useState({ open: false, title: '', message: '' });
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [documentPreview, setDocumentPreview] = useState({ open: false, url: '', path: '' });
   const [autoOpenRequestRef, setAutoOpenRequestRef] = useState('');
   const [cooldownInfo, setCooldownInfo] = useState(() => getCooldownInfo(null));
   const [idStatus, setIdStatus] = useState('');
@@ -127,6 +129,18 @@ export default function BeneficiaryHistoryPage() {
 
   const closeRequestDetails = () => {
     setSelectedRequest(null);
+  };
+
+  const openDocumentPreview = (url, path = '') => {
+    setDocumentPreview({
+      open: true,
+      url: String(url || ''),
+      path: String(path || ''),
+    });
+  };
+
+  const closeDocumentPreview = () => {
+    setDocumentPreview({ open: false, url: '', path: '' });
   };
 
   const loadRequests = useCallback(async ({ silent = false } = {}) => {
@@ -459,9 +473,13 @@ export default function BeneficiaryHistoryPage() {
                           <span className={styles.documentType}>{document.requirementType}</span>
                         ) : null}
                       </div>
-                      <a href={document.url} target="_blank" rel="noreferrer">
+                      <button
+                        type="button"
+                        className={styles.documentOpenButton}
+                        onClick={() => openDocumentPreview(document.url, document.url)}
+                      >
                         Open
-                      </a>
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -487,6 +505,13 @@ export default function BeneficiaryHistoryPage() {
       >
         <p>{alertState.message}</p>
       </Modal>
+
+      <DocumentPreviewModal
+        isOpen={documentPreview.open}
+        onClose={closeDocumentPreview}
+        url={documentPreview.url}
+        path={documentPreview.path}
+      />
     </div>
   );
 }

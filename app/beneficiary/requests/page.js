@@ -1515,12 +1515,25 @@ export default function BeneficiaryRequestPage() {
   const editButtonLabel = 'Resubmit Request';
   const fullName = buildFullName();
   const profileAddress = buildProfileAddress();
+  const progressPercent = Math.round(((currentStep - 1) / (TOTAL_STEPS - 1)) * 100);
   const requestControlNumber = isEditMode
     ? editingAssistanceControlNumber || '—'
     : assistanceControlPreview || '—';
 
   const renderProgressBar = () => (
     <div className={styles.progressBarWrapper} aria-label="Request progress">
+      <div className={styles.progressSummary}>
+        <div>
+          <span className={styles.progressEyebrow}>Application progress</span>
+          <strong>{WIZARD_STEPS[currentStep - 1]?.label || 'Review'}</strong>
+        </div>
+        <span className={styles.progressCount}>
+          Step {currentStep} of {TOTAL_STEPS}
+        </span>
+      </div>
+      <div className={styles.progressTrack} aria-hidden="true">
+        <span style={{ width: `${progressPercent}%` }} />
+      </div>
       <div className={styles.progressBarScroll}>
         <div className={styles.progressBar}>
           {WIZARD_STEPS.map((step, index) => (
@@ -1580,23 +1593,15 @@ export default function BeneficiaryRequestPage() {
           </div>
         </div>
 
-        <div className={styles.row}>
-          <Input
-            label="Full Name"
-            name="fullName"
-            value={fullName}
-            onChange={() => {}}
-            disabled
-            placeholder="Set this in My Profile"
-          />
-          <Input
-            label="Address"
-            name="address"
-            value={profileAddress}
-            onChange={() => {}}
-            disabled
-            placeholder="Set this in My Profile"
-          />
+        <div className={styles.profileDetails}>
+          <div className={styles.profileDetailItem}>
+            <span className={styles.profileDetailLabel}>Full Name</span>
+            <strong>{fullName || 'Set this in My Profile'}</strong>
+          </div>
+          <div className={styles.profileDetailItem}>
+            <span className={styles.profileDetailLabel}>Address</span>
+            <strong>{profileAddress || 'Set this in My Profile'}</strong>
+          </div>
         </div>
 
         {(errors.firstName || errors.houseNo || errors.contactNumber) && (
@@ -1980,7 +1985,10 @@ export default function BeneficiaryRequestPage() {
           {toast.message}
         </div>
       )}
-      <PageHeader title={isEditMode ? 'Edit Request' : 'Request Assistance'} />
+      <PageHeader
+        title={isEditMode ? 'Edit Request' : 'Request Assistance'}
+        subtitle="Complete each step to send your assistance request for review."
+      />
       {status && (
         <div
           role="alert"
