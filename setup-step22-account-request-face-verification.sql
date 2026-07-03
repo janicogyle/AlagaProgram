@@ -29,4 +29,9 @@ ALTER TABLE public.account_requests
 CREATE INDEX IF NOT EXISTS idx_account_requests_face_verification_status
   ON public.account_requests(face_verification_status);
 
+ALTER TABLE public.residents
+  ADD COLUMN IF NOT EXISTS profile_photo_url TEXT;
+
 NOTIFY pgrst, 'reload schema';
+
+

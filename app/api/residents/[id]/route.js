@@ -161,6 +161,7 @@ async function fetchSignupWithRetry(db, { accountRequestId, contactNumber }) {
     'representative_relationship',
     'representative_valid_id_url',
     'valid_id_url',
+    'selfie_url',
   ];
 
   const required = new Set(['id', 'contact_number', 'status']);
@@ -283,6 +284,7 @@ export async function GET(request, { params }) {
       'representative_relationship',
       'representative_valid_id_url',
       'valid_id_url',
+      'profile_photo_url',
       'status',
       'created_at',
       'updated_at',
@@ -396,6 +398,11 @@ export async function GET(request, { params }) {
           reflected[k] = signupData[k];
           backfill[k] = signupData[k];
         }
+      }
+
+      if (isBlank(reflected.profile_photo_url) && !isBlank(signupData.selfie_url)) {
+        reflected.profile_photo_url = signupData.selfie_url;
+        backfill.profile_photo_url = signupData.selfie_url;
       }
 
       if (!accountRequestId && signupData?.id) {
@@ -671,6 +678,7 @@ export async function PATCH(request, { params }) {
       'barangay',
       'city',
       'valid_id_url',
+      'profile_photo_url',
       'is_pwd',
       'is_senior_citizen',
       'is_solo_parent',
@@ -855,3 +863,6 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ data: null, error: msg }, { status: 500 });
   }
 }
+
+
+

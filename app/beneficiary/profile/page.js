@@ -33,7 +33,22 @@ function formatContactForDisplay(value) {
   if (digits.length === 11 && digits.startsWith('0')) {
     return `+63 ${digits.slice(1, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
   }
-  return value || '';
+  return value || '—';
+}
+
+const RESIDENT_PROFILE_SELECT =
+  'id, first_name, middle_name, last_name, birthday, age, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, is_pwd, is_senior_citizen, is_solo_parent, representative_name, representative_contact, representative_relationship, representative_valid_id_url, profile_photo_url, status';
+const RESIDENT_PROFILE_FALLBACK_SELECT = RESIDENT_PROFILE_SELECT.replace(', profile_photo_url', '');
+
+function isMissingProfilePhotoColumn(error) {
+  const msg = String(error?.message || error || '').toLowerCase();
+  return msg.includes('profile_photo_url') && (msg.includes('schema cache') || msg.includes('does not exist') || msg.includes('could not find'));
+}
+
+async function fetchResidentProfile(residentId) {
+  const result = await supabase.from('residents').select(RESIDENT_PROFILE_SELECT).eq('id', residentId).single();
+  if (!result.error || !isMissingProfilePhotoColumn(result.error)) return result;
+  return supabase.from('residents').select(RESIDENT_PROFILE_FALLBACK_SELECT).eq('id', residentId).single();
 }
 
 export default function ProfilePage() {
@@ -72,13 +87,7 @@ export default function ProfilePage() {
           return;
         }
 
-        const { data, error } = await supabase
-          .from('residents')
-          .select(
-            'id, first_name, middle_name, last_name, birthday, age, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, is_pwd, is_senior_citizen, is_solo_parent, representative_name, representative_contact, representative_relationship, representative_valid_id_url, status',
-          )
-          .eq('id', residentId)
-          .single();
+        const { data, error } = await fetchResidentProfile(residentId);
 
         if (error) throw error;
         setResident(data);
@@ -273,6 +282,7 @@ export default function ProfilePage() {
           address: fullAddress,
           issuedAt: idCard.card?.issued_at,
           expiresAt: idCard.card?.expires_at,
+          profilePhotoUrl: resident?.profile_photo_url || null,
         });
 
         if (!cancelled) {
@@ -303,6 +313,7 @@ export default function ProfilePage() {
     idCard.cardReference,
     idCard.error,
     resident?.contact_number,
+    resident?.profile_photo_url,
     fullName,
     sectorLabel,
     fullAddress,
@@ -495,3 +506,6 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+
+

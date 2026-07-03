@@ -1337,6 +1337,7 @@ export default function ResidentsPage() {
         address: formatAddressLine(residentForCard),
         issuedAt: card?.issued_at,
         expiresAt: card?.expires_at,
+        profilePhotoUrl: residentForCard?.profile_photo_url || null,
       });
 
       setIssuedCard({ token, card, cardReference, qrUrl, cardImageUrl, action });
@@ -1389,6 +1390,7 @@ export default function ResidentsPage() {
         address: formatAddressLine(effectiveResident),
         issuedAt: card?.issued_at,
         expiresAt: card?.expires_at,
+        profilePhotoUrl: effectiveResident?.profile_photo_url || null,
       });
 
       setIssuedCard({ token: null, card, cardReference, qrUrl, cardImageUrl, action: 'viewed' });
@@ -2382,3 +2384,5 @@ export default function ResidentsPage() {
     </div>
   );
 }
+
+

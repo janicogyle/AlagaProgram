@@ -44,7 +44,8 @@ export async function POST(request) {
       return NextResponse.json({ data: null, error: 'Invalid request body.' }, { status: 400 });
     }
 
-    const idImageUrl = clean(body.validIdFrontUrl || body.valid_id_front_url || body.idImageUrl);
+    const selectedIdImageField = body.validIdFrontUrl ? 'validIdFrontUrl' : 'valid_id_front_url';
+    const idImageUrl = clean(body.validIdFrontUrl || body.valid_id_front_url);
     const selfieUrl = clean(body.selfieUrl || body.selfie_url);
     const docCheck = validateCloudinaryDocumentUrls([idImageUrl, selfieUrl], { label: 'Face verification image' });
     if (!docCheck.ok) {
@@ -64,6 +65,10 @@ export async function POST(request) {
       provider: result.provider,
       verifiedAt: now,
       error: result.error || null,
+      diagnostics: {
+        ...(result.diagnostics || {}),
+        selectedIdImageField,
+      },
     };
 
     await logActivity(
@@ -94,3 +99,4 @@ export async function POST(request) {
     );
   }
 }
+

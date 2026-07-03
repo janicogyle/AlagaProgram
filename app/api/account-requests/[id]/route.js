@@ -207,6 +207,20 @@ async function findResidentForSignupApproval(db, { requestId, contactNumber }) {
   return { resident: data || null, hasAccountRequestIdColumn };
 }
 
+
+async function updateResidentProfilePhoto(db, residentId, profilePhotoUrl) {
+  if (!residentId || !profilePhotoUrl) return;
+
+  const { error } = await db
+    .from('residents')
+    .update({ profile_photo_url: profilePhotoUrl })
+    .eq('id', residentId);
+
+  if (!error) return;
+
+  const missing = String(error?.message || '').toLowerCase().includes('profile_photo_url');
+  if (!missing) throw error;
+}
 async function createAndSendResubmissionLink({
   db,
   request,
@@ -568,6 +582,7 @@ export async function POST(request, { params }) {
             existingResident.account_request_id &&
             existingResident.account_request_id === requestId
           ) {
+            await updateResidentProfilePhoto(db, existingResident.id, accountRequest.selfie_url || null);
             residentId = existingResident.id;
           } else {
             return NextResponse.json(
@@ -598,6 +613,7 @@ export async function POST(request, { params }) {
             barangay: accountRequest.barangay || 'Sta. Rita',
             city: accountRequest.city || 'Olongapo City',
             valid_id_url: accountRequest.valid_id_url || parseValidIdUrls(accountRequest.valid_id_urls)[0] || null,
+            profile_photo_url: accountRequest.selfie_url || null,
             representative_name: accountRequest.representative_name || null,
             representative_contact: accountRequest.representative_contact || null,
             representative_relationship: accountRequest.representative_relationship || null,

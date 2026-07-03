@@ -15,6 +15,7 @@ import {
   getSecondarySectorOptions,
 } from '@/lib/beneficiarySectors';
 import styles from './page.module.css';
+import { verifyFaceMatchWithFaceApi } from '@/lib/faceVerification.client';
 
 const purokOptions = [
   '1A',
@@ -390,6 +391,20 @@ function ResubmitAccountRequestPageContent() {
 
     setIdentityVerifying(true);
     try {
+      const frontSource = validIdFrontFiles[0] || existingValidIdFront;
+      const selfieSource = selfieFiles[0] || existingSelfie;
+      const verification = await verifyFaceMatchWithFaceApi({
+        validIdFrontImage: frontSource,
+        selfieImage: selfieSource,
+      });
+      setFaceVerification(verification);
+      if (verification.status !== 'passed') {
+        const msg = verification.error || FACE_VERIFICATION_FAILED_ERROR;
+        setValidIdError(msg);
+        setStatus({ type: 'error', message: msg });
+        return { ok: false, verification };
+      }
+
       const frontUrl = validIdFrontFiles[0]
         ? await uploadIdentityFile(validIdFrontFiles[0], 'validIdFront')
         : existingValidIdFront;
@@ -399,26 +414,11 @@ function ResubmitAccountRequestPageContent() {
       const selfieUrl = selfieFiles[0]
         ? await uploadIdentityFile(selfieFiles[0], 'selfie')
         : existingSelfie;
-
-      const verifyResponse = await fetch('/api/account-requests/verify-face', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, validIdFrontUrl: frontUrl, selfieUrl }),
-      });
-      const verifyJson = await verifyResponse.json().catch(() => ({}));
-      if (!verifyResponse.ok) throw new Error(verifyJson.error || FACE_VERIFICATION_FAILED_ERROR);
-      const verification = verifyJson.data || {};
       const urls = { front: frontUrl, back: backUrl, selfie: selfieUrl };
       setIdentityUrls(urls);
       setExistingValidIdFront(frontUrl);
       setExistingValidIdBack(backUrl);
       setExistingSelfie(selfieUrl);
-      setFaceVerification(verification);
-      if (verification.status !== 'passed') {
-        setValidIdError(FACE_VERIFICATION_FAILED_ERROR);
-        setStatus({ type: 'error', message: FACE_VERIFICATION_FAILED_ERROR });
-        return { ok: false, urls, verification };
-      }
       setStatus({ type: 'success', message: 'Face verification passed.' });
       return { ok: true, urls, verification };
     } catch (error) {
@@ -873,3 +873,4 @@ export default function ResubmitAccountRequestPage() {
     </Suspense>
   );
 }
+

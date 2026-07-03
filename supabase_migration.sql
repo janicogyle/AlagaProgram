@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS public.residents (
 
   -- Documents
   valid_id_url    TEXT,
+  profile_photo_url TEXT,
 
   is_pwd          BOOLEAN DEFAULT FALSE,
   is_senior_citizen BOOLEAN DEFAULT FALSE,
@@ -44,6 +45,7 @@ CREATE TABLE IF NOT EXISTS public.residents (
 -- Ensure columns exist on older installs (CREATE TABLE won't add missing columns)
 ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS purok TEXT;
 ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS valid_id_url TEXT;
+ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS profile_photo_url TEXT;
 ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- Enforce: one contact number can only be used once (when present)

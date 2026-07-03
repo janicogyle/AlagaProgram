@@ -18,6 +18,7 @@ import {
   getSectorLabel,
 } from '@/lib/beneficiarySectors';
 import styles from './page.module.css';
+import { verifyFaceMatchWithFaceApi } from '@/lib/faceVerification.client';
 
 const purokOptions = [
   { value: '1A', label: '1A' },
@@ -860,33 +861,25 @@ export default function BeneficiarySignupPage() {
 
     setIdentityVerifying(true);
     try {
+      const verification = await verifyFaceMatchWithFaceApi({
+        validIdFrontImage: validIdFrontFiles[0],
+        selfieImage: selfieFile,
+      });
+      setFaceVerification(verification);
+      if (verification.status !== 'passed') {
+        const msg = verification.error || FACE_VERIFICATION_FAILED_ERROR;
+        setValidIdError(msg);
+        setStatus({ type: 'error', message: msg });
+        return { ok: false, verification };
+      }
+
       const [frontUrl, backUrl, selfieUrl] = await Promise.all([
         uploadIdentityFile(validIdFrontFiles[0], 'validIdFront'),
         uploadIdentityFile(validIdBackFiles[0], 'validIdBack'),
         uploadIdentityFile(selfieFile, 'selfie'),
       ]);
-      const verifyResponse = await fetch('/api/account-requests/verify-face', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contactNumber: getIdentityUploadReference(),
-          validIdFrontUrl: frontUrl,
-          selfieUrl,
-        }),
-      });
-      const verifyJson = await verifyResponse.json().catch(() => ({}));
-      if (!verifyResponse.ok) {
-        throw new Error(verifyJson.error || FACE_VERIFICATION_FAILED_ERROR);
-      }
-      const verification = verifyJson.data || {};
       const urls = { front: frontUrl, back: backUrl, selfie: selfieUrl };
       setIdentityUrls(urls);
-      setFaceVerification(verification);
-      if (verification.status !== 'passed') {
-        setValidIdError(FACE_VERIFICATION_FAILED_ERROR);
-        setStatus({ type: 'error', message: FACE_VERIFICATION_FAILED_ERROR });
-        return { ok: false, urls, verification };
-      }
       setStatus({ type: 'success', message: 'Face match verified.' });
       return { ok: true, urls, verification };
     } catch (error) {
@@ -1254,6 +1247,7 @@ export default function BeneficiarySignupPage() {
           faceVerificationProvider: verifiedFace?.provider || null,
           faceVerifiedAt: verifiedFace?.verifiedAt || null,
           faceVerificationError: verifiedFace?.error || null,
+          faceVerificationDiagnostics: verifiedFace?.diagnostics || null,
           houseNo: form.houseNo,
           purok: form.purok,
           barangay: form.barangay,
@@ -2453,3 +2447,4 @@ export default function BeneficiarySignupPage() {
     </div>
   );
 }
+

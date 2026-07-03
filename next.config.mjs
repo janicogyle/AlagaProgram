@@ -37,6 +37,12 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  serverExternalPackages: [
+    '@napi-rs/canvas',
+    '@tensorflow/tfjs',
+    '@tensorflow/tfjs-backend-wasm',
+    '@vladmandic/face-api',
+  ],
   turbopack: {
     root: __dirname,
   },
@@ -64,3 +70,4 @@ const nextConfig = {
 };
 
 export default pwaConfig(nextConfig);
+

@@ -8,6 +8,7 @@ import {
 import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/documentUrls.server';
 import { logActivity } from '@/lib/activityLogger.server';
 import { buildSectorPairFromSource, validateSectorPair } from '@/lib/beneficiarySectors';
+import { verifyFaceMatch } from '@/lib/faceVerification.server';
 
 export const runtime = 'nodejs';
 
@@ -198,11 +199,6 @@ export async function POST(request) {
     const validIdFrontUrl = cleanText(body.validIdFrontUrl || body.valid_id_front_url);
     const validIdBackUrl = cleanText(body.validIdBackUrl || body.valid_id_back_url);
     const selfieUrl = cleanText(body.selfieUrl || body.selfie_url);
-    const faceVerificationStatus = cleanText(body.faceVerificationStatus || body.face_verification_status);
-    const faceVerificationScore = body.faceVerificationScore ?? body.face_verification_score ?? null;
-    const faceVerificationProvider = cleanText(body.faceVerificationProvider || body.face_verification_provider);
-    const faceVerifiedAt = cleanText(body.faceVerifiedAt || body.face_verified_at);
-    const faceVerificationError = cleanText(body.faceVerificationError || body.face_verification_error);
 
     if (!validIdFrontUrl || !validIdBackUrl) {
       return NextResponse.json({ data: null, error: VALID_ID_BOTH_SIDES_ERROR }, { status: 400 });
@@ -220,8 +216,12 @@ export async function POST(request) {
     if (cloudinaryIdentityUrls.length !== 3) {
       return NextResponse.json({ data: null, error: 'Identity documents must be uploaded to Cloudinary.' }, { status: 400 });
     }
-    if (faceVerificationStatus !== 'passed') {
-      return NextResponse.json({ data: null, error: FACE_VERIFICATION_FAILED_ERROR }, { status: 400 });
+    const verifiedFace = await verifyFaceMatch({ idImageUrl: validIdFrontUrl, selfieUrl });
+    if (verifiedFace.status !== 'passed') {
+      return NextResponse.json(
+        { data: null, error: verifiedFace.error || FACE_VERIFICATION_FAILED_ERROR },
+        { status: 400 },
+      );
     }
 
     const requestedValidIds = parseAccountRequestValidIdUrls(body.validIdUrls ?? body.valid_id_urls);
@@ -297,11 +297,11 @@ export async function POST(request) {
       valid_id_front_url: validIdFrontUrl,
       valid_id_back_url: validIdBackUrl,
       selfie_url: selfieUrl,
-      face_verification_status: faceVerificationStatus,
-      face_verification_score: faceVerificationScore,
-      face_verification_provider: faceVerificationProvider || null,
-      face_verified_at: faceVerifiedAt || now,
-      face_verification_error: faceVerificationError || null,
+      face_verification_status: verifiedFace.status,
+      face_verification_score: verifiedFace.score ?? null,
+      face_verification_provider: verifiedFace.provider || null,
+      face_verified_at: now,
+      face_verification_error: verifiedFace.error || null,
       representative_name: representativeName || null,
       representative_contact: representativeContact || null,
       representative_relationship: representativeRelationship || null,
@@ -344,3 +344,4 @@ export async function POST(request) {
     );
   }
 }
+

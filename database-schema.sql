@@ -317,6 +317,7 @@ BEGIN
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS barangay TEXT;
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS city TEXT;
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS valid_id_url TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS profile_photo_url TEXT;
 
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS is_pwd BOOLEAN DEFAULT FALSE;
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS is_senior_citizen BOOLEAN DEFAULT FALSE;
