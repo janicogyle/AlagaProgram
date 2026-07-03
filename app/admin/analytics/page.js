@@ -161,8 +161,9 @@ export default function AnalyticsPage() {
     let soloParent = 0;
     let male = 0;
     let female = 0;
+    let unspecifiedSex = 0;
 
-    const ageBuckets = { '18-25': 0, '26-35': 0, '36-50': 0, '51-59': 0, '60+': 0 };
+    const ageBuckets = { '1-17': 0, '18-25': 0, '26-35': 0, '36-50': 0, '51-59': 0, '60+': 0 };
     const purokCounts = {};
     const selectedTrendYear = Number(trendYear) || currentYear;
     const trendMonthCounts = Array(12).fill(0);
@@ -175,8 +176,10 @@ export default function AnalyticsPage() {
       if (r.is_pwd) pwd++;
       if (r.is_senior_citizen) senior++;
       if (r.is_solo_parent) soloParent++;
-      if (r.sex === 'male') male++;
-      if (r.sex === 'female') female++;
+      const normalizedSex = String(r.sex || '').trim().toLowerCase();
+      if (normalizedSex === 'male' || normalizedSex === 'm') male++;
+      else if (normalizedSex === 'female' || normalizedSex === 'f') female++;
+      else unspecifiedSex++;
 
       if (createdAt) {
         const d = new Date(createdAt);
@@ -187,16 +190,16 @@ export default function AnalyticsPage() {
         }
       }
 
-      const age =
+      const ageValue =
         r.age ?? (r.birthday ? Math.floor((Date.now() - new Date(r.birthday)) / 31557600000) : null);
-      if (age !== null) {
-        if (age < 18) {
-          // Age demographics chart starts at 18 by design.
-        } else if (age <= 25) ageBuckets['18-25']++;
-        else if (age <= 35) ageBuckets['26-35']++;
-        else if (age <= 50) ageBuckets['36-50']++;
-        else if (age <= 59) ageBuckets['51-59']++;
-        else ageBuckets['60+']++;
+      const age = ageValue === null || ageValue === undefined ? null : Number(ageValue);
+      if (Number.isFinite(age)) {
+        if (age >= 1 && age <= 17) ageBuckets['1-17']++;
+        else if (age >= 18 && age <= 25) ageBuckets['18-25']++;
+        else if (age >= 26 && age <= 35) ageBuckets['26-35']++;
+        else if (age >= 36 && age <= 50) ageBuckets['36-50']++;
+        else if (age >= 51 && age <= 59) ageBuckets['51-59']++;
+        else if (age >= 60) ageBuckets['60+']++;
       }
 
       const purokKey = r.purok || r.street || 'Unknown';
@@ -248,16 +251,19 @@ export default function AnalyticsPage() {
     const nextGenderDistribution = [
       { label: 'Male', value: male, color: '#3b82f6' },
       { label: 'Female', value: female, color: '#ec4899' },
+      { label: 'Unspecified', value: unspecifiedSex, color: '#94a3b8' },
     ];
 
     const nextAgeDistribution = Object.entries(ageBuckets).map(([label, value]) => ({ label, value }));
 
     const purokTotal = total || 1;
-    const nextPurokDistribution = Object.entries(purokCounts).map(([purok, count]) => ({
-      purok,
-      count,
-      percentage: Math.round((count / purokTotal) * 100),
-    }));
+    const nextPurokDistribution = Object.entries(purokCounts)
+      .map(([purok, count]) => ({
+        purok,
+        count,
+        percentage: Math.round((count / purokTotal) * 100),
+      }))
+      .sort((a, b) => b.count - a.count || a.purok.localeCompare(b.purok));
 
     const nextRecentRegistrations = residents.slice(0, 5).map((r) => ({
         id: r.id,
@@ -469,6 +475,41 @@ export default function AnalyticsPage() {
     if (title === 'Released Assistance') return '/admin/assistance';
     return undefined;
   };
+  const getChartTotal = (items) => items.reduce((total, item) => total + (Number(item.value) || 0), 0);
+  const formatShare = (value, total) => `${total > 0 ? Math.round((Number(value || 0) / total) * 100) : 0}%`;
+  const formatLabelList = (labels) => {
+    if (labels.length <= 2) return labels.join(' and ');
+    return `${labels.slice(0, -1).join(', ')}, and ${labels.at(-1)}`;
+  };
+  const getTopSegment = (items) => {
+    const highestValue = Math.max(0, ...items.map((item) => Number(item.value) || 0));
+    if (highestValue === 0) return null;
+    const leaders = items.filter((item) => (Number(item.value) || 0) === highestValue);
+    return {
+      label: formatLabelList(leaders.map((item) => item.label)),
+      value: highestValue,
+      isTie: leaders.length > 1,
+    };
+  };
+  const sectorTotal = getChartTotal(sectorDistribution);
+  const genderTotal = getChartTotal(genderDistribution);
+  const ageTotal = getChartTotal(ageDistribution);
+  const topSector = getTopSegment(sectorDistribution);
+  const topGender = getTopSegment(genderDistribution);
+  const topAgeGroup = getTopSegment(ageDistribution);
+  const purokResidentTotal = purokDistribution.reduce((total, item) => total + (Number(item.count) || 0), 0);
+  const topPurok = purokDistribution[0] || null;
+  const topPuroks = purokDistribution.slice(0, 5);
+  const maleCount = genderDistribution.find((item) => item.label === 'Male')?.value || 0;
+  const femaleCount = genderDistribution.find((item) => item.label === 'Female')?.value || 0;
+  const unspecifiedSexCount = genderDistribution.find((item) => item.label === 'Unspecified')?.value || 0;
+  const recordedGenderCount = Math.max(genderTotal - unspecifiedSexCount, 0);
+  const genderDifference = Math.abs(maleCount - femaleCount);
+  const genderDifferenceLabel =
+    genderDifference === 0
+      ? 'Even split'
+      : `${maleCount > femaleCount ? 'Male' : 'Female'} +${genderDifference}`;
+  const genderRatioLabel = maleCount || femaleCount ? `${maleCount}:${femaleCount}` : 'No data';
 
   return (
     <div className={styles.analyticsPage}>
@@ -603,61 +644,212 @@ export default function AnalyticsPage() {
         </Card>
 
         {/* Sector Distribution */}
-        <Card title="Sector Distribution" className={styles.chartCard}>
-          <PieChart 
-            data={sectorDistribution}
-            size={pieChartSize}
-            donut={true}
-          />
+        <Card
+          title="Sector Distribution"
+          subtitle="Beneficiaries may belong to more than one sector"
+          className={`${styles.chartCard} ${styles.distributionCard}`}
+        >
+          <div className={styles.distributionLayout}>
+            <div className={styles.donutStage}>
+              <PieChart
+                data={sectorDistribution}
+                size={pieChartSize}
+                donut={true}
+                showLegend={false}
+              />
+              <div className={styles.donutCenter}>
+                <strong>{sectorTotal}</strong>
+                <span>sector tags</span>
+              </div>
+            </div>
+            <div className={styles.distributionDetails}>
+              <div className={styles.chartHighlight}>
+                <span>{topSector?.isTie ? 'Tied largest sectors' : 'Largest sector'}</span>
+                <strong>{topSector?.label || 'No data'}</strong>
+                <small>
+                  {topSector ? `${topSector.value} record${topSector.value === 1 ? '' : 's'} (${formatShare(topSector.value, sectorTotal)})` : 'Waiting for data'}
+                </small>
+              </div>
+              <div className={styles.segmentList}>
+                {sectorDistribution.map((item) => (
+                  <div key={item.label} className={styles.segmentItem}>
+                    <span className={styles.segmentDot} style={{ background: item.color, color: item.color }} />
+                    <span className={styles.segmentLabel}>{item.label}</span>
+                    <strong>{item.value}</strong>
+                    <span className={styles.segmentShare}>{formatShare(item.value, sectorTotal)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </Card>
 
         {/* Gender Distribution */}
-        <Card title="Gender Distribution" className={styles.chartCard}>
-          <PieChart 
-            data={genderDistribution}
-            size={pieChartSize}
-            donut={true}
-          />
+        <Card
+          title="Gender Distribution"
+          subtitle="Registered beneficiaries by recorded sex"
+          className={`${styles.chartCard} ${styles.distributionCard}`}
+        >
+          <div className={styles.distributionLayout}>
+            <div className={styles.donutStage}>
+              <PieChart
+                data={genderDistribution}
+                size={pieChartSize}
+                donut={true}
+                showLegend={false}
+              />
+              <div className={styles.donutCenter}>
+                <strong>{genderTotal}</strong>
+                <span>beneficiaries</span>
+              </div>
+            </div>
+            <div className={styles.distributionDetails}>
+              <div className={styles.chartHighlight}>
+                <span>{topGender?.isTie ? 'No single majority' : 'Majority'}</span>
+                <strong>{topGender?.label || 'No data'}</strong>
+                <small>
+                  {topGender ? `${topGender.value} record${topGender.value === 1 ? '' : 's'} (${formatShare(topGender.value, genderTotal)})` : 'Waiting for data'}
+                </small>
+              </div>
+              <div className={styles.segmentList}>
+                {genderDistribution.map((item) => (
+                  <div key={item.label} className={styles.segmentItem}>
+                    <span className={styles.segmentDot} style={{ background: item.color, color: item.color }} />
+                    <span className={styles.segmentLabel}>{item.label}</span>
+                    <strong>{item.value}</strong>
+                    <span className={styles.segmentShare}>{formatShare(item.value, genderTotal)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className={styles.genderInsightGrid}>
+            <div className={styles.genderInsightItem}>
+              <span>Completeness</span>
+              <strong>
+                {recordedGenderCount}/{genderTotal || 0} recorded
+              </strong>
+            </div>
+            <div className={styles.genderInsightItem}>
+              <span>Difference</span>
+              <strong>{genderDifferenceLabel}</strong>
+            </div>
+            <div className={styles.genderInsightItem}>
+              <span>Ratio</span>
+              <strong>{genderRatioLabel}</strong>
+            </div>
+          </div>
         </Card>
 
         {/* Age Demographics */}
-        <Card title="Age Demographics" className={styles.chartCard}>
-          <BarChart 
-            data={ageDistribution}
-            labelKey="label"
-            valueKey="value"
-            height={chartHeight}
-            color="linear-gradient(180deg, #10b981 0%, #059669 100%)"
-          />
+        <Card
+          title="Age Demographics"
+          subtitle="Age range distribution for approved beneficiaries"
+          className={`${styles.chartCard} ${styles.ageChartCard}`}
+        >
+          <div className={styles.ageSummaryGrid}>
+            <div className={styles.ageSummaryItem}>
+              <span>Total counted</span>
+              <strong>{ageTotal}</strong>
+            </div>
+            <div className={styles.ageSummaryItem}>
+              <span>{topAgeGroup?.isTie ? 'Largest groups' : 'Largest group'}</span>
+              <strong>{topAgeGroup?.label || 'No data'}</strong>
+            </div>
+            <div className={styles.ageSummaryItem}>
+              <span>Group share</span>
+              <strong>{topAgeGroup ? formatShare(topAgeGroup.value, ageTotal) : '0%'}</strong>
+            </div>
+          </div>
+          <div className={styles.ageChartWrap}>
+            <BarChart
+              data={ageDistribution}
+              labelKey="label"
+              valueKey="value"
+              height={chartHeight}
+              color="linear-gradient(180deg, #14b8a6 0%, #059669 100%)"
+            />
+          </div>
+          <div className={styles.ageBucketList}>
+            {ageDistribution.map((item) => (
+              <div key={item.label} className={styles.ageBucketItem}>
+                <span>{item.label}</span>
+                <div className={styles.ageBucketTrack}>
+                  <span style={{ width: formatShare(item.value, ageTotal) }} />
+                </div>
+                <strong>{item.value}</strong>
+              </div>
+            ))}
+          </div>
         </Card>
 
         {/* Purok Distribution */}
-        <Card title="Residents by Purok" className={`${styles.chartCard} ${styles.purokChartCard}`}>
-          <div className={styles.horizontalChart}>
-            {purokDistribution.map((item, index) => (
-              <div 
-                key={index} 
-                className={styles.hBarItem}
-              >
-                <div className={styles.hBarLabel}>
-                  <span>{item.purok}</span>
-                  <span className={styles.hBarCount}>{item.count}</span>
-                </div>
-                <div className={styles.hBarContainer}>
-                  <div 
-                    className={styles.hBar}
-                    style={{ width: `${item.percentage}%` }}
-                  >
-                    <span className={styles.hBarTooltip}>
-                      <strong>{item.purok}</strong>
-                      <span>{item.count} resident{item.count !== 1 ? 's' : ''}</span>
-                      <span>{item.percentage}% of total</span>
-                    </span>
+        <Card
+          title="Residents by Purok"
+          subtitle="Distribution of approved beneficiaries by recorded area"
+          className={`${styles.chartCard} ${styles.purokChartCard}`}
+        >
+          <div className={styles.purokChartLayout}>
+            <div className={styles.horizontalChart}>
+              {purokDistribution.map((item, index) => (
+                <div
+                  key={index}
+                  className={styles.hBarItem}
+                >
+                  <div className={styles.hBarLabel}>
+                    <span>{item.purok}</span>
+                    <span className={styles.hBarCount}>{item.count} resident{item.count === 1 ? '' : 's'}</span>
                   </div>
+                  <div className={styles.hBarContainer}>
+                    <div
+                      className={styles.hBar}
+                      style={{ width: `${item.percentage}%` }}
+                    >
+                      <span className={styles.hBarTooltip}>
+                        <strong>{item.purok}</strong>
+                        <span>{item.count} resident{item.count !== 1 ? 's' : ''}</span>
+                        <span>{item.percentage}% of total</span>
+                      </span>
+                    </div>
+                  </div>
+                  <span className={styles.hBarPercentage}>{item.percentage}%</span>
                 </div>
-                <span className={styles.hBarPercentage}>{item.percentage}%</span>
+              ))}
+            </div>
+
+            <aside className={styles.purokSummaryPanel}>
+              <div className={styles.purokSummaryHero}>
+                <span>Highest concentration</span>
+                <strong>{topPurok?.purok || 'No data'}</strong>
+                <small>
+                  {topPurok
+                    ? `${topPurok.count} resident${topPurok.count === 1 ? '' : 's'} (${formatShare(topPurok.count, purokResidentTotal)})`
+                    : 'Waiting for records'}
+                </small>
               </div>
-            ))}
+              <div className={styles.purokMetricGrid}>
+                <div className={styles.purokMetricItem}>
+                  <span>Total residents</span>
+                  <strong>{purokResidentTotal}</strong>
+                </div>
+                <div className={styles.purokMetricItem}>
+                  <span>Areas covered</span>
+                  <strong>{purokDistribution.length}</strong>
+                </div>
+              </div>
+              <div className={styles.purokTopList}>
+                <span className={styles.purokTopTitle}>Top puroks</span>
+                {topPuroks.map((item) => (
+                  <div key={item.purok} className={styles.purokTopItem}>
+                    <span>{item.purok}</span>
+                    <div className={styles.purokTopTrack}>
+                      <span style={{ width: formatShare(item.count, purokResidentTotal) }} />
+                    </div>
+                    <strong>{item.count}</strong>
+                  </div>
+                ))}
+              </div>
+            </aside>
           </div>
         </Card>
       </div>

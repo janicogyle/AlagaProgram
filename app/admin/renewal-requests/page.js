@@ -207,7 +207,9 @@ export default function RenewalRequestsPage() {
         ) : loading ? (
           <p className={styles.meta}>Loading renewal requests...</p>
         ) : (
-          <Table columns={columns} data={rows} emptyMessage="No renewal requests found." />
+          <div className={styles.tableShell}>
+            <Table columns={columns} data={rows} emptyMessage="No renewal requests found." fitToContainer />
+          </div>
         )}
       </Card>
 

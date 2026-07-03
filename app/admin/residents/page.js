@@ -1518,7 +1518,7 @@ export default function ResidentsPage() {
         {!loading && (
           <>
             <div className={styles.tableView}>
-              <Table columns={columns} data={filteredResidents} />
+              <Table columns={columns} data={filteredResidents} fitToContainer />
             </div>
 
             <div className={styles.mobileCardView}>

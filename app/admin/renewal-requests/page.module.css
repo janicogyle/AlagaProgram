@@ -1,7 +1,7 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   min-width: 0;
 }
 
@@ -10,13 +10,12 @@
 }
 
 .statusTabs {
-  display: flex;
-  justify-content: flex-start;
-  gap: 8px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 6px;
   align-items: center;
   padding: 4px;
-  width: fit-content;
+  width: min(560px, 100%);
   max-width: 100%;
   border: 1px solid var(--border-color);
   border-radius: 12px;
@@ -24,7 +23,7 @@
 }
 
 .statusTab {
-  min-width: 96px;
+  min-width: 0;
   border-radius: 9px;
   box-shadow: none;
 }
@@ -64,8 +63,12 @@
 .actionsCell {
   display: flex;
   gap: 8px;
-  justify-content: flex-end;
+  justify-content: flex-start;
   flex-wrap: wrap;
+}
+
+.actionsCell button {
+  flex: 1 1 96px;
 }
 
 .beneficiaryCell {
@@ -96,6 +99,50 @@
 
 .documentLink:hover {
   color: var(--primary-dark);
+}
+
+.tableShell {
+  min-width: 0;
+}
+
+.tableShell > div {
+  border-radius: 14px;
+  overflow-x: hidden;
+}
+
+.tableShell table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.tableShell th:nth-child(1),
+.tableShell td:nth-child(1) {
+  width: 16%;
+}
+
+.tableShell th:nth-child(2),
+.tableShell td:nth-child(2) {
+  width: 15%;
+}
+
+.tableShell th:nth-child(3),
+.tableShell td:nth-child(3) {
+  width: 12%;
+}
+
+.tableShell th:nth-child(4),
+.tableShell td:nth-child(4) {
+  width: 14%;
+}
+
+.tableShell th:nth-child(5),
+.tableShell td:nth-child(5) {
+  width: 20%;
+}
+
+.tableShell th:nth-child(6),
+.tableShell td:nth-child(6) {
+  width: 23%;
 }
 
 :global(html[data-theme='dark']) .documentLink:hover {
@@ -143,13 +190,87 @@
   flex-wrap: wrap;
 }
 
-@media (max-width: 640px) {
+@media (min-width: 641px) and (max-width: 1180px) {
+  .page {
+    gap: 16px;
+  }
+
+  .filterCard {
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 8%, transparent), transparent 64%),
+      var(--card-bg);
+  }
+
   .statusTabs {
     width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .statusTab {
-    flex: 1 1 calc(50% - 8px);
+    min-height: 46px;
+  }
+
+  .tableShell > div {
+    border-radius: 12px;
+  }
+
+  .tableShell th,
+  .tableShell td {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .tableShell th:nth-child(1),
+  .tableShell td:nth-child(1) {
+    width: 18%;
+  }
+
+  .tableShell th:nth-child(4),
+  .tableShell td:nth-child(4) {
+    width: 13%;
+  }
+
+  .tableShell th:nth-child(5),
+  .tableShell td:nth-child(5) {
+    width: 19%;
+  }
+
+  .tableShell th:nth-child(6),
+  .tableShell td:nth-child(6) {
+    width: 22%;
+  }
+
+  .actionsCell {
+    gap: 7px;
+  }
+
+  .actionsCell button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 900px) {
+  .tableShell th,
+  .tableShell td {
+    font-size: 12px;
+  }
+
+  .beneficiaryName {
+    font-size: 13px;
+  }
+
+  .meta {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 640px) {
+  .statusTabs {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .statusTab {
     min-width: 0;
   }
 

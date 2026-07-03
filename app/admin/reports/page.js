@@ -377,8 +377,11 @@ export default function ReportsPage() {
           {reportTypes.map((report) => (
             <button
               key={report.id}
-              className={styles.reportCard}
+              className={`${styles.reportCard} ${
+                ['pwd', 'senior', 'soloparent', 'all'].includes(report.id) ? styles.featuredReportCard : ''
+              }`}
               onClick={() => handleReportClick(report)}
+              style={{ '--report-color': report.color, '--report-bg': report.bgColor }}
             >
               <div
                 className={styles.reportIcon}
