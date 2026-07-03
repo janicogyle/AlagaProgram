@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, Fragment, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Card from '../../components/Card';
@@ -66,32 +66,80 @@ const civilStatusOptions = [
 ];
 
 const SOLO_PARENT_MARRIED_ERROR = 'Married civil status is not allowed for Solo Parent classification.';
+const SENIOR_AGE_ERROR = 'Senior Citizen classification requires the beneficiary to be 60 years old or above.';
+const NON_PWD_MINOR_ERROR = 'Beneficiaries below 18 years old can only register online when classified as PWD.';
+const MINOR_CIVIL_STATUS_ERROR = 'Beneficiaries below 18 years old must use Single as civil status.';
+const REPRESENTATIVE_PARTIAL_ERROR =
+  'Complete the guardian/representative name, 11-digit contact number, and relationship, or leave all representative fields blank.';
+const MIN_BIRTHDATE = '1909-01-01';
+const MIN_BIRTH_YEAR = 1909;
+const MAX_AGE = 116;
 
-const getCivilStatusOptions = (isSoloParent) =>
-  civilStatusOptions.map((option) => ({
+const getCivilStatusOptions = (isSoloParent, isMinor = false) => {
+  if (isMinor) {
+    return civilStatusOptions.filter((option) => option.value === 'single');
+  }
+
+  return civilStatusOptions.map((option) => ({
     ...option,
     disabled: isSoloParent && option.value === 'married',
   }));
+};
 
 const STEPS = [
-  { number: 1, label: 'Sector' },
-  { number: 2, label: 'Personal' },
+  { number: 1, label: 'Beneficiary Type' },
+  { number: 2, label: 'Personal Details' },
   { number: 3, label: 'Address' },
-  { number: 4, label: 'Verify ID' },
-  { number: 5, label: 'Account' },
-  { number: 6, label: 'Review' },
+  { number: 4, label: 'Identity Verification' },
+  { number: 5, label: 'Account Setup' },
+  { number: 6, label: 'Review & Submit' },
 ];
 const TOTAL_STEPS = STEPS.length;
+const ESTIMATED_TOTAL_MINUTES = 8;
 const MINOR_PWD_REPRESENTATIVE_ERROR =
   'Beneficiaries below 18 years old must provide a guardian or representative before registration can be completed.';
 const VALID_ID_BOTH_SIDES_ERROR = 'Please upload both the front and back images of your valid ID.';
 const FACE_VERIFICATION_FAILED_ERROR =
   'Face verification failed. Please make sure your selfie clearly matches the photo on your valid ID.';
 
-const signupHighlights = [
-  'Barangay Sta. Rita residents',
-  'Valid ID required',
-  'SMS verification',
+const sectorCardDetails = {
+  senior_citizen: {
+    title: 'Senior Citizen',
+    description: 'For residents aged 60 and above applying for senior citizen support.',
+    mark: 'SC',
+  },
+  pwd: {
+    title: 'Person with Disability (PWD)',
+    description: 'For residents registering with a disability classification or guardian support.',
+    mark: 'PW',
+  },
+  solo_parent: {
+    title: 'Solo Parent',
+    description: 'For qualified solo parents requesting ALAGA Program registration.',
+    mark: 'SP',
+  },
+};
+
+const signupRequirements = [
+  ['Estimated completion', '5-10 minutes'],
+  ['Government-issued ID', 'Front and back images required'],
+  ['SMS verification', 'Active mobile number required'],
+  ['Final review', 'Check all details before submission'],
+];
+
+const validIdExamples = [
+  {
+    title: 'Program-specific IDs',
+    items: ['PWD ID', 'Senior Citizen ID', 'Solo Parent ID'],
+  },
+  {
+    title: 'Government photo IDs',
+    items: ['PhilID / National ID', 'Philippine Passport', "Driver's License", 'UMID / SSS / GSIS ID'],
+  },
+  {
+    title: 'Other accepted examples',
+    items: ["Voter's ID", 'Postal ID', 'PRC ID', 'Barangay ID or Certificate of Residency'],
+  },
 ];
 
 const CheckIcon = () => (
@@ -189,6 +237,11 @@ function FaceRecognitionCapture({ onCapture, disabled = false, status, verifying
           <span className={styles.faceFrameOval} aria-hidden="true" />
         </div>
         <div className={styles.faceRecognitionActions}>
+          <div className={styles.faceChecklist} aria-label="Selfie capture tips">
+            <span>Use good lighting</span>
+            <span>Look directly at the camera</span>
+            <span>Remove mask, cap, or dark glasses</span>
+          </div>
           {!capturedPreviewUrl && (
             <Button type="button" onClick={captureSelfie} disabled={disabled || verifying || !cameraReady}>
               Capture Live Selfie
@@ -282,17 +335,58 @@ export default function BeneficiarySignupPage() {
   // HELPERS
   // ===========================
 
-  const calculateAge = (dob) => {
-    if (!dob) return '';
+  const getTodayIso = () => {
     const today = new Date();
-    const birthDate = new Date(dob);
-    if (Number.isNaN(birthDate.getTime())) return '';
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${today.getFullYear()}-${month}-${day}`;
+  };
+
+  const parseBirthdate = (dob) => {
+    const value = String(dob || '').trim();
+    if (!value) return null;
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return null;
+    const [, yearText, monthText, dayText] = match;
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const day = Number(dayText);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day
+    ) {
+      return null;
+    }
+    return { date, year, iso: value };
+  };
+
+  const calculateAge = (dob) => {
+    const parsed = parseBirthdate(dob);
+    if (!parsed) return '';
+    const today = new Date();
+    let age = today.getFullYear() - parsed.date.getUTCFullYear();
+    const monthDiff = today.getMonth() - parsed.date.getUTCMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < parsed.date.getUTCDate())) {
       age--;
     }
     return age;
+  };
+
+  const getBirthdayValidationError = (dob) => {
+    const value = String(dob || '').trim();
+    if (!value) return 'Please enter your birthday.';
+    const parsed = parseBirthdate(value);
+    if (!parsed) return 'Birthday must be a valid date using the date picker format.';
+    if (parsed.year < MIN_BIRTH_YEAR || parsed.iso < MIN_BIRTHDATE) {
+      return `Birthday cannot be earlier than ${MIN_BIRTH_YEAR}.`;
+    }
+    if (parsed.iso > getTodayIso()) return 'Birthday cannot be in the future.';
+    const age = calculateAge(value);
+    if (age === '' || Number.isNaN(age) || age < 0) return 'Please provide a valid birthday.';
+    if (age > MAX_AGE) return `Maximum allowed age is ${MAX_AGE}.`;
+    return '';
   };
 
   const ageValue = calculateAge(form.birthday);
@@ -303,6 +397,10 @@ export default function BeneficiarySignupPage() {
     !!String(form.representativeRelationship || '').trim();
   const shouldShowRepresentativeId = requiresRepresentative || hasRepresentativeInfo;
   const hasUploadedIdentityImages = validIdFrontFiles.length > 0 && validIdBackFiles.length > 0;
+  const progressPercent = Math.round(((currentStep - 1) / (TOTAL_STEPS - 1)) * 100);
+  const remainingSteps = Math.max(0, TOTAL_STEPS - currentStep);
+  const estimatedRemainingMinutes = Math.max(1, Math.ceil((remainingSteps / TOTAL_STEPS) * ESTIMATED_TOTAL_MINUTES));
+  const currentStepLabel = STEPS[currentStep - 1]?.label || 'Registration';
 
   const resetOtpState = () => {
     setOtpCode('');
@@ -348,6 +446,53 @@ export default function BeneficiarySignupPage() {
     return parts.join(' ') || '—';
   };
 
+  const showToast = (message, type = 'success') => {
+    setToast({ open: true, message, type });
+  };
+
+  const showValidationError = (message) => {
+    setStatus({ type: 'error', message });
+    showToast(message, 'error');
+  };
+
+  const getPersonalEligibilityError = (age = ageValue, civilStatus = form.civilStatus) => {
+    const birthdayError = getBirthdayValidationError(form.birthday);
+    if (birthdayError) return birthdayError;
+    if (age < 18 && !form.isPwd) return NON_PWD_MINOR_ERROR;
+    if (age < 18 && civilStatus !== 'single') return MINOR_CIVIL_STATUS_ERROR;
+    if (form.isSeniorCitizen && age < 60) return SENIOR_AGE_ERROR;
+    if (form.isSoloParent && civilStatus === 'married') return SOLO_PARENT_MARRIED_ERROR;
+    return '';
+  };
+
+  const hasStep2RequiredFields = () => {
+    const age = calculateAge(form.birthday);
+    const repContact = String(form.representativeContact || '').trim();
+    const hasRequiredPersonalDetails =
+      !!form.firstName.trim() &&
+      !!form.lastName.trim() &&
+      !!form.birthday &&
+      !getBirthdayValidationError(form.birthday) &&
+      age !== '' &&
+      !Number.isNaN(age) &&
+      age >= 0 &&
+      !!form.birthplace.trim() &&
+      !!form.sex &&
+      !!form.civilStatus;
+
+    if (!hasRequiredPersonalDetails) return false;
+
+    if (requiresRepresentative) {
+      return (
+        !!form.representativeName.trim() &&
+        repContact.length === 11 &&
+        !!form.representativeRelationship.trim()
+      );
+    }
+
+    return true;
+  };
+
   // ===========================
   // EVENT HANDLERS
   // ===========================
@@ -370,18 +515,49 @@ export default function BeneficiarySignupPage() {
       return;
     }
 
+    if (name === 'civilStatus' && value !== 'single' && ageValue !== '' && Number(ageValue) < 18) {
+      showValidationError(MINOR_CIVIL_STATUS_ERROR);
+      return;
+    }
+
+    if (name === 'birthday') {
+      const nextAge = calculateAge(value);
+      setForm((prev) => ({
+        ...prev,
+        birthday: value,
+        civilStatus:
+          nextAge !== '' && Number(nextAge) < 18 && prev.civilStatus !== 'single'
+            ? 'single'
+            : prev.civilStatus,
+      }));
+      if (nextAge !== '' && Number(nextAge) < 18 && form.civilStatus && form.civilStatus !== 'single') {
+        showValidationError(MINOR_CIVIL_STATUS_ERROR);
+      }
+      return;
+    }
+
     setForm((prev) => ({ ...prev, [name]: newValue }));
   };
 
   const handleSectorSelectChange = (event) => {
     const { name, value } = event.target;
     if (validIdError) setValidIdError('');
+    const selectedPrimary = name === 'primarySector' ? value : form.primarySector;
+    const selectedSecondary = name === 'secondarySector' ? value : form.secondarySector;
+    const selectedFlags = deriveSectorFlags(selectedPrimary, selectedSecondary);
+    if (selectedFlags.is_senior_citizen && ageValue !== '' && Number(ageValue) < 60) {
+      showValidationError(SENIOR_AGE_ERROR);
+    }
+    if (selectedFlags.is_solo_parent && form.civilStatus === 'married') {
+      showValidationError(SOLO_PARENT_MARRIED_ERROR);
+    }
     setForm((prev) => {
       const nextPrimary = name === 'primarySector' ? value : prev.primarySector;
       let nextSecondary = name === 'secondarySector' ? value : prev.secondarySector;
       if (nextPrimary && nextSecondary === nextPrimary) nextSecondary = '';
       const flags = deriveSectorFlags(nextPrimary, nextSecondary);
       const nextIsSoloParent = flags.is_solo_parent;
+      const nextIsMinor = ageValue !== '' && Number(ageValue) < 18;
       return {
         ...prev,
         primarySector: nextPrimary,
@@ -390,8 +566,10 @@ export default function BeneficiarySignupPage() {
         isSeniorCitizen: flags.is_senior_citizen,
         isSoloParent: flags.is_solo_parent,
         civilStatus:
-          nextIsSoloParent && prev.civilStatus === 'married'
-            ? ''
+          nextIsMinor && prev.civilStatus !== 'single'
+            ? 'single'
+            : nextIsSoloParent && prev.civilStatus === 'married'
+              ? ''
             : prev.civilStatus,
       };
     });
@@ -749,22 +927,12 @@ export default function BeneficiarySignupPage() {
           setStatus({ type: 'error', message: 'Please enter your birthday.' });
           return false;
         }
+        const birthdayError = getBirthdayValidationError(form.birthday);
+        if (birthdayError) {
+          showValidationError(birthdayError);
+          return false;
+        }
         const age = calculateAge(form.birthday);
-        if (age === '' || Number.isNaN(age) || age < 0) {
-          setStatus({ type: 'error', message: 'Please provide a valid birthday.' });
-          return false;
-        }
-        if (age < 18 && !form.isPwd) {
-          setStatus({
-            type: 'error',
-            message: 'You must be at least 18 years old to sign up unless classified as PWD.',
-          });
-          return false;
-        }
-        if (form.isSeniorCitizen && age < 60) {
-          setStatus({ type: 'error', message: 'Senior Citizen selection requires age 60 or above.' });
-          return false;
-        }
         if (!form.birthplace.trim()) {
           setStatus({ type: 'error', message: 'Please enter your birthplace.' });
           return false;
@@ -777,8 +945,9 @@ export default function BeneficiarySignupPage() {
           setStatus({ type: 'error', message: 'Please select your civil status.' });
           return false;
         }
-        if (form.isSoloParent && form.civilStatus === 'married') {
-          setStatus({ type: 'error', message: SOLO_PARENT_MARRIED_ERROR });
+        const eligibilityError = getPersonalEligibilityError(age);
+        if (eligibilityError) {
+          showValidationError(eligibilityError);
           return false;
         }
         if (requiresRepresentative) {
@@ -789,11 +958,22 @@ export default function BeneficiarySignupPage() {
             repContact.length !== 11 ||
             !form.representativeRelationship.trim()
           ) {
-            setStatus({ type: 'error', message: MINOR_PWD_REPRESENTATIVE_ERROR });
+            showValidationError(MINOR_PWD_REPRESENTATIVE_ERROR);
+            return false;
+          }
+        } else if (hasRepresentativeInfo) {
+          const repContact = String(form.representativeContact || '').trim();
+          if (
+            !form.representativeName.trim() ||
+            !repContact ||
+            repContact.length !== 11 ||
+            !form.representativeRelationship.trim()
+          ) {
+            showValidationError(REPRESENTATIVE_PARTIAL_ERROR);
             return false;
           }
         } else if (form.representativeContact && String(form.representativeContact).trim().length !== 11) {
-          setStatus({ type: 'error', message: 'Guardian/Representative contact number must be exactly 11 digits.' });
+          showValidationError('Guardian/Representative contact number must be exactly 11 digits.');
           return false;
         }
         return true;
@@ -864,6 +1044,38 @@ export default function BeneficiarySignupPage() {
     }
   };
 
+  const canContinueCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        return hasSectorSelected;
+      case 2:
+        return hasStep2RequiredFields();
+      case 3:
+        return !!form.houseNo.trim() && !!form.purok;
+      case 4:
+        return (
+          validIdFrontFiles.length > 0 &&
+          validIdBackFiles.length > 0 &&
+          selfieFiles.length > 0 &&
+          faceVerification?.status === 'passed' &&
+          (!requiresRepresentative || representativeValidIdFiles.length > 0)
+        );
+      case 5: {
+        const cn = String(form.contactNumber || '').trim();
+        return (
+          /^0\d{10}$/.test(cn) &&
+          !!form.password &&
+          form.password.length >= 8 &&
+          form.password === form.confirmPassword &&
+          !contactUnavailable &&
+          isOtpVerified
+        );
+      }
+      default:
+        return true;
+    }
+  };
+
   // ===========================
   // STEP NAVIGATION
   // ===========================
@@ -913,6 +1125,15 @@ export default function BeneficiarySignupPage() {
     if (isSubmitting) return;
     setStatus(null);
     setFieldErrors({ contactNumber: '' });
+
+    for (let step = 1; step < TOTAL_STEPS; step += 1) {
+      if (!validateStep(step)) {
+        setSlideDirection(step > currentStep ? 'next' : 'prev');
+        setCurrentStep(step);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+    }
 
     if (!hasAgreed) {
       setStatus({
@@ -1073,23 +1294,21 @@ export default function BeneficiarySignupPage() {
 
   const renderProgressBar = () => (
     <div className={styles.progressBarWrapper}>
+      <div className={styles.progressSummaryLine}>
+        <span>Step {currentStep} of {TOTAL_STEPS}</span>
+        <strong>{progressPercent}% complete</strong>
+      </div>
+      <div className={styles.progressTrack} aria-hidden="true">
+        <span style={{ width: `${progressPercent}%` }} />
+      </div>
       <div className={styles.progressBarScroll}>
-      <div className={styles.progressBar}>
-        {STEPS.map((step, index) => (
-          <Fragment key={step.number}>
-            {index > 0 && (
-              <div className={styles.progressLineWrapper}>
-                <div
-                  className={`${styles.progressLine} ${
-                    currentStep >= step.number ? styles.completedLine : ''
-                  }`}
-                />
-              </div>
-            )}
+        <div className={styles.progressBar} aria-label="Registration progress">
+          {STEPS.map((step) => (
             <div
+              key={step.number}
               className={`${styles.progressStep} ${
                 step.number < currentStep ? styles.progressStepClickable : ''
-              }`}
+              } ${step.number === currentStep ? styles.progressStepActive : ''}`}
               onClick={() => handleStepClick(step.number)}
               role={step.number < currentStep ? 'button' : undefined}
               tabIndex={step.number < currentStep ? 0 : undefined}
@@ -1115,13 +1334,11 @@ export default function BeneficiarySignupPage() {
                 {step.label}
               </span>
             </div>
-          </Fragment>
-        ))}
+          ))}
+        </div>
       </div>
-      </div>
-    <p className={styles.stepIndicator}>Step {currentStep} of {TOTAL_STEPS}</p>
-  </div>
-);
+    </div>
+  );
 
   // ===========================
   // RENDER: STEPS
@@ -1131,21 +1348,41 @@ export default function BeneficiarySignupPage() {
     <section className={styles.section} aria-labelledby="sector-heading">
       <SectionHeader
         id="sector-heading"
-        title="Sector Classification"
-        subtitle="Choose your Primary Sector first. You may add one optional Secondary Sector."
+        title="Beneficiary Type"
+        subtitle="Choose the primary sector that best describes the beneficiary."
       />
       <div className={styles.sectorRow}>
-        <span className={styles.sectorLabel}>Primary required, secondary optional:</span>
-        <div className={styles.formGrid}>
-          <Select
-            label="Primary Sector"
-            name="primarySector"
-            value={form.primarySector}
-            onChange={handleSectorSelectChange}
-            options={BENEFICIARY_SECTOR_OPTIONS}
-            placeholder="Select primary sector"
-            required
-          />
+        <span className={styles.sectorLabel}>Primary sector</span>
+        <div className={styles.sectorChips} role="radiogroup" aria-label="Primary sector">
+          {BENEFICIARY_SECTOR_OPTIONS.map((option) => {
+            const detail = sectorCardDetails[option.value] || {
+              title: option.label,
+              description: 'Select this beneficiary classification.',
+              mark: option.label.slice(0, 2),
+            };
+            const selected = form.primarySector === option.value;
+            return (
+              <label
+                key={option.value}
+                className={`${styles.sectorChip} ${selected ? styles.sectorChipActive : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="primarySector"
+                  value={option.value}
+                  checked={selected}
+                  onChange={handleSectorSelectChange}
+                />
+                <span className={styles.sectorMark}>{selected ? <CheckIcon /> : detail.mark}</span>
+                <span className={styles.sectorText}>
+                  <span className={styles.sectorTitle}>{detail.title}</span>
+                  <span className={styles.sectorDescription}>{detail.description}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        {hasSectorSelected && (
           <Select
             label="Secondary Sector"
             name="secondarySector"
@@ -1153,8 +1390,10 @@ export default function BeneficiarySignupPage() {
             onChange={handleSectorSelectChange}
             options={getSecondarySectorOptions(form.primarySector)}
             placeholder="No secondary sector"
+            allowEmptyOption
           />
-        </div>
+        )}
+        <p className={styles.sectorHelper}>Secondary sector is optional and appears after choosing a primary sector.</p>
       </div>
     </section>
   );
@@ -1194,6 +1433,8 @@ export default function BeneficiarySignupPage() {
           name="birthday"
           value={form.birthday}
           onChange={handleChange}
+          min={MIN_BIRTHDATE}
+          max={getTodayIso()}
           required
         />
         <Input
@@ -1234,7 +1475,7 @@ export default function BeneficiarySignupPage() {
           name="civilStatus"
           value={form.civilStatus}
           onChange={handleChange}
-          options={getCivilStatusOptions(form.isSoloParent)}
+          options={getCivilStatusOptions(form.isSoloParent, ageValue !== '' && Number(ageValue) < 18)}
           placeholder="Select civil status"
           required
         />
@@ -1455,6 +1696,31 @@ export default function BeneficiarySignupPage() {
         title="Identity Verification"
         subtitle="Upload both sides of your valid ID and complete face capture."
       />
+      <div className={styles.validIdGuide}>
+        <div>
+          <h4 className={styles.validIdGuideTitle}>Examples of valid IDs in the Philippines</h4>
+          <p className={styles.validIdGuideText}>
+            Upload a clear government-issued ID that matches the beneficiary information. For ALAGA
+            registration, sector IDs are preferred when available.
+          </p>
+        </div>
+        <div className={styles.validIdExampleGrid}>
+          {validIdExamples.map((group) => (
+            <div key={group.title} className={styles.validIdExampleGroup}>
+              <span className={styles.validIdExampleTitle}>{group.title}</span>
+              <ul className={styles.validIdExampleList}>
+                {group.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <p className={styles.validIdGuideNote}>
+          Make sure the name and photo are readable. Upload the front and back side when the ID has
+          details on both sides.
+        </p>
+      </div>
       <div className={styles.validIdRow}>
         <FileUpload
           label="Front of Valid ID"
@@ -1513,10 +1779,10 @@ export default function BeneficiarySignupPage() {
         />
 
         <div className={styles.reviewCard}>
-          {/* Sector Classification */}
+          {/* Beneficiary Type */}
           <div className={styles.reviewGroup}>
             <div className={styles.reviewGroupHeader}>
-              <h4 className={styles.reviewGroupTitle}>Sector Classification</h4>
+              <h4 className={styles.reviewGroupTitle}>Beneficiary Type</h4>
               <button type="button" className={styles.reviewEditBtn} onClick={() => goToStep(1)}>
                 Edit
               </button>
@@ -1634,7 +1900,7 @@ export default function BeneficiarySignupPage() {
           {/* Account */}
           <div className={styles.reviewGroup}>
             <div className={styles.reviewGroupHeader}>
-              <h4 className={styles.reviewGroupTitle}>Account</h4>
+              <h4 className={styles.reviewGroupTitle}>Account Information</h4>
               <button type="button" className={styles.reviewEditBtn} onClick={() => goToStep(5)}>
                 Edit
               </button>
@@ -1663,10 +1929,10 @@ export default function BeneficiarySignupPage() {
             </div>
           </div>
 
-          {/* Identity Verification */}
+          {/* Uploaded Documents */}
           <div className={styles.reviewGroup}>
             <div className={styles.reviewGroupHeader}>
-              <h4 className={styles.reviewGroupTitle}>Identity Verification</h4>
+              <h4 className={styles.reviewGroupTitle}>Uploaded Documents</h4>
               <button type="button" className={styles.reviewEditBtn} onClick={() => goToStep(4)}>
                 Edit
               </button>
@@ -1741,6 +2007,59 @@ export default function BeneficiarySignupPage() {
     );
   };
 
+  const renderInfoPanel = () => (
+    <div className={styles.infoPanel} aria-label="Registration reminders">
+      {signupRequirements.map(([label, value]) => (
+        <div key={label} className={styles.infoItem}>
+          <span className={styles.infoIcon} aria-hidden="true">
+            <CheckIcon />
+          </span>
+          <span>
+            <strong>{label}</strong>
+            <small>{value}</small>
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderSummaryPanel = () => (
+    <aside className={styles.summaryCard} aria-label="Registration summary">
+      <p className={styles.summaryKicker}>Registration summary</p>
+      <h2 className={styles.summaryTitle}>{currentStepLabel}</h2>
+      <div className={styles.summaryProgressRing} style={{ '--summary-progress': `${progressPercent}%` }}>
+        <span>{progressPercent}%</span>
+      </div>
+      <div className={styles.summaryStats}>
+        <div>
+          <span>Current step</span>
+          <strong>{currentStep} of {TOTAL_STEPS}</strong>
+        </div>
+        <div>
+          <span>Remaining steps</span>
+          <strong>{remainingSteps}</strong>
+        </div>
+        <div>
+          <span>Estimated remaining time</span>
+          <strong>{estimatedRemainingMinutes} min</strong>
+        </div>
+      </div>
+      <ol className={styles.summarySteps}>
+        {STEPS.map((step) => (
+          <li
+            key={step.number}
+            className={`${step.number < currentStep ? styles.summaryStepDone : ''} ${
+              step.number === currentStep ? styles.summaryStepActive : ''
+            }`}
+          >
+            <span>{step.number < currentStep ? <CheckIcon /> : step.number}</span>
+            {step.label}
+          </li>
+        ))}
+      </ol>
+    </aside>
+  );
+
   const renderCurrentStep = () => {
     switch (currentStep) {
       case 1: return renderStep1();
@@ -1757,11 +2076,17 @@ export default function BeneficiarySignupPage() {
   // MAIN RENDER
   // ===========================
 
+  const continueDisabled = currentStep < TOTAL_STEPS && !canContinueCurrentStep();
+
   return (
     <div className={styles.signupShell}>
       <div className={styles.signupPage}>
       {toast.open && (
-        <div className={styles.toast} role="status" aria-live="polite">
+        <div
+          className={`${styles.toast} ${toast.type === 'error' ? styles.toastError : ''}`}
+          role={toast.type === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+        >
           {toast.message}
         </div>
       )}
@@ -1769,54 +2094,50 @@ export default function BeneficiarySignupPage() {
       <section className={styles.heroPanel}>
         <div className={styles.heroContent}>
           <div className={styles.heroEyebrow}>Barangay Sta. Rita</div>
-          <h1 className={styles.heroTitle}>ALAGA Program Beneficiary Sign Up</h1>
+          <h1 className={styles.heroTitle}>ALAGA Program Beneficiary Registration</h1>
           <p className={styles.heroSubtitle}>
-            Request registration for PWD, senior citizen, or solo parent assistance. Your
-            application will be reviewed by the barangay social services team.
+            Complete the online registration form for PWD, senior citizen, or solo parent assistance.
           </p>
           <div className={styles.heroMeta} aria-label="Signup requirements">
-            {signupHighlights.map((item) => (
-              <span key={item} className={styles.heroPill}>{item}</span>
-            ))}
+            <span className={styles.heroPill}>Estimated time: 5-10 minutes</span>
+            <span className={styles.heroPill}>Step {currentStep} of {TOTAL_STEPS}</span>
           </div>
         </div>
         <div className={styles.heroAside} aria-label="Application progress">
           <span className={styles.heroAsideLabel}>Current step</span>
-          <strong>{currentStep} of {TOTAL_STEPS}</strong>
+          <strong>{currentStepLabel}</strong>
         </div>
       </section>
 
-      <Card className={styles.formCard}>
-        <div className={styles.cardTopper}>
-          <div>
-            <p className={styles.cardKicker}>Online application</p>
-            <h2 className={styles.cardTitle}>{STEPS[currentStep - 1]?.label || 'Sign Up'} details</h2>
-          </div>
-          <span className={styles.saveNote}>Takes about 5-10 minutes</span>
-        </div>
-        <p className={styles.intro}>
-          This sign up form is exclusively for the <strong>ALAGA Program</strong> of
-          Barangay Sta. Rita. Provide accurate information so our social services team can review
-          your eligibility and contact you for verification if needed.
-        </p>
+      <div className={styles.registrationLayout}>
+        <main className={styles.registrationMain}>
+          <Card className={styles.formCard}>
+            <div className={styles.cardTopper}>
+              <div>
+                <p className={styles.cardKicker}>Online application</p>
+                <h2 className={styles.cardTitle}>{currentStepLabel}</h2>
+              </div>
+              <span className={styles.saveNote}>{progressPercent}% complete</span>
+            </div>
+            {renderInfoPanel()}
 
-        {/* Progress Bar */}
-        {renderProgressBar()}
+            {/* Progress Bar */}
+            {renderProgressBar()}
 
-        {/* Status Banner */}
-        {status && (
-          <div
-            role="alert"
-            className={`${styles.statusBanner} ${
-              status.type === 'success' ? styles.statusBannerSuccess : styles.statusBannerError
-            }`}
-          >
-            {status.message}
-          </div>
-        )}
+            {/* Status Banner */}
+            {status && (
+              <div
+                role="alert"
+                className={`${styles.statusBanner} ${
+                  status.type === 'success' ? styles.statusBannerSuccess : styles.statusBannerError
+                }`}
+              >
+                {status.message}
+              </div>
+            )}
 
-        {/* Form */}
-        <form onSubmit={handleFormSubmit} className={styles.form}>
+            {/* Form */}
+            <form onSubmit={handleFormSubmit} className={styles.form}>
           {/* Step Content */}
           <div ref={stepContainerRef} className={styles.stepContainer} tabIndex={-1}>
             <div
@@ -1832,30 +2153,34 @@ export default function BeneficiarySignupPage() {
           {/* Navigation */}
           <div className={styles.navRow}>
             {currentStep === 1 ? (
-              <Button type="button" variant="secondary" onClick={handleCancel}>
-                Cancel
+              <Button type="button" variant="outline" onClick={handleCancel}>
+                Back
               </Button>
             ) : (
-              <Button type="button" variant="secondary" onClick={goPrev}>
-                ← Previous
+              <Button type="button" variant="outline" onClick={goPrev}>
+                Back
               </Button>
             )}
             <div className={styles.navSpacer} />
             {currentStep < TOTAL_STEPS ? (
-              <Button type="button" onClick={goNext}>
-                Next →
+              <Button type="button" onClick={goNext} disabled={continueDisabled}>
+                Continue
               </Button>
             ) : (
               <Button
                 type="submit"
                 disabled={isSubmitting || !hasAgreed || !isOtpVerified}
               >
-                {isSubmitting ? 'Submitting…' : 'Submit Sign Up'}
+                {isSubmitting ? 'Submitting...' : 'Submit Registration'}
               </Button>
             )}
           </div>
-        </form>
-      </Card>
+            </form>
+          </Card>
+        </main>
+
+        {renderSummaryPanel()}
+      </div>
 
       <p className={styles.secondaryLinks}>
         Received a resubmit code by SMS?{' '}

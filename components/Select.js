@@ -13,6 +13,7 @@ export default function Select({
   disabled = false,
   error = '',
   compact = false,
+  allowEmptyOption = false,
   className = ''
 }) {
   return (
@@ -33,7 +34,7 @@ export default function Select({
           disabled={disabled}
           className={`${styles.select} ${error ? styles.selectError : ''}`}
         >
-          <option value="" disabled>{placeholder}</option>
+          <option value="" disabled={!allowEmptyOption}>{placeholder}</option>
           {options.map((option) => (
             <option key={option.value} value={option.value} disabled={!!option.disabled}>
               {option.label}

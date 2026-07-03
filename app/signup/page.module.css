@@ -146,6 +146,10 @@
   animation: toastSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.toastError {
+  background: linear-gradient(135deg, #b91c1c, #dc2626);
+}
+
 .intro {
   margin: 0;
   color: #4b5563;
@@ -661,6 +665,68 @@
   gap: 0.4rem;
 }
 
+.validIdGuide {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.validIdGuideTitle {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.validIdGuideText,
+.validIdGuideNote {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.validIdExampleGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.validIdExampleGroup {
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.validIdExampleTitle {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.validIdExampleList {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding-left: 1rem;
+  color: #334155;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.validIdGuideNote {
+  padding-top: 0.65rem;
+  border-top: 1px solid #e2e8f0;
+}
+
 .selfieActions {
   display: flex;
   flex-wrap: wrap;
@@ -683,11 +749,13 @@
 .faceRecognitionPanel {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1rem;
-  border: 1px solid #dbe4ff;
-  border-radius: 8px;
-  background: #f8fbff;
+  gap: 1.1rem;
+  padding: 1.15rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
 }
 
 .faceRecognitionHeader {
@@ -695,19 +763,22 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid #dbeafe;
 }
 
 .faceRecognitionTitle {
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #111827;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 800;
 }
 
 .faceRecognitionHint {
   margin: 0.25rem 0 0;
-  font-size: 0.82rem;
-  color: #64748b;
+  color: #475569;
+  font-size: 0.86rem;
+  line-height: 1.45;
 }
 
 .faceRecognitionLoading {
@@ -732,8 +803,8 @@
 
 .faceRecognitionBody {
   display: grid;
-  grid-template-columns: minmax(220px, 360px) 1fr;
-  gap: 1rem;
+  grid-template-columns: minmax(280px, 450px) minmax(220px, 1fr);
+  gap: 1.25rem;
   align-items: center;
 }
 
@@ -741,15 +812,21 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.65rem;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
 }
 .faceCameraFrame {
   position: relative;
-  width: min(100%, 360px);
+  width: 100%;
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
   background: #111827;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.16);
 }
 
 .faceCameraFrame .selfieVideo {
@@ -759,16 +836,16 @@
 
 .faceFrameLabel {
   position: absolute;
-  top: 0.75rem;
+  top: 0.85rem;
   left: 50%;
   z-index: 2;
   transform: translateX(-50%);
-  padding: 0.22rem 0.5rem;
-  border-radius: 4px;
-  background: #ffffff;
-  color: #111827;
+  padding: 0.32rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 800;
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
   pointer-events: none;
 }
@@ -783,8 +860,47 @@
   transform: translate(-50%, -50%);
   border: 3px solid #2563eb;
   border-radius: 50%;
-  box-shadow: 0 0 0 999px rgba(15, 23, 42, 0.18);
+  box-shadow:
+    0 0 0 999px rgba(15, 23, 42, 0.22),
+    0 0 0 7px rgba(37, 99, 235, 0.16);
   pointer-events: none;
+}
+
+.faceChecklist {
+  display: grid;
+  gap: 0.55rem;
+  width: 100%;
+}
+
+.faceChecklist span {
+  position: relative;
+  padding-left: 1.45rem;
+  color: #334155;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.faceChecklist span::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.12rem;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 999px;
+  background: #dbeafe;
+}
+
+.faceChecklist span::after {
+  content: '';
+  position: absolute;
+  left: 0.31rem;
+  top: 0.33rem;
+  width: 0.25rem;
+  height: 0.45rem;
+  border: solid #1d4ed8;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 @keyframes faceRecognitionSpin {
@@ -800,6 +916,10 @@
 
   .faceRecognitionBody {
     grid-template-columns: 1fr;
+  }
+
+  .faceRecognitionActions {
+    padding: 0.85rem;
   }
 }
 
@@ -1492,5 +1612,514 @@
   .toast {
     font-size: 0.8rem;
     padding: 0.65rem 0.95rem;
+  }
+}
+
+/* ============================= */
+/* GOVERNMENT PORTAL REDESIGN    */
+/* ============================= */
+.signupShell {
+  background:
+    linear-gradient(180deg, rgba(219, 234, 254, 0.66) 0%, rgba(248, 250, 252, 0.96) 18rem),
+    #f8fafc;
+  padding: 1rem clamp(0.9rem, 2vw, 1.5rem) 1.75rem;
+}
+
+.signupPage {
+  max-width: 1180px;
+  gap: 0.85rem;
+}
+
+.heroPanel {
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  border-radius: 12px;
+  border-color: #d8e3f2;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
+}
+
+.heroEyebrow {
+  min-height: 22px;
+  padding: 0 0.55rem;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.68rem;
+}
+
+.heroTitle {
+  margin-top: 0.45rem;
+  font-size: clamp(1.35rem, 2.4vw, 2rem);
+  line-height: 1.12;
+}
+
+.heroSubtitle {
+  margin-top: 0.35rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.heroMeta {
+  margin-top: 0.7rem;
+  gap: 0.45rem;
+}
+
+.heroPill {
+  min-height: 28px;
+  border-radius: 7px;
+  background: #f8fafc;
+  font-size: 0.78rem;
+}
+
+.heroAside {
+  min-width: 13rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 10px;
+  border-color: #dbeafe;
+}
+
+.heroAside strong {
+  font-size: 1rem;
+}
+
+.registrationLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 1rem;
+  align-items: start;
+}
+
+.registrationMain {
+  min-width: 0;
+}
+
+.formCard {
+  gap: 0.9rem;
+  border-radius: 12px;
+  border-color: #d8e3f2;
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
+}
+
+.cardTopper {
+  padding-bottom: 0.8rem;
+}
+
+.cardTitle {
+  font-size: 1.2rem;
+}
+
+.saveNote {
+  border-radius: 7px;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.infoPanel {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.infoItem {
+  display: flex;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.infoIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.infoItem strong,
+.infoItem small {
+  display: block;
+  line-height: 1.3;
+}
+
+.infoItem strong {
+  color: #0f172a;
+  font-size: 0.78rem;
+}
+
+.infoItem small {
+  margin-top: 0.12rem;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.progressBarWrapper {
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.progressSummaryLine {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.progressSummaryLine strong {
+  color: #1d4ed8;
+}
+
+.progressTrack {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.progressTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1e40af, #2563eb);
+  transition: width 0.35s ease;
+}
+
+.progressBar {
+  justify-content: space-between;
+  gap: 0.45rem;
+  min-width: 760px;
+}
+
+.progressStep {
+  flex: 1 1 0;
+  align-items: center;
+  padding: 0.35rem 0.25rem;
+  border-radius: 10px;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.progressStepActive {
+  background: #eff6ff;
+}
+
+.progressStepClickable:hover {
+  background: #f1f5f9;
+}
+
+.progressCircle {
+  width: 42px;
+  height: 42px;
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.activeCircle {
+  color: #ffffff;
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
+
+.completedCircle {
+  border-color: #16a34a;
+  background: #16a34a;
+}
+
+.progressLabel {
+  max-width: 8rem;
+  color: #64748b;
+  font-size: 0.74rem;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.activeLabel {
+  color: #1d4ed8;
+}
+
+.section {
+  gap: 1rem;
+}
+
+.formGrid {
+  gap: 1rem;
+}
+
+.personalGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sectorRow {
+  gap: 0.7rem;
+}
+
+.sectorLabel {
+  color: #334155;
+  font-weight: 700;
+}
+
+.sectorChips {
+  gap: 0.85rem;
+}
+
+.sectorChip {
+  min-height: 132px;
+  padding: 1rem;
+  border-radius: 10px;
+  border-color: #d8e3f2;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.sectorChip:hover {
+  box-shadow: 0 12px 26px rgba(30, 64, 175, 0.12);
+}
+
+.sectorChipActive {
+  border-color: #1d4ed8;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.sectorMark {
+  border-radius: 8px;
+}
+
+.summaryCard {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid #d8e3f2;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
+}
+
+.summaryKicker {
+  margin: 0;
+  color: #1d4ed8;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.summaryTitle {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.08rem;
+  line-height: 1.25;
+}
+
+.summaryProgressRing {
+  display: grid;
+  place-items: center;
+  width: 104px;
+  height: 104px;
+  margin: 0.1rem auto;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at center, #ffffff 58%, transparent 59%),
+    conic-gradient(#1d4ed8 var(--summary-progress), #e2e8f0 0);
+}
+
+.summaryProgressRing span {
+  color: #1d4ed8;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.summaryStats {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.summaryStats div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.summaryStats span {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.summaryStats strong {
+  color: #0f172a;
+  font-size: 0.84rem;
+}
+
+.summarySteps {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.summarySteps li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.summarySteps li span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.summaryStepActive {
+  color: #1d4ed8 !important;
+}
+
+.summaryStepActive span {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+
+.summaryStepDone {
+  color: #166534 !important;
+}
+
+.summaryStepDone span {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+.reviewCard {
+  gap: 0.8rem;
+  border: none;
+  background: transparent;
+}
+
+.reviewGroup {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.reviewGroup:last-child {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.reviewEditBtn {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+}
+
+.navRow {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  margin: 0 -0.25rem -0.25rem;
+  padding: 0.9rem 0.25rem 0.25rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), #ffffff 28%);
+}
+
+.navRow > button {
+  min-width: 7.5rem;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+@media (max-width: 1100px) {
+  .registrationLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .summaryCard {
+    position: static;
+    order: -1;
+  }
+
+  .summarySteps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .signupShell {
+    padding: 0.75rem 0.75rem 1.5rem;
+  }
+
+  .heroPanel {
+    grid-template-columns: 1fr;
+    padding: 0.9rem;
+  }
+
+  .heroAside {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .infoPanel {
+    grid-template-columns: 1fr;
+  }
+
+  .progressBar {
+    min-width: 620px;
+  }
+
+  .personalGrid,
+  .addressGrid,
+  .accountGrid,
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sectorChips {
+    grid-template-columns: 1fr;
+  }
+
+  .summarySteps {
+    grid-template-columns: 1fr;
+  }
+
+  .validIdExampleGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .cardTopper {
+    align-items: stretch;
+  }
+
+  .saveNote {
+    align-self: flex-start;
+  }
+
+  .navRow > button {
+    flex: 1 1 0;
+    min-width: 0;
   }
 }

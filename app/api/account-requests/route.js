@@ -16,6 +16,10 @@ const MINOR_PWD_REPRESENTATIVE_ERROR =
 const VALID_ID_BOTH_SIDES_ERROR = 'Please upload both the front and back images of your valid ID.';
 const FACE_VERIFICATION_FAILED_ERROR =
   'Face verification failed. Please make sure your selfie clearly matches the photo on your valid ID.';
+const MIN_BIRTHDATE = '1909-01-01';
+const MIN_BIRTH_YEAR = 1909;
+const MAX_AGE = 116;
+const MINOR_CIVIL_STATUS_ERROR = 'Beneficiaries below 18 years old must use Single as civil status.';
 
 function parsePositiveInt(value, fallback, { min = 1, max = 100 } = {}) {
   const parsed = Number.parseInt(String(value || ''), 10);
@@ -44,17 +48,58 @@ function normalizeContactNumber(input) {
   return digits;
 }
 
-function calculateAge(dob) {
-  if (!dob) return null;
-  const birthDate = new Date(dob);
-  if (Number.isNaN(birthDate.getTime())) return null;
+function getTodayIso() {
   const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${today.getFullYear()}-${month}-${day}`;
+}
+
+function parseBirthdate(dob) {
+  const value = String(dob || '').trim();
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const [, yearText, monthText, dayText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return { date, year, iso: value };
+}
+
+function calculateAge(dob) {
+  const parsed = parseBirthdate(dob);
+  if (!parsed) return null;
+  const today = new Date();
+  let age = today.getFullYear() - parsed.date.getUTCFullYear();
+  const monthDiff = today.getMonth() - parsed.date.getUTCMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < parsed.date.getUTCDate())) {
     age--;
   }
   return age;
+}
+
+function getBirthdayValidationError(dob) {
+  const value = String(dob || '').trim();
+  if (!value) return 'Please enter your birthday.';
+  const parsed = parseBirthdate(value);
+  if (!parsed) return 'Birthday must be a valid date using YYYY-MM-DD format.';
+  if (parsed.year < MIN_BIRTH_YEAR || parsed.iso < MIN_BIRTHDATE) {
+    return `Birthday cannot be earlier than ${MIN_BIRTH_YEAR}.`;
+  }
+  if (parsed.iso > getTodayIso()) return 'Birthday cannot be in the future.';
+  const age = calculateAge(value);
+  if (age === null || age < 0) return 'Please provide a valid birthday.';
+  if (age > MAX_AGE) return `Maximum allowed age is ${MAX_AGE}.`;
+  return '';
 }
 
 function parseValidIdUrls(value) {
@@ -445,15 +490,19 @@ export async function POST(request) {
       );
     }
 
-    const age = calculateAge(body.birthday);
-    if (age === null || age < 0) {
-      return NextResponse.json({ data: null, error: 'Please provide a valid birthday.' }, { status: 400 });
+    const birthdayError = getBirthdayValidationError(body.birthday);
+    if (birthdayError) {
+      return NextResponse.json({ data: null, error: birthdayError }, { status: 400 });
     }
+    const age = calculateAge(body.birthday);
     if (age < 18 && !sectorFlags.is_pwd) {
       return NextResponse.json(
         { data: null, error: 'You must be at least 18 years old unless classified as PWD.' },
         { status: 400 },
       );
+    }
+    if (age < 18 && civilStatus !== 'single') {
+      return NextResponse.json({ data: null, error: MINOR_CIVIL_STATUS_ERROR }, { status: 400 });
     }
     if (sectorFlags.is_senior_citizen && age < 60) {
       return NextResponse.json(
