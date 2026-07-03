@@ -9,6 +9,7 @@ import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Select from '../../components/Select';
 import FileUpload from '../../components/FileUpload';
+import ConstellationBackground from '../../components/ConstellationBackground';
 import SectionHeader from '@/components/SectionHeader';
 import {
   BENEFICIARY_SECTOR_OPTIONS,
@@ -62,7 +63,7 @@ const civilStatusOptions = [
   { value: 'married', label: 'Married' },
   { value: 'widowed', label: 'Widowed' },
   { value: 'separated', label: 'Separated' },
-  { value: 'divorced', label: 'Divorced' },
+  { value: 'annulled', label: 'Annulled' },
 ];
 
 const SOLO_PARENT_MARRIED_ERROR = 'Married civil status is not allowed for Solo Parent classification.';
@@ -543,7 +544,12 @@ export default function BeneficiarySignupPage() {
     const { name, value } = event.target;
     if (validIdError) setValidIdError('');
     const selectedPrimary = name === 'primarySector' ? value : form.primarySector;
-    const selectedSecondary = name === 'secondarySector' ? value : form.secondarySector;
+    const selectedSecondary =
+      name === 'secondarySector'
+        ? value
+        : selectedPrimary && form.secondarySector === selectedPrimary
+          ? ''
+          : form.secondarySector;
     const selectedFlags = deriveSectorFlags(selectedPrimary, selectedSecondary);
     if (selectedFlags.is_senior_citizen && ageValue !== '' && Number(ageValue) < 60) {
       showValidationError(SENIOR_AGE_ERROR);
@@ -554,7 +560,7 @@ export default function BeneficiarySignupPage() {
     setForm((prev) => {
       const nextPrimary = name === 'primarySector' ? value : prev.primarySector;
       let nextSecondary = name === 'secondarySector' ? value : prev.secondarySector;
-      if (nextPrimary && nextSecondary === nextPrimary) nextSecondary = '';
+      if (!nextPrimary || nextSecondary === nextPrimary) nextSecondary = '';
       const flags = deriveSectorFlags(nextPrimary, nextSecondary);
       const nextIsSoloParent = flags.is_solo_parent;
       const nextIsMinor = ageValue !== '' && Number(ageValue) < 18;
@@ -910,6 +916,14 @@ export default function BeneficiarySignupPage() {
       case 1: {
         if (!hasSectorSelected) {
           setStatus({ type: 'error', message: 'Please select a sector classification to continue.' });
+          return false;
+        }
+        if (form.secondarySector && form.secondarySector === form.primarySector) {
+          showValidationError('Secondary Sector must be different from Primary Sector.');
+          return false;
+        }
+        if (form.secondarySector && !getSecondarySectorOptions(form.primarySector).some((option) => option.value === form.secondarySector)) {
+          showValidationError('Please select a valid Secondary Sector or choose No secondary sector.');
           return false;
         }
         return true;
@@ -2080,6 +2094,7 @@ export default function BeneficiarySignupPage() {
 
   return (
     <div className={styles.signupShell}>
+      <ConstellationBackground className={styles.signupConstellation} />
       <div className={styles.signupPage}>
       {toast.open && (
         <div

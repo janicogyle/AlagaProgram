@@ -100,7 +100,7 @@ const civilStatusOptions = [
   { value: "married", label: "Married" },
   { value: "widowed", label: "Widowed" },
   { value: "separated", label: "Separated" },
-  { value: "divorced", label: "Divorced" },
+  { value: "annulled", label: "Annulled" },
 ];
 
 const purokOptions = [

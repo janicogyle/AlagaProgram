@@ -60,7 +60,7 @@ const civilStatusOptions = [
   { value: 'married', label: 'Married' },
   { value: 'widowed', label: 'Widowed' },
   { value: 'separated', label: 'Separated' },
-  { value: 'divorced', label: 'Divorced' },
+  { value: 'annulled', label: 'Annulled' },
 ];
 
 const SOLO_PARENT_MARRIED_ERROR = 'Married civil status is not allowed for Solo Parent classification.';

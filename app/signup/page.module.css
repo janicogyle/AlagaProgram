@@ -7,6 +7,8 @@
   min-height: 100vh;
   width: 100%;
   max-width: 100%;
+  position: relative;
+  isolation: isolate;
   background:
     radial-gradient(circle at top left, rgba(37, 99, 235, 0.10), transparent 32rem),
     linear-gradient(180deg, #f6f8fc 0%, #eef3fa 100%);
@@ -19,7 +21,14 @@
   padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
 }
 
+.signupConstellation {
+  position: fixed;
+  opacity: 0.9;
+}
+
 .signupPage {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 980px;
   margin: 0 auto;
@@ -1619,9 +1628,7 @@
 /* GOVERNMENT PORTAL REDESIGN    */
 /* ============================= */
 .signupShell {
-  background:
-    linear-gradient(180deg, rgba(219, 234, 254, 0.66) 0%, rgba(248, 250, 252, 0.96) 18rem),
-    #f8fafc;
+  background: #ffffff;
   padding: 1rem clamp(0.9rem, 2vw, 1.5rem) 1.75rem;
 }
 
