@@ -129,6 +129,47 @@ const signupRequirements = [
   ['Final review', 'Check all details before submission'],
 ];
 
+const philippinesDateFormatter = new Intl.DateTimeFormat('en-PH', {
+  timeZone: 'Asia/Manila',
+  weekday: 'long',
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+});
+
+const philippinesTimeFormatter = new Intl.DateTimeFormat('en-PH', {
+  timeZone: 'Asia/Manila',
+  hour: 'numeric',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: true,
+});
+
+const PHILIPPINES_TIME_SYNC_INTERVAL_MS = 5 * 60 * 1000;
+const PHILIPPINES_TIME_ENDPOINTS = [
+  'https://worldtimeapi.org/api/timezone/Asia/Manila',
+  'https://timeapi.io/api/time/current/zone?timeZone=Asia%2FManila',
+];
+
+const getPhilippinesTimeEpochMs = (payload) => {
+  if (Number.isFinite(payload?.unixtime)) return payload.unixtime * 1000;
+  if (payload?.utc_datetime) return Date.parse(payload.utc_datetime);
+  if (payload?.datetime) return Date.parse(payload.datetime);
+  if (payload?.dateTime) {
+    const year = Number(payload.year);
+    const month = Number(payload.month);
+    const day = Number(payload.day);
+    const hour = Number(payload.hour);
+    const minute = Number(payload.minute);
+    const seconds = Number(payload.seconds ?? payload.second ?? 0);
+
+    if ([year, month, day, hour, minute, seconds].every(Number.isFinite)) {
+      return Date.UTC(year, month - 1, day, hour - 8, minute, seconds);
+    }
+  }
+  return Number.NaN;
+};
+
 const validIdExamples = [
   {
     title: 'Program-specific IDs',
@@ -271,6 +312,8 @@ export default function BeneficiarySignupPage() {
   // Multi-step state
   const [currentStep, setCurrentStep] = useState(1);
   const [slideDirection, setSlideDirection] = useState('next');
+  const [currentPhilippinesTime, setCurrentPhilippinesTime] = useState(null);
+  const [philippinesTimeStatus, setPhilippinesTimeStatus] = useState('syncing');
 
   // Form state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -326,6 +369,53 @@ export default function BeneficiarySignupPage() {
     barangay: 'Sta. Rita',
     city: 'Olongapo City',
   });
+
+  useEffect(() => {
+    let isMounted = true;
+    let syncAnchor = null;
+
+    const updateFromSyncedTime = () => {
+      if (!syncAnchor || !isMounted) return;
+      setCurrentPhilippinesTime(new Date(syncAnchor.epochMs + performance.now() - syncAnchor.syncedAtMs));
+    };
+
+    const syncPhilippinesTime = async () => {
+      if (!syncAnchor) setPhilippinesTimeStatus('syncing');
+
+      for (const endpoint of PHILIPPINES_TIME_ENDPOINTS) {
+        try {
+          const response = await fetch(endpoint, { cache: 'no-store' });
+          if (!response.ok) continue;
+
+          const payload = await response.json();
+          const epochMs = getPhilippinesTimeEpochMs(payload);
+          if (!Number.isFinite(epochMs)) continue;
+
+          syncAnchor = {
+            epochMs,
+            syncedAtMs: performance.now(),
+          };
+          setPhilippinesTimeStatus('synced');
+          updateFromSyncedTime();
+          return;
+        } catch {
+          // Try the next source.
+        }
+      }
+
+      if (isMounted && !syncAnchor) setPhilippinesTimeStatus('error');
+    };
+
+    syncPhilippinesTime();
+    const tickTimer = window.setInterval(updateFromSyncedTime, 1000);
+    const syncTimer = window.setInterval(syncPhilippinesTime, PHILIPPINES_TIME_SYNC_INTERVAL_MS);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(tickTimer);
+      window.clearInterval(syncTimer);
+    };
+  }, []);
 
   // Computed values
   const hasSectorSelected = !!form.primarySector;
@@ -403,6 +493,14 @@ export default function BeneficiarySignupPage() {
   const remainingSteps = Math.max(0, TOTAL_STEPS - currentStep);
   const estimatedRemainingMinutes = Math.max(1, Math.ceil((remainingSteps / TOTAL_STEPS) * ESTIMATED_TOTAL_MINUTES));
   const currentStepLabel = STEPS[currentStep - 1]?.label || 'Registration';
+  const currentPhilippinesDateLabel = currentPhilippinesTime
+    ? philippinesDateFormatter.format(currentPhilippinesTime)
+    : philippinesTimeStatus === 'error'
+      ? 'Unable to sync network time'
+      : 'Fetching Philippine Standard Time';
+  const currentPhilippinesTimeLabel = currentPhilippinesTime
+    ? philippinesTimeFormatter.format(currentPhilippinesTime)
+    : 'Syncing...';
 
   const resetOtpState = () => {
     setOtpCode('');
@@ -2065,6 +2163,11 @@ export default function BeneficiarySignupPage() {
           </li>
         ))}
       </ol>
+      <div className={styles.summaryClock} aria-live="polite">
+        <span className={styles.summaryClockLabel}>Philippine Standard Time</span>
+        <span>{currentPhilippinesDateLabel}</span>
+        <strong>{currentPhilippinesTimeLabel}</strong>
+      </div>
     </aside>
   );
 

@@ -259,19 +259,40 @@ export default function ReportsPage() {
     return doc;
   };
 
-  const generateTablePdf = async ({ title, columns, rows }) => {
+  const generateTablePdf = async ({ title, columns, rows, reportYear: y }) => {
     const { jsPDF } = await import('jspdf');
     const autoTableMod = await import('jspdf-autotable');
     const autoTable = autoTableMod.default ?? autoTableMod;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    try {
+      const resp = await fetch('/Brand.png');
+      if (resp.ok) {
+        const blob = await resp.blob();
+        const dataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+        const logoSize = 52;
+        doc.addImage(dataUrl, 'PNG', pageWidth / 2 - logoSize / 2, 12, logoSize, logoSize);
+      }
+    } catch (e) {
+      console.warn('Could not add logo to PDF:', e?.message || e);
+    }
 
     doc.setFontSize(14);
-    doc.text(String(title || 'Report').toUpperCase(), doc.internal.pageSize.getWidth() / 2, 42, {
+    doc.text(`SUMMARY OF ALAGA PROGRAM ${y || reportYear}`, pageWidth / 2, 82, {
+      align: 'center',
+    });
+    doc.setFontSize(12);
+    doc.text(String(title || 'Report').toUpperCase(), pageWidth / 2, 100, {
       align: 'center',
     });
 
     autoTable(doc, {
-      startY: 64,
+      startY: 118,
       head: [columns || []],
       body: rows || [],
       theme: 'grid',
@@ -334,7 +355,7 @@ export default function ReportsPage() {
         if (selectedFormat === 'pdf') {
           const payloadData = payload?.data || {};
           const doc = payloadData.table
-            ? await generateTablePdf(payloadData.table)
+            ? await generateTablePdf({ ...payloadData.table, reportYear: payloadData.reportYear || reportYear })
             : await generateCashAssistancePdf({ ...payloadData, sectorLabel: selectedReport.title });
           doc.save(`${selectedReport.id}_summary_${payloadData.reportYear || reportYear}_${dateStr}.pdf`);
 

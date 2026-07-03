@@ -13,7 +13,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { deleteClientCache, getClientCache, setClientCache } from '@/lib/clientCache';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const ANALYTICS_CACHE_MAX_AGE = 0;
+const ANALYTICS_CACHE_MAX_AGE = 60_000;
 const STAFF_ACTIVITY_CACHE_KEY = 'admin-analytics:staff-activity';
 const MONTH_FULL_LABELS = [
   'January',

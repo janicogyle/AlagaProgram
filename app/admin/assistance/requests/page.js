@@ -12,6 +12,7 @@ import {
   isMissingRequirementsColumn,
 } from '@/lib/assistanceRequirements';
 import { resolveAssistanceAmount } from '@/lib/assistanceAmounts.mjs';
+import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import {
   Card,
   Select,
@@ -30,7 +31,7 @@ import styles from './page.module.css';
 
 // Requests are loaded from the `assistance_requests` table in Supabase.
 // Shape in state: { id, controlNo, requester, requesterContact, beneficiary, beneficiaryContact, type, amount, rawAmount, status, date, processedBy }
-const REQUESTS_CACHE_MAX_AGE = 0;
+const REQUESTS_CACHE_MAX_AGE = 15_000;
 const getRequestsCacheKey = ({ requirementsByType, page, pageSize }) =>
   `admin-assistance-requests:${page}:${pageSize}:${Object.keys(requirementsByType || {}).sort().join('|')}`;
 
@@ -181,6 +182,7 @@ const getSectorLabels = (record) => {
 
 export default function RequestsPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sortBy, setSortBy] = useState('date_desc');
@@ -592,7 +594,7 @@ export default function RequestsPage() {
   // Filter requests
   const filteredRequests = requests
     .filter((record) => {
-      const search = searchTerm.toLowerCase();
+      const search = debouncedSearchTerm.toLowerCase();
       const matchesSearch =
         record.requester.toLowerCase().includes(search) ||
         record.beneficiary.toLowerCase().includes(search) ||

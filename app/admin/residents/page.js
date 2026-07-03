@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Card,
   Badge,
@@ -52,9 +52,12 @@ const registrationTypeOptions = [
 ];
 
 const LOCKED_CITIZENSHIP = 'Filipino';
+const SEARCH_DEBOUNCE_MS = 300;
+const RESIDENTS_ELIGIBILITY_CACHE_KEY = 'admin-residents:eligibility';
 const getResidentsCacheKey = ({ page, pageSize, searchTerm, registrationTypeFilter, sectorFilter, qrFilter, sortBy }) =>
   `admin-residents:list:${page}:${pageSize}:${searchTerm}:${registrationTypeFilter}:${sectorFilter}:${qrFilter}:${sortBy}`;
-const RESIDENTS_CACHE_MAX_AGE = 0;
+const RESIDENTS_CACHE_MAX_AGE = 30_000;
+const RESIDENTS_ELIGIBILITY_CACHE_MAX_AGE = 60_000;
 
 const sectorOptions = [
   { value: "", label: "All Sectors" },
@@ -254,6 +257,7 @@ function getApiError(payload, fallback) {
 
 export default function ResidentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [registrationTypeFilter, setRegistrationTypeFilter] = useState("");
   const [sectorFilter, setSectorFilter] = useState("");
   const [qrFilter, setQrFilter] = useState("");
@@ -299,6 +303,7 @@ export default function ResidentsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [editErrors, setEditErrors] = useState({ contact_number: '' });
   const [documentPreview, setDocumentPreview] = useState({ open: false, url: '', path: '' });
+  const residentsRequestSeqRef = useRef(0);
   const [editForm, setEditForm] = useState({
     first_name: '',
     middle_name: '',
@@ -462,9 +467,22 @@ export default function ResidentsPage() {
     );
   };
 
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+    setPagination((prev) => (prev.page === 1 ? prev : { ...prev, page: 1 }));
+  };
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm.trim());
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchTerm]);
+
   useEffect(() => {
     setPagination((prev) => ({ ...prev, page: 1 }));
-  }, [searchTerm, registrationTypeFilter, sectorFilter, qrFilter, eligibilityFilter, sortBy]);
+  }, [registrationTypeFilter, sectorFilter, qrFilter, eligibilityFilter, sortBy]);
 
   useEffect(() => {
     try {
@@ -481,7 +499,7 @@ export default function ResidentsPage() {
   }, [
     pagination.page,
     pagination.pageSize,
-    searchTerm,
+    debouncedSearchTerm,
     registrationTypeFilter,
     sectorFilter,
     qrFilter,
@@ -533,27 +551,45 @@ export default function ResidentsPage() {
     const cacheKey = getResidentsCacheKey({
       page: pagination.page,
       pageSize: pagination.pageSize,
-      searchTerm,
+      searchTerm: debouncedSearchTerm,
       registrationTypeFilter,
       sectorFilter,
       qrFilter,
       sortBy,
     });
     const cached = getClientCache(cacheKey, { maxAge: RESIDENTS_CACHE_MAX_AGE });
+    const cachedEligibility = getClientCache(RESIDENTS_ELIGIBILITY_CACHE_KEY, {
+      maxAge: RESIDENTS_ELIGIBILITY_CACHE_MAX_AGE,
+    });
     const hasCachedData = !!cached;
+    const hasFreshEligibility = !!cachedEligibility?.isFresh;
 
     if (cached) {
       setResidents(asArray(cached.value?.residents));
       setPagination((prev) => ({ ...prev, ...(cached.value?.pagination || {}) }));
-      setEligibilityMaps(cached.value?.eligibilityMaps || buildEligibilityMaps([]));
-      setEligibilityByResidentId(cached.value?.eligibilityByResidentId || {});
+      setEligibilityMaps(
+        cachedEligibility?.value?.eligibilityMaps ||
+          cached.value?.eligibilityMaps ||
+          buildEligibilityMaps([]),
+      );
+      setEligibilityByResidentId(
+        cachedEligibility?.value?.eligibilityByResidentId ||
+          cached.value?.eligibilityByResidentId ||
+          {},
+      );
       setLoading(false);
       setEligibilityLoading(false);
 
       if (cached.isFresh) return;
+    } else if (cachedEligibility?.value) {
+      setEligibilityMaps(cachedEligibility.value.eligibilityMaps || buildEligibilityMaps([]));
+      setEligibilityByResidentId(cachedEligibility.value.eligibilityByResidentId || {});
+      setEligibilityLoading(false);
     } else {
       setEligibilityLoading(true);
     }
+
+    const requestSeq = ++residentsRequestSeqRef.current;
 
     try {
       const headers = await getAuthHeaders();
@@ -562,17 +598,20 @@ export default function ResidentsPage() {
         pageSize: String(pagination.pageSize),
         sortBy,
       });
-      if (searchTerm.trim()) params.set('search', searchTerm.trim());
+      if (debouncedSearchTerm) params.set('search', debouncedSearchTerm);
       if (registrationTypeFilter) params.set('registrationType', registrationTypeFilter);
       if (sectorFilter) params.set('sector', sectorFilter);
       if (qrFilter) params.set('qrValidity', qrFilter);
-      const [residentsResponse, requestsResponse] = await Promise.all([
-        fetch(`/api/residents?${params.toString()}`, { headers }),
-        fetch('/api/assistance-requests/eligibility', { headers }),
-      ]);
+      const residentsPromise = fetch(`/api/residents?${params.toString()}`, { headers });
+      const eligibilityPromise = hasFreshEligibility
+        ? Promise.resolve(null)
+        : fetch('/api/assistance-requests/eligibility', { headers });
+      const [residentsResponse, requestsResponse] = await Promise.all([residentsPromise, eligibilityPromise]);
 
       const residentsResult = await readJsonSafe(residentsResponse);
-      const requestsResult = await readJsonSafe(requestsResponse);
+      const requestsResult = requestsResponse ? await readJsonSafe(requestsResponse) : null;
+
+      if (requestSeq !== residentsRequestSeqRef.current) return;
 
       if (!residentsResponse.ok || residentsResult.error) {
         throw new Error(getApiError(residentsResult, 'Failed to fetch beneficiaries.'));
@@ -585,16 +624,28 @@ export default function ResidentsPage() {
         total: Math.max(0, Number(residentsResult.meta?.total ?? nextResidents.length) || 0),
         totalPages: Math.max(1, Number(residentsResult.meta?.totalPages || 1) || 1),
       };
-      let nextEligibilityMaps = buildEligibilityMaps([]);
-      let nextEligibilityByResidentId = {};
+      let nextEligibilityMaps =
+        cachedEligibility?.value?.eligibilityMaps ||
+        cached?.value?.eligibilityMaps ||
+        buildEligibilityMaps([]);
+      let nextEligibilityByResidentId =
+        cachedEligibility?.value?.eligibilityByResidentId ||
+        cached?.value?.eligibilityByResidentId ||
+        {};
 
-      if (!requestsResponse.ok || requestsResult.error) {
+      if (!requestsResponse) {
+        // Reuse the dedicated eligibility cache while searching/paginating.
+      } else if (!requestsResponse.ok || requestsResult.error) {
         console.warn('Failed to load request eligibility:', getApiError(requestsResult, 'Unknown error'));
       } else {
         const requestRows = asArray(requestsResult.data);
         const { maps, byId } = buildEligibilityByResidentId(requestRows);
         nextEligibilityMaps = maps;
         nextEligibilityByResidentId = byId;
+        setClientCache(RESIDENTS_ELIGIBILITY_CACHE_KEY, {
+          eligibilityMaps: nextEligibilityMaps,
+          eligibilityByResidentId: nextEligibilityByResidentId,
+        });
       }
 
       setResidents(nextResidents);
@@ -608,6 +659,7 @@ export default function ResidentsPage() {
         eligibilityByResidentId: nextEligibilityByResidentId,
       });
     } catch (error) {
+      if (requestSeq !== residentsRequestSeqRef.current) return;
       console.warn('Failed to fetch beneficiaries:', error?.message || error);
       if (!hasCachedData) {
         openAlert({
@@ -619,7 +671,7 @@ export default function ResidentsPage() {
         setEligibilityByResidentId({});
       }
     } finally {
-      if (!hasCachedData) {
+      if (requestSeq === residentsRequestSeqRef.current && !hasCachedData) {
         setLoading(false);
         setEligibilityLoading(false);
       }
@@ -1031,7 +1083,7 @@ export default function ResidentsPage() {
       label: "Sector",
       render: (_, row) => {
         const sectors = getSectorBadges(row);
-        if (!sectors.length) return <span style={{ color: "#6b7280" }}>General</span>;
+        if (!sectors.length) return <span className={styles.tableMutedText}>General</span>;
         return (
           <div className={styles.badges}>
             {sectors.map((sector) => (
@@ -1077,19 +1129,19 @@ export default function ResidentsPage() {
           : null;
 
         return (
-          <div>
+          <div className={styles.qrStatusCell}>
             <Badge variant={variant}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span className={styles.badgeContent}>
                 {status === 'Valid' && (
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                 )}
                 {status}
-              </div>
+              </span>
             </Badge>
             {expires ? (
-              <div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>
+              <div className={styles.qrExpiryText}>
                 Expires: {expires}
               </div>
             ) : null}
@@ -1429,7 +1481,7 @@ export default function ResidentsPage() {
 
   return (
     <div className={styles.residentsPage}>
-      <Card padding={false}>
+      <Card padding={false} className={styles.residentsCard}>
         <PageHeader
           title="Beneficiaries"
           subtitle="Search existing beneficiaries before creating walk-in assistance requests"
@@ -1438,7 +1490,7 @@ export default function ResidentsPage() {
         <FilterBar className={styles.beneficiaryFilterBar}>
           <SearchInput
             value={searchTerm}
-            onChange={setSearchTerm}
+            onChange={handleSearchChange}
             placeholder="Search by name, contact number, or control number..."
             className={styles.beneficiarySearch}
           />

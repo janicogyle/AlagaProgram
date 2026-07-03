@@ -16,7 +16,7 @@ import { deleteClientCache, getClientCache, setClientCache } from '@/lib/clientC
 const isActiveRequestStatus = (status) => status === 'Pending' || status === 'Resubmitted';
 const isEditableRequestStatus = (status) => status === 'Rejected';
 const RESTRICTED_ID_STATUSES = new Set(['Expired', 'Renewal Pending']);
-const DASHBOARD_CACHE_MAX_AGE = 0;
+const DASHBOARD_CACHE_MAX_AGE = 15_000;
 const emptyStats = { total: 0, active: 0, pending: 0, completed: 0, rejected: 0, lastDate: null };
 
 const getRequestStatusLabel = (status) => {

@@ -309,7 +309,7 @@ async function handleTableReport({ db, reportType, format, year, profile }) {
   const filenamePrefix = `${reportType}_${reportYear}_${new Date().toISOString().split('T')[0]}`;
 
   if (format === 'xlsx') {
-    const buffer = await generateTableXLSX(table);
+    const buffer = await generateTableXLSX({ ...table, reportYear });
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -459,16 +459,71 @@ async function buildRegistrationReport({ db, year, profile, online, countOnly })
   };
 }
 
-async function generateTableXLSX({ title, columns, rows }) {
+function excelColumnLetter(index) {
+  let n = Number(index) || 1;
+  let letter = '';
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    letter = String.fromCharCode(65 + rem) + letter;
+    n = Math.floor((n - 1) / 26);
+  }
+  return letter || 'A';
+}
+
+async function generateTableXLSX({ title, columns, rows, reportYear }) {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Report');
   const safeColumns = columns || [];
   const safeRows = rows || [];
+  const worksheetColumns = safeColumns.length ? safeColumns : ['Report'];
+  const columnCount = Math.max(1, worksheetColumns.length);
+  const lastColumn = excelColumnLetter(columnCount);
 
-  sheet.mergeCells(1, 1, 1, Math.max(1, safeColumns.length));
-  sheet.getCell(1, 1).value = String(title || 'Report').toUpperCase();
-  sheet.getCell(1, 1).font = { bold: true, size: 14 };
-  sheet.getCell(1, 1).alignment = { horizontal: 'center', vertical: 'middle' };
+  sheet.columns = worksheetColumns.map((column, idx) => ({
+    header: undefined,
+    key: `col_${idx + 1}`,
+    width: 14,
+  }));
+
+  const logoSize = 72;
+  const logoRowStart = 1;
+  const logoRowEnd = 3;
+  const titleRowIndex = 4;
+  const subtitleRowIndex = 5;
+  const spacerRowIndex = 6;
+
+  sheet.getRow(1).height = 18;
+  sheet.getRow(2).height = 18;
+  sheet.getRow(3).height = 18;
+  sheet.getRow(spacerRowIndex).height = 14;
+
+  try {
+    const logoPath = path.join(process.cwd(), 'public', 'Brand.png');
+    if (fs.existsSync(logoPath)) {
+      const imgBuffer = fs.readFileSync(logoPath);
+      const imageId = workbook.addImage({ buffer: imgBuffer, extension: 'png' });
+      sheet.addImage(imageId, {
+        tl: { col: Math.max(0, columnCount / 2 - 0.5), row: 0.1 },
+        ext: { width: logoSize, height: logoSize },
+      });
+    }
+  } catch (e) {
+    console.warn('Could not add logo to XLSX:', e?.message || e);
+  }
+
+  sheet.mergeCells(`A${logoRowStart}:${lastColumn}${logoRowEnd}`);
+  sheet.getCell(`A${logoRowStart}`).alignment = { horizontal: 'center', vertical: 'middle' };
+
+  sheet.mergeCells(`A${titleRowIndex}:${lastColumn}${titleRowIndex}`);
+  sheet.getCell(`A${titleRowIndex}`).value = `SUMMARY OF ALAGA PROGRAM ${reportYear || new Date().getFullYear()}`;
+  sheet.getCell(`A${titleRowIndex}`).font = { bold: true, size: 14 };
+  sheet.getCell(`A${titleRowIndex}`).alignment = { horizontal: 'center', vertical: 'middle' };
+
+  sheet.mergeCells(`A${subtitleRowIndex}:${lastColumn}${subtitleRowIndex}`);
+  sheet.getCell(`A${subtitleRowIndex}`).value = String(title || 'Report').toUpperCase();
+  sheet.getCell(`A${subtitleRowIndex}`).font = { bold: true, size: 12 };
+  sheet.getCell(`A${subtitleRowIndex}`).alignment = { horizontal: 'center', vertical: 'middle' };
+
   sheet.addRow([]);
 
   const headerRow = sheet.addRow(safeColumns);
@@ -487,13 +542,13 @@ async function generateTableXLSX({ title, columns, rows }) {
     });
   });
 
-  safeColumns.forEach((column, idx) => {
+  worksheetColumns.forEach((column, idx) => {
     const columnIndex = idx + 1;
     const maxLength = Math.max(String(column).length, ...safeRows.map((row) => String(row?.[idx] || '').length));
     sheet.getColumn(columnIndex).width = Math.max(10, Math.min(34, maxLength + 3));
   });
 
-  sheet.views = [{ state: 'frozen', ySplit: 3 }];
+  sheet.views = [{ state: 'frozen', ySplit: 7 }];
   workbook.creator = 'ALAGA Program';
   workbook.created = new Date();
   return workbook.xlsx.writeBuffer();

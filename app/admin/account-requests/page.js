@@ -17,6 +17,7 @@ import {
 import { realtimeHelpers, supabase } from "@/lib/supabaseClient";
 import { formatSmsNotificationResult } from "@/lib/smsTemplates";
 import { buildSectorPairFromSource, getSectorLabel } from "@/lib/beneficiarySectors";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import styles from "./page.module.css";
 
 const statusOptions = [
@@ -119,6 +120,7 @@ function getFaceVerificationBadgeVariant(status) {
 
 export default function AccountRequestsPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
   const [statusFilter, setStatusFilter] = useState("Pending");
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [requestDetails, setRequestDetails] = useState(null);
@@ -200,17 +202,17 @@ export default function AccountRequestsPage() {
   };
 
   const filteredRequests = useMemo(() => {
+    const query = debouncedSearchTerm.toLowerCase();
     return requests.filter((req) => {
       const fullName = buildFullName(req).toLowerCase();
       const contact = (req.contact_number || req.contactNumber || "").toLowerCase();
-      const query = searchTerm.toLowerCase();
 
       const matchesSearch = !query || fullName.includes(query) || contact.includes(query);
       const matchesStatus = !statusFilter || req.status === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
-  }, [requests, searchTerm, statusFilter]);
+  }, [requests, debouncedSearchTerm, statusFilter]);
 
   const fetchRequestDetails = async (requestId) => {
     if (!requestId) return;

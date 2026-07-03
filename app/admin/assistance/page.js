@@ -18,6 +18,7 @@ import {
 import styles from './page.module.css';
 import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
 import { clearClientCachePrefix, getClientCache, setClientCache } from '@/lib/clientCache';
+import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import {
   buildRequirementsMap,
   getLocalRequirementsMap,
@@ -56,7 +57,7 @@ const serviceTypes = [
 ];
 
 const ASSISTANCE_RECORDS_CACHE_KEY = 'admin-assistance-records:list';
-const ASSISTANCE_RECORDS_CACHE_MAX_AGE = 0;
+const ASSISTANCE_RECORDS_CACHE_MAX_AGE = 30_000;
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat('en-PH', {
@@ -76,6 +77,7 @@ export default function AssistancePage() {
 const statusOptions = [{ value: 'Released', label: 'Released' }];
 
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
   const [typeFilter, setTypeFilter] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
   const [eligibilityFilter, setEligibilityFilter] = useState('');
@@ -240,7 +242,7 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
 
   // Filter assistance records
   const filteredAssistance = useMemo(() => records.filter((record) => {
-    const normalizedSearch = searchTerm.toLowerCase();
+    const normalizedSearch = debouncedSearchTerm.toLowerCase();
     const matchesSearch =
       record.requester.toLowerCase().includes(normalizedSearch) ||
       record.beneficiary.toLowerCase().includes(normalizedSearch) ||
@@ -251,7 +253,7 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
       !eligibilityFilter || record.cooldownInfo?.status === eligibilityFilter;
     const matchesStatus = !statusFilter || record.status === statusFilter;
     return matchesSearch && matchesType && matchesSector && matchesEligibility && matchesStatus;
-  }), [records, searchTerm, typeFilter, sectorFilter, eligibilityFilter, statusFilter]);
+  }), [records, debouncedSearchTerm, typeFilter, sectorFilter, eligibilityFilter, statusFilter]);
 
   const summaryStats = useMemo(() => {
     const uniqueEligibleBeneficiaries = new Set();

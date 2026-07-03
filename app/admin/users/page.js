@@ -17,6 +17,7 @@ import {
 } from '@/components';
 import styles from './page.module.css';
 import { supabase } from '@/lib/supabaseClient';
+import { useDebouncedValue } from '@/lib/useDebouncedValue';
 
 const filterRoleOptions = [
   { value: '', label: 'All Roles' },
@@ -50,6 +51,7 @@ const formatSectorAccess = (value, role) => {
 
 export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
   const [roleFilter, setRoleFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [users, setUsers] = useState([]);
@@ -166,10 +168,11 @@ export default function UsersPage() {
   };
 
   // Filter users
+  const normalizedSearchTerm = debouncedSearchTerm.toLowerCase();
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
-      user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+      user.full_name.toLowerCase().includes(normalizedSearchTerm) ||
+      user.email.toLowerCase().includes(normalizedSearchTerm);
     const matchesRole = !roleFilter || user.role === roleFilter;
     return matchesSearch && matchesRole;
   });

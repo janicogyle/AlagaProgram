@@ -1695,14 +1695,16 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
   gap: 1rem;
-  align-items: start;
+  align-items: stretch;
 }
 
 .registrationMain {
+  display: flex;
   min-width: 0;
 }
 
 .formCard {
+  width: 100%;
   gap: 0.9rem;
   border-radius: 12px;
   border-color: #d8e3f2;
@@ -1907,7 +1909,9 @@
   top: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  justify-content: space-between;
+  gap: 0.75rem;
+  height: 100%;
   padding: 1rem;
   border: 1px solid #d8e3f2;
   border-radius: 12px;
@@ -1974,7 +1978,7 @@
 
 .summarySteps {
   display: grid;
-  gap: 0.45rem;
+  gap: clamp(0.45rem, 1.2vh, 0.9rem);
   padding: 0;
   margin: 0;
   list-style: none;
@@ -2021,6 +2025,42 @@
   color: #166534 !important;
 }
 
+.summaryClock {
+  display: grid;
+  gap: 0.18rem;
+  margin-top: auto;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.summaryClockLabel {
+  display: block;
+  color: #1d4ed8;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.summaryClock strong {
+  color: #0f172a;
+  font-size: 1.08rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  margin-top: 0.2rem;
+}
+
+.summaryClock > span:not(.summaryClockLabel) {
+  display: block;
+  color: #64748b;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .reviewCard {
   gap: 0.8rem;
   border: none;
@@ -2061,11 +2101,13 @@
 @media (max-width: 1100px) {
   .registrationLayout {
     grid-template-columns: 1fr;
+    align-items: stretch;
   }
 
   .summaryCard {
     position: static;
     order: -1;
+    height: auto;
   }
 
   .summarySteps {
@@ -2075,7 +2117,14 @@
 
 @media (max-width: 760px) {
   .signupShell {
+    height: 100dvh;
+    overflow-y: auto;
+    scrollbar-width: none;
     padding: 0.75rem 0.75rem 1.5rem;
+  }
+
+  .signupShell::-webkit-scrollbar {
+    display: none;
   }
 
   .heroPanel {
@@ -2093,7 +2142,30 @@
   }
 
   .progressBar {
-    min-width: 620px;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .progressBarScroll {
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0.1rem 0 0;
+  }
+
+  .progressStep {
+    min-width: 0;
+    padding: 0.25rem 0.1rem;
+  }
+
+  .progressCircle {
+    width: 36px;
+    height: 36px;
+  }
+
+  .progressLabel {
+    display: none;
   }
 
   .personalGrid,
@@ -2128,5 +2200,19 @@
   .navRow > button {
     flex: 1 1 0;
     min-width: 0;
+  }
+
+  .progressBarWrapper {
+    padding: 0.75rem;
+  }
+
+  .progressBar {
+    gap: 0.15rem;
+  }
+
+  .progressCircle {
+    width: 34px;
+    height: 34px;
+    font-size: 0.76rem;
   }
 }
