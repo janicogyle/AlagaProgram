@@ -10,6 +10,7 @@ import Modal from '../../components/Modal';
 import Select from '../../components/Select';
 import FileUpload from '../../components/FileUpload';
 import ConstellationBackground from '../../components/ConstellationBackground';
+import LegalContent from '@/components/LegalContent';
 import SectionHeader from '@/components/SectionHeader';
 import {
   BENEFICIARY_SECTOR_OPTIONS,
@@ -2090,7 +2091,10 @@ export default function BeneficiarySignupPage() {
             required
           />
           <label htmlFor="signupLegalConsent" className={styles.legalConsentLabel}>
-            I agree to the{' '}
+            I confirm that the information and documents I provided are true and correct. I consent to the use of my
+            information, valid ID, selfie/face capture, contact number, sector classification, representative details,
+            assistance records, and QR ID data for ALAGA Program registration, verification, SMS communication,
+            assistance processing, reporting, and barangay administration. I agree to the{' '}
             <button
               type="button"
               className={styles.legalInlineLink}
@@ -2311,7 +2315,8 @@ export default function BeneficiarySignupPage() {
           </>
         }
       >
-        {legalModal === 'terms' ? (
+        <LegalContent type={legalModal} styles={styles} />
+        {false && (legalModal === 'terms' ? (
           <div className={styles.legalContent}>
             <ol className={styles.legalList}>
               <li>
@@ -2544,7 +2549,7 @@ export default function BeneficiarySignupPage() {
               </li>
             </ol>
           </div>
-        )}
+        ))}
       </Modal>
       </div>
     </div>

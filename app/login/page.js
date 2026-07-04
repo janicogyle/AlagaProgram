@@ -6,6 +6,7 @@ import styles from './login.module.css';
 import { useRouter } from 'next/navigation';
 import { UnifiedLoginForm, Modal, Button } from '@/components';
 import ConstellationBackground from '@/components/ConstellationBackground';
+import LegalContent from '@/components/LegalContent';
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -92,11 +93,13 @@ export default function LoginPage() {
       <div className={styles.loginShell}>
         <div className={styles.welcomePanel}>
           <div className={styles.welcomeHeader}>
-            <img
-              className={styles.welcomeLogo}
-              src="/Brand.png"
-              alt="Barangay Sta. Rita logo"
-            />
+            <div className={styles.welcomeLogoFrame}>
+              <img
+                className={styles.welcomeLogo}
+                src="/Brand.png"
+                alt="Barangay Sta. Rita logo"
+              />
+            </div>
             <div className={styles.welcomeHeaderText}>
               <h1 className={styles.welcomeTitle}>Welcome to Barangay Sta. Rita</h1>
               <p className={styles.welcomeSubtitle}>Alaga Program Portal</p>
@@ -126,7 +129,7 @@ export default function LoginPage() {
 
             <div className={styles.legalSection}>
               <p className={styles.legalInlineText}>
-                By clicking &apos;Sign In&apos;, you acknowledge and agree to the{' '}
+                By clicking &apos;Sign In&apos;, you agree to the{' '}
                 <button
                   type="button"
                   className={styles.legalInlineLink}
@@ -174,7 +177,8 @@ export default function LoginPage() {
           </>
         }
       >
-        {legalModal === 'terms' ? (
+        <LegalContent type={legalModal} styles={styles} />
+        {false && (legalModal === 'terms' ? (
           <div className={styles.legalContent}>
             <ol className={styles.legalList}>
               <li>
@@ -407,7 +411,7 @@ export default function LoginPage() {
               </li>
             </ol>
           </div>
-        )}
+        ))}
       </Modal>
     </div>
   );
