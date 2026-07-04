@@ -409,7 +409,44 @@ export default function BeneficiaryDashboardPage() {
         ) : recentRequests.length === 0 ? (
           <p className={styles.muted}>No requests found. Submit your first request to see it here.</p>
         ) : (
-          <Table columns={columns} data={recentRequests} />
+          <>
+            <div className={styles.requestsTable}>
+              <Table columns={columns} data={recentRequests} />
+            </div>
+            <div className={styles.requestsMobileList}>
+              {recentRequests.map((request, index) => (
+                <article key={request.id || request.control_number || index} className={styles.requestMobileItem}>
+                  <div className={styles.requestMobileTop}>
+                    <div className={styles.requestMobileMain}>
+                      <span className={styles.requestMobileLabel}>Control No.</span>
+                      <strong>{request.control_number || 'N/A'}</strong>
+                    </div>
+                    <Badge
+                      variant={
+                        request.status === 'Released' || request.status === 'Approved'
+                          ? 'success'
+                          : request.status === 'Rejected'
+                            ? 'danger'
+                            : 'warning'
+                      }
+                    >
+                      {getRequestStatusLabel(request.status)}
+                    </Badge>
+                  </div>
+                  <div className={styles.requestMobileMeta}>
+                    <div>
+                      <span className={styles.requestMobileLabel}>Assistance</span>
+                      <p>{request.assistance_type || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className={styles.requestMobileLabel}>Date Requested</span>
+                      <p>{request.request_date || 'N/A'}</p>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </>
         )}
       </Card>
 

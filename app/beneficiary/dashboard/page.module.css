@@ -153,6 +153,11 @@
 
 .requestsCard {
     margin-top: 0.5rem;
+    min-width: 0;
+    overflow: hidden;
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--primary-color) 3%, transparent), transparent 48px),
+        var(--card-bg);
 }
 
 .requestsHeader {
@@ -160,24 +165,29 @@
     justify-content: space-between;
     align-items: baseline;
     margin-bottom: 0.75rem;
+    gap: 1rem;
 }
 
 .filters {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
+    gap: 0.4rem;
+    margin-bottom: 0.9rem;
+    padding: 0.25rem;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: var(--surface-muted);
 }
 
 .filterButton {
     border-radius: 9999px;
-    border: 1px solid var(--border-color);
-    background: var(--surface-muted);
-    padding: 0.25rem 0.75rem;
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 0.36rem 0.85rem;
     font-size: 0.8rem;
     color: var(--text-muted);
     cursor: pointer;
-    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .filterButton:hover {
@@ -187,9 +197,10 @@
 }
 
 .filterButtonActive {
-    background: color-mix(in srgb, var(--primary-color) 8%, transparent);
-    border-color: var(--primary-color);
+    background: var(--surface-bg);
+    border-color: color-mix(in srgb, var(--primary-color) 42%, var(--border-color));
     color: var(--primary-color);
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
 }
 
 .filterButtonActive:hover {
@@ -210,6 +221,91 @@
 
 .requestsHeader h2 {
     color: var(--foreground);
+}
+
+.requestsTable {
+    min-width: 0;
+}
+
+.requestsMobileList {
+    display: none;
+}
+
+.requestMobileItem {
+    position: relative;
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.95rem 0.95rem 0.9rem 1rem;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 14%, var(--border-color));
+    border-radius: 14px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0)),
+        var(--surface-bg);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+}
+
+.requestMobileItem::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: linear-gradient(180deg, var(--primary-color), color-mix(in srgb, var(--primary-color) 42%, #22c55e));
+}
+
+.requestMobileTop {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.requestMobileMain {
+    display: grid;
+    gap: 0.22rem;
+    min-width: 0;
+}
+
+.requestMobileMain strong,
+.requestMobileMeta p {
+    color: var(--foreground);
+    overflow-wrap: anywhere;
+}
+
+.requestMobileMain strong {
+    font-size: 1rem;
+    line-height: 1.2;
+}
+
+.requestMobileMeta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
+    gap: 0.65rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+}
+
+.requestMobileMeta > div {
+    min-width: 0;
+    padding: 0.65rem 0.7rem;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--surface-muted) 72%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border-color) 64%, transparent);
+}
+
+.requestMobileMeta p {
+    margin: 0.15rem 0 0;
+    font-size: 0.86rem;
+    line-height: 1.35;
+}
+
+.requestMobileLabel {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 .mobileHeroHeader {
@@ -305,7 +401,86 @@
     }
 
     .nextStepsCard {
-        padding: 1rem;
+        padding: 0.85rem !important;
+        border-radius: 15px;
+        background:
+            linear-gradient(180deg, color-mix(in srgb, var(--primary-color) 3%, transparent), transparent 52px),
+            var(--card-bg);
+        overflow: hidden;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .nextStepsCard::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+        display: none;
+    }
+
+    .nextStepsBody {
+        gap: 0.72rem;
+        overflow: visible;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .nextStepsBody::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+        display: none;
+    }
+
+    .requestMain {
+        gap: 0.65rem;
+    }
+
+    .requestHeader {
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .nextTitle {
+        font-size: 1rem;
+        line-height: 1.25;
+    }
+
+    .nextLabel {
+        font-size: 0.76rem;
+        margin-top: 0.25rem;
+    }
+
+    .requestDetails {
+        position: relative;
+        gap: 0.32rem;
+        padding: 0.78rem 0.82rem 0.78rem 0.95rem;
+        border-radius: 12px;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0)),
+            var(--surface-muted);
+        overflow: hidden;
+    }
+
+    .requestDetails::before {
+        content: '';
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 4px;
+        background: linear-gradient(180deg, var(--primary-color), color-mix(in srgb, var(--primary-color) 42%, #22c55e));
+    }
+
+    .nextPrimary {
+        font-size: 0.9rem;
+        line-height: 1.25;
+    }
+
+    .nextMeta {
+        font-size: 0.74rem;
+        line-height: 1.25;
+    }
+
+    .statusHint {
+        font-size: 0.74rem;
+        line-height: 1.3;
     }
 
     .requestsHeader {
@@ -314,8 +489,47 @@
         gap: 0.25rem;
     }
 
+    .requestsCard {
+        margin-top: 0.25rem;
+        padding: 1rem !important;
+        border-radius: 16px;
+    }
+
+    .requestsHeader h2 {
+        margin: 0;
+        font-size: 1.2rem;
+        line-height: 1.25;
+    }
+
+    .lastUpdated {
+        margin: 0;
+        font-size: 0.78rem;
+    }
+
+    .requestsTable {
+        display: none;
+    }
+
+    .requestsMobileList {
+        display: grid;
+        gap: 0.8rem;
+    }
+
     .quickActions {
         grid-template-columns: 1fr;
+        gap: 0.38rem;
+        padding-top: 0.62rem;
+        border-top-color: color-mix(in srgb, var(--border-color) 76%, transparent);
+    }
+
+    .quickActions a,
+    .quickActions button {
+        height: 36px;
+        min-height: 36px;
+        padding: 0.45rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        box-sizing: border-box;
     }
 }
 
@@ -335,18 +549,61 @@
     }
 
     .requestHeader {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+        gap: 0.75rem;
+    }
+
+    .requestDetails {
+        padding: 0.72rem 0.76rem 0.72rem 0.9rem;
+    }
+
+    .quickActions a,
+    .quickActions button {
+        height: 35px;
+        min-height: 35px;
+        padding: 0.42rem 0.7rem;
+        font-size: 0.8rem;
+        box-sizing: border-box;
     }
 
     .filters {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.35rem;
+        margin-bottom: 0.9rem;
+        border-radius: 18px;
     }
 
     .filterButton {
         width: 100%;
-        min-height: 40px;
+        min-height: 38px;
+        padding: 0.45rem 0.6rem;
+        font-size: 0.78rem;
+    }
+
+    .requestMobileItem {
+        padding: 0.85rem 0.85rem 0.8rem 0.95rem;
+        border-radius: 12px;
+    }
+
+    .requestMobileTop {
+        align-items: center;
+    }
+
+    .requestMobileMeta {
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+        gap: 0.55rem;
+    }
+
+    .requestMobileMeta p {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 360px) {
+    .requestMobileMeta {
+        grid-template-columns: 1fr;
     }
 }
