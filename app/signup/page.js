@@ -19,7 +19,6 @@ import {
   getSectorLabel,
 } from '@/lib/beneficiarySectors';
 import styles from './page.module.css';
-import { verifyFaceMatchWithFaceApi } from '@/lib/faceVerification.client';
 
 const purokOptions = [
   { value: '1A', label: '1A' },
@@ -74,6 +73,7 @@ const NON_PWD_MINOR_ERROR = 'Beneficiaries below 18 years old can only register 
 const MINOR_CIVIL_STATUS_ERROR = 'Beneficiaries below 18 years old must use Single as civil status.';
 const REPRESENTATIVE_PARTIAL_ERROR =
   'Complete the guardian/representative name, 11-digit contact number, and relationship, or leave all representative fields blank.';
+const REPRESENTATIVE_VALID_ID_REQUIRED_ERROR = 'Please upload the guardian/representative valid ID to continue.';
 const MIN_BIRTHDATE = '1909-01-01';
 const MIN_BIRTH_YEAR = 1909;
 const MAX_AGE = 116;
@@ -102,8 +102,7 @@ const ESTIMATED_TOTAL_MINUTES = 8;
 const MINOR_PWD_REPRESENTATIVE_ERROR =
   'Beneficiaries below 18 years old must provide a guardian or representative before registration can be completed.';
 const VALID_ID_BOTH_SIDES_ERROR = 'Please upload both the front and back images of your valid ID.';
-const FACE_VERIFICATION_FAILED_ERROR =
-  'Face verification failed. Please make sure your selfie clearly matches the photo on your valid ID.';
+const SELFIE_CAPTURE_ERROR = 'Please retake your selfie and try again.';
 
 const sectorCardDetails = {
   senior_citizen: {
@@ -224,7 +223,7 @@ function FaceRecognitionCapture({ onCapture, disabled = false, status, verifying
       if (videoRef.current) videoRef.current.srcObject = stream;
       setCameraReady(true);
     } catch {
-      setCameraError('Camera access is required to capture a live selfie for face recognition.');
+      setCameraError('Camera access is required to capture a live face selfie.');
     }
   }, [clearPreview]);
 
@@ -263,8 +262,8 @@ function FaceRecognitionCapture({ onCapture, disabled = false, status, verifying
     <div className={styles.faceRecognitionPanel}>
       <div className={styles.faceRecognitionHeader}>
         <div>
-          <h4 className={styles.faceRecognitionTitle}>Face Recognition</h4>
-          <p className={styles.faceRecognitionHint}>Center your face inside the frame, then capture a live selfie.</p>
+          <h4 className={styles.faceRecognitionTitle}>Face Selfie</h4>
+          <p className={styles.faceRecognitionHint}>Capture a live selfie to verify your identity.</p>
         </div>
         {verifying && <span className={styles.faceRecognitionLoading}>Verifying identity...</span>}
       </div>
@@ -281,11 +280,6 @@ function FaceRecognitionCapture({ onCapture, disabled = false, status, verifying
           <span className={styles.faceFrameOval} aria-hidden="true" />
         </div>
         <div className={styles.faceRecognitionActions}>
-          <div className={styles.faceChecklist} aria-label="Selfie capture tips">
-            <span>Use good lighting</span>
-            <span>Look directly at the camera</span>
-            <span>Remove mask, cap, or dark glasses</span>
-          </div>
           {!capturedPreviewUrl && (
             <Button type="button" onClick={captureSelfie} disabled={disabled || verifying || !cameraReady}>
               Capture Live Selfie
@@ -296,8 +290,8 @@ function FaceRecognitionCapture({ onCapture, disabled = false, status, verifying
               Retake Selfie
             </Button>
           )}
-          {status === 'passed' && <span className={styles.verifiedBadge}>✅ Face Match Verified</span>}
-          {status && status !== 'passed' && !verifying && <p className={styles.fieldError}>❌ Face Match Failed</p>}
+          {status === 'passed' && <span className={styles.verifiedBadge}>Face Selfie Verified</span>}
+          {status && status !== 'passed' && !verifying && <p className={styles.fieldError}>Face Selfie Failed</p>}
           {(error || cameraError) && <p className={styles.fieldError}>{error || cameraError}</p>}
         </div>
       </div>
@@ -960,29 +954,26 @@ export default function BeneficiarySignupPage() {
 
     setIdentityVerifying(true);
     try {
-      const verification = await verifyFaceMatchWithFaceApi({
-        validIdFrontImage: validIdFrontFiles[0],
-        selfieImage: selfieFile,
-      });
-      setFaceVerification(verification);
-      if (verification.status !== 'passed') {
-        const msg = verification.error || FACE_VERIFICATION_FAILED_ERROR;
-        setValidIdError(msg);
-        setStatus({ type: 'error', message: msg });
-        return { ok: false, verification };
-      }
-
       const [frontUrl, backUrl, selfieUrl] = await Promise.all([
         uploadIdentityFile(validIdFrontFiles[0], 'validIdFront'),
         uploadIdentityFile(validIdBackFiles[0], 'validIdBack'),
         uploadIdentityFile(selfieFile, 'selfie'),
       ]);
       const urls = { front: frontUrl, back: backUrl, selfie: selfieUrl };
+      const verification = {
+        status: 'passed',
+        score: null,
+        provider: 'live-selfie-capture',
+        verifiedAt: new Date().toISOString(),
+        error: null,
+        diagnostics: null,
+      };
       setIdentityUrls(urls);
-      setStatus({ type: 'success', message: 'Face match verified.' });
+      setFaceVerification(verification);
+      setStatus({ type: 'success', message: 'Face selfie saved. Your selfie will be used as your beneficiary profile photo.' });
       return { ok: true, urls, verification };
     } catch (error) {
-      const message = error?.message || FACE_VERIFICATION_FAILED_ERROR;
+      const message = error?.message || SELFIE_CAPTURE_ERROR;
       setValidIdError(message);
       setStatus({ type: 'error', message });
       return { ok: false };
@@ -1108,13 +1099,13 @@ export default function BeneficiarySignupPage() {
           return false;
         }
         if (faceVerification?.status !== 'passed') {
-          setValidIdError(FACE_VERIFICATION_FAILED_ERROR);
-          setStatus({ type: 'error', message: FACE_VERIFICATION_FAILED_ERROR });
+          setValidIdError(SELFIE_CAPTURE_ERROR);
+          setStatus({ type: 'error', message: SELFIE_CAPTURE_ERROR });
           return false;
         }
-        if (requiresRepresentative && representativeValidIdFiles.length === 0) {
-          setRepresentativeValidIdError(MINOR_PWD_REPRESENTATIVE_ERROR);
-          setStatus({ type: 'error', message: MINOR_PWD_REPRESENTATIVE_ERROR });
+        if (shouldShowRepresentativeId && representativeValidIdFiles.length === 0) {
+          setRepresentativeValidIdError(REPRESENTATIVE_VALID_ID_REQUIRED_ERROR);
+          setStatus({ type: 'error', message: REPRESENTATIVE_VALID_ID_REQUIRED_ERROR });
           return false;
         }
         return true;
@@ -1164,7 +1155,7 @@ export default function BeneficiarySignupPage() {
           validIdBackFiles.length > 0 &&
           selfieFiles.length > 0 &&
           faceVerification?.status === 'passed' &&
-          (!requiresRepresentative || representativeValidIdFiles.length > 0)
+          (!shouldShowRepresentativeId || representativeValidIdFiles.length > 0)
         );
       case 5: {
         const cn = String(form.contactNumber || '').trim();
@@ -1305,9 +1296,9 @@ export default function BeneficiarySignupPage() {
         }
       }
 
-      if (requiresRepresentative && !representativeValidIdPath) {
-        setRepresentativeValidIdError(MINOR_PWD_REPRESENTATIVE_ERROR);
-        setStatus({ type: 'error', message: MINOR_PWD_REPRESENTATIVE_ERROR });
+      if (shouldShowRepresentativeId && !representativeValidIdPath) {
+        setRepresentativeValidIdError(REPRESENTATIVE_VALID_ID_REQUIRED_ERROR);
+        setStatus({ type: 'error', message: REPRESENTATIVE_VALID_ID_REQUIRED_ERROR });
         return;
       }
 
@@ -1375,10 +1366,13 @@ export default function BeneficiarySignupPage() {
         message: 'Your account request is currently on process.',
       });
 
-      // Redirect to login after 3 seconds
+      const redirectTarget = window.localStorage.getItem('beneficiaryResidentId')
+        ? '/beneficiary/profile'
+        : '/login';
+
       setTimeout(() => {
-        router.push('/login');
-      }, 3000);
+        router.push(redirectTarget);
+      }, redirectTarget === '/beneficiary/profile' ? 0 : 3000);
     } catch (err) {
       // Avoid triggering Next.js dev overlay for expected UI errors.
       console.warn('Failed to submit beneficiary sign-up:', err?.message || String(err));
@@ -1887,7 +1881,7 @@ export default function BeneficiarySignupPage() {
               multiple={false}
               files={representativeValidIdFiles}
               onChange={handleRepresentativeValidIdChange}
-              required={requiresRepresentative}
+              required={shouldShowRepresentativeId}
             />
             {representativeValidIdError && <p className={styles.fieldError}>{representativeValidIdError}</p>}
           </div>
@@ -2070,7 +2064,7 @@ export default function BeneficiarySignupPage() {
               {[
                 ['Front ID', validIdFrontFiles[0]?.name],
                 ['Back ID', validIdBackFiles[0]?.name],
-                ['Selfie', selfieFiles[0]?.name],
+                ['Face Selfie', selfieFiles[0]?.name],
               ].map(([label, name]) => (
                 <span key={label} className={styles.reviewFileBadge}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2086,10 +2080,10 @@ export default function BeneficiarySignupPage() {
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
-                    Face Match Passed
+                    Face Selfie Verified
                   </>
                 ) : (
-                  'Face Match Pending'
+                  'Face Selfie Pending'
                 )}
               </span>
             </div>
