@@ -19,6 +19,7 @@ export default function Input({
   autoComplete,
   required = false,
   optional = false,
+  optionalPlacement = 'inline',
   disabled = false,
   error = '',
   icon = null,
@@ -63,6 +64,9 @@ export default function Input({
 
   const groupClassName = `${styles.inputGroup} ${size === 'compact' ? styles.compactGroup : ''} ${className}`.trim();
   const labelClassName = `${styles.label} ${size === 'compact' ? styles.compactLabel : ''}`.trim();
+  const optionalClassName = `${styles.optional} ${
+    optionalPlacement === 'block' ? styles.optionalBlock : ''
+  }`.trim();
   const inputClassName = `${styles.input} ${icon ? styles.withIcon : ''} ${error ? styles.inputError : ''} ${
     size === 'compact' ? styles.compactInput : ''
   }`.trim();
@@ -73,7 +77,7 @@ export default function Input({
         <label htmlFor={name} className={labelClassName}>
           {label}
           {required && <span className={styles.required}>*</span>}
-          {optional && <span className={styles.optional}>(Optional)</span>}
+          {optional && <span className={optionalClassName}>(Optional)</span>}
         </label>
       )}
       <div className={styles.inputWrapper}>

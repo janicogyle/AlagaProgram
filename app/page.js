@@ -301,15 +301,51 @@ export default function HomePage() {
     },
   ];
 
+  const showNextHeroInfo = () => {
+    setHeroInfoIndex((value) => (value + 1) % heroInfoCards.length);
+  };
+
+  const handleHeroInfoKeyDown = (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    showNextHeroInfo();
+  };
+
   useEffect(() => {
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
     if (reduceMotion) return;
     const count = heroInfoCards.length;
     const id = window.setInterval(() => {
       setHeroInfoIndex((value) => (value + 1) % count);
-    }, 5000);
+    }, 4000);
     return () => window.clearInterval(id);
   }, [heroInfoCards.length]);
+
+  useEffect(() => {
+    const sections = Array.from(document.querySelectorAll('[data-section-reveal]'));
+    if (!sections.length) return;
+
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    if (reduceMotion || !('IntersectionObserver' in window)) {
+      sections.forEach((section) => section.classList.add(styles.sectionRevealVisible));
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add(styles.sectionRevealVisible);
+          observer.unobserve(entry.target);
+        });
+      },
+      { threshold: 0.16, rootMargin: '0px 0px -10% 0px' }
+    );
+
+    sections.forEach((section) => observer.observe(section));
+
+    return () => observer.disconnect();
+  }, []);
 
   const processSteps = [
     {
@@ -435,10 +471,10 @@ export default function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <section id="home" className={styles.hero}>
+      <section id="home" className={`${styles.hero} ${styles.sectionReveal}`} data-section-reveal>
         <ConstellationBackground />
         <div className={styles.heroContainer}>
-          <div className={styles.heroContent}>
+          <div className={styles.heroContent} data-reveal-item>
             <h1 className={styles.heroTitle}>
               Barangay Sta. Rita
               <span className={styles.heroTitleHighlight}>Alaga Program</span>
@@ -457,7 +493,7 @@ export default function HomePage() {
               </a>
             </div>
           </div>
-          <div className={styles.heroVisual}>
+          <div className={styles.heroVisual} data-reveal-item>
             <div className={styles.heroIllustration}>
               <div className={styles.illustrationCard}>
                 <div className={styles.illustrationHeader}>
@@ -469,7 +505,15 @@ export default function HomePage() {
                     <small>PWD&apos;s, Senior Citizens, Solo Parents</small>
                   </div>
                 </div>
-                <div className={styles.infoCarousel} aria-live="polite">
+                <div
+                  className={styles.infoCarousel}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Show next highlight"
+                  aria-live="polite"
+                  onClick={showNextHeroInfo}
+                  onKeyDown={handleHeroInfoKeyDown}
+                >
                   {heroInfoCards.map((card, index) => (
                     <div
                       key={card.key}
@@ -530,11 +574,10 @@ export default function HomePage() {
       </section>
 
       {/* About Section */}
-      <section id="about" className={styles.about}>
+      <section id="about" className={`${styles.about} ${styles.sectionReveal}`} data-section-reveal>
         <div className={styles.sectionContainer}>
           <div className={styles.aboutWrapper}>
-            <div className={styles.aboutLeft}>
-              <span className={styles.sectionTag}>Alagang Serbisyo</span>
+            <div className={styles.aboutLeft} data-reveal-item>
               <h2 className={styles.aboutMainTitle}>
                 Beneficiary <span className={styles.highlight}>Benefits</span>
               </h2>
@@ -557,7 +600,7 @@ export default function HomePage() {
             <div className={styles.aboutRight}>
               <div className={styles.aboutGrid}>
                 {aboutFeatures.map((feature, index) => (
-                  <div key={index} className={styles.aboutCard}>
+                  <div key={index} className={styles.aboutCard} data-reveal-item>
                     <div className={styles.aboutIcon}>
                       {feature.icon}
                     </div>
@@ -581,10 +624,9 @@ export default function HomePage() {
       </section>
 
       {/* Process Section */}
-      <section id="how-it-works" className={styles.process}>
+      <section id="how-it-works" className={`${styles.process} ${styles.sectionReveal}`} data-section-reveal>
         <div className={styles.sectionContainer}>
-          <div className={styles.sectionHeader}>
-            <span className={styles.sectionTag}>How It Works</span>
+          <div className={styles.sectionHeader} data-reveal-item>
             <h2 className={styles.sectionTitle}>Simple Registration Process</h2>
             <p className={styles.sectionDescription}>
               Follow these easy steps to register residents and issue Alaga Program cards.
@@ -592,7 +634,7 @@ export default function HomePage() {
           </div>
           <div className={styles.processGrid}>
             {processSteps.map((item, index) => (
-              <div key={index} className={styles.processCard}>
+              <div key={index} className={styles.processCard} data-reveal-item>
                 <div className={styles.processStep}>{item.step}</div>
                 <div className={styles.processIcon}>{item.icon}</div>
                 <h3 className={styles.processTitle}>{item.title}</h3>
@@ -608,7 +650,7 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-          <div className={styles.processNote}>
+          <div className={styles.processNote} data-reveal-item>
             <div className={styles.processNoteBox}>
               <div className={styles.processNoteHeader}>
                 <div className={styles.processNoteHeaderLeft}>
@@ -690,16 +732,17 @@ export default function HomePage() {
       </section>
 
       {/* Contact Section */}
-      <section id="contact" className={styles.contact}>
+      <section id="contact" className={`${styles.contact} ${styles.sectionReveal}`} data-section-reveal>
         <div className={styles.sectionContainer}>
           <div className={styles.contactContent}>
-            <div className={styles.contactInfo}>
-              <span className={styles.sectionTag}>Contact Us</span>
-              <h2 className={styles.sectionTitle}>Get in Touch</h2>
-              <p className={styles.contactDescription}>
-                Have questions about the Alaga Program System? 
-                Visit us at the Barangay Hall or reach out through the following channels.
-              </p>
+            <div className={styles.contactInfo} data-reveal-item>
+              <div className={styles.contactHeader}>
+                <h2 className={styles.sectionTitle}>Get in Touch</h2>
+                <p className={styles.contactDescription}>
+                  Have questions about the Alaga Program System?
+                  Visit us at the Barangay Hall or reach out through the following channels.
+                </p>
+              </div>
               <div className={styles.contactDetails}>
                 <div className={styles.contactItem}>
                   <div className={styles.contactIcon}>
@@ -708,7 +751,7 @@ export default function HomePage() {
                       <circle cx="12" cy="10" r="3" />
                     </svg>
                   </div>
-                  <div>
+                  <div className={styles.contactItemBody}>
                     <strong>Address</strong>
                     <p>Horseshoe Drive, Olongapo City, Zambales, Philippines</p>
                   </div>
@@ -719,7 +762,7 @@ export default function HomePage() {
                       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                     </svg>
                   </div>
-                  <div>
+                  <div className={styles.contactItemBody}>
                     <strong>Phone</strong>
                     <p> 047 222 9225</p>
                   </div>
@@ -731,7 +774,7 @@ export default function HomePage() {
                       <polyline points="22,6 12,13 2,6" />
                     </svg>
                   </div>
-                  <div>
+                  <div className={styles.contactItemBody}>
                     <strong>Email</strong>
                     <p>barangaystarita2023@gmail.com</p>
                   </div>
@@ -743,17 +786,25 @@ export default function HomePage() {
                       <polyline points="12 6 12 12 16 14" />
                     </svg>
                   </div>
-                  <div>
+                  <div className={styles.contactItemBody}>
                     <strong>Office Hours</strong>
                     <p>Monday - Friday, 8:00 AM - 5:00 PM</p>
                   </div>
                 </div>
               </div>
             </div>
-            <div className={styles.contactCTA}>
+            <div className={styles.contactCTA} data-reveal-item>
               <div className={styles.ctaBox}>
+                <div className={styles.ctaTop}>
+                  <div className={styles.ctaLogo} aria-hidden="true" />
+                  <span className={styles.ctaKicker}>Barangay Sta. Rita</span>
+                </div>
                 <h3>Ready to Get Started?</h3>
                 <p>Access the system to manage resident records and assistance programs.</p>
+                <div className={styles.ctaMetaGrid} aria-label="System access notes">
+                  <span>Staff portal</span>
+                  <span>Secure access</span>
+                </div>
                 <Link href="/login" className={styles.ctaButton}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
@@ -769,9 +820,9 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className={styles.footer}>
+      <footer className={`${styles.footer} ${styles.sectionReveal}`} data-section-reveal>
         <div className={styles.footerContainer}>
-          <div className={styles.footerTop}>
+          <div className={styles.footerTop} data-reveal-item>
             <div className={styles.footerBrand}>
               <div className={styles.footerLogo}>
                 <img src="/Brand.png" alt="Barangay Logo" />
@@ -788,7 +839,7 @@ export default function HomePage() {
               <a href="#contact">Contact</a>
             </div>
           </div>
-          <div className={styles.footerBottom}>
+          <div className={styles.footerBottom} data-reveal-item>
             <p>&copy; 2026 Barangay Sta. Rita. All rights reserved.</p>
             <p>Official Government Digital Service</p>
           </div>

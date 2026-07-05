@@ -1594,6 +1594,7 @@ export default function BeneficiarySignupPage() {
           placeholder="Enter guardian or representative name"
           required={requiresRepresentative}
           optional={!requiresRepresentative}
+          className={styles.representativeField}
         />
         <Input
           label="Guardian/Representative Contact Number"
@@ -1605,6 +1606,7 @@ export default function BeneficiarySignupPage() {
           mask="ph-contact"
           required={requiresRepresentative}
           optional={!requiresRepresentative}
+          className={styles.representativeField}
         />
         <Input
           label="Relationship to Beneficiary"
@@ -1614,6 +1616,8 @@ export default function BeneficiarySignupPage() {
           placeholder="Parent, guardian, sibling, etc."
           required={requiresRepresentative}
           optional={!requiresRepresentative}
+          optionalPlacement="block"
+          className={styles.representativeField}
         />
       </div>
     </section>
@@ -1828,9 +1832,16 @@ export default function BeneficiarySignupPage() {
           details on both sides.
         </p>
       </div>
+      <div className={styles.uploadOwnerHeader}>
+        <span className={styles.uploadOwnerBadge}>Beneficiary</span>
+        <div>
+          <h4 className={styles.uploadOwnerTitle}>Beneficiary Valid ID</h4>
+          <p className={styles.uploadOwnerText}>Upload the beneficiary&apos;s own valid ID: front side and back side.</p>
+        </div>
+      </div>
       <div className={styles.validIdRow}>
         <FileUpload
-          label="Front of Valid ID"
+          label="Beneficiary Valid ID - Front"
           documentType="validIdImage"
           multiple={false}
           files={validIdFrontFiles}
@@ -1840,7 +1851,7 @@ export default function BeneficiarySignupPage() {
       </div>
       <div className={styles.validIdRow}>
         <FileUpload
-          label="Back of Valid ID"
+          label="Beneficiary Valid ID - Back"
           documentType="validIdImage"
           multiple={false}
           files={validIdBackFiles}
@@ -1859,16 +1870,27 @@ export default function BeneficiarySignupPage() {
       )}
       {!hasUploadedIdentityImages && validIdError && <p className={styles.fieldError}>{validIdError}</p>}
       {shouldShowRepresentativeId && (
-        <div className={styles.validIdRow}>
-          <FileUpload
-            label="Guardian/Representative Valid ID"
-            documentType="validId"
-            multiple={false}
-            files={representativeValidIdFiles}
-            onChange={handleRepresentativeValidIdChange}
-            required={requiresRepresentative}
-          />
-          {representativeValidIdError && <p className={styles.fieldError}>{representativeValidIdError}</p>}
+        <div className={styles.representativeUploadGroup}>
+          <div className={styles.uploadOwnerHeader}>
+            <span className={styles.uploadOwnerBadge}>Guardian / Representative</span>
+            <div>
+              <h4 className={styles.uploadOwnerTitle}>Guardian / Representative Valid ID</h4>
+              <p className={styles.uploadOwnerText}>
+                Upload the valid ID of the person assisting or representing the beneficiary.
+              </p>
+            </div>
+          </div>
+          <div className={styles.validIdRow}>
+            <FileUpload
+              label="Guardian / Representative Valid ID"
+              documentType="validId"
+              multiple={false}
+              files={representativeValidIdFiles}
+              onChange={handleRepresentativeValidIdChange}
+              required={requiresRepresentative}
+            />
+            {representativeValidIdError && <p className={styles.fieldError}>{representativeValidIdError}</p>}
+          </div>
         </div>
       )}
     </section>
