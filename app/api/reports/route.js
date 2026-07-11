@@ -6,6 +6,7 @@ import path from 'path';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { getAllowedSectorKeys, isAdminProfile, rowMatchesSectorAccess } from '@/lib/sectorAccess';
 import { buildEligibilityMaps, getResidentEligibility } from '@/lib/residentEligibility';
+import { getCooldownInfo } from '@/lib/requestCooldown';
 
 export const runtime = 'nodejs';
 
@@ -392,7 +393,7 @@ async function buildNotYetEligibleReport({ db, profile, countOnly }) {
 
   const allowedResidents = (residents || []).filter((row) => rowMatchesSectorAccess(row, profile));
   const residentIds = allowedResidents.map((row) => row.id).filter(Boolean);
-  if (!residentIds.length) return { title: 'Not Yet Eligible', columns: [], rows: [] };
+  if (!residentIds.length) return { title: 'Not Yet Eligible Beneficiaries', columns: [], rows: [] };
 
   const { data: requests, error: requestsError } = await db
     .from('assistance_requests')
@@ -404,26 +405,33 @@ async function buildNotYetEligibleReport({ db, profile, countOnly }) {
   const maps = buildEligibilityMaps(requests || []);
   const matches = allowedResidents
     .map((resident) => {
-      const blocked = ASSISTANCE_TYPES.map((type) => {
-        const eligibility = getResidentEligibility(resident.id, maps, type);
-        if (eligibility.canCreateRequest) return null;
-        const reason = eligibility.blockReason === 'active' ? 'active' : 'cooldown';
-        return {
-          type,
-          reason,
-          nextEligibleDate: eligibility.cooldownInfo?.nextEligibleDate || '',
-          lastRequestDate: eligibility.cooldownInfo?.lastRequestDate || '',
-        };
-      }).filter(Boolean);
+      const eligibility = getResidentEligibility(resident.id, maps);
+      if (eligibility.canCreateRequest) return null;
 
-      return { resident, blocked };
+      const latestReleased = maps.latestReleasedByResident?.get(resident.id)?.row;
+      const sourceRequest = eligibility.activeRequest || latestReleased || null;
+      const type = sourceRequest?.assistance_type || '';
+      const fallbackCooldownInfo = getCooldownInfo(sourceRequest?.request_date || sourceRequest?.created_at || null);
+      const reason = 'Not Yet Eligible';
+
+      return {
+        resident,
+        blocked: [
+          {
+            type,
+            reason,
+            nextEligibleDate: eligibility.cooldownInfo?.nextEligibleDate || fallbackCooldownInfo.nextEligibleDate || '',
+            lastRequestDate: eligibility.cooldownInfo?.lastRequestDate || fallbackCooldownInfo.lastRequestDate || '',
+          },
+        ],
+      };
     })
-    .filter((entry) => entry.blocked.length > 0);
+    .filter(Boolean);
   if (countOnly) return { rows: matches };
 
   return {
     title: 'Not Yet Eligible Beneficiaries',
-    columns: ['No.', 'Control Number', 'Name', 'Sectors', 'Contact Number', 'Blocked Categories', 'Reason', 'Next Eligible Date'],
+    columns: ['No.', 'Control Number', 'Name', 'Sectors', 'Contact Number', 'Blocked Categories', 'Status', 'Next Eligible Date'],
     rows: matches.map((entry, idx) => [
       idx + 1,
       entry.resident.control_number || '',

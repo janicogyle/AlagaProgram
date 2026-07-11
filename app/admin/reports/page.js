@@ -50,7 +50,7 @@ const defaultReportTypes = [
   },
   {
     id: 'not_yet_eligible',
-    title: 'Not Yet Eligible',
+    title: 'Not Yet Eligible Beneficiaries',
     description: 'Beneficiaries blocked by cooldown or active requests',
     count: 0,
     color: '#b45309',
