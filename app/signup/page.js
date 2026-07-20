@@ -12,6 +12,7 @@ import FileUpload from '../../components/FileUpload';
 import ConstellationBackground from '../../components/ConstellationBackground';
 import LegalContent from '@/components/LegalContent';
 import SectionHeader from '@/components/SectionHeader';
+import { supabase } from '@/lib/supabaseClient';
 import {
   BENEFICIARY_SECTOR_OPTIONS,
   deriveSectorFlags,
@@ -103,6 +104,9 @@ const MINOR_PWD_REPRESENTATIVE_ERROR =
   'Beneficiaries below 18 years old must provide a guardian or representative before registration can be completed.';
 const VALID_ID_BOTH_SIDES_ERROR = 'Please upload both the front and back images of your valid ID.';
 const SELFIE_CAPTURE_ERROR = 'Please retake your selfie and try again.';
+const SIGNUP_DRAFT_STORAGE_KEY = 'alaga-signup-draft';
+const SIGNUP_VERIFIED_EMAIL_KEY = 'alaga-signup-verified-email';
+const SIGNUP_EMAIL_TOKEN_KEY = 'alaga-signup-email-verification-token';
 
 const sectorCardDetails = {
   senior_citizen: {
@@ -326,7 +330,10 @@ export default function BeneficiarySignupPage() {
   const [hasAgreed, setHasAgreed] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({
     contactNumber: '',
+    email: '',
   });
+  const [emailVerification, setEmailVerification] = useState({ email: '', token: '' });
+  const [emailVerifying, setEmailVerifying] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '' });
   const [otpCode, setOtpCode] = useState('');
   const [otpStatus, setOtpStatus] = useState(null);
@@ -349,6 +356,7 @@ export default function BeneficiarySignupPage() {
     citizenship: 'Filipino',
     civilStatus: '',
     contactNumber: '',
+    email: '',
     password: '',
     confirmPassword: '',
     primarySector: '',
@@ -412,11 +420,53 @@ export default function BeneficiarySignupPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const draftText = window.sessionStorage.getItem(SIGNUP_DRAFT_STORAGE_KEY);
+      if (draftText) {
+        const draft = JSON.parse(draftText);
+        if (draft?.form && typeof draft.form === 'object') {
+          setForm((prev) => ({ ...prev, ...draft.form }));
+        }
+        if (Number.isFinite(Number(draft?.currentStep))) {
+          setCurrentStep(Math.min(TOTAL_STEPS, Math.max(1, Number(draft.currentStep))));
+        }
+        if (typeof draft?.hasAgreed === 'boolean') setHasAgreed(draft.hasAgreed);
+        if (draft?.identityUrls && typeof draft.identityUrls === 'object') {
+          setIdentityUrls((prev) => ({ ...prev, ...draft.identityUrls }));
+        }
+        if (draft?.faceVerification) setFaceVerification(draft.faceVerification);
+        if (typeof draft?.otpVerified === 'boolean') setOtpVerified(draft.otpVerified);
+        if (draft?.otpVerifiedContact) setOtpVerifiedContact(draft.otpVerifiedContact);
+        window.sessionStorage.removeItem(SIGNUP_DRAFT_STORAGE_KEY);
+      }
+
+      const verifiedEmail = String(window.sessionStorage.getItem(SIGNUP_VERIFIED_EMAIL_KEY) || '').trim().toLowerCase();
+      const verificationToken = window.sessionStorage.getItem(SIGNUP_EMAIL_TOKEN_KEY) || '';
+      if (verifiedEmail && verificationToken) {
+        setEmailVerification({ email: verifiedEmail, token: verificationToken });
+        setForm((prev) => ({ ...prev, email: verifiedEmail }));
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('notice') === 'gmail-verified') {
+        showToast('Gmail verified successfully.', 'success');
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    } catch (error) {
+      console.warn('Unable to restore signup draft:', error);
+    }
+  }, []);
+
   // Computed values
   const hasSectorSelected = !!form.primarySector;
   const isOtpVerified = otpVerified && otpVerifiedContact === form.contactNumber;
   const isContactValid = /^0\d{10}$/.test(String(form.contactNumber || '').trim());
   const isContactBlocked = !!contactUnavailable;
+  const normalizedEmail = String(form.email || '').trim().toLowerCase();
+  const isEmailVerified = !!normalizedEmail && emailVerification.email === normalizedEmail && !!emailVerification.token;
 
   // ===========================
   // HELPERS
@@ -550,6 +600,26 @@ export default function BeneficiarySignupPage() {
     showToast(message, 'error');
   };
 
+  const saveSignupDraft = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.sessionStorage.setItem(
+        SIGNUP_DRAFT_STORAGE_KEY,
+        JSON.stringify({
+          form,
+          currentStep,
+          hasAgreed,
+          identityUrls,
+          faceVerification,
+          otpVerified,
+          otpVerifiedContact,
+        }),
+      );
+    } catch (error) {
+      console.warn('Unable to save signup draft before Gmail verification:', error);
+    }
+  };
+
   const getPersonalEligibilityError = (age = ageValue, civilStatus = form.civilStatus) => {
     const birthdayError = getBirthdayValidationError(form.birthday);
     if (birthdayError) return birthdayError;
@@ -605,6 +675,17 @@ export default function BeneficiarySignupPage() {
       setContactUnavailable('');
     }
 
+    if (name === 'email') {
+      const nextEmail = String(value || '').trim().toLowerCase();
+      if (nextEmail !== emailVerification.email) {
+        setEmailVerification({ email: '', token: '' });
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.removeItem(SIGNUP_VERIFIED_EMAIL_KEY);
+          window.sessionStorage.removeItem(SIGNUP_EMAIL_TOKEN_KEY);
+        }
+      }
+    }
+
     if (name === 'representativeContact') {
       setForm((prev) => ({ ...prev, [name]: String(value || '').replace(/\D/g, '').slice(0, 11) }));
       return;
@@ -632,6 +713,47 @@ export default function BeneficiarySignupPage() {
     }
 
     setForm((prev) => ({ ...prev, [name]: newValue }));
+  };
+
+  const handleVerifyGmail = async () => {
+    const email = String(form.email || '').trim().toLowerCase();
+    if (emailVerifying) return;
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setFieldErrors((prev) => ({ ...prev, email: 'Please enter a valid Gmail or email address first.' }));
+      showValidationError('Please enter a valid Gmail or email address first.');
+      return;
+    }
+
+    if (!supabase) {
+      showValidationError('Google verification is not configured. Please contact the administrator.');
+      return;
+    }
+
+    setEmailVerifying(true);
+    try {
+      saveSignupDraft();
+      const redirectTo = `${window.location.origin}/auth/callback?type=signup-email`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account',
+            login_hint: email,
+          },
+        },
+      });
+
+      if (error) {
+        setEmailVerifying(false);
+        showValidationError(error.message || 'Unable to start Gmail verification.');
+      }
+    } catch (error) {
+      setEmailVerifying(false);
+      showValidationError(error?.message || 'Unable to start Gmail verification.');
+    }
   };
 
   const handleSectorSelectChange = (event) => {
@@ -1112,9 +1234,20 @@ export default function BeneficiarySignupPage() {
       }
       case 5: {
         const cn = String(form.contactNumber || '').trim();
+        const email = String(form.email || '').trim();
         if (!/^0\d{10}$/.test(cn)) {
           setFieldErrors((prev) => ({ ...prev, contactNumber: 'Contact number must be 11 digits starting with 0.' }));
           setStatus({ type: 'error', message: 'Please enter a valid Philippine contact number.' });
+          return false;
+        }
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          setFieldErrors((prev) => ({ ...prev, email: 'Please enter a valid Gmail or email address.' }));
+          setStatus({ type: 'error', message: 'Please enter a valid Gmail or email address.' });
+          return false;
+        }
+        if (email && !isEmailVerified) {
+          setFieldErrors((prev) => ({ ...prev, email: 'Please verify this Gmail before continuing.' }));
+          setStatus({ type: 'error', message: 'Please verify your Gmail before continuing.' });
           return false;
         }
         if (!form.password || form.password.length < 8) {
@@ -1159,8 +1292,10 @@ export default function BeneficiarySignupPage() {
         );
       case 5: {
         const cn = String(form.contactNumber || '').trim();
+        const email = String(form.email || '').trim();
         return (
           /^0\d{10}$/.test(cn) &&
+          (!email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) &&
           !!form.password &&
           form.password.length >= 8 &&
           form.password === form.confirmPassword &&
@@ -1221,7 +1356,7 @@ export default function BeneficiarySignupPage() {
   const handleFinalSubmit = async () => {
     if (isSubmitting) return;
     setStatus(null);
-    setFieldErrors({ contactNumber: '' });
+    setFieldErrors({ contactNumber: '', email: '' });
 
     for (let step = 1; step < TOTAL_STEPS; step += 1) {
       if (!validateStep(step)) {
@@ -1312,6 +1447,8 @@ export default function BeneficiarySignupPage() {
           lastName: form.lastName,
           birthday: form.birthday,
           contactNumber: form.contactNumber,
+          email: form.email,
+          emailVerificationToken: emailVerification.token,
           password: form.password,
           primarySector: form.primarySector,
           secondarySector: form.secondarySector,
@@ -1350,6 +1487,9 @@ export default function BeneficiarySignupPage() {
         const msg = error || message || 'Failed to submit sign-up request.';
         if (String(msg).toLowerCase().includes('contact number')) {
           setFieldErrors((prev) => ({ ...prev, contactNumber: msg }));
+        }
+        if (String(msg).toLowerCase().includes('email')) {
+          setFieldErrors((prev) => ({ ...prev, email: msg }));
         }
         setStatus({ type: 'error', message: msg });
         return;
@@ -1765,6 +1905,40 @@ export default function BeneficiarySignupPage() {
             className={styles.contactField}
           />
         </div>
+        <div className={styles.emailVerificationRow}>
+          <Input
+            label="Gmail / Email Address"
+            type="email"
+            name="email"
+            value={form.email}
+            onChange={handleChange}
+            placeholder="name@gmail.com"
+            autoComplete="email"
+            error={fieldErrors.email}
+            optional
+            size="compact"
+            className={styles.emailField}
+          />
+          <Button
+            type="button"
+            variant={isEmailVerified ? 'secondary' : 'primary'}
+            onClick={handleVerifyGmail}
+            disabled={emailVerifying || !normalizedEmail || isEmailVerified}
+            size="compact"
+          >
+            {emailVerifying ? 'Verifying...' : isEmailVerified ? 'Verified' : 'Verify Gmail'}
+          </Button>
+          {isEmailVerified ? (
+            <span className={styles.emailVerifiedBadge}>
+              <span className={styles.otpVerifiedDot} aria-hidden="true" />
+              Gmail verified
+            </span>
+          ) : normalizedEmail ? (
+            <span className={styles.emailVerifyNote}>Gmail is optional, but entered Gmail addresses must be verified.</span>
+          ) : (
+            <span className={styles.otpHint}>Verify Gmail to use Google sign-in after approval.</span>
+          )}
+        </div>
         <Input
           label="Password"
           type="password"
@@ -2044,6 +2218,10 @@ export default function BeneficiarySignupPage() {
                     </span>
                   )}
                 </div>
+              </div>
+              <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>Gmail / Email</span>
+                <span className={styles.reviewValue}>{form.email || 'Not linked'}</span>
               </div>
               <div className={styles.reviewItem}>
                 <span className={styles.reviewLabel}>Password</span>

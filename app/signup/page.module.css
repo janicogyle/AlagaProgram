@@ -575,6 +575,37 @@
   min-width: 0;
 }
 
+.emailVerificationRow {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.65rem;
+}
+
+.emailField {
+  min-width: 0;
+}
+
+.emailVerifiedBadge {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: fit-content;
+  color: #166534;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.emailVerifyNote {
+  grid-column: 1 / -1;
+  color: #92400e;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .representativeField label {
   min-height: 2.6rem;
   line-height: 1.45;
@@ -747,6 +778,18 @@
   margin: 0.25rem 0 0;
   color: #64748b;
   font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.fieldNote {
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.84rem;
+  font-weight: 700;
   line-height: 1.45;
 }
 
@@ -1492,6 +1535,11 @@
   .otpInputWrap {
     max-width: 100%;
     width: 100%;
+  }
+
+  .emailVerificationRow {
+    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 
   .reviewGrid {

@@ -7,6 +7,7 @@ import { logActivity } from '@/lib/activityLogger.server';
 import { applyDirectSectorFilter } from '@/lib/sectorAccess';
 import { validateSectorPair } from '@/lib/beneficiarySectors';
 import { verifyFaceMatch } from '@/lib/faceVerification.server';
+import { verifyEmailVerificationToken } from '@/lib/emailVerification.server';
 
 export const runtime = 'nodejs';
 
@@ -47,6 +48,10 @@ function normalizeContactNumber(input) {
   }
 
   return digits;
+}
+
+function normalizeEmail(input) {
+  return String(input || '').trim().toLowerCase();
 }
 
 function getTodayIso() {
@@ -205,6 +210,7 @@ async function insertAccountRequestWithRetry(db, payload) {
     'face_verification_status',
     // Do not silently drop password_hash; approval/login flow depends on it.
     'password_hash',
+    'email',
   ]);
 
   let current = payload;
@@ -294,6 +300,7 @@ export async function GET(request) {
       'citizenship',
       'civil_status',
       'contact_number',
+      'email',
       'house_no',
       'purok',
       'street',
@@ -400,6 +407,7 @@ export async function POST(request) {
     }
 
     const contactNumber = normalizeContactNumber(body.contactNumber);
+    const email = normalizeEmail(body.email);
     const password = body.password;
 
     if (
@@ -418,6 +426,17 @@ export async function POST(request) {
 
     if (contactNumber.length !== 11) {
       return NextResponse.json({ data: null, error: 'Contact number must be 11 digits.' }, { status: 400 });
+    }
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ data: null, error: 'Invalid email address.' }, { status: 400 });
+    }
+
+    if (email) {
+      const emailVerification = verifyEmailVerificationToken(body.emailVerificationToken, email);
+      if (!emailVerification.ok) {
+        return NextResponse.json({ data: null, error: emailVerification.error }, { status: 403 });
+      }
     }
 
     const otpCheck = await requireSignupOtp(db, contactNumber);
@@ -447,15 +466,16 @@ export async function POST(request) {
       return NextResponse.json({ data: null, error: 'Selfie/face capture is required.' }, { status: 400 });
     }
 
-    const identityDocCheck = validateCloudinaryDocumentUrls([validIdFrontUrl, validIdBackUrl, selfieUrl], {
+    const identityUrlsForValidation = [validIdFrontUrl, validIdBackUrl, selfieUrl].filter(Boolean);
+    const identityDocCheck = validateCloudinaryDocumentUrls(identityUrlsForValidation, {
       label: 'Identity document',
     });
     if (!identityDocCheck.ok) {
       return NextResponse.json({ data: null, error: identityDocCheck.error }, { status: 400 });
     }
 
-    const cloudinaryIdentityUrls = filterCloudinaryUrls([validIdFrontUrl, validIdBackUrl, selfieUrl]);
-    if (cloudinaryIdentityUrls.length !== 3) {
+    const cloudinaryIdentityUrls = filterCloudinaryUrls(identityUrlsForValidation);
+    if (cloudinaryIdentityUrls.length !== identityUrlsForValidation.length) {
       return NextResponse.json({ data: null, error: 'Identity documents must be uploaded to Cloudinary.' }, { status: 400 });
     }
     const verifiedFace = await verifyFaceMatch({ idImageUrl: validIdFrontUrl, selfieUrl });
@@ -562,6 +582,26 @@ export async function POST(request) {
       );
     }
 
+    if (email) {
+      const { data: existingEmailRequest, error: existingEmailRequestError } = await db
+        .from('account_requests')
+        .select('id, status')
+        .eq('email', email)
+        .limit(1)
+        .maybeSingle();
+
+      if (existingEmailRequestError && existingEmailRequestError.code !== 'PGRST116') {
+        throw existingEmailRequestError;
+      }
+
+      if (existingEmailRequest) {
+        return NextResponse.json(
+          { data: null, error: 'This email address has already been used. Please use a different email address.' },
+          { status: 409 },
+        );
+      }
+    }
+
     // Best-effort: also block if already registered as a resident
     try {
       const { data: existingResident, error: existingResidentError } = await db
@@ -581,12 +621,33 @@ export async function POST(request) {
       // Ignore if residents table is not accessible in this environment
     }
 
+    if (email) {
+      try {
+        const { data: existingResidentEmail, error: existingResidentEmailError } = await db
+          .from('residents')
+          .select('id')
+          .eq('email', email)
+          .limit(1)
+          .maybeSingle();
+
+        if (!existingResidentEmailError && existingResidentEmail) {
+          return NextResponse.json(
+            { data: null, error: 'This email address is already registered' },
+            { status: 409 },
+          );
+        }
+      } catch {
+        // Older databases may not have residents.email yet; insert retry will report the needed migration.
+      }
+    }
+
     const insertPayload = {
       first_name: body.firstName,
       middle_name: body.middleName || null,
       last_name: body.lastName,
       birthday: body.birthday,
       contact_number: contactNumber,
+      email: email || null,
       age,
       birthplace: body.birthplace || null,
       sex: body.sex || null,

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { UnifiedLoginForm, Modal, Button } from '@/components';
 import ConstellationBackground from '@/components/ConstellationBackground';
 import LegalContent from '@/components/LegalContent';
+import { supabase } from '@/lib/supabaseClient';
 
 const PHILIPPINES_TIME_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 const PHILIPPINES_TIME_ENDPOINTS = [
@@ -48,7 +49,9 @@ const getPhilippinesTimeEpochMs = (payload) => {
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [alertState, setAlertState] = useState({ open: false, title: '', message: '' });
+  const [toastState, setToastState] = useState({ open: false, title: '', message: '' });
   const [legalModal, setLegalModal] = useState(null);
   const [floatingPhilippinesTime, setFloatingPhilippinesTime] = useState(null);
   const [floatingTimeStatus, setFloatingTimeStatus] = useState('syncing');
@@ -56,6 +59,10 @@ export default function LoginPage() {
 
   const openAlert = ({ title, message }) => {
     setAlertState({ open: true, title, message });
+  };
+
+  const closeToast = () => {
+    setToastState((prev) => ({ ...prev, open: false }));
   };
 
   const closeAlert = () => {
@@ -112,6 +119,47 @@ export default function LoginPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const notice = params.get('notice');
+    const notices = {
+      'google-email-not-linked': {
+        title: 'Gmail not linked',
+        message:
+          'This Gmail is not connected to an approved beneficiary account. Use your contact number, or sign up with this Gmail and wait for approval.',
+      },
+      'google-signup-pending': {
+        title: 'Signup pending approval',
+        message:
+          'Your Gmail is linked to a sign-up request that is still under admin review. Please wait for approval before signing in.',
+      },
+      'google-signup-incomplete': {
+        title: 'Signup needs attention',
+        message:
+          'Your Gmail is linked to a sign-up request that needs correction or resubmission before you can sign in.',
+      },
+    };
+    const toastNotice = notices[notice];
+    if (!toastNotice) return;
+
+    setToastState({
+      open: true,
+      title: toastNotice.title,
+      message: toastNotice.message,
+    });
+
+    const cleanUrl = `${window.location.pathname}${window.location.hash || ''}`;
+    window.history.replaceState(null, '', cleanUrl);
+
+    const timer = window.setTimeout(() => {
+      setToastState((prev) => ({ ...prev, open: false }));
+    }, 7000);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const handleLogin = async ({ username, password }) => {
     setLoading(true);
 
@@ -165,6 +213,43 @@ export default function LoginPage() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    if (!supabase) {
+      openAlert({
+        title: 'Login unavailable',
+        message: 'Supabase is not configured. Please contact the administrator.',
+      });
+      return;
+    }
+
+    setGoogleLoading(true);
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback?type=beneficiary&next=/beneficiary/dashboard`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account',
+          },
+        },
+      });
+
+      if (error) {
+        openAlert({ title: 'Google sign-in failed', message: error.message });
+        setGoogleLoading(false);
+      }
+    } catch (error) {
+      console.error('Google login error:', error);
+      openAlert({
+        title: 'Google sign-in error',
+        message: error?.message || 'Unable to start Google sign-in. Please try again.',
+      });
+      setGoogleLoading(false);
+    }
+  };
+
   const floatingDateLabel = floatingPhilippinesTime
     ? philippinesFloatingDateFormatter.format(floatingPhilippinesTime)
     : floatingTimeStatus === 'error'
@@ -189,6 +274,19 @@ export default function LoginPage() {
         <span className={styles.backIcon} aria-hidden="true"></span>
         <span className={styles.backLabel}>Back</span>
       </button>
+
+      {toastState.open ? (
+        <div className={styles.loginToast} role="status" aria-live="polite">
+          <div className={styles.loginToastIcon} aria-hidden="true">!</div>
+          <div className={styles.loginToastBody}>
+            <strong>{toastState.title}</strong>
+            <span>{toastState.message}</span>
+          </div>
+          <button type="button" className={styles.loginToastClose} onClick={closeToast} aria-label="Dismiss notification">
+            x
+          </button>
+        </div>
+      ) : null}
 
       <div className={styles.loginShell}>
         <div className={styles.welcomePanel}>
@@ -216,7 +314,14 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <UnifiedLoginForm role="beneficiary" onLogin={handleLogin} isSubmitting={loading} showTitle={false} />
+            <UnifiedLoginForm
+              role="beneficiary"
+              onLogin={handleLogin}
+              onGoogleLogin={handleGoogleLogin}
+              isSubmitting={loading}
+              isGoogleSubmitting={googleLoading}
+              showTitle={false}
+            />
             
             <p className={styles.signup}>
               Don&apos;t have an account? <Link href="/signup">Sign up</Link>

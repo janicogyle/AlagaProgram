@@ -142,6 +142,7 @@ CREATE TABLE IF NOT EXISTS public.account_requests (
   last_name TEXT NOT NULL,
   birthday DATE,
   contact_number TEXT NOT NULL,
+  email TEXT,
   password_hash TEXT,
 
   -- Address
@@ -219,6 +220,9 @@ END $$;
 
 DROP INDEX IF EXISTS public.idx_account_requests_contact;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_account_requests_contact ON public.account_requests(contact_number);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_account_requests_email_unique
+  ON public.account_requests(lower(email))
+  WHERE email IS NOT NULL AND email <> '';
 
 CREATE INDEX IF NOT EXISTS idx_account_requests_created ON public.account_requests(created_at);
 
@@ -258,6 +262,7 @@ ALTER TABLE public.account_requests
 
 -- Ensure password columns exist (safe to run multiple times)
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS valid_id_url TEXT;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS valid_id_urls JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS valid_id_front_url TEXT;
@@ -311,6 +316,7 @@ BEGIN
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS civil_status TEXT;
 
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS contact_number TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS email TEXT;
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS house_no TEXT;
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS purok TEXT;
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS street TEXT;
@@ -351,6 +357,12 @@ BEGIN
       CREATE UNIQUE INDEX IF NOT EXISTS idx_residents_contact_number_unique
       ON public.residents(contact_number)
       WHERE contact_number IS NOT NULL AND contact_number <> ''
+    $$;
+
+    EXECUTE $$
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_residents_email_unique
+      ON public.residents(lower(email))
+      WHERE email IS NOT NULL AND email <> ''
     $$;
 
     -- Ensure updated_at auto-refreshes on updates

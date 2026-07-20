@@ -805,6 +805,10 @@ export default function AccountRequestsPage() {
                   </span>
                 </div>
                 <div>
+                  <span className={styles.label}>Gmail / Email</span>
+                  <span className={styles.value}>{detailsRequest.email || "-"}</span>
+                </div>
+                <div>
                   <span className={styles.label}>Birthday</span>
                   <span className={styles.value}>
                     {formatDateOnly(detailsRequest.birthday || detailsRequest.birth_day || detailsRequest.birthDate)}
