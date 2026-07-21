@@ -606,6 +606,28 @@
   line-height: 1.4;
 }
 
+.optionalLoginSection {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eef2f7;
+}
+
+.optionalLoginTitle {
+  margin: 0;
+  color: #1f2937;
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.optionalLoginText {
+  margin: 0.2rem 0 0;
+  color: #64748b;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
 .representativeField label {
   min-height: 2.6rem;
   line-height: 1.45;
@@ -907,21 +929,45 @@
 
 .faceRecognitionBody {
   display: grid;
-  grid-template-columns: minmax(280px, 450px) minmax(220px, 1fr);
-  gap: 1.25rem;
-  align-items: center;
+  grid-template-columns: minmax(300px, 560px) minmax(220px, 320px);
+  gap: 1rem;
+  align-items: stretch;
+  justify-content: start;
 }
 
 .faceRecognitionActions {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 0.85rem;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 100%;
   padding: 1rem;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  background: #ffffff;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 }
+
+.faceActionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+.faceActionButtons > button {
+  flex: 1 1 150px;
+  justify-content: center;
+}
+
+.faceStatusText {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1d4ed8;
+}
+
 .faceCameraFrame {
   position: relative;
   width: 100%;
@@ -1023,7 +1069,12 @@
   }
 
   .faceRecognitionActions {
+    min-height: auto;
     padding: 0.85rem;
+  }
+
+  .faceActionButtons > button {
+    flex-basis: 100%;
   }
 }
 

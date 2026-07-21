@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import styles from './login.module.css';
 import { useRouter } from 'next/navigation';
@@ -23,20 +23,50 @@ const philippinesFloatingTimeFormatter = new Intl.DateTimeFormat('en-PH', {
   hour12: true,
 });
 
+const getBeneficiaryLoginErrorMessage = (message) => {
+  const normalized = String(message || '').toLowerCase();
+  if (
+    normalized.includes('password must be at least') ||
+    normalized.includes('invalid contact number or password') ||
+    normalized.includes('incorrect password')
+  ) {
+    return 'Incorrect password.';
+  }
+
+  return message || 'Login failed. Please try again.';
+};
+
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [alertState, setAlertState] = useState({ open: false, title: '', message: '' });
   const [toastState, setToastState] = useState({ open: false, title: '', message: '' });
   const [legalModal, setLegalModal] = useState(null);
-  const [floatingPhilippinesTime, setFloatingPhilippinesTime] = useState(() => new Date());
+  const [floatingPhilippinesTime, setFloatingPhilippinesTime] = useState(null);
+  const toastTimerRef = useRef(null);
   const router = useRouter();
 
   const openAlert = ({ title, message }) => {
     setAlertState({ open: true, title, message });
   };
 
+  const openToast = ({ title, message, durationMs = 7000 }) => {
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+
+    setToastState({ open: true, title, message });
+    toastTimerRef.current = window.setTimeout(() => {
+      setToastState((prev) => ({ ...prev, open: false }));
+      toastTimerRef.current = null;
+    }, durationMs);
+  };
+
   const closeToast = () => {
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
     setToastState((prev) => ({ ...prev, open: false }));
   };
 
@@ -82,8 +112,7 @@ export default function LoginPage() {
     const toastNotice = notices[notice];
     if (!toastNotice) return;
 
-    setToastState({
-      open: true,
+    openToast({
       title: toastNotice.title,
       message: toastNotice.message,
     });
@@ -91,11 +120,14 @@ export default function LoginPage() {
     const cleanUrl = `${window.location.pathname}${window.location.hash || ''}`;
     window.history.replaceState(null, '', cleanUrl);
 
-    const timer = window.setTimeout(() => {
-      setToastState((prev) => ({ ...prev, open: false }));
-    }, 7000);
+  }, []);
 
-    return () => window.clearTimeout(timer);
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+    };
   }, []);
 
   const handleLogin = async ({ username, password }) => {
@@ -112,16 +144,16 @@ export default function LoginPage() {
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        openAlert({
+        openToast({
           title: 'Login failed',
-          message: result?.error || 'Login failed. Please try again.',
+          message: getBeneficiaryLoginErrorMessage(result?.error),
         });
         return;
       }
 
       const resident = result?.data;
       if (!resident) {
-        openAlert({ title: 'Login failed', message: 'Login failed. Please try again.' });
+        openToast({ title: 'Login failed', message: 'Login failed. Please try again.' });
         return;
       }
 
@@ -188,8 +220,12 @@ export default function LoginPage() {
     }
   };
 
-  const floatingDateLabel = philippinesFloatingDateFormatter.format(floatingPhilippinesTime);
-  const floatingTimeLabel = philippinesFloatingTimeFormatter.format(floatingPhilippinesTime);
+  const floatingDateLabel = floatingPhilippinesTime
+    ? philippinesFloatingDateFormatter.format(floatingPhilippinesTime)
+    : 'Syncing Manila';
+  const floatingTimeLabel = floatingPhilippinesTime
+    ? philippinesFloatingTimeFormatter.format(floatingPhilippinesTime)
+    : '--:-- --';
 
   return (
     <div className={styles.container}>

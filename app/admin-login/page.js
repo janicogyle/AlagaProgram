@@ -25,7 +25,7 @@ const philippinesFloatingTimeFormatter = new Intl.DateTimeFormat('en-PH', {
 export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [alertState, setAlertState] = useState({ open: false, title: '', message: '' });
-  const [floatingPhilippinesTime, setFloatingPhilippinesTime] = useState(() => new Date());
+  const [floatingPhilippinesTime, setFloatingPhilippinesTime] = useState(null);
   const router = useRouter();
 
   const openAlert = ({ title, message }) => {
@@ -134,8 +134,12 @@ export default function AdminLoginPage() {
     }
   };
 
-  const floatingDateLabel = philippinesFloatingDateFormatter.format(floatingPhilippinesTime);
-  const floatingTimeLabel = philippinesFloatingTimeFormatter.format(floatingPhilippinesTime);
+  const floatingDateLabel = floatingPhilippinesTime
+    ? philippinesFloatingDateFormatter.format(floatingPhilippinesTime)
+    : 'Syncing Manila';
+  const floatingTimeLabel = floatingPhilippinesTime
+    ? philippinesFloatingTimeFormatter.format(floatingPhilippinesTime)
+    : '--:-- --';
 
   return (
     <div className={styles.container}>

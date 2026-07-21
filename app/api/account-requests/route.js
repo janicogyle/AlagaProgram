@@ -586,7 +586,7 @@ export async function POST(request) {
       const { data: existingEmailRequest, error: existingEmailRequestError } = await db
         .from('account_requests')
         .select('id, status')
-        .eq('email', email)
+        .ilike('email', email)
         .limit(1)
         .maybeSingle();
 
@@ -626,7 +626,7 @@ export async function POST(request) {
         const { data: existingResidentEmail, error: existingResidentEmailError } = await db
           .from('residents')
           .select('id')
-          .eq('email', email)
+          .ilike('email', email)
           .limit(1)
           .maybeSingle();
 

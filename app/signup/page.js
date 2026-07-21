@@ -170,7 +170,7 @@ const CheckIcon = () => (
   </svg>
 );
 
-function FaceRecognitionCapture({ onCapture, disabled = false, status, verifying = false, error = '' }) {
+function FaceRecognitionCapture({ onCapture, onRetake, disabled = false, status, verifying = false, error = '' }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const previewUrlRef = useRef('');
@@ -226,6 +226,13 @@ function FaceRecognitionCapture({ onCapture, disabled = false, status, verifying
     }, 'image/jpeg', 0.92);
   };
 
+  const retakeSelfie = () => {
+    if (disabled || verifying) return;
+    clearPreview();
+    onRetake?.();
+    openCamera();
+  };
+
   useEffect(() => {
     const timeoutId = window.setTimeout(openCamera, 0);
     return () => {
@@ -235,7 +242,7 @@ function FaceRecognitionCapture({ onCapture, disabled = false, status, verifying
     };
   }, [openCamera, stopCamera]);
 
-  const canRetry = !verifying && status && status !== 'passed';
+  const canRetake = !verifying && !!capturedPreviewUrl;
 
   return (
     <div className={styles.faceRecognitionPanel}>
@@ -255,20 +262,23 @@ function FaceRecognitionCapture({ onCapture, disabled = false, status, verifying
           ) : (
             <video ref={videoRef} autoPlay playsInline muted className={styles.selfieVideo} />
           )}
-          {!capturedPreviewUrl && <span className={styles.faceFrameLabel}>Frame your face</span>}
+          <span className={styles.faceFrameLabel}>{capturedPreviewUrl ? 'Selfie captured' : 'Frame your face'}</span>
           <span className={styles.faceFrameOval} aria-hidden="true" />
         </div>
         <div className={styles.faceRecognitionActions}>
-          {!capturedPreviewUrl && (
-            <Button type="button" onClick={captureSelfie} disabled={disabled || verifying || !cameraReady}>
-              Capture Live Selfie
-            </Button>
-          )}
-          {canRetry && (
-            <Button type="button" variant="secondary" onClick={openCamera}>
-              Retake Selfie
-            </Button>
-          )}
+          <div className={styles.faceActionButtons}>
+            {!capturedPreviewUrl && (
+              <Button type="button" onClick={captureSelfie} disabled={disabled || verifying || !cameraReady}>
+                Capture Live Selfie
+              </Button>
+            )}
+            {canRetake && (
+              <Button type="button" variant="secondary" onClick={retakeSelfie} disabled={disabled || verifying}>
+                Retake Selfie
+              </Button>
+            )}
+          </div>
+          {verifying && <span className={styles.faceStatusText}>Saving selfie...</span>}
           {status === 'passed' && <span className={styles.verifiedBadge}>Face Selfie Verified</span>}
           {status && status !== 'passed' && !verifying && <p className={styles.fieldError}>Face Selfie Failed</p>}
           {(error || cameraError) && <p className={styles.fieldError}>{error || cameraError}</p>}
@@ -286,7 +296,7 @@ export default function BeneficiarySignupPage() {
   // Multi-step state
   const [currentStep, setCurrentStep] = useState(1);
   const [slideDirection, setSlideDirection] = useState('next');
-  const [currentPhilippinesTime, setCurrentPhilippinesTime] = useState(() => new Date());
+  const [currentPhilippinesTime, setCurrentPhilippinesTime] = useState(null);
 
   // Form state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -319,6 +329,8 @@ export default function BeneficiarySignupPage() {
   const [otpVerifiedContact, setOtpVerifiedContact] = useState('');
   const [contactChecking, setContactChecking] = useState(false);
   const [contactUnavailable, setContactUnavailable] = useState('');
+  const [emailChecking, setEmailChecking] = useState(false);
+  const [emailUnavailable, setEmailUnavailable] = useState('');
 
   const [form, setForm] = useState({
     firstName: '',
@@ -403,6 +415,8 @@ export default function BeneficiarySignupPage() {
   const isContactValid = /^0\d{10}$/.test(String(form.contactNumber || '').trim());
   const isContactBlocked = !!contactUnavailable;
   const normalizedEmail = String(form.email || '').trim().toLowerCase();
+  const isEmailValid = !normalizedEmail || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
+  const isEmailBlocked = !!emailUnavailable;
   const isEmailVerified = !!normalizedEmail && emailVerification.email === normalizedEmail && !!emailVerification.token;
 
   // ===========================
@@ -475,8 +489,12 @@ export default function BeneficiarySignupPage() {
   const remainingSteps = Math.max(0, TOTAL_STEPS - currentStep);
   const estimatedRemainingMinutes = Math.max(1, Math.ceil((remainingSteps / TOTAL_STEPS) * ESTIMATED_TOTAL_MINUTES));
   const currentStepLabel = STEPS[currentStep - 1]?.label || 'Registration';
-  const currentPhilippinesDateLabel = philippinesDateFormatter.format(currentPhilippinesTime);
-  const currentPhilippinesTimeLabel = philippinesTimeFormatter.format(currentPhilippinesTime);
+  const currentPhilippinesDateLabel = currentPhilippinesTime
+    ? philippinesDateFormatter.format(currentPhilippinesTime)
+    : 'Fetching Philippine Standard Time';
+  const currentPhilippinesTimeLabel = currentPhilippinesTime
+    ? philippinesTimeFormatter.format(currentPhilippinesTime)
+    : 'Syncing...';
 
   const resetOtpState = () => {
     setOtpCode('');
@@ -608,6 +626,7 @@ export default function BeneficiarySignupPage() {
 
     if (name === 'email') {
       const nextEmail = String(value || '').trim().toLowerCase();
+      setEmailUnavailable('');
       if (nextEmail !== emailVerification.email) {
         setEmailVerification({ email: '', token: '' });
         if (typeof window !== 'undefined') {
@@ -653,6 +672,17 @@ export default function BeneficiarySignupPage() {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setFieldErrors((prev) => ({ ...prev, email: 'Please enter a valid Gmail or email address first.' }));
       showValidationError('Please enter a valid Gmail or email address first.');
+      return;
+    }
+
+    if (emailChecking) {
+      showValidationError('Checking if this email is available. Please wait.');
+      return;
+    }
+
+    if (emailUnavailable) {
+      setFieldErrors((prev) => ({ ...prev, email: emailUnavailable }));
+      showValidationError(emailUnavailable);
       return;
     }
 
@@ -820,6 +850,58 @@ export default function BeneficiarySignupPage() {
       controller.abort();
     };
   }, [form.contactNumber, isContactValid]);
+
+  useEffect(() => {
+    if (!normalizedEmail || !isEmailValid) {
+      setEmailUnavailable('');
+      setEmailChecking(false);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setEmailChecking(true);
+      try {
+        const response = await fetch(
+          `/api/account-requests/check-email?email=${encodeURIComponent(normalizedEmail)}`,
+          { signal: controller.signal },
+        );
+        const { data, error } = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          setEmailUnavailable(error || 'Unable to verify email address.');
+          return;
+        }
+        if (data?.available) {
+          setEmailUnavailable('');
+          setFieldErrors((prev) => ({ ...prev, email: '' }));
+        } else {
+          const msg =
+            data?.error ||
+            'This email address is already registered';
+          setEmailUnavailable(msg);
+          setFieldErrors((prev) => ({ ...prev, email: msg }));
+          setEmailVerification({ email: '', token: '' });
+          if (typeof window !== 'undefined') {
+            window.sessionStorage.removeItem(SIGNUP_VERIFIED_EMAIL_KEY);
+            window.sessionStorage.removeItem(SIGNUP_EMAIL_TOKEN_KEY);
+          }
+        }
+      } catch (err) {
+        if (err?.name !== 'AbortError') {
+          setEmailUnavailable('');
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setEmailChecking(false);
+        }
+      }
+    }, 450);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [normalizedEmail, isEmailValid]);
 
   // ===========================
   // LEGAL MODAL
@@ -1040,6 +1122,13 @@ export default function BeneficiarySignupPage() {
     handleVerifyIdentity(file);
   };
 
+  const handleRetakeLiveSelfie = () => {
+    setSelfieFiles([]);
+    setIdentityUrls({ front: '', back: '', selfie: '' });
+    setFaceVerification(null);
+    setValidIdError('');
+  };
+
   // ===========================
   // STEP VALIDATION
   // ===========================
@@ -1176,6 +1265,15 @@ export default function BeneficiarySignupPage() {
           setStatus({ type: 'error', message: 'Please enter a valid Gmail or email address.' });
           return false;
         }
+        if (emailUnavailable) {
+          setFieldErrors((prev) => ({ ...prev, email: emailUnavailable }));
+          setStatus({ type: 'error', message: emailUnavailable });
+          return false;
+        }
+        if (emailChecking) {
+          setStatus({ type: 'error', message: 'Checking if this email is available. Please wait.' });
+          return false;
+        }
         if (email && !isEmailVerified) {
           setFieldErrors((prev) => ({ ...prev, email: 'Please verify this Gmail before continuing.' }));
           setStatus({ type: 'error', message: 'Please verify your Gmail before continuing.' });
@@ -1231,6 +1329,9 @@ export default function BeneficiarySignupPage() {
           form.password.length >= 8 &&
           form.password === form.confirmPassword &&
           !contactUnavailable &&
+          !emailUnavailable &&
+          !emailChecking &&
+          (!email || isEmailVerified) &&
           isOtpVerified
         );
       }
@@ -1818,7 +1919,7 @@ export default function BeneficiarySignupPage() {
       <SectionHeader
         id="account-heading"
         title="Account Setup"
-        subtitle="Set up your contact number and password to secure your account."
+        subtitle="Set up your required login details and verify your contact number."
       />
       <div className={`${styles.formGrid} ${styles.accountGrid}`}>
         <div className={styles.accountContactRow}>
@@ -1835,40 +1936,6 @@ export default function BeneficiarySignupPage() {
             size="compact"
             className={styles.contactField}
           />
-        </div>
-        <div className={styles.emailVerificationRow}>
-          <Input
-            label="Gmail / Email Address"
-            type="email"
-            name="email"
-            value={form.email}
-            onChange={handleChange}
-            placeholder="name@gmail.com"
-            autoComplete="email"
-            error={fieldErrors.email}
-            optional
-            size="compact"
-            className={styles.emailField}
-          />
-          <Button
-            type="button"
-            variant={isEmailVerified ? 'secondary' : 'primary'}
-            onClick={handleVerifyGmail}
-            disabled={emailVerifying || !normalizedEmail || isEmailVerified}
-            size="compact"
-          >
-            {emailVerifying ? 'Verifying...' : isEmailVerified ? 'Verified' : 'Verify Gmail'}
-          </Button>
-          {isEmailVerified ? (
-            <span className={styles.emailVerifiedBadge}>
-              <span className={styles.otpVerifiedDot} aria-hidden="true" />
-              Gmail verified
-            </span>
-          ) : normalizedEmail ? (
-            <span className={styles.emailVerifyNote}>Gmail is optional, but entered Gmail addresses must be verified.</span>
-          ) : (
-            <span className={styles.otpHint}>Verify Gmail to use Google sign-in after approval.</span>
-          )}
         </div>
         <Input
           label="Password"
@@ -1896,6 +1963,46 @@ export default function BeneficiarySignupPage() {
         />
       </div>
       {renderOtpSection()}
+      <div className={styles.optionalLoginSection}>
+        <div>
+          <h4 className={styles.optionalLoginTitle}>Optional Gmail Sign-in</h4>
+          <p className={styles.optionalLoginText}>Link a Gmail address if you want to use Google sign-in after approval.</p>
+        </div>
+        <div className={styles.emailVerificationRow}>
+          <Input
+            label="Gmail / Email Address"
+            type="email"
+            name="email"
+            value={form.email}
+            onChange={handleChange}
+            placeholder="name@gmail.com"
+            autoComplete="email"
+            error={emailUnavailable || fieldErrors.email}
+            optional
+            size="compact"
+            className={styles.emailField}
+          />
+          <Button
+            type="button"
+            variant={isEmailVerified ? 'secondary' : 'primary'}
+            onClick={handleVerifyGmail}
+            disabled={emailVerifying || emailChecking || isEmailBlocked || !normalizedEmail || isEmailVerified}
+            size="compact"
+          >
+            {emailVerifying ? 'Verifying...' : emailChecking ? 'Checking...' : isEmailVerified ? 'Verified' : 'Verify Gmail'}
+          </Button>
+          {isEmailVerified ? (
+            <span className={styles.emailVerifiedBadge}>
+              <span className={styles.otpVerifiedDot} aria-hidden="true" />
+              Gmail verified
+            </span>
+          ) : normalizedEmail ? (
+            <span className={styles.emailVerifyNote}>Gmail is optional, but entered Gmail addresses must be verified.</span>
+          ) : (
+            <span className={styles.otpHint}>Verify Gmail to use Google sign-in after approval.</span>
+          )}
+        </div>
+      </div>
     </section>
   );
 
@@ -1961,6 +2068,7 @@ export default function BeneficiarySignupPage() {
       {hasUploadedIdentityImages && (
         <FaceRecognitionCapture
           onCapture={handleLiveSelfieCapture}
+          onRetake={handleRetakeLiveSelfie}
           disabled={identityVerifying}
           verifying={identityVerifying}
           status={faceVerification?.status || ''}

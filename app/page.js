@@ -43,7 +43,7 @@ export default function HomePage() {
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const [uiScale, setUiScale] = useState(defaultMagnifierLevel);
   const [magnifierReady, setMagnifierReady] = useState(false);
-  const [floatingPhilippinesTime, setFloatingPhilippinesTime] = useState(() => new Date());
+  const [floatingPhilippinesTime, setFloatingPhilippinesTime] = useState(null);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -80,8 +80,12 @@ export default function HomePage() {
     });
   };
 
-  const floatingDateLabel = philippinesFloatingDateFormatter.format(floatingPhilippinesTime);
-  const floatingTimeLabel = philippinesFloatingTimeFormatter.format(floatingPhilippinesTime);
+  const floatingDateLabel = floatingPhilippinesTime
+    ? philippinesFloatingDateFormatter.format(floatingPhilippinesTime)
+    : 'Syncing Manila';
+  const floatingTimeLabel = floatingPhilippinesTime
+    ? philippinesFloatingTimeFormatter.format(floatingPhilippinesTime)
+    : '--:-- --';
 
   const services = [
     {

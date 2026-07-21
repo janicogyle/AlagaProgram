@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
-import { BENEFICIARY_SESSION_COOKIE, createBeneficiarySessionToken } from '@/lib/beneficiarySession.server';
+import {
+  BENEFICIARY_SESSION_COOKIE,
+  BENEFICIARY_SESSION_MAX_AGE_SECONDS,
+  createBeneficiarySessionToken,
+} from '@/lib/beneficiarySession.server';
 import { BENEFICIARY_RESIDENT_STATUSES } from '@/lib/beneficiaryIdStatus.server';
 
 export const runtime = 'nodejs';
@@ -133,7 +137,7 @@ export async function POST(request) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: BENEFICIARY_SESSION_MAX_AGE_SECONDS,
     });
 
     return response;
