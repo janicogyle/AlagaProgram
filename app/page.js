@@ -8,11 +8,6 @@ import styles from './page.module.css';
 
 const magnifierLevels = [1, 1.15, 1.3];
 const defaultMagnifierLevel = magnifierLevels[0];
-const PHILIPPINES_TIME_SYNC_INTERVAL_MS = 5 * 60 * 1000;
-const PHILIPPINES_TIME_ENDPOINTS = [
-  'https://worldtimeapi.org/api/timezone/Asia/Manila',
-  'https://timeapi.io/api/time/current/zone?timeZone=Asia%2FManila',
-];
 const philippinesFloatingDateFormatter = new Intl.DateTimeFormat('en-PH', {
   timeZone: 'Asia/Manila',
   month: 'short',
@@ -26,25 +21,6 @@ const philippinesFloatingTimeFormatter = new Intl.DateTimeFormat('en-PH', {
   second: '2-digit',
   hour12: true,
 });
-
-const getPhilippinesTimeEpochMs = (payload) => {
-  if (Number.isFinite(payload?.unixtime)) return payload.unixtime * 1000;
-  if (payload?.utc_datetime) return Date.parse(payload.utc_datetime);
-  if (payload?.datetime) return Date.parse(payload.datetime);
-  if (payload?.dateTime) {
-    const year = Number(payload.year);
-    const month = Number(payload.month);
-    const day = Number(payload.day);
-    const hour = Number(payload.hour);
-    const minute = Number(payload.minute);
-    const seconds = Number(payload.seconds ?? payload.second ?? 0);
-
-    if ([year, month, day, hour, minute, seconds].every(Number.isFinite)) {
-      return Date.UTC(year, month - 1, day, hour - 8, minute, seconds);
-    }
-  }
-  return Number.NaN;
-};
 
 function getSavedMagnifierLevel() {
   try {
@@ -67,8 +43,7 @@ export default function HomePage() {
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const [uiScale, setUiScale] = useState(defaultMagnifierLevel);
   const [magnifierReady, setMagnifierReady] = useState(false);
-  const [floatingPhilippinesTime, setFloatingPhilippinesTime] = useState(null);
-  const [floatingTimeStatus, setFloatingTimeStatus] = useState('syncing');
+  const [floatingPhilippinesTime, setFloatingPhilippinesTime] = useState(() => new Date());
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -88,49 +63,12 @@ export default function HomePage() {
   }, [magnifierReady, uiScale]);
 
   useEffect(() => {
-    let isMounted = true;
-    let syncAnchor = null;
-
-    const updateFromSyncedTime = () => {
-      if (!syncAnchor || !isMounted) return;
-      setFloatingPhilippinesTime(new Date(syncAnchor.epochMs + performance.now() - syncAnchor.syncedAtMs));
-    };
-
-    const syncPhilippinesTime = async () => {
-      if (!syncAnchor) setFloatingTimeStatus('syncing');
-
-      for (const endpoint of PHILIPPINES_TIME_ENDPOINTS) {
-        try {
-          const response = await fetch(endpoint, { cache: 'no-store' });
-          if (!response.ok) continue;
-
-          const payload = await response.json();
-          const epochMs = getPhilippinesTimeEpochMs(payload);
-          if (!Number.isFinite(epochMs)) continue;
-
-          syncAnchor = {
-            epochMs,
-            syncedAtMs: performance.now(),
-          };
-          setFloatingTimeStatus('synced');
-          updateFromSyncedTime();
-          return;
-        } catch {
-          // Try the next time source.
-        }
-      }
-
-      if (isMounted && !syncAnchor) setFloatingTimeStatus('error');
-    };
-
-    syncPhilippinesTime();
-    const tickTimer = window.setInterval(updateFromSyncedTime, 1000);
-    const syncTimer = window.setInterval(syncPhilippinesTime, PHILIPPINES_TIME_SYNC_INTERVAL_MS);
+    const updateTime = () => setFloatingPhilippinesTime(new Date());
+    updateTime();
+    const tickTimer = window.setInterval(updateTime, 1000);
 
     return () => {
-      isMounted = false;
       window.clearInterval(tickTimer);
-      window.clearInterval(syncTimer);
     };
   }, []);
 
@@ -142,14 +80,8 @@ export default function HomePage() {
     });
   };
 
-  const floatingDateLabel = floatingPhilippinesTime
-    ? philippinesFloatingDateFormatter.format(floatingPhilippinesTime)
-    : floatingTimeStatus === 'error'
-      ? 'Time unavailable'
-      : 'Syncing Manila';
-  const floatingTimeLabel = floatingPhilippinesTime
-    ? philippinesFloatingTimeFormatter.format(floatingPhilippinesTime)
-    : '--:-- --';
+  const floatingDateLabel = philippinesFloatingDateFormatter.format(floatingPhilippinesTime);
+  const floatingTimeLabel = philippinesFloatingTimeFormatter.format(floatingPhilippinesTime);
 
   const services = [
     {
