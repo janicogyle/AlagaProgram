@@ -12,7 +12,6 @@ import FileUpload from '../../components/FileUpload';
 import ConstellationBackground from '../../components/ConstellationBackground';
 import LegalContent from '@/components/LegalContent';
 import SectionHeader from '@/components/SectionHeader';
-import { supabase } from '@/lib/supabaseClient';
 import {
   BENEFICIARY_SECTOR_OPTIONS,
   deriveSectorFlags,
@@ -317,6 +316,11 @@ export default function BeneficiarySignupPage() {
     email: '',
   });
   const [emailVerification, setEmailVerification] = useState({ email: '', token: '' });
+  const [verificationMethod, setVerificationMethod] = useState('sms');
+  const [emailCode, setEmailCode] = useState('');
+  const [emailCodeSent, setEmailCodeSent] = useState(false);
+  const [emailOtpStatus, setEmailOtpStatus] = useState(null);
+  const [emailCooldown, setEmailCooldown] = useState(0);
   const [emailVerifying, setEmailVerifying] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '' });
   const [otpCode, setOtpCode] = useState('');
@@ -418,6 +422,8 @@ export default function BeneficiarySignupPage() {
   const isEmailValid = !normalizedEmail || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
   const isEmailBlocked = !!emailUnavailable;
   const isEmailVerified = !!normalizedEmail && emailVerification.email === normalizedEmail && !!emailVerification.token;
+  const isSelectedVerificationComplete =
+    verificationMethod === 'email' ? isEmailVerified : isOtpVerified;
 
   // ===========================
   // HELPERS
@@ -629,6 +635,10 @@ export default function BeneficiarySignupPage() {
       setEmailUnavailable('');
       if (nextEmail !== emailVerification.email) {
         setEmailVerification({ email: '', token: '' });
+        setEmailCode('');
+        setEmailCodeSent(false);
+        setEmailOtpStatus(null);
+        setEmailCooldown(0);
         if (typeof window !== 'undefined') {
           window.sessionStorage.removeItem(SIGNUP_VERIFIED_EMAIL_KEY);
           window.sessionStorage.removeItem(SIGNUP_EMAIL_TOKEN_KEY);
@@ -665,9 +675,9 @@ export default function BeneficiarySignupPage() {
     setForm((prev) => ({ ...prev, [name]: newValue }));
   };
 
-  const handleVerifyGmail = async () => {
+  const handleSendEmailCode = async () => {
     const email = String(form.email || '').trim().toLowerCase();
-    if (emailVerifying) return;
+    if (emailVerifying || emailCooldown > 0) return;
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setFieldErrors((prev) => ({ ...prev, email: 'Please enter a valid Gmail or email address first.' }));
@@ -686,34 +696,61 @@ export default function BeneficiarySignupPage() {
       return;
     }
 
-    if (!supabase) {
-      showValidationError('Google verification is not configured. Please contact the administrator.');
-      return;
+    setEmailVerifying(true);
+    setEmailOtpStatus(null);
+    try {
+      const response = await fetch('/api/signup/email-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send', email }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setEmailOtpStatus({ type: 'error', message: result.error || 'Unable to send email code.' });
+        return;
+      }
+      setEmailCode('');
+      setEmailCodeSent(true);
+      setEmailCooldown(60);
+      setEmailVerification({ email: '', token: '' });
+      setEmailOtpStatus({ type: 'success', message: `A 6-digit code was sent to ${email}.` });
+    } catch (error) {
+      setEmailOtpStatus({ type: 'error', message: error?.message || 'Unable to send email code.' });
+    } finally {
+      setEmailVerifying(false);
     }
+  };
+
+  const handleVerifyEmailCode = async () => {
+    const email = String(form.email || '').trim().toLowerCase();
+    const code = String(emailCode || '').replace(/\D/g, '').slice(0, 6);
+    if (emailVerifying || code.length !== 6) return;
 
     setEmailVerifying(true);
+    setEmailOtpStatus(null);
     try {
-      saveSignupDraft();
-      const redirectTo = `${window.location.origin}/auth/callback?type=signup-email`;
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'select_account',
-            login_hint: email,
-          },
-        },
+      const response = await fetch('/api/signup/email-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify', email, code }),
       });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.data?.token) {
+        setEmailOtpStatus({ type: 'error', message: result.error || 'Email verification failed.' });
+        return;
+      }
 
-      if (error) {
-        setEmailVerifying(false);
-        showValidationError(error.message || 'Unable to start Gmail verification.');
+      setEmailVerification({ email: result.data.email, token: result.data.token });
+      setEmailCode('');
+      setEmailOtpStatus({ type: 'success', message: 'Email verified successfully.' });
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(SIGNUP_VERIFIED_EMAIL_KEY, result.data.email);
+        window.sessionStorage.setItem(SIGNUP_EMAIL_TOKEN_KEY, result.data.token);
       }
     } catch (error) {
+      setEmailOtpStatus({ type: 'error', message: error?.message || 'Email verification failed.' });
+    } finally {
       setEmailVerifying(false);
-      showValidationError(error?.message || 'Unable to start Gmail verification.');
     }
   };
 
@@ -801,6 +838,14 @@ export default function BeneficiarySignupPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, [otpCooldown]);
+
+  useEffect(() => {
+    if (emailCooldown <= 0) return undefined;
+    const timer = setInterval(() => {
+      setEmailCooldown((prev) => Math.max(prev - 1, 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [emailCooldown]);
 
   useEffect(() => {
     if (!isContactValid) {
@@ -1260,23 +1305,23 @@ export default function BeneficiarySignupPage() {
           setStatus({ type: 'error', message: 'Please enter a valid Philippine contact number.' });
           return false;
         }
-        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        if (verificationMethod === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
           setFieldErrors((prev) => ({ ...prev, email: 'Please enter a valid Gmail or email address.' }));
           setStatus({ type: 'error', message: 'Please enter a valid Gmail or email address.' });
           return false;
         }
-        if (emailUnavailable) {
+        if (verificationMethod === 'email' && emailUnavailable) {
           setFieldErrors((prev) => ({ ...prev, email: emailUnavailable }));
           setStatus({ type: 'error', message: emailUnavailable });
           return false;
         }
-        if (emailChecking) {
+        if (verificationMethod === 'email' && emailChecking) {
           setStatus({ type: 'error', message: 'Checking if this email is available. Please wait.' });
           return false;
         }
-        if (email && !isEmailVerified) {
-          setFieldErrors((prev) => ({ ...prev, email: 'Please verify this Gmail before continuing.' }));
-          setStatus({ type: 'error', message: 'Please verify your Gmail before continuing.' });
+        if (verificationMethod === 'email' && !isEmailVerified) {
+          setFieldErrors((prev) => ({ ...prev, email: 'Please verify this email before continuing.' }));
+          setStatus({ type: 'error', message: 'Please verify your email before continuing.' });
           return false;
         }
         if (!form.password || form.password.length < 8) {
@@ -1292,7 +1337,7 @@ export default function BeneficiarySignupPage() {
           setStatus({ type: 'error', message: contactUnavailable });
           return false;
         }
-        if (!isOtpVerified) {
+        if (verificationMethod === 'sms' && !isOtpVerified) {
           setStatus({ type: 'error', message: 'Please verify your contact number via SMS OTP before continuing.' });
           return false;
         }
@@ -1324,15 +1369,13 @@ export default function BeneficiarySignupPage() {
         const email = String(form.email || '').trim();
         return (
           /^0\d{10}$/.test(cn) &&
-          (!email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) &&
+          (verificationMethod !== 'email' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) &&
           !!form.password &&
           form.password.length >= 8 &&
           form.password === form.confirmPassword &&
           !contactUnavailable &&
-          !emailUnavailable &&
-          !emailChecking &&
-          (!email || isEmailVerified) &&
-          isOtpVerified
+          (verificationMethod !== 'email' || (!emailUnavailable && !emailChecking && isEmailVerified)) &&
+          isSelectedVerificationComplete
         );
       }
       default:
@@ -1406,10 +1449,13 @@ export default function BeneficiarySignupPage() {
       });
       return;
     }
-    if (!isOtpVerified) {
+    if (!isSelectedVerificationComplete) {
       setStatus({
         type: 'error',
-        message: 'Please verify your contact number via SMS OTP before submitting.',
+        message:
+          verificationMethod === 'email'
+            ? 'Please verify your email before submitting.'
+            : 'Please verify your contact number via SMS OTP before submitting.',
       });
       return;
     }
@@ -1479,7 +1525,8 @@ export default function BeneficiarySignupPage() {
           lastName: form.lastName,
           birthday: form.birthday,
           contactNumber: form.contactNumber,
-          email: form.email,
+          email: verificationMethod === 'email' ? form.email : '',
+          verificationMethod,
           emailVerificationToken: emailVerification.token,
           password: form.password,
           primarySector: form.primarySector,
@@ -1919,7 +1966,7 @@ export default function BeneficiarySignupPage() {
       <SectionHeader
         id="account-heading"
         title="Account Setup"
-        subtitle="Set up your required login details and verify your contact number."
+        subtitle="Set up your login details and choose one verification method."
       />
       <div className={`${styles.formGrid} ${styles.accountGrid}`}>
         <div className={styles.accountContactRow}>
@@ -1962,11 +2009,41 @@ export default function BeneficiarySignupPage() {
           className={styles.passwordField}
         />
       </div>
-      {renderOtpSection()}
-      <div className={styles.optionalLoginSection}>
+      <div className={styles.verificationChoice} role="group" aria-label="Choose verification method">
         <div>
-          <h4 className={styles.optionalLoginTitle}>Optional Gmail Sign-in</h4>
-          <p className={styles.optionalLoginText}>Link a Gmail address if you want to use Google sign-in after approval.</p>
+          <h4 className={styles.optionalLoginTitle}>Choose how to verify</h4>
+          <p className={styles.optionalLoginText}>Only the method you select below needs to be verified.</p>
+        </div>
+        <div className={styles.verificationChoiceButtons}>
+          <Button
+            type="button"
+            variant={verificationMethod === 'sms' ? 'primary' : 'secondary'}
+            onClick={() => setVerificationMethod('sms')}
+            size="compact"
+          >
+            Contact Number (SMS)
+          </Button>
+          <Button
+            type="button"
+            variant={verificationMethod === 'email' ? 'primary' : 'secondary'}
+            onClick={() => setVerificationMethod('email')}
+            size="compact"
+          >
+            Gmail / Email
+          </Button>
+        </div>
+        {verificationMethod === 'email' && (
+          <p className={styles.unverifiedContactNote}>
+            Your contact number will still be saved for the barangay record, but it will be marked as not verified
+            and the system will not send an approval SMS to it.
+          </p>
+        )}
+      </div>
+      {verificationMethod === 'sms' && renderOtpSection()}
+      {verificationMethod === 'email' && <div className={styles.optionalLoginSection}>
+        <div>
+          <h4 className={styles.optionalLoginTitle}>Gmail / Email Verification</h4>
+          <p className={styles.optionalLoginText}>We will send a six-digit verification code to this address.</p>
         </div>
         <div className={styles.emailVerificationRow}>
           <Input
@@ -1978,31 +2055,74 @@ export default function BeneficiarySignupPage() {
             placeholder="name@gmail.com"
             autoComplete="email"
             error={emailUnavailable || fieldErrors.email}
-            optional
+            required
             size="compact"
             className={styles.emailField}
           />
           <Button
             type="button"
             variant={isEmailVerified ? 'secondary' : 'primary'}
-            onClick={handleVerifyGmail}
-            disabled={emailVerifying || emailChecking || isEmailBlocked || !normalizedEmail || isEmailVerified}
+            onClick={handleSendEmailCode}
+            disabled={emailVerifying || emailChecking || isEmailBlocked || !normalizedEmail || isEmailVerified || emailCooldown > 0}
             size="compact"
           >
-            {emailVerifying ? 'Verifying...' : emailChecking ? 'Checking...' : isEmailVerified ? 'Verified' : 'Verify Gmail'}
+            {emailChecking
+              ? 'Checking...'
+              : isEmailVerified
+                ? 'Verified'
+                : emailVerifying
+                  ? 'Sending...'
+                  : emailCooldown > 0
+                    ? `Resend in ${formatOtpCooldown(emailCooldown)}`
+                    : emailCodeSent
+                      ? 'Resend Code'
+                      : 'Send Code'}
           </Button>
+          {emailCodeSent && !isEmailVerified && (
+            <>
+              <div className={styles.otpInputWrap}>
+                <Input
+                  label="Email Code"
+                  name="emailCode"
+                  value={emailCode}
+                  onChange={(event) => setEmailCode(String(event.target.value || '').replace(/\D/g, '').slice(0, 6))}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="000000"
+                  maxLength={6}
+                  size="compact"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleVerifyEmailCode}
+                disabled={emailVerifying || emailCode.length !== 6}
+                size="compact"
+              >
+                {emailVerifying ? 'Verifying...' : 'Verify Code'}
+              </Button>
+            </>
+          )}
+          {emailOtpStatus && (
+            <p className={`${styles.otpStatus} ${
+              emailOtpStatus.type === 'success' ? styles.otpStatusSuccess : styles.otpStatusError
+            }`}>
+              {emailOtpStatus.message}
+            </p>
+          )}
           {isEmailVerified ? (
             <span className={styles.emailVerifiedBadge}>
               <span className={styles.otpVerifiedDot} aria-hidden="true" />
-              Gmail verified
+              Email verified
             </span>
           ) : normalizedEmail ? (
-            <span className={styles.emailVerifyNote}>Gmail is optional, but entered Gmail addresses must be verified.</span>
+            <span className={styles.emailVerifyNote}>Send and enter the code to verify this address.</span>
           ) : (
-            <span className={styles.otpHint}>Verify Gmail to use Google sign-in after approval.</span>
+            <span className={styles.otpHint}>Verify your email to use Google sign-in after approval.</span>
           )}
         </div>
-      </div>
+      </div>}
     </section>
   );
 
@@ -2248,7 +2368,7 @@ export default function BeneficiarySignupPage() {
                   <span className={styles.reviewValue}>
                     {formatContactForDisplay(form.contactNumber)}
                   </span>
-                  {isOtpVerified && (
+                  {verificationMethod === 'sms' && isOtpVerified && (
                     <span className={styles.verifiedBadge}>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="20 6 9 17 4 12" />
@@ -2259,8 +2379,16 @@ export default function BeneficiarySignupPage() {
                 </div>
               </div>
               <div className={styles.reviewItem}>
+                <span className={styles.reviewLabel}>Verification Method</span>
+                <span className={styles.reviewValue}>
+                  {verificationMethod === 'email' ? 'Gmail / Email code' : 'Contact number (SMS)'}
+                </span>
+              </div>
+              <div className={styles.reviewItem}>
                 <span className={styles.reviewLabel}>Gmail / Email</span>
-                <span className={styles.reviewValue}>{form.email || 'Not linked'}</span>
+                <span className={styles.reviewValue}>
+                  {verificationMethod === 'email' ? form.email || '—' : 'Not used for verification'}
+                </span>
               </div>
               <div className={styles.reviewItem}>
                 <span className={styles.reviewLabel}>Password</span>
@@ -2518,7 +2646,7 @@ export default function BeneficiarySignupPage() {
             ) : (
               <Button
                 type="submit"
-                disabled={isSubmitting || !hasAgreed || !isOtpVerified}
+                disabled={isSubmitting || !hasAgreed || !isSelectedVerificationComplete}
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Registration'}
               </Button>

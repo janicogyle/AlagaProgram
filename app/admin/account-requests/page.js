@@ -15,7 +15,7 @@ import {
   DocumentPreviewModal,
 } from "@/components";
 import { realtimeHelpers, supabase } from "@/lib/supabaseClient";
-import { formatSmsNotificationResult } from "@/lib/smsTemplates";
+import { formatDeliveryResult } from "@/lib/smsTemplates";
 import { buildSectorPairFromSource, getSectorLabel } from "@/lib/beneficiarySectors";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import styles from "./page.module.css";
@@ -339,18 +339,18 @@ export default function AccountRequestsPage() {
         throw new Error(result.error || 'Failed to approve request');
       }
 
-      if (result.sms?.ok === false && !result.sms?.skipped) {
-        console.warn('Account approval SMS failed:', result.sms);
+      if (result.notification?.ok === false) {
+        console.warn('Account approval notification failed:', result.notification);
       }
 
       handleCloseModal();
       await fetchRequests();
       openAlert({
-        title: result.sms?.ok === false && !result.sms?.skipped ? 'Approved (SMS failed)' : 'Approved',
+        title: result.notification?.ok === false ? 'Approved (notification failed)' : 'Approved',
         message:
           'Request approved and beneficiary account created successfully.' +
-          formatSmsNotificationResult(result.sms),
-        variant: result.sms?.ok === false && !result.sms?.skipped ? 'error' : 'success',
+          formatDeliveryResult(result.notification),
+        variant: result.notification?.ok === false ? 'warning' : 'success',
       });
     } catch (error) {
       console.warn('Approve error:', error?.message || error);
@@ -401,8 +401,8 @@ export default function AccountRequestsPage() {
       await fetchRequests();
       openAlert({
         title: 'Incomplete',
-        message: 'Request marked incomplete successfully.' + formatSmsNotificationResult(result.sms),
-        variant: result.sms?.ok === false && !result.sms?.skipped ? 'warning' : 'success',
+        message: 'Request marked incomplete successfully.' + formatDeliveryResult(result.notification),
+        variant: result.notification?.ok === false ? 'warning' : 'success',
       });
     } catch (error) {
       console.warn('Mark incomplete error:', error?.message || error);
@@ -416,13 +416,13 @@ export default function AccountRequestsPage() {
     }
   };
 
-  const handleSendResubmissionSms = async (request) => {
+  const handleSendResubmissionNotification = async (request) => {
     if (!request || processing) return;
 
     const requestId = request.id;
     if (!requestId) {
       openAlert({
-        title: 'Send SMS failed',
+        title: 'Send notification failed',
         message: 'Request ID is missing.',
         variant: 'error',
       });
@@ -444,19 +444,19 @@ export default function AccountRequestsPage() {
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok || result.error) {
-        throw new Error(result.error || 'Failed to send resubmission SMS');
+        throw new Error(result.error || 'Failed to send the resubmission notification');
       }
 
       await fetchRequests();
       openAlert({
-        title: result.sms?.ok === false && !result.sms?.skipped ? 'SMS failed' : 'SMS sent',
-        message: 'Resubmission code SMS processed.' + formatSmsNotificationResult(result.sms),
-        variant: result.sms?.ok === false && !result.sms?.skipped ? 'warning' : 'success',
+        title: result.notification?.ok === false ? 'Notification failed' : 'Notification sent',
+        message: 'Resubmission notification processed.' + formatDeliveryResult(result.notification),
+        variant: result.notification?.ok === false ? 'warning' : 'success',
       });
     } catch (error) {
-      console.warn('Send resubmission SMS error:', error?.message || error);
+      console.warn('Send resubmission notification error:', error?.message || error);
       openAlert({
-        title: 'Send SMS failed',
+        title: 'Send notification failed',
         message: error.message || 'Unknown error',
         variant: 'error',
       });
@@ -568,10 +568,10 @@ export default function AccountRequestsPage() {
             <Button
               variant="outline"
               size="small"
-              onClick={() => handleSendResubmissionSms(row)}
+              onClick={() => handleSendResubmissionNotification(row)}
               disabled={processing}
             >
-              Send Resubmission SMS
+              Send Resubmission Update
             </Button>
           )}
         </div>
@@ -694,9 +694,9 @@ export default function AccountRequestsPage() {
                     {request.status === "Incomplete" && (
                       <button
                         className={styles.releaseBtn}
-                        onClick={() => handleSendResubmissionSms(request)}
+                        onClick={() => handleSendResubmissionNotification(request)}
                         disabled={processing}
-                        title="Send resubmission SMS"
+                        title="Send resubmission update"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M22 2L11 13" />
@@ -801,12 +801,26 @@ export default function AccountRequestsPage() {
                 <div>
                   <span className={styles.label}>Contact Number</span>
                   <span className={styles.value}>
-                    {detailsRequest.contact_number || detailsRequest.contactNumber || "-"}
+                    {detailsRequest.contact_number || detailsRequest.contactNumber || "-"}{' '}
+                    {detailsRequest.contact_verified === true ? '(Verified)' : '(Not verified)'}
                   </span>
                 </div>
                 <div>
                   <span className={styles.label}>Gmail / Email</span>
-                  <span className={styles.value}>{detailsRequest.email || "-"}</span>
+                  <span className={styles.value}>
+                    {detailsRequest.email || "-"}{' '}
+                    {detailsRequest.email
+                      ? detailsRequest.email_verified === true
+                        ? '(Verified)'
+                        : '(Not verified)'
+                      : ''}
+                  </span>
+                </div>
+                <div>
+                  <span className={styles.label}>Selected Verification</span>
+                  <span className={styles.value}>
+                    {detailsRequest.verification_method === 'email' ? 'Gmail / Email' : 'Contact Number (SMS)'}
+                  </span>
                 </div>
                 <div>
                   <span className={styles.label}>Birthday</span>
@@ -1002,10 +1016,10 @@ export default function AccountRequestsPage() {
                 <Button
                   variant="outline"
                   className={styles.detailsActionBtnSingle}
-                  onClick={() => handleSendResubmissionSms(detailsRequest)}
+                  onClick={() => handleSendResubmissionNotification(detailsRequest)}
                   disabled={processing}
                 >
-                  Send Resubmission SMS
+                  Send Resubmission Update
                 </Button>
               </div>
             )}

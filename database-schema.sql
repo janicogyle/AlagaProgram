@@ -143,6 +143,9 @@ CREATE TABLE IF NOT EXISTS public.account_requests (
   birthday DATE,
   contact_number TEXT NOT NULL,
   email TEXT,
+  verification_method TEXT NOT NULL DEFAULT 'sms' CHECK (verification_method IN ('sms', 'email')),
+  contact_verified BOOLEAN NOT NULL DEFAULT FALSE,
+  email_verified BOOLEAN NOT NULL DEFAULT FALSE,
   password_hash TEXT,
 
   -- Address
@@ -263,6 +266,9 @@ ALTER TABLE public.account_requests
 -- Ensure password columns exist (safe to run multiple times)
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS password_hash TEXT;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS verification_method TEXT NOT NULL DEFAULT 'sms';
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS contact_verified BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS valid_id_url TEXT;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS valid_id_urls JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS valid_id_front_url TEXT;
@@ -317,6 +323,9 @@ BEGIN
 
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS contact_number TEXT;
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS email TEXT;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS verification_method TEXT NOT NULL DEFAULT 'sms';
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS contact_verified BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE;
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS house_no TEXT;
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS purok TEXT;
     ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS street TEXT;

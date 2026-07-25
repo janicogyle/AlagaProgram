@@ -7,6 +7,7 @@ import {
   sendAccountResubmissionSms,
   sendAccountStatusSms,
 } from '@/lib/smsNotify.server';
+import { sendAccountResubmissionEmail, sendAccountStatusEmail } from '@/lib/emailNotify.server';
 import { generateNextBeneficiaryControlNumber } from '@/lib/controlNumbers.server';
 import {
   getBeneficiaryCardsSetupHint,
@@ -56,6 +57,9 @@ async function fetchAccountRequestWithRetry(db, requestId) {
     'first_name',
     'last_name',
     'email',
+    'verification_method',
+    'contact_verified',
+    'email_verified',
     'contact_number',
     'house_no',
     'purok',
@@ -232,7 +236,11 @@ async function createAndSendResubmissionLink({
   notes,
   markIncomplete = false,
 }) {
-  const smsSetupError = getAccountResubmissionSmsSetupError();
+  const useEmail =
+    accountRequest?.verification_method === 'email' &&
+    accountRequest?.email_verified === true &&
+    accountRequest?.email;
+  const smsSetupError = useEmail ? null : getAccountResubmissionSmsSetupError();
   if (smsSetupError) {
     const error = new Error(smsSetupError);
     error.code = 'RESUBMISSION_SMS_NOT_CONFIGURED';
@@ -263,15 +271,21 @@ async function createAndSendResubmissionLink({
 
   if (error) throw error;
 
-  const sms = await sendAccountResubmissionSms({
-    contactNumber: accountRequest?.contact_number,
-    notes: data?.notes || notes || accountRequest?.notes,
-    requestId,
-    resubmissionCode,
-  });
+  const notification = useEmail
+    ? await sendAccountResubmissionEmail({
+        email: accountRequest.email,
+        notes: data?.notes || notes || accountRequest?.notes,
+        resubmissionCode,
+      })
+    : await sendAccountResubmissionSms({
+        contactNumber: accountRequest?.contact_number,
+        notes: data?.notes || notes || accountRequest?.notes,
+        requestId,
+        resubmissionCode,
+      });
 
   let responseData = data;
-  if (sms?.ok) {
+  if (notification?.ok) {
     const { data: sentData, error: sentError } = await db
       .from('account_requests')
       .update({ resubmission_sent_at: now })
@@ -282,7 +296,7 @@ async function createAndSendResubmissionLink({
     responseData = sentData;
   }
 
-  return { data: responseData, sms };
+  return { data: responseData, notification, sms: notification?.channel === 'sms' ? notification : null };
 }
 
 export async function GET(request, { params }) {
@@ -603,6 +617,9 @@ export async function POST(request, { params }) {
             middle_name: accountRequest.middle_name,
             last_name: accountRequest.last_name,
             email: accountRequest.email || null,
+            verification_method: accountRequest.verification_method || 'sms',
+            contact_verified: accountRequest.contact_verified === true,
+            email_verified: accountRequest.email_verified === true,
             birthday: accountRequest.birthday,
             age: accountRequest.age,
             birthplace: accountRequest.birthplace,
@@ -734,12 +751,27 @@ export async function POST(request, { params }) {
 
       if (error) throw error;
 
-      const sms = await sendAccountStatusSms({
-        contactNumber: accountRequest?.contact_number,
-        status: data?.status || 'Approved',
-        notes: accountRequest?.notes,
-        requestId,
-      });
+      const notification =
+        accountRequest?.verification_method === 'email' && accountRequest?.email_verified === true
+          ? await sendAccountStatusEmail({
+              email: accountRequest.email,
+              status: data?.status || 'Approved',
+              notes: accountRequest?.notes,
+            })
+          : accountRequest?.contact_verified === true
+          ? await sendAccountStatusSms({
+              contactNumber: accountRequest?.contact_number,
+              status: data?.status || 'Approved',
+              notes: accountRequest?.notes,
+              requestId,
+            })
+          : {
+              ok: false,
+              skipped: true,
+              channel: null,
+              error: 'No verified notification channel is available.',
+            };
+      const sms = notification?.channel === 'sms' ? notification : null;
 
       await logStaffActivity(
         auth,
@@ -764,6 +796,7 @@ export async function POST(request, { params }) {
         error: null, 
         message: 'Account request approved and resident account created successfully.',
         sms,
+        notification,
       });
     } else if (finalAction === 'archive') {
       const result = await createAndSendResubmissionLink({
@@ -780,9 +813,9 @@ export async function POST(request, { params }) {
         auth,
         {
           action: 'Marked account request incomplete',
-          message: result.sms?.ok
+          message: result.notification?.ok
             ? 'Signup request marked incomplete and resubmission code sent.'
-            : 'Signup request marked incomplete and resubmission code generated, but SMS was not sent.',
+            : 'Signup request marked incomplete and resubmission code generated, but the notification was not sent.',
           entity_type: 'account_request',
           entity_id: result.data?.id || requestId,
           reference_number: accountRequest?.contact_number || requestId,
@@ -796,6 +829,7 @@ export async function POST(request, { params }) {
         error: null,
         message: 'Account request marked incomplete.',
         sms: result.sms,
+        notification: result.notification,
       });
     } else if (finalAction === 'resend_resubmission') {
       const result = await createAndSendResubmissionLink({
@@ -828,6 +862,7 @@ export async function POST(request, { params }) {
         error: null,
         message: 'Resubmission SMS processed.',
         sms: result.sms,
+        notification: result.notification,
       });
     }
   } catch (error) {

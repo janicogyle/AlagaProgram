@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseClient';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { normalizeSmsContactNumber } from '@/lib/sms.server';
 import { sendAssistanceStatusSms } from '@/lib/smsNotify.server';
+import { sendAssistanceStatusEmail } from '@/lib/emailNotify.server';
 import { logStaffActivity } from '@/lib/activityLogger.server';
 import { forbiddenSectorResponse, rowMatchesSectorAccess } from '@/lib/sectorAccess';
 
@@ -29,6 +30,30 @@ async function resolveAssistanceContact(db, data) {
   }
 
   return null;
+}
+
+async function resolveAssistanceNotificationChannel(db, data) {
+  if (data?.resident_id) {
+    const { data: resident, error } = await db
+      .from('residents')
+      .select('contact_number, email, verification_method, contact_verified, email_verified')
+      .eq('id', data.resident_id)
+      .limit(1)
+      .maybeSingle();
+
+    if (!error && resident) {
+      if (resident.verification_method === 'email' && resident.email_verified === true && resident.email) {
+        return { channel: 'email', email: resident.email };
+      }
+      if (resident.contact_verified === true && resident.contact_number) {
+        return { channel: 'sms', contactNumber: resident.contact_number };
+      }
+      return { channel: null };
+    }
+  }
+
+  const contactNumber = await resolveAssistanceContact(db, data);
+  return contactNumber ? { channel: 'sms', contactNumber } : { channel: null };
 }
 
 const isCheckedRequirement = (row) => {
@@ -310,20 +335,31 @@ export async function PATCH(request, { params }) {
     }
 
     let sms = null;
+    let notification = null;
     const smsStatuses = new Set(['Approved', 'Rejected', 'Resubmitted']);
     if (data?.status && smsStatuses.has(String(data.status))) {
-      const contactNumber = await resolveAssistanceContact(db, data);
-      sms = await sendAssistanceStatusSms({
-        contactNumber,
-        status: String(data.status),
-        controlNumber: data.control_number,
-        remarks: data.decision_remarks,
-        checklist: data.requirements_checklist,
-        requestId: data.id,
-      });
+      const destination = await resolveAssistanceNotificationChannel(db, data);
+      if (destination.channel === 'email') {
+        notification = await sendAssistanceStatusEmail({
+          email: destination.email,
+          status: String(data.status),
+          controlNumber: data.control_number,
+          remarks: data.decision_remarks,
+        });
+      } else if (destination.channel === 'sms') {
+        notification = await sendAssistanceStatusSms({
+          contactNumber: destination.contactNumber,
+          status: String(data.status),
+          controlNumber: data.control_number,
+          remarks: data.decision_remarks,
+          checklist: data.requirements_checklist,
+          requestId: data.id,
+        });
+        sms = notification;
+      }
     }
 
-    return NextResponse.json({ data, error: null, sms });
+    return NextResponse.json({ data, error: null, sms, notification });
   } catch (error) {
     console.error('Update assistance request error:', error);
     return NextResponse.json(

@@ -56,6 +56,7 @@ Without `UNISMS_API_KEY`, `UNISMS_SENDER_ID`, and `SMS_OTP_SECRET`, signup Step 
 
 To enable QR ID cards, run `setup-step5.sql` in the Supabase SQL Editor (creates `public.beneficiary_cards`).
 To enable SMS OTPs and logs, run `setup-step6.sql` in the Supabase SQL Editor (creates `public.sms_otps` and `public.sms_logs`).
+To track whether signup verified SMS or email, run `setup-step24-verification-method.sql`. Contact numbers entered during email verification are saved as unverified and are not used for approval SMS.
 To remove legacy Supabase document storage, run `setup-step7.sql` after migrating uploads to Cloudinary.
 To enable per-assistance-type request control numbers (`YYYY-###`) and permanent beneficiary numbers (`BENEF-###`), run `setup-step8.sql`.
 If existing beneficiaries still show `2026-001` instead of `BENEF-001`, run `setup-step9.sql` to migrate resident control numbers (assistance requests stay `2026-###`).
@@ -88,6 +89,20 @@ For production resubmission links, set `ACCOUNT_RESUBMISSION_BASE_URL` to the pu
 | Assistance resubmission required | Resubmission message (status `Resubmitted`) |
 
 Terminal logs use `[SMS]` prefix (e.g. `[SMS] account_approved sent to 639151234567`).
+
+### Email verification code
+
+Signup email verification uses Supabase Auth email OTP. In **Supabase Dashboard → Authentication → Email Templates → Magic Link**, make sure the template displays the six-digit code with `{{ .Token }}` (for example: `Your Alaga verification code is {{ .Token }}`). Enable the Email provider under **Authentication → Providers**. For production volume, configure custom SMTP in Supabase so verification messages are delivered from the barangay's email domain.
+
+Status-update emails use the Resend transactional email API. Add these server-side variables:
+
+```bash
+RESEND_API_KEY=re_...
+EMAIL_FROM=ALAGA Program <updates@your-verified-domain.example>
+EMAIL_DEV_MODE=false
+```
+
+For local testing without sending email, set `EMAIL_DEV_MODE=true`; messages are printed in the server terminal. In production, verify the sending domain in Resend and keep `EMAIL_DEV_MODE=false`.
 
 ### Cloudinary (Valid ID & requirement uploads)
 

@@ -7,6 +7,7 @@ import {
   sendBeneficiaryIdRenewalApprovedSms,
   sendBeneficiaryIdRenewalIncompleteSms,
 } from '@/lib/smsNotify.server';
+import { sendRenewalStatusEmail } from '@/lib/emailNotify.server';
 import { forbiddenSectorResponse, rowMatchesSectorAccess } from '@/lib/sectorAccess';
 
 export const runtime = 'nodejs';
@@ -62,7 +63,7 @@ export async function PATCH(request, { params }) {
 
     const { data: resident, error: residentError } = await supabaseAdmin
       .from('residents')
-      .select('id, control_number, first_name, middle_name, last_name, contact_number, status, is_pwd, is_senior_citizen, is_solo_parent')
+      .select('id, control_number, first_name, middle_name, last_name, contact_number, email, verification_method, contact_verified, email_verified, status, is_pwd, is_senior_citizen, is_solo_parent')
       .eq('id', renewal.resident_id)
       .single();
     if (residentError || !resident) {
@@ -113,13 +114,23 @@ export async function PATCH(request, { params }) {
         audience_resident_id: renewal.resident_id,
       }, supabaseAdmin);
 
-      const sms = await sendBeneficiaryIdRenewalIncompleteSms({
-        contactNumber: resident.contact_number,
-        remarks: adminRemarks,
-        requestId: renewal.id,
-      });
+      const notification =
+        resident.verification_method === 'email' && resident.email_verified === true
+          ? await sendRenewalStatusEmail({
+              email: resident.email,
+              status: 'Incomplete',
+              remarks: adminRemarks,
+            })
+          : resident.contact_verified === true
+            ? await sendBeneficiaryIdRenewalIncompleteSms({
+                contactNumber: resident.contact_number,
+                remarks: adminRemarks,
+                requestId: renewal.id,
+              })
+            : null;
+      const sms = notification?.channel === 'sms' ? notification : null;
 
-      return NextResponse.json({ data: updated, error: null, sms });
+      return NextResponse.json({ data: updated, error: null, sms, notification });
     }
 
     const { data: card, error: cardError } = await supabaseAdmin
@@ -180,13 +191,28 @@ export async function PATCH(request, { params }) {
       audience_resident_id: renewal.resident_id,
     }, supabaseAdmin);
 
-    const sms = await sendBeneficiaryIdRenewalApprovedSms({
-      contactNumber: resident.contact_number,
-      expirationDate: formatDate(newExpirationIso),
-      requestId: renewal.id,
-    });
+    const notification =
+      resident.verification_method === 'email' && resident.email_verified === true
+        ? await sendRenewalStatusEmail({
+            email: resident.email,
+            status: 'Approved',
+            expirationDate: formatDate(newExpirationIso),
+          })
+        : resident.contact_verified === true
+          ? await sendBeneficiaryIdRenewalApprovedSms({
+              contactNumber: resident.contact_number,
+              expirationDate: formatDate(newExpirationIso),
+              requestId: renewal.id,
+            })
+          : null;
+    const sms = notification?.channel === 'sms' ? notification : null;
 
-    return NextResponse.json({ data: { ...updated, new_expires_at: newExpirationIso }, error: null, sms });
+    return NextResponse.json({
+      data: { ...updated, new_expires_at: newExpirationIso },
+      error: null,
+      sms,
+      notification,
+    });
   } catch (error) {
     console.error('Update renewal request error:', error);
     return NextResponse.json({ data: null, error: error?.message || 'Failed to update renewal request.' }, { status: 500 });

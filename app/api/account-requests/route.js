@@ -211,6 +211,10 @@ async function insertAccountRequestWithRetry(db, payload) {
     // Do not silently drop password_hash; approval/login flow depends on it.
     'password_hash',
     'email',
+    // These prevent an entered-but-unverified channel from being treated as trusted.
+    'verification_method',
+    'contact_verified',
+    'email_verified',
   ]);
 
   let current = payload;
@@ -301,6 +305,9 @@ export async function GET(request) {
       'civil_status',
       'contact_number',
       'email',
+      'verification_method',
+      'contact_verified',
+      'email_verified',
       'house_no',
       'purok',
       'street',
@@ -407,7 +414,12 @@ export async function POST(request) {
     }
 
     const contactNumber = normalizeContactNumber(body.contactNumber);
-    const email = normalizeEmail(body.email);
+    const verificationMethod = String(body.verificationMethod || 'sms').trim().toLowerCase();
+    if (!['sms', 'email'].includes(verificationMethod)) {
+      return NextResponse.json({ data: null, error: 'Invalid verification method.' }, { status: 400 });
+    }
+    // Only retain an email when it was the address actually verified for this signup.
+    const email = verificationMethod === 'email' ? normalizeEmail(body.email) : '';
     const password = body.password;
 
     if (
@@ -428,20 +440,25 @@ export async function POST(request) {
       return NextResponse.json({ data: null, error: 'Contact number must be 11 digits.' }, { status: 400 });
     }
 
+    if (verificationMethod === 'email' && !email) {
+      return NextResponse.json({ data: null, error: 'Email is required for email verification.' }, { status: 400 });
+    }
+
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ data: null, error: 'Invalid email address.' }, { status: 400 });
     }
 
-    if (email) {
+    let otpCheck = null;
+    if (verificationMethod === 'email') {
       const emailVerification = verifyEmailVerificationToken(body.emailVerificationToken, email);
       if (!emailVerification.ok) {
         return NextResponse.json({ data: null, error: emailVerification.error }, { status: 403 });
       }
-    }
-
-    const otpCheck = await requireSignupOtp(db, contactNumber);
-    if (!otpCheck.ok) {
-      return NextResponse.json({ data: null, error: otpCheck.error }, { status: 403 });
+    } else {
+      otpCheck = await requireSignupOtp(db, contactNumber);
+      if (!otpCheck.ok) {
+        return NextResponse.json({ data: null, error: otpCheck.error }, { status: 403 });
+      }
     }
 
     const sectorValidation = validateSectorPair(body);
@@ -648,6 +665,9 @@ export async function POST(request) {
       birthday: body.birthday,
       contact_number: contactNumber,
       email: email || null,
+      verification_method: verificationMethod,
+      contact_verified: verificationMethod === 'sms',
+      email_verified: verificationMethod === 'email',
       age,
       birthplace: body.birthplace || null,
       sex: body.sex || null,
@@ -713,7 +733,9 @@ export async function POST(request) {
       error: null,
       message:
         'PENDING APPROVAL: Your sign-up request was submitted successfully. Please wait for admin approval before you can log in.',
-      meta: otpConsumeError ? { otpConsumed: false, otpError: otpConsumeError } : { otpConsumed: true },
+      meta: otpConsumeError
+        ? { verificationMethod, otpConsumed: false, otpError: otpConsumeError }
+        : { verificationMethod, otpConsumed: verificationMethod === 'sms' },
     });
   } catch (error) {
     console.error('Create account request error:', error);
