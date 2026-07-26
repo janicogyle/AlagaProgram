@@ -102,15 +102,26 @@ export function UnifiedLoginForm({
         </div>
         {extraContent ? <div className={styles.formExtras}>{extraContent}</div> : null}
       </>
-      <button type="submit" className={styles.loginButton} disabled={submitDisabled || isSubmitting}>
-        {isSubmitting ? (
-          <>
-            <span className={styles.spinner} aria-hidden="true" />
-            Signing in...
-          </>
-        ) : (
-          'Sign In'
-        )}
+      <button
+        type="submit"
+        className={styles.loginButton}
+        disabled={submitDisabled || isSubmitting}
+        onPointerEnter={(event) => {
+          const bounds = event.currentTarget.getBoundingClientRect();
+          event.currentTarget.style.setProperty('--fill-x', `${event.clientX - bounds.left}px`);
+          event.currentTarget.style.setProperty('--fill-y', `${event.clientY - bounds.top}px`);
+        }}
+      >
+        <span className={styles.loginButtonContent}>
+          {isSubmitting ? (
+            <>
+              <span className={styles.spinner} aria-hidden="true" />
+              Signing in...
+            </>
+          ) : (
+            'Sign In'
+          )}
+        </span>
       </button>
       {typeof onGoogleLogin === 'function' ? (
         <>
@@ -122,25 +133,32 @@ export function UnifiedLoginForm({
             className={styles.googleButton}
             onClick={onGoogleLogin}
             disabled={googleDisabled}
+            onPointerEnter={(event) => {
+              const bounds = event.currentTarget.getBoundingClientRect();
+              event.currentTarget.style.setProperty('--fill-x', `${event.clientX - bounds.left}px`);
+              event.currentTarget.style.setProperty('--fill-y', `${event.clientY - bounds.top}px`);
+            }}
           >
-            {isGoogleSubmitting ? (
-              <>
-                <span className={styles.spinner} aria-hidden="true" />
-                Connecting...
-              </>
-            ) : (
-              <>
-                <span className={styles.googleMark} aria-hidden="true">
-                  <svg viewBox="0 0 48 48" focusable="false">
-                    <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.5 30.5.1 24 .1 14.6.1 6.5 5.5 2.6 13.4l7.9 6.1C12.4 13.6 17.8 9.5 24 9.5z" />
-                    <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-2.8-.4-4.1H24v8.1h12.7c-.3 2.1-1.7 5.3-4.9 7.5l7.7 6c4.5-4.2 6.6-10.4 6.6-17.5z" />
-                    <path fill="#FBBC05" d="M10.5 28.5c-.5-1.4-.8-2.9-.8-4.5s.3-3.1.8-4.5l-7.9-6.1C1 16.6.1 20.2.1 24s.9 7.4 2.5 10.6l7.9-6.1z" />
-                    <path fill="#34A853" d="M24 47.9c6.5 0 11.9-2.1 15.9-5.9l-7.7-6c-2.1 1.4-4.8 2.4-8.2 2.4-6.2 0-11.5-4.1-13.5-9.9l-7.9 6.1C6.5 42.5 14.6 47.9 24 47.9z" />
-                  </svg>
-                </span>
-                Continue with Gmail
-              </>
-            )}
+            <span className={styles.googleButtonContent}>
+              {isGoogleSubmitting ? (
+                <>
+                  <span className={styles.spinner} aria-hidden="true" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <span className={styles.googleMark} aria-hidden="true">
+                    <svg viewBox="0 0 48 48" focusable="false">
+                      <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.5 30.5.1 24 .1 14.6.1 6.5 5.5 2.6 13.4l7.9 6.1C12.4 13.6 17.8 9.5 24 9.5z" />
+                      <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-2.8-.4-4.1H24v8.1h12.7c-.3 2.1-1.7 5.3-4.9 7.5l7.7 6c4.5-4.2 6.6-10.4 6.6-17.5z" />
+                      <path fill="#FBBC05" d="M10.5 28.5c-.5-1.4-.8-2.9-.8-4.5s.3-3.1.8-4.5l-7.9-6.1C1 16.6.1 20.2.1 24s.9 7.4 2.5 10.6l7.9-6.1z" />
+                      <path fill="#34A853" d="M24 47.9c6.5 0 11.9-2.1 15.9-5.9l-7.7-6c-2.1 1.4-4.8 2.4-8.2 2.4-6.2 0-11.5-4.1-13.5-9.9l-7.9 6.1C6.5 42.5 14.6 47.9 24 47.9z" />
+                    </svg>
+                  </span>
+                  Continue with Gmail
+                </>
+              )}
+            </span>
           </button>
         </>
       ) : null}
