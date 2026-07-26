@@ -4,12 +4,13 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { isPortalRole, PORTAL_ROLES } from '@/lib/userRoles';
 import styles from './NotificationPanel.module.css';
 
 const DEFAULT_ACTIVITIES = [];
 
 function normalizeActivityRole(role) {
-  return ['Admin', 'Staff', 'Beneficiary'].includes(role) ? role : null;
+  return [...PORTAL_ROLES, 'Beneficiary'].includes(role) ? role : null;
 }
 
 function getLocalReadKeys(role) {
@@ -147,7 +148,7 @@ const TYPE_COLORS = {
 export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnreadCountChange, activityRole }) {
   const router = useRouter();
   const role = normalizeActivityRole(activityRole);
-  const canUseStaffAuth = role === 'Admin' || role === 'Staff';
+  const canUseStaffAuth = isPortalRole(role);
   const canViewStaffActivity = role === 'Admin';
   const [activities, setActivities] = useState(DEFAULT_ACTIVITIES);
   const [loading, setLoading] = useState(false);

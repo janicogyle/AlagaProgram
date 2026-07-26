@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { requireAdmin } from '@/lib/apiAuth';
 import { isMissingActivityLogsTable } from '@/lib/activityLogger.server';
+import { COORDINATOR_ROLES, LEGACY_STAFF_ROLE } from '@/lib/userRoles';
 
 export const runtime = 'nodejs';
 
@@ -52,7 +53,7 @@ export async function GET(request) {
       const { data, error } = await supabaseAdmin
         .from('activity_logs')
         .select('id, actor_name, actor_role, action, message, reference_number, link, created_at')
-        .eq('actor_role', 'Staff')
+        .in('actor_role', [LEGACY_STAFF_ROLE, ...COORDINATOR_ROLES])
         .order('created_at', { ascending: false })
         .limit(limit);
 

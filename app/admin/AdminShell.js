@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import WelcomeToast from '@/components/WelcomeToast';
 import styles from './layout.module.css';
 import { supabase } from '@/lib/supabaseClient';
+import { isAdminRole, isPortalRole } from '@/lib/userRoles';
 
 function AdminShellLoading() {
   return (
@@ -99,7 +100,7 @@ export default function AdminShell({ children, initialUser }) {
           profileJson?.error ||
           !profile ||
           profile.status !== 'Active' ||
-          !['Admin', 'Staff'].includes(profile.role)
+          !isPortalRole(profile.role)
         ) {
           localStorage.removeItem('adminUser');
           await fetch('/api/admin/session', { method: 'DELETE' }).catch(() => {});
@@ -150,8 +151,7 @@ export default function AdminShell({ children, initialUser }) {
   useEffect(() => {
     if (!user) return;
 
-    const isStaff = user.role === 'Staff';
-    if (!isStaff) return;
+    if (isAdminRole(user.role)) return;
 
     const adminOnlyPaths = ['/admin/account-requests', '/admin/renewal-requests', '/admin/users'];
     if (adminOnlyPaths.some((p) => pathname.startsWith(p))) {

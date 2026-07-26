@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseClient';
 import { requireAdmin } from '@/lib/apiAuth';
 import { logStaffActivity } from '@/lib/activityLogger.server';
 import { normalizeSectorAccess } from '@/lib/sectorAccess';
+import { getRoleSectorAccess, isCreatableUserRole } from '@/lib/userRoles';
 
 export async function PATCH(request, { params }) {
   const auth = await requireAdmin(request);
@@ -26,28 +27,11 @@ export async function PATCH(request, { params }) {
     delete updates.id;
     delete updates.created_at;
 
-    const requestedRole = updates.role;
-    const sectorAccess = requestedRole === 'Staff'
-      ? normalizeSectorAccess(updates.sector_access ?? updates.sectorAccess)
-      : [];
+    delete updates.sectorAccess;
     const allowedKeys = new Set(['full_name', 'contact_number', 'role', 'status', 'email', 'sector_access']);
     Object.keys(updates).forEach((key) => {
       if (!allowedKeys.has(key)) delete updates[key];
     });
-
-    if (requestedRole === 'Staff') {
-      if ((updates.status || 'Active') === 'Active' && sectorAccess.length === 0) {
-        return NextResponse.json(
-          { data: null, error: 'Assign at least one sector for active Staff accounts.' },
-          { status: 400 },
-        );
-      }
-      updates.sector_access = sectorAccess;
-    } else if (requestedRole === 'Admin') {
-      updates.sector_access = [];
-    } else {
-      delete updates.sector_access;
-    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ data: null, error: 'No valid fields to update.' }, { status: 400 });
@@ -74,27 +58,38 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ data: null, error: 'User not found.' }, { status: 404 });
     }
 
-    const oldEmail = existingUser.email;
-    const wantsEmailChange = email !== undefined && email !== oldEmail;
-    const effectiveRole = updates.role || existingUser.role;
-    const effectiveStatus = updates.status || existingUser.status;
-    const effectiveSectorAccess =
-      effectiveRole === 'Staff'
-        ? (updates.sector_access ? normalizeSectorAccess(updates.sector_access) : normalizeSectorAccess(existingUser.sector_access))
-        : [];
-
-    if (effectiveRole === 'Staff' && effectiveStatus === 'Active' && effectiveSectorAccess.length === 0) {
+    const requestedRole = updates.role;
+    const keepsExistingLegacyRole =
+      requestedRole === 'Staff' && existingUser.role === 'Staff';
+    if (requestedRole && !isCreatableUserRole(requestedRole) && !keepsExistingLegacyRole) {
       return NextResponse.json(
-        { data: null, error: 'Assign at least one sector for active Staff accounts.' },
+        {
+          data: null,
+          error:
+            'Invalid role. Choose Admin, PWD Coordinator, Solo Parent Coordinator, or Senior Citizen Coordinator.',
+        },
         { status: 400 },
       );
     }
 
-    if (effectiveRole === 'Staff') {
-      updates.sector_access = effectiveSectorAccess;
-    } else if (effectiveRole === 'Admin') {
-      updates.sector_access = [];
+    const oldEmail = existingUser.email;
+    const wantsEmailChange = email !== undefined && email !== oldEmail;
+    const effectiveRole = requestedRole || existingUser.role;
+    const effectiveStatus = updates.status || existingUser.status;
+    const requestedSectorAccess =
+      updates.sector_access === undefined
+        ? existingUser.sector_access
+        : normalizeSectorAccess(updates.sector_access);
+    const effectiveSectorAccess = getRoleSectorAccess(effectiveRole, requestedSectorAccess);
+
+    if (effectiveRole !== 'Admin' && effectiveStatus === 'Active' && effectiveSectorAccess.length === 0) {
+      return NextResponse.json(
+        { data: null, error: 'Active coordinator accounts must have an assigned sector.' },
+        { status: 400 },
+      );
     }
+
+    updates.sector_access = effectiveSectorAccess;
 
     // 1) Update auth email first (so login is updated)
     if (wantsEmailChange) {

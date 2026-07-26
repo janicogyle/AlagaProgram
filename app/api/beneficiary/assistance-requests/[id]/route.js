@@ -3,6 +3,7 @@ import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { readBeneficiarySession } from '@/lib/beneficiarySession.server';
 import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/documentUrls.server';
 import { buildBeneficiaryActor, logActivity } from '@/lib/activityLogger.server';
+import { PORTAL_ROLES } from '@/lib/userRoles';
 import { resolveAssistanceAmount } from '@/lib/assistanceAmounts.mjs';
 
 export const runtime = 'nodejs';
@@ -348,7 +349,7 @@ export async function PATCH(request, { params }) {
         const { data: recipients } = await supabaseAdmin
           .from('users')
           .select('id, role, status')
-          .in('role', ['Admin', 'Staff'])
+          .in('role', PORTAL_ROLES)
           .eq('status', 'Active');
 
         if (recipients?.length) {

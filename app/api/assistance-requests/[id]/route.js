@@ -6,6 +6,7 @@ import { sendAssistanceStatusSms } from '@/lib/smsNotify.server';
 import { sendAssistanceStatusEmail } from '@/lib/emailNotify.server';
 import { logStaffActivity } from '@/lib/activityLogger.server';
 import { forbiddenSectorResponse, rowMatchesSectorAccess } from '@/lib/sectorAccess';
+import { isAdminRole } from '@/lib/userRoles';
 
 export const runtime = 'nodejs';
 
@@ -308,7 +309,7 @@ export async function PATCH(request, { params }) {
         const rows = [actorRow];
 
         // 2) Admin monitoring notifications only when a STAFF member processed it
-        if (actorRole === 'Staff') {
+        if (!isAdminRole(actorRole)) {
           const { data: admins } = await db
             .from('users')
             .select('id')

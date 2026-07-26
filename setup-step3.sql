@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   full_name TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
   contact_number TEXT,
-  role TEXT NOT NULL DEFAULT 'Staff' CHECK (role IN ('Admin', 'Staff')),
+  role TEXT NOT NULL CHECK (role IN ('Admin', 'PWD Coordinator', 'Solo Parent Coordinator', 'Senior Citizen Coordinator', 'Staff')),
   status TEXT DEFAULT 'Active' CHECK (status IN ('Active', 'Inactive')),
   last_login TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),

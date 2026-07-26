@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { normalizeSectorAccess } from '@/lib/sectorAccess';
+import { getRoleSectorAccess, isPortalRole } from '@/lib/userRoles';
 
 export const runtime = 'nodejs';
 
 const USER_PROFILE_FIELDS = 'id, email, full_name, contact_number, role, status, last_login, created_at, updated_at, sector_access';
 const USER_PROFILE_FALLBACK_FIELDS = 'id, email, full_name, contact_number, role, status, last_login, created_at, updated_at';
-const ALLOWED_PORTAL_ROLES = new Set(['Admin', 'Staff']);
-
 async function selectUserProfile(column, value) {
   let { data, error } = await supabaseAdmin
     .from('users')
@@ -23,12 +22,12 @@ async function selectUserProfile(column, value) {
       .maybeSingle());
   }
 
-  if (data) data.sector_access = data.role === 'Admin' ? [] : normalizeSectorAccess(data.sector_access);
+  if (data) data.sector_access = getRoleSectorAccess(data.role, data.sector_access);
   return { data, error };
 }
 
 function validatePortalProfile(profile) {
-  if (!ALLOWED_PORTAL_ROLES.has(profile?.role)) {
+  if (!isPortalRole(profile?.role)) {
     return { ok: false, error: 'Account is not authorized for the staff/admin portal.', status: 403 };
   }
 
@@ -36,10 +35,10 @@ function validatePortalProfile(profile) {
     return { ok: false, error: 'Account inactive.', status: 403 };
   }
 
-  if (profile.role === 'Staff' && normalizeSectorAccess(profile.sector_access).length === 0) {
+  if (profile.role !== 'Admin' && normalizeSectorAccess(profile.sector_access).length === 0) {
     return {
       ok: false,
-      error: 'Staff account has no assigned sectors. Please contact an administrator.',
+      error: 'Coordinator account has no assigned sector. Please contact an administrator.',
       status: 403,
     };
   }
@@ -124,7 +123,7 @@ export async function GET(request) {
         email: byEmail.email,
         contact_number: byEmail.contact_number || null,
         role: byEmail.role || 'Staff',
-        sector_access: byEmail.role === 'Admin' ? [] : normalizeSectorAccess(byEmail.sector_access),
+        sector_access: getRoleSectorAccess(byEmail.role, byEmail.sector_access),
         status: byEmail.status || 'Active',
         last_login: new Date().toISOString(),
         created_at: byEmail.created_at || undefined,

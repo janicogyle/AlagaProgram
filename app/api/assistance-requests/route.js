@@ -8,6 +8,7 @@ import { RESTRICTED_BENEFICIARY_STATUSES } from '@/lib/beneficiaryIdStatus.serve
 import { resolveAssistanceAmount } from '@/lib/assistanceAmounts.mjs';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { forbiddenSectorResponse, getAllowedSectorKeys, rowMatchesSectorAccess } from '@/lib/sectorAccess';
+import { PORTAL_ROLES } from '@/lib/userRoles';
 
 export const runtime = 'nodejs';
 
@@ -734,7 +735,7 @@ export async function POST(request) {
         const { data: recipients } = await supabaseAdmin
           .from('users')
           .select('id, role, status')
-          .in('role', ['Admin', 'Staff'])
+          .in('role', PORTAL_ROLES)
           .eq('status', 'Active');
 
         if (recipients?.length) {

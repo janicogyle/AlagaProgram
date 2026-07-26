@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS public.activity_logs (
   actor_user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
   actor_resident_id UUID,
   actor_name TEXT NOT NULL,
-  actor_role TEXT NOT NULL CHECK (actor_role IN ('Admin', 'Staff', 'Beneficiary', 'System')),
+  actor_role TEXT NOT NULL CHECK (actor_role IN ('Admin', 'PWD Coordinator', 'Solo Parent Coordinator', 'Senior Citizen Coordinator', 'Staff', 'Beneficiary', 'System')),
   action TEXT NOT NULL,
   message TEXT,
   entity_type TEXT,

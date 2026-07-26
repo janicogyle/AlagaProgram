@@ -18,16 +18,19 @@ import {
 import styles from './page.module.css';
 import { supabase } from '@/lib/supabaseClient';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
+import {
+  CREATABLE_USER_ROLES,
+  getRoleLabel,
+  getRoleSectorAccess,
+  isCreatableUserRole,
+} from '@/lib/userRoles';
+
+const formRoleOptions = CREATABLE_USER_ROLES.map((role) => ({ value: role, label: role }));
 
 const filterRoleOptions = [
   { value: '', label: 'All Roles' },
-  { value: 'Admin', label: 'Admin' },
-  { value: 'Staff', label: 'Staff' },
-];
-
-const formRoleOptions = [
-  { value: 'Admin', label: 'Admin' },
-  { value: 'Staff', label: 'Staff' },
+  ...formRoleOptions,
+  { value: 'Staff (Legacy)', label: 'Staff (Legacy)' },
 ];
 
 const sectorAccessOptions = [
@@ -43,7 +46,7 @@ const normalizeSectorAccess = (value) => {
 
 const formatSectorAccess = (value, role) => {
   if (role === 'Admin') return 'All sectors';
-  const labels = normalizeSectorAccess(value)
+  const labels = getRoleSectorAccess(role, value)
     .map((key) => sectorAccessOptions.find((option) => option.value === key)?.label)
     .filter(Boolean);
   return labels.length ? labels.join(', ') : 'No sectors assigned';
@@ -173,7 +176,7 @@ export default function UsersPage() {
     const matchesSearch =
       user.full_name.toLowerCase().includes(normalizedSearchTerm) ||
       user.email.toLowerCase().includes(normalizedSearchTerm);
-    const matchesRole = !roleFilter || user.role === roleFilter;
+    const matchesRole = !roleFilter || getRoleLabel(user.role, user.sector_access) === roleFilter;
     return matchesSearch && matchesRole;
   });
 
@@ -190,7 +193,7 @@ export default function UsersPage() {
 
   const handleRoleChange = (e) => {
     const value = e.target.value;
-    setForm((prev) => ({ ...prev, role: value, sectorAccess: value === 'Staff' ? prev.sectorAccess : [] }));
+    setForm((prev) => ({ ...prev, role: value, sectorAccess: getRoleSectorAccess(value) }));
     setErrors((prev) => ({ ...prev, role: '' }));
   };
 
@@ -226,9 +229,7 @@ export default function UsersPage() {
     const newErrors = {};
     if (!form.fullName.trim()) newErrors.fullName = 'Full name is required';
     if (!form.role) newErrors.role = 'Role is required';
-    if (form.role === 'Staff' && normalizeSectorAccess(form.sectorAccess).length === 0) {
-      newErrors.sectorAccess = 'Assign at least one sector';
-    }
+    if (form.role && !isCreatableUserRole(form.role)) newErrors.role = 'Invalid role';
     if (!form.email.trim()) newErrors.email = 'Email is required';
     if (!form.password || form.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
@@ -250,7 +251,7 @@ export default function UsersPage() {
           email: form.email.trim(),
           contactNumber: form.contactNumber.trim() || null,
           role: form.role,
-          sectorAccess: form.role === 'Staff' ? normalizeSectorAccess(form.sectorAccess) : [],
+          sectorAccess: getRoleSectorAccess(form.role),
           password: form.password,
         }),
       });
@@ -291,7 +292,7 @@ export default function UsersPage() {
       email: user.email || '',
       contactNumber: user.contact_number || '',
       role: user.role || 'Staff',
-      sectorAccess: user.role === 'Staff' ? normalizeSectorAccess(user.sector_access) : [],
+      sectorAccess: getRoleSectorAccess(user.role, user.sector_access),
       errors: {},
       submitting: false,
     });
@@ -336,7 +337,7 @@ export default function UsersPage() {
     setEditState((prev) => ({
       ...prev,
       role: value,
-      sectorAccess: value === 'Staff' ? prev.sectorAccess : [],
+      sectorAccess: getRoleSectorAccess(value, prev.sectorAccess),
       errors: { ...prev.errors, role: '', sectorAccess: '' },
     }));
   };
@@ -384,7 +385,7 @@ export default function UsersPage() {
           email,
           contact_number: editState.contactNumber.trim() || null,
           role: editState.role,
-          sector_access: editState.role === 'Staff' ? normalizeSectorAccess(editState.sectorAccess) : [],
+          sector_access: getRoleSectorAccess(editState.role, editState.sectorAccess),
         }),
       });
 
@@ -614,7 +615,11 @@ export default function UsersPage() {
     {
       key: 'role',
       label: 'Role',
-      render: (role) => <Badge variant={role === 'Admin' ? 'primary' : 'secondary'}>{role}</Badge>,
+      render: (role, row) => (
+        <Badge variant={role === 'Admin' ? 'primary' : 'secondary'}>
+          {getRoleLabel(role, row.sector_access)}
+        </Badge>
+      ),
     },
     {
       key: 'sector_access',
@@ -705,7 +710,9 @@ export default function UsersPage() {
                 <div className={styles.cardRow}>
                   <span className={styles.cardLabel}>Role</span>
                   <span className={styles.cardValue}>
-                    <Badge variant={user.role === 'Admin' ? 'primary' : 'secondary'}>{user.role}</Badge>
+                    <Badge variant={user.role === 'Admin' ? 'primary' : 'secondary'}>
+                      {getRoleLabel(user.role, user.sector_access)}
+                    </Badge>
                   </span>
                 </div>
                 <div className={styles.cardRow}>
@@ -825,7 +832,7 @@ export default function UsersPage() {
               <div className={styles.metaPill}>
                 <span className={styles.detailLabel}>Role</span>
                 <Badge variant={detailsState.user.role === 'Admin' ? 'primary' : 'secondary'}>
-                  {detailsState.user.role}
+                  {getRoleLabel(detailsState.user.role, detailsState.user.sector_access)}
                 </Badge>
               </div>
               <div className={styles.metaPill}>
@@ -894,7 +901,11 @@ export default function UsersPage() {
               name="role"
               value={editState.role}
               onChange={handleEditRoleChange}
-              options={formRoleOptions}
+              options={
+                editState.user?.role === 'Staff'
+                  ? [...formRoleOptions, { value: 'Staff', label: 'Staff (Legacy)' }]
+                  : formRoleOptions
+              }
               placeholder="Select role"
               required
               error={editState.errors.role}
@@ -909,7 +920,7 @@ export default function UsersPage() {
           })}
 
           <p className={styles.formHelperText} style={{ margin: 0 }}>
-            This updates the user’s login email (Supabase Auth) and the Users table.
+            Sector access is assigned automatically from the selected coordinator role.
           </p>
         </div>
       </Modal>
@@ -1051,7 +1062,7 @@ export default function UsersPage() {
           />
 
           <p className={styles.formHelperText}>
-            After saving, you can manage this user&#39;s permissions and reset their password from this page.
+            Sector access is assigned automatically from the selected role. You can reset the password from this page.
           </p>
         </div>
       </Modal>

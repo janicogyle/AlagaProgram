@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { requireAdmin } from '@/lib/apiAuth';
 import { logStaffActivity } from '@/lib/activityLogger.server';
-import { normalizeSectorAccess } from '@/lib/sectorAccess';
+import { getRoleSectorAccess, isCreatableUserRole } from '@/lib/userRoles';
 
 export async function GET(request) {
   const auth = await requireAdmin(request);
@@ -39,12 +39,22 @@ export async function POST(request) {
     }
 
     const { email, password, fullName, contactNumber, role } = body;
-    const sectorAccess = role === 'Staff' ? normalizeSectorAccess(body.sectorAccess ?? body.sector_access) : [];
 
     // Validate input
     if (!email || !password || !fullName || !role) {
       return NextResponse.json(
         { data: null, error: 'Email, password, full name, and role are required.' },
+        { status: 400 },
+      );
+    }
+
+    if (!isCreatableUserRole(role)) {
+      return NextResponse.json(
+        {
+          data: null,
+          error:
+            'Invalid role. Choose Admin, PWD Coordinator, Solo Parent Coordinator, or Senior Citizen Coordinator.',
+        },
         { status: 400 },
       );
     }
@@ -62,12 +72,7 @@ export async function POST(request) {
       );
     }
 
-    if (role === 'Staff' && sectorAccess.length === 0) {
-      return NextResponse.json(
-        { data: null, error: 'Assign at least one sector for Staff accounts.' },
-        { status: 400 },
-      );
-    }
+    const sectorAccess = getRoleSectorAccess(role);
 
     // Create auth user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -94,8 +99,8 @@ export async function POST(request) {
         full_name: fullName,
         email,
         contact_number: contactNumber || null,
-        role: role || 'Staff',
-        sector_access: role === 'Admin' ? [] : sectorAccess,
+        role,
+        sector_access: sectorAccess,
         status: 'Active',
       })
       .select()
@@ -111,7 +116,7 @@ export async function POST(request) {
       auth,
       {
         action: 'Created user account',
-        message: `Created ${data?.role || role || 'Staff'} account.`,
+        message: `Created ${data?.role || role} account.`,
         entity_type: 'user',
         entity_id: data?.id || authData.user.id,
         reference_number: data?.email || email,

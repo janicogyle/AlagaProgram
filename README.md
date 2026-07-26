@@ -57,6 +57,7 @@ Without `UNISMS_API_KEY`, `UNISMS_SENDER_ID`, and `SMS_OTP_SECRET`, signup Step 
 To enable QR ID cards, run `setup-step5.sql` in the Supabase SQL Editor (creates `public.beneficiary_cards`).
 To enable SMS OTPs and logs, run `setup-step6.sql` in the Supabase SQL Editor (creates `public.sms_otps` and `public.sms_logs`).
 To track whether signup verified SMS or email, run `setup-step24-verification-method.sql`. Contact numbers entered during email verification are saved as unverified and are not used for approval SMS.
+To enable the Admin and coordinator account roles with fixed sector access, run `setup-step25-coordinator-roles.sql`.
 To remove legacy Supabase document storage, run `setup-step7.sql` after migrating uploads to Cloudinary.
 To enable per-assistance-type request control numbers (`YYYY-###`) and permanent beneficiary numbers (`BENEF-###`), run `setup-step8.sql`.
 If existing beneficiaries still show `2026-001` instead of `BENEF-001`, run `setup-step9.sql` to migrate resident control numbers (assistance requests stay `2026-###`).
