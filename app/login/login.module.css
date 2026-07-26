@@ -1451,6 +1451,44 @@
     }
   }
 
+@media (max-width: 900px) and (orientation: portrait) {
+  .welcomePanel {
+    min-height: clamp(108px, 15vw, 140px);
+    padding: 0.85rem 1rem;
+  }
+
+  .welcomeHeader {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(0.8rem, 3vw, 1.4rem);
+    transform: none;
+  }
+
+  .welcomeLogoFrame,
+  .welcomeLogo {
+    width: clamp(62px, 12vw, 84px);
+    height: clamp(62px, 12vw, 84px);
+  }
+
+  .welcomeHeaderText {
+    align-items: center;
+    width: auto;
+    max-width: min(56vw, 270px);
+    text-align: center;
+  }
+
+  .welcomeTitle {
+    font-size: clamp(1.05rem, 3.6vw, 1.4rem);
+    text-align: center;
+  }
+
+  .welcomeSubtitle {
+    font-size: clamp(0.68rem, 2vw, 0.84rem);
+    text-align: center;
+  }
+}
+
 @keyframes fadeUp {
   from {
     opacity: 0;
