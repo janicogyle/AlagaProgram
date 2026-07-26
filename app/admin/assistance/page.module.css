@@ -458,28 +458,35 @@
 .filters {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 10px 12px;
   justify-content: flex-start;
   padding: 12px 20px;
 }
 
 .searchInput {
-  flex: 1 1 220px;
-  max-width: 380px;
-  min-width: 180px;
+  flex: 1 1 300px;
+  max-width: none;
+  min-width: 240px;
 }
 
 .filterSelects {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 10px;
   flex: 0 0 auto;
+  min-width: 0;
 }
 
 .filterSelectType {
   --select-max-width: 13rem;
+}
+
+.filterSelectSort,
+.filterSelectRegistration {
+  --select-min-width: 9rem;
+  --select-max-width: 12rem;
 }
 
 .filterSelectSector {
@@ -487,12 +494,22 @@
   --select-max-width: 10.5rem;
 }
 
-.filterSelectEligibility {
-  --select-min-width: 9.5rem;
-  --select-max-width: 12rem;
+.filterSelectStatus {
+  --select-min-width: 7.5rem;
+  --select-max-width: 10rem;
+}
+
+.resetFiltersBtn {
+  min-height: 40px;
+  white-space: nowrap;
 }
 
 @media (max-width: 900px) {
+  .filters,
+  .filterSelects {
+    flex-wrap: wrap;
+  }
+
   .formGrid,
   .serviceTypeGrid {
     grid-template-columns: 1fr;
@@ -577,10 +594,16 @@
   }
 
   .filterSelectType,
+  .filterSelectSort,
+  .filterSelectRegistration,
   .filterSelectSector,
-  .filterSelectEligibility {
+  .filterSelectStatus {
     --select-min-width: 0;
     --select-max-width: none;
+  }
+
+  .resetFiltersBtn {
+    width: 100%;
   }
 
   .assistancePage {

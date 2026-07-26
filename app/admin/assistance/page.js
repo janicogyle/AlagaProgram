@@ -41,14 +41,23 @@ const sectorOptions = [
   { value: 'Solo Parent', label: 'Solo Parent' },
 ];
 
-const eligibilityOptions = [
-  { value: '', label: 'All Eligibility' },
-  { value: 'Eligible', label: 'Eligible' },
-  { value: 'Almost Eligible', label: 'Almost Eligible' },
-  { value: 'Not Yet Eligible', label: 'Not Eligible' },
+const sortOptions = [
+  { value: 'date_desc', label: 'Latest First' },
+  { value: 'date_asc', label: 'Oldest First' },
+  { value: 'registration_type_asc', label: 'Registration Type' },
+  { value: 'sector_asc', label: 'Sector' },
 ];
 
+const registrationTypeOptions = [
+  { value: '', label: 'All Registration' },
+  { value: 'walk-in', label: 'Walk-ins' },
+  { value: 'online', label: 'Online' },
+];
 
+const statusOptions = [
+  { value: '', label: 'All Status' },
+  { value: 'Released', label: 'Released' },
+];
 
 const serviceTypes = [
   { value: 'medicine', label: 'Medicine Assistance', ceiling: '₱500' },
@@ -56,7 +65,7 @@ const serviceTypes = [
   { value: 'burial', label: 'Burial Assistance', ceiling: '₱1,000' },
 ];
 
-const ASSISTANCE_RECORDS_CACHE_KEY = 'admin-assistance-records:list';
+const ASSISTANCE_RECORDS_CACHE_KEY = 'admin-assistance-records:list:v2';
 const ASSISTANCE_RECORDS_CACHE_MAX_AGE = 30_000;
 
 const formatCurrency = (value) =>
@@ -74,13 +83,12 @@ const generateControlNumber = () => {
 };
 
 export default function AssistancePage() {
-const statusOptions = [{ value: 'Released', label: 'Released' }];
-
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
+  const [sortBy, setSortBy] = useState('date_desc');
+  const [registrationTypeFilter, setRegistrationTypeFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
-  const [eligibilityFilter, setEligibilityFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('Released');
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -163,6 +171,11 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
             type: r.assistance_type,
             amount: r.amount,
             status: r.status || 'Released',
+            requestDateRaw: r.request_date || r.created_at || null,
+            requestSource:
+              String(r.request_source || resident?.registration_type || '').trim().toLowerCase() === 'walk-in'
+                ? 'walk-in'
+                : 'online',
             date: r.request_date ? new Date(r.request_date).toLocaleDateString() : '',
             cooldownInfo: getCooldownInfo(latestByResident.get(r.resident_id) || null),
             sectors,
@@ -241,19 +254,59 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
   };
 
   // Filter assistance records
-  const filteredAssistance = useMemo(() => records.filter((record) => {
-    const normalizedSearch = debouncedSearchTerm.toLowerCase();
-    const matchesSearch =
-      record.requester.toLowerCase().includes(normalizedSearch) ||
-      record.beneficiary.toLowerCase().includes(normalizedSearch) ||
-      record.controlNo.toLowerCase().includes(normalizedSearch);
-    const matchesType = !typeFilter || record.type === typeFilter;
-    const matchesSector = !sectorFilter || (record.sectors || []).includes(sectorFilter);
-    const matchesEligibility =
-      !eligibilityFilter || record.cooldownInfo?.status === eligibilityFilter;
-    const matchesStatus = !statusFilter || record.status === statusFilter;
-    return matchesSearch && matchesType && matchesSector && matchesEligibility && matchesStatus;
-  }), [records, debouncedSearchTerm, typeFilter, sectorFilter, eligibilityFilter, statusFilter]);
+  const filteredAssistance = useMemo(() => records
+    .filter((record) => {
+      const normalizedSearch = debouncedSearchTerm.toLowerCase();
+      const matchesSearch =
+        record.requester.toLowerCase().includes(normalizedSearch) ||
+        record.beneficiary.toLowerCase().includes(normalizedSearch) ||
+        record.controlNo.toLowerCase().includes(normalizedSearch);
+      const matchesType = !typeFilter || record.type === typeFilter;
+      const matchesRegistration =
+        !registrationTypeFilter || record.requestSource === registrationTypeFilter;
+      const matchesSector = !sectorFilter || (record.sectors || []).includes(sectorFilter);
+      const matchesStatus = !statusFilter || record.status === statusFilter;
+      return matchesSearch && matchesType && matchesRegistration && matchesSector && matchesStatus;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'date_asc' || sortBy === 'date_desc') {
+        const aTime = new Date(a.requestDateRaw || 0).getTime() || 0;
+        const bTime = new Date(b.requestDateRaw || 0).getTime() || 0;
+        return sortBy === 'date_asc' ? aTime - bTime : bTime - aTime;
+      }
+      if (sortBy === 'registration_type_asc') {
+        return String(a.requestSource || '').localeCompare(String(b.requestSource || ''));
+      }
+      if (sortBy === 'sector_asc') {
+        return (a.sectors || []).join(', ').localeCompare((b.sectors || []).join(', '));
+      }
+      return 0;
+    }), [
+      records,
+      debouncedSearchTerm,
+      typeFilter,
+      registrationTypeFilter,
+      sectorFilter,
+      statusFilter,
+      sortBy,
+    ]);
+
+  const hasActiveFilters =
+    searchTerm ||
+    typeFilter ||
+    registrationTypeFilter ||
+    sectorFilter ||
+    statusFilter !== 'Released' ||
+    sortBy !== 'date_desc';
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setSortBy('date_desc');
+    setRegistrationTypeFilter('');
+    setTypeFilter('');
+    setSectorFilter('');
+    setStatusFilter('Released');
+  };
 
   const summaryStats = useMemo(() => {
     const uniqueEligibleBeneficiaries = new Set();
@@ -522,13 +575,22 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
           />
           <div className={styles.filterSelects} role="group" aria-label="Filter records">
             <Select
-              name="type"
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              options={typeOptions}
-              placeholder="All Types"
+              name="sortBy"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              options={sortOptions}
+              placeholder="Sort By"
               compact
-              className={styles.filterSelectType}
+              className={styles.filterSelectSort}
+            />
+            <Select
+              name="registrationType"
+              value={registrationTypeFilter}
+              onChange={(e) => setRegistrationTypeFilter(e.target.value)}
+              options={registrationTypeOptions}
+              placeholder="Registration Type"
+              compact
+              className={styles.filterSelectRegistration}
             />
             <Select
               name="sector"
@@ -540,14 +602,32 @@ const statusOptions = [{ value: 'Released', label: 'Released' }];
               className={styles.filterSelectSector}
             />
             <Select
-              name="eligibility"
-              value={eligibilityFilter}
-              onChange={(e) => setEligibilityFilter(e.target.value)}
-              options={eligibilityOptions}
-              placeholder="All Eligibility"
+              name="type"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              options={typeOptions}
+              placeholder="All Types"
               compact
-              className={styles.filterSelectEligibility}
+              className={styles.filterSelectType}
             />
+            <Select
+              name="status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              options={statusOptions}
+              placeholder="All Status"
+              compact
+              className={styles.filterSelectStatus}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleResetFilters}
+              disabled={!hasActiveFilters}
+              className={styles.resetFiltersBtn}
+            >
+              Reset
+            </Button>
           </div>
         </FilterBar>
 

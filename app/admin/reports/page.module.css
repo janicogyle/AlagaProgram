@@ -45,6 +45,7 @@
   min-width: 0;
   position: relative;
   overflow: hidden;
+  padding-bottom: 58px;
 }
 
 .reportCard:hover {
@@ -169,7 +170,9 @@
   font-weight: 600;
   color: var(--foreground);
   margin-bottom: 4px;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 
 .reportDesc {
@@ -179,7 +182,9 @@
 }
 
 .reportCount {
-  align-self: flex-end;
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
   font-size: 12px;
   color: var(--primary-color);
   font-weight: 600;
@@ -250,6 +255,7 @@
 @media (max-width: 900px) {
   .reportCard {
     padding: 16px;
+    padding-bottom: 52px;
   }
 
   .reportIcon {
@@ -304,6 +310,7 @@
 
   .reportCard {
     padding: 14px;
+    padding-bottom: 48px;
     border-radius: 10px;
   }
 
@@ -330,6 +337,8 @@
 
   .reportCount {
     font-size: 11px;
+    right: 14px;
+    bottom: 14px;
   }
 
   .summaryGrid {
@@ -381,6 +390,7 @@
     align-items: flex-start;
     gap: 12px;
     padding: 14px;
+    padding-bottom: 14px;
   }
 
   .reportIcon {
@@ -393,6 +403,7 @@
   }
 
   .reportCount {
+    position: static;
     align-self: flex-start;
   }
 

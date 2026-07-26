@@ -630,12 +630,13 @@ export default function BeneficiaryIdVerifyPage() {
 
   return (
     <div className={styles.page}>
-      <PageHeader
-        title="Verify Beneficiary ID (QR)"
-        subtitle="Scan the QR or enter the card reference number to verify if the beneficiary ID is valid and not expired/revoked."
-      />
+      <Card padding={false}>
+        <PageHeader
+          title="Verify Beneficiary ID (QR)"
+          subtitle="Scan the QR or enter the card reference number to verify if the beneficiary ID is valid and not expired/revoked."
+        />
 
-      <Card>
+        <div className={styles.cardContent}>
         <label className={styles.label} htmlFor="cardRef">
           Card Reference
         </label>
@@ -650,6 +651,16 @@ export default function BeneficiaryIdVerifyPage() {
 
         <div className={styles.actions}>
           <Button
+            className={`${styles.verificationAction} ${styles.scanButton}`}
+            icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+                <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+                <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+                <rect x="7" y="7" width="10" height="10" rx="1" />
+              </svg>
+            }
             onClick={() => {
               setScanSession((value) => value + 1);
               setScanOpen(true);
@@ -658,11 +669,28 @@ export default function BeneficiaryIdVerifyPage() {
           >
             Scan QR
           </Button>
-          <Button onClick={() => handleVerify()} disabled={loading || !token.trim()}>
+          <Button
+            className={`${styles.verificationAction} ${styles.verifyButton}`}
+            icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            }
+            onClick={() => handleVerify()}
+            disabled={loading || !token.trim()}
+          >
             {loading ? 'Verifying…' : 'Verify'}
           </Button>
           <Button
             variant="secondary"
+            className={`${styles.verificationAction} ${styles.clearButton}`}
+            icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 6h18" />
+                <path d="M8 6V4h8v2" />
+                <path d="m19 6-1 14H6L5 6" />
+              </svg>
+            }
             onClick={() => {
               setToken('');
               setResult(null);
@@ -840,6 +868,7 @@ export default function BeneficiaryIdVerifyPage() {
             ) : null}
           </div>
         )}
+        </div>
       </Card>
 
       <Modal

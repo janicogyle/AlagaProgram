@@ -5,6 +5,10 @@
   min-width: 0;
 }
 
+.cardContent {
+  padding: 24px 30px 28px;
+}
+
 .label {
   display: block;
   font-weight: 600;
@@ -54,9 +58,92 @@
 
 .actions {
   display: flex;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 12px;
+  margin-top: 16px;
   flex-wrap: wrap;
+}
+
+.verificationAction {
+  position: relative;
+  overflow: hidden;
+  min-width: 116px;
+  border-radius: 10px;
+  font-weight: 700;
+  box-shadow: 0 8px 18px rgba(30, 64, 175, 0.12);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease, border-color 0.22s ease;
+}
+
+.verificationAction::after {
+  content: '';
+  position: absolute;
+  inset: -70% auto -70% -45%;
+  width: 34%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.38), transparent);
+  transform: skewX(-18deg);
+  transition: left 0.55s ease;
+  pointer-events: none;
+}
+
+.verificationAction:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.verificationAction:hover:not(:disabled)::after {
+  left: 115%;
+}
+
+.verificationAction:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.actions .scanButton {
+  background: linear-gradient(135deg, #1e40af, #2563eb);
+  box-shadow: 0 10px 22px rgba(30, 64, 175, 0.24);
+}
+
+.actions .scanButton:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  box-shadow: 0 14px 26px rgba(30, 64, 175, 0.3);
+}
+
+.actions .verifyButton {
+  background: linear-gradient(135deg, #2563eb, #60a5fa);
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.2);
+}
+
+.actions .verifyButton:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+  box-shadow: 0 14px 26px rgba(37, 99, 235, 0.28);
+}
+
+.actions .clearButton {
+  background: var(--surface-bg);
+  border-color: var(--border-strong);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.actions .clearButton:hover:not(:disabled) {
+  color: #1d4ed8;
+  border-color: #93c5fd;
+  background: #eff6ff;
+  box-shadow: 0 12px 22px rgba(37, 99, 235, 0.14);
+}
+
+.verificationAction:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .verificationAction,
+  .verificationAction::after {
+    transition: none;
+  }
+
+  .verificationAction:hover:not(:disabled),
+  .verificationAction:active:not(:disabled) {
+    transform: none;
+  }
 }
 
 .scannerWrap {
@@ -126,6 +213,18 @@
   color: var(--danger);
   font-size: 14px;
   line-height: 1.45;
+}
+
+@media (max-width: 768px) {
+  .cardContent {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cardContent {
+    padding: 16px;
+  }
 }
 
 :global(html[data-theme='dark']) .scannerError {
