@@ -736,10 +736,10 @@ export default function HomePage() {
                   <span className={styles.ctaKicker}>Barangay Sta. Rita</span>
                 </div>
                 <h3>Ready to Get Started?</h3>
-                <p>Access the system to manage resident records and assistance programs.</p>
-                <div className={styles.ctaMetaGrid} aria-label="System access notes">
-                  <span>Staff portal</span>
-                  <span>Secure access</span>
+                <p>Sign in to your beneficiary account to apply for assistance and track your requests.</p>
+                <div className={styles.ctaMetaGrid} aria-label="Beneficiary portal features">
+                  <span>Beneficiary portal</span>
+                  <span>Track requests</span>
                 </div>
                 <Link href="/login" className={styles.ctaButton}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -747,7 +747,7 @@ export default function HomePage() {
                     <polyline points="10 17 15 12 10 7" />
                     <line x1="15" y1="12" x2="3" y2="12" />
                   </svg>
-                  Sign In to System
+                  Sign In to Your Account
                 </Link>
               </div>
             </div>
