@@ -259,7 +259,29 @@ export default function LoginPage() {
       <div className={styles.loginShell}>
         <div className={styles.welcomePanel}>
           <div className={styles.welcomeHeader}>
-            <div className={styles.welcomeLogoFrame}>
+            <div
+              className={styles.welcomeLogoFrame}
+              onPointerMove={(event) => {
+                const bounds = event.currentTarget.getBoundingClientRect();
+                const pointerX = (event.clientX - bounds.left) / bounds.width - 0.5;
+                const pointerY = (event.clientY - bounds.top) / bounds.height - 0.5;
+
+                event.currentTarget.style.setProperty('--logo-tilt-x', `${pointerY * -22}deg`);
+                event.currentTarget.style.setProperty('--logo-tilt-y', `${pointerX * 22}deg`);
+                event.currentTarget.style.setProperty('--logo-light-x', `${(pointerX + 0.5) * 100}%`);
+                event.currentTarget.style.setProperty('--logo-light-y', `${(pointerY + 0.5) * 100}%`);
+                event.currentTarget.style.setProperty('--logo-shadow-x', `${pointerX * -14}px`);
+                event.currentTarget.style.setProperty('--logo-shadow-y', `${pointerY * -14}px`);
+              }}
+              onPointerLeave={(event) => {
+                event.currentTarget.style.setProperty('--logo-tilt-x', '0deg');
+                event.currentTarget.style.setProperty('--logo-tilt-y', '0deg');
+                event.currentTarget.style.setProperty('--logo-light-x', '50%');
+                event.currentTarget.style.setProperty('--logo-light-y', '50%');
+                event.currentTarget.style.setProperty('--logo-shadow-x', '0px');
+                event.currentTarget.style.setProperty('--logo-shadow-y', '8px');
+              }}
+            >
               <img
                 className={styles.welcomeLogo}
                 src="/Brand.png"
@@ -267,8 +289,8 @@ export default function LoginPage() {
               />
             </div>
             <div className={styles.welcomeHeaderText}>
-              <h1 className={styles.welcomeTitle}>Welcome to Barangay Sta. Rita</h1>
-              <p className={styles.welcomeSubtitle}>Alaga Program Portal</p>
+              <h1 className={styles.welcomeTitle}>Alaga Program</h1>
+              <p className={styles.welcomeSubtitle}>Barangay Sta. Rita Olongapo City</p>
             </div>
           </div>
         </div>

@@ -29,13 +29,15 @@
 
 .loginShell {
   display: grid;
-  grid-template-columns: minmax(300px, 0.95fr) minmax(360px, 1.05fr);
-  width: min(1020px, 100%);
+  grid-template-columns: minmax(260px, 0.65fr) minmax(430px, 1.35fr);
+  gap: 0;
+  width: min(880px, 100%);
+  padding: 14px;
   position: relative;
   z-index: 2;
   border-radius: 28px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(203, 213, 225, 0.65);
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
   backdrop-filter: blur(14px);
@@ -44,7 +46,7 @@
 
 .welcomePanel {
   flex: 1 1 380px;
-  padding: 3rem 3.5rem 3rem 2.5rem;
+  padding: 2.5rem 1.75rem;
   background:
     radial-gradient(circle at 18% 8%, rgba(96, 165, 250, 0.36), transparent 30%),
     linear-gradient(160deg, #0d47d8 0%, #0736b7 52%, #082a8f 100%);
@@ -52,12 +54,15 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 1.5rem;
+  gap: 1.25rem;
   position: relative;
   overflow: hidden;
   animation: fadeUp 0.3s ease-out;
   clip-path: none;
-  box-shadow: 10px 0 26px rgba(15, 23, 42, 0.18);
+  border-radius: 20px;
+  box-shadow:
+    0 14px 30px rgba(15, 23, 42, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
   z-index: 5;
 }
 
@@ -82,7 +87,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.45rem;
+  gap: 1.4rem;
   width: 100%;
   text-align: center;
   z-index: 1;
@@ -90,36 +95,58 @@
 }
 
 .welcomeLogoFrame {
-  width: 188px;
-  height: 188px;
+  --logo-tilt-x: 0deg;
+  --logo-tilt-y: 0deg;
+  --logo-light-x: 50%;
+  --logo-light-y: 50%;
+  --logo-shadow-x: 0px;
+  --logo-shadow-y: 8px;
+  width: 150px;
+  height: 150px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.58);
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.58)),
-    rgba(255, 255, 255, 0.72);
-  box-shadow:
-    0 22px 42px rgba(2, 8, 23, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  border: 0;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   position: relative;
   isolation: isolate;
-  overflow: hidden;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  overflow: visible;
+  perspective: 700px;
+  transform-style: preserve-3d;
 }
 
 .welcomeLogoFrame::before {
   content: '';
   position: absolute;
-  inset: -42px;
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(37, 99, 235, 0.38) 0%, rgba(37, 99, 235, 0.14) 34%, rgba(37, 99, 235, 0) 70%);
-  filter: blur(8px);
-  opacity: 0.75;
   z-index: -1;
+  inset: 9%;
+  border-radius: 999px;
+  background: rgba(2, 8, 23, 0.42);
+  filter: blur(15px);
+  transform: translate3d(var(--logo-shadow-x), var(--logo-shadow-y), -24px) scale(0.92);
+  transition: transform 0.18s ease-out, opacity 0.3s ease;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.welcomeLogoFrame::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle at var(--logo-light-x) var(--logo-light-y),
+    rgba(255, 255, 255, 0.42) 0%,
+    rgba(255, 255, 255, 0.14) 18%,
+    transparent 43%
+  );
+  mix-blend-mode: screen;
+  transform: translateZ(38px);
+  opacity: 0;
+  transition: opacity 0.25s ease;
   pointer-events: none;
 }
 
@@ -135,18 +162,43 @@
 }
 
 .welcomeLogo {
-  width: 174px;
-  height: 174px;
+  width: 150px;
+  height: 150px;
   display: block;
   object-fit: contain;
   border-radius: 999px;
   image-rendering: auto;
+  filter: drop-shadow(0 10px 13px rgba(2, 8, 23, 0.2));
+  transform-origin: 50% 50%;
+  transform:
+    translateZ(20px)
+    rotateX(var(--logo-tilt-x))
+    rotateY(var(--logo-tilt-y))
+    scale(1);
+  transition: transform 0.18s ease-out, filter 0.3s ease;
+  will-change: transform;
+}
+
+.welcomeLogoFrame:hover .welcomeLogo {
+  transform:
+    translateZ(32px)
+    rotateX(var(--logo-tilt-x))
+    rotateY(var(--logo-tilt-y))
+    scale(1.045);
+  filter: drop-shadow(0 14px 17px rgba(2, 8, 23, 0.24));
+}
+
+.welcomeLogoFrame:hover::after {
+  opacity: 1;
 }
 
 .welcomeHeaderText {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  max-width: 280px;
 }
 
 .welcomeEyebrow {
@@ -160,17 +212,21 @@
 
 .welcomeTitle {
   margin: 0;
-  font-size: 1.85rem;
+  font-size: 1.55rem;
   font-weight: 800;
   color: #ffffff;
   line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-align: center;
+  text-wrap: balance;
 }
 
 .welcomeSubtitle {
-  margin: 0.05rem 0 0;
-  font-size: 1rem;
+  margin: 0;
+  font-size: 0.9rem;
   font-weight: 600;
   color: #bfdbfe;
+  text-align: center;
 }
 
 .welcomeDescription {
@@ -274,8 +330,8 @@
 
 .formPanel {
   flex: 1 1 440px;
-  background: rgba(255, 255, 255, 0.85);
-  padding: 3rem 2.75rem 3rem 3.5rem;
+  background: transparent;
+  padding: 2rem 1.9rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -294,7 +350,7 @@
   backdrop-filter: none;
   padding: 0;
   width: 100%;
-  max-width: 380px;
+  max-width: 420px;
   animation: none;
   text-align: left;
 }
@@ -954,11 +1010,33 @@
   /* RESPONSIVE ADJUSTMENTS  */
   /* ======================= */
 
+  @media (min-width: 901px) and (max-width: 1100px) {
+    .signup {
+      margin-top: 0.85rem;
+      line-height: 1.3;
+    }
+
+    .signup + .signup {
+      margin-top: 0.35rem;
+    }
+
+    .formPanel .legalSection {
+      margin-top: 0.9rem;
+      padding-top: 0.75rem;
+    }
+
+    .formPanel .legalInlineText,
+    .formPanel .legalInlineLink {
+      line-height: 1.35;
+    }
+  }
+
   @media (max-width: 900px) {
     .loginShell {
       gap: 0;
       grid-template-columns: 1fr;
       border-radius: 24px;
+      padding: 10px;
     }
 
     .welcomePanel {
@@ -1027,6 +1105,25 @@
     .legalSection {
       text-align: center;
     }
+
+    .signup {
+      margin-top: 0.85rem;
+      line-height: 1.3;
+    }
+
+    .signup + .signup {
+      margin-top: 0.35rem;
+    }
+
+    .formPanel .legalSection {
+      margin-top: 0.9rem;
+      padding-top: 0.75rem;
+    }
+
+    .formPanel .legalInlineText,
+    .formPanel .legalInlineLink {
+      line-height: 1.35;
+    }
   }
 
   @media (max-width: 768px) {
@@ -1063,8 +1160,8 @@
     }
 
     .welcomeLogoFrame {
-      width: 74px;
-      height: 74px;
+      width: 80px;
+      height: 80px;
     }
 
     .welcomeLogoFrame::before {
@@ -1073,8 +1170,8 @@
     }
 
     .welcomeLogo {
-      width: 68px;
-      height: 68px;
+      width: 80px;
+      height: 80px;
       border-radius: 999px;
     }
 
@@ -1174,6 +1271,7 @@
     .loginShell {
       border-radius: 20px;
       max-height: none;
+      padding: 8px;
     }
 
     .welcomePanel {
@@ -1184,14 +1282,14 @@
     }
 
     .welcomeLogo {
-      width: 60px;
-      height: 60px;
+      width: 70px;
+      height: 70px;
       border-radius: 999px;
     }
 
     .welcomeLogoFrame {
-      width: 66px;
-      height: 66px;
+      width: 70px;
+      height: 70px;
     }
 
     .welcomeTitle {
@@ -1283,13 +1381,13 @@
     }
 
     .welcomeLogo {
-      width: 54px;
-      height: 54px;
+      width: 62px;
+      height: 62px;
     }
 
     .welcomeLogoFrame {
-      width: 60px;
-      height: 60px;
+      width: 62px;
+      height: 62px;
     }
 
     .welcomeTitle {
@@ -1367,5 +1465,17 @@
 
   .welcomePanel {
     animation: none;
+  }
+
+  .welcomeLogo,
+  .welcomeLogoFrame:hover .welcomeLogo {
+    transition: none;
+    transform: none;
+  }
+
+  .welcomeLogoFrame::before,
+  .welcomeLogoFrame::after {
+    transition: none;
+    transform: none;
   }
 }
