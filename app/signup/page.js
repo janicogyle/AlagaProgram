@@ -2452,18 +2452,15 @@ export default function BeneficiarySignupPage() {
             required
           />
           <label htmlFor="signupLegalConsent" className={styles.legalConsentLabel}>
-            I confirm that the information and documents I provided are true and correct. I consent to the use of my
-            information, valid ID, selfie/face capture, contact number, sector classification, representative details,
-            assistance records, and QR ID data for ALAGA Program registration, verification, SMS communication,
-            assistance processing, reporting, and barangay administration. I agree to the{' '}
+            I confirm that the information and documents I provided are true and correct. I have read the{' '}
             <button
               type="button"
               className={styles.legalInlineLink}
               onClick={() => openLegalModal('privacy')}
             >
               Data Privacy Notice
-            </button>{' '}
-            and{' '}
+            </button>
+            , I agree to the{' '}
             <button
               type="button"
               className={styles.legalInlineLink}
@@ -2471,7 +2468,10 @@ export default function BeneficiarySignupPage() {
             >
               Terms &amp; Conditions
             </button>
-            .
+            , and I give explicit consent, where consent is the applicable legal basis, to the processing of my
+            sensitive identity and eligibility information, uploaded IDs, selfie/face capture, and automated
+            face-comparison result for identity verification and human review as described in the notice. I understand
+            that I may contact the barangay to ask about an available assisted or in-person process.
           </label>
         </div>
       </section>

@@ -45,7 +45,9 @@
 .welcomePanel {
   flex: 1 1 380px;
   padding: 3rem 3.5rem 3rem 2.5rem;
-  background: linear-gradient(135deg, #0b2545 0%, #173b6c 50%, #1f4e8c 100%);
+  background:
+    radial-gradient(circle at 18% 8%, rgba(96, 165, 250, 0.36), transparent 30%),
+    linear-gradient(160deg, #0d47d8 0%, #0736b7 52%, #082a8f 100%);
   color: #ffffff;
   display: flex;
   flex-direction: column;
@@ -64,12 +66,12 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(30deg, transparent 0 32%, rgba(255, 255, 255, 0.04) 32.2% 32.8%, transparent 33% 100%),
-    linear-gradient(150deg, transparent 0 46%, rgba(255, 255, 255, 0.035) 46.2% 46.8%, transparent 47% 100%),
-    radial-gradient(circle at 18% 16%, rgba(56, 189, 248, 0.05) 0 2px, transparent 3px),
-    radial-gradient(circle at 76% 28%, rgba(255, 255, 255, 0.045) 0 2px, transparent 3px),
-    radial-gradient(circle at 64% 76%, rgba(147, 197, 253, 0.045) 0 2px, transparent 3px),
-    radial-gradient(circle, rgba(56, 189, 248, 0.05) 0%, rgba(56, 189, 248, 0) 68%);
+    linear-gradient(30deg, transparent 0 32%, rgba(255, 255, 255, 0.07) 32.2% 32.8%, transparent 33% 100%),
+    linear-gradient(150deg, transparent 0 46%, rgba(255, 255, 255, 0.06) 46.2% 46.8%, transparent 47% 100%),
+    radial-gradient(circle at 18% 16%, rgba(147, 197, 253, 0.12) 0 2px, transparent 3px),
+    radial-gradient(circle at 76% 28%, rgba(255, 255, 255, 0.09) 0 2px, transparent 3px),
+    radial-gradient(circle at 64% 76%, rgba(191, 219, 254, 0.1) 0 2px, transparent 3px),
+    radial-gradient(circle, rgba(96, 165, 250, 0.14) 0%, rgba(96, 165, 250, 0) 68%);
   background-size: auto, auto, 150px 150px, 180px 180px, 210px 210px, auto;
   background-position: center, center, 14px 20px, 36px 8px, 0 0, -110px -90px;
   opacity: 0.82;
@@ -168,7 +170,7 @@
   margin: 0.05rem 0 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #93c5fd;
+  color: #bfdbfe;
 }
 
 .welcomeDescription {

@@ -2,7 +2,7 @@
     margin-bottom: 1.15rem;
     text-align: left;
   }
-  
+
   .inputGroup label {
     display: block;
     margin-bottom: 0.45rem;
@@ -317,5 +317,6 @@
   .spinner {
     animation: none;
   }
+
 }
   

@@ -23,11 +23,7 @@ export function UnifiedLoginForm({
   const [showPassword, setShowPassword] = useState(false);
 
   const isBeneficiary = role === 'beneficiary';
-  const displayUsername = isBeneficiary
-    ? username
-      ? formatPhContactNumber(username)
-      : ''
-    : username;
+  const displayedUsername = isBeneficiary ? formatPhContactNumber(username) : username;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -39,11 +35,7 @@ export function UnifiedLoginForm({
 
   const handleUsernameChange = (e) => {
     const value = e.target.value;
-    if (isBeneficiary) {
-      setUsername(normalizePhContactNumber(value));
-    } else {
-      setUsername(value);
-    }
+    setUsername(isBeneficiary ? normalizePhContactNumber(value) : value);
   };
 
   const googleDisabled = isSubmitting || isGoogleSubmitting || submitDisabled;
@@ -61,12 +53,13 @@ export function UnifiedLoginForm({
           <input
             type={isBeneficiary ? 'tel' : 'text'}
             id="username"
-            value={displayUsername}
+            value={displayedUsername}
             onChange={handleUsernameChange}
             disabled={isSubmitting}
             inputMode={isBeneficiary ? 'numeric' : undefined}
-            autoComplete={isBeneficiary ? 'tel' : undefined}
+            autoComplete={isBeneficiary ? 'tel' : 'username'}
             maxLength={isBeneficiary ? 16 : undefined}
+            title={isBeneficiary ? 'Enter a valid Philippine mobile number.' : undefined}
             placeholder={isBeneficiary ? PH_CONTACT_PLACEHOLDER : undefined}
             required
           />
