@@ -713,7 +713,7 @@ export default function BeneficiarySignupPage() {
       setEmailCodeSent(true);
       setEmailCooldown(60);
       setEmailVerification({ email: '', token: '' });
-      setEmailOtpStatus({ type: 'success', message: `A 6-digit code was sent to ${email}.` });
+      setEmailOtpStatus({ type: 'success', message: `A verification code was sent to ${email}.` });
     } catch (error) {
       setEmailOtpStatus({ type: 'error', message: error?.message || 'Unable to send email code.' });
     } finally {
@@ -723,8 +723,8 @@ export default function BeneficiarySignupPage() {
 
   const handleVerifyEmailCode = async () => {
     const email = String(form.email || '').trim().toLowerCase();
-    const code = String(emailCode || '').replace(/\D/g, '').slice(0, 6);
-    if (emailVerifying || code.length !== 6) return;
+    const code = String(emailCode || '').replace(/\D/g, '').slice(0, 10);
+    if (emailVerifying || code.length < 6 || code.length > 10) return;
 
     setEmailVerifying(true);
     setEmailOtpStatus(null);
@@ -2043,7 +2043,7 @@ export default function BeneficiarySignupPage() {
       {verificationMethod === 'email' && <div className={styles.optionalLoginSection}>
         <div>
           <h4 className={styles.optionalLoginTitle}>Gmail / Email Verification</h4>
-          <p className={styles.optionalLoginText}>We will send a six-digit verification code to this address.</p>
+          <p className={styles.optionalLoginText}>We will send a verification code to this address.</p>
         </div>
         <div className={styles.emailVerificationRow}>
           <Input
@@ -2085,11 +2085,11 @@ export default function BeneficiarySignupPage() {
                   label="Email Code"
                   name="emailCode"
                   value={emailCode}
-                  onChange={(event) => setEmailCode(String(event.target.value || '').replace(/\D/g, '').slice(0, 6))}
+                  onChange={(event) => setEmailCode(String(event.target.value || '').replace(/\D/g, '').slice(0, 10))}
                   inputMode="numeric"
                   autoComplete="one-time-code"
-                  placeholder="000000"
-                  maxLength={6}
+                  placeholder="Enter email code"
+                  maxLength={10}
                   size="compact"
                 />
               </div>
@@ -2097,7 +2097,7 @@ export default function BeneficiarySignupPage() {
                 type="button"
                 variant="primary"
                 onClick={handleVerifyEmailCode}
-                disabled={emailVerifying || emailCode.length !== 6}
+                disabled={emailVerifying || emailCode.length < 6 || emailCode.length > 10}
                 size="compact"
               >
                 {emailVerifying ? 'Verifying...' : 'Verify Code'}

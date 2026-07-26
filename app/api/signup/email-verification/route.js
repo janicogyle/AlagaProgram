@@ -71,9 +71,14 @@ export async function POST(request) {
     }
 
     if (action === 'verify') {
-      const code = String(body.code || '').replace(/\D/g, '').slice(0, 6);
-      if (code.length !== 6) {
-        return NextResponse.json({ data: null, error: 'Verification code must be 6 digits.' }, { status: 400 });
+      // Supabase email OTP length is configurable (6-10 digits). Preserve the
+      // complete provider-issued code instead of truncating an 8-digit OTP.
+      const code = String(body.code || '').replace(/\D/g, '').slice(0, 10);
+      if (code.length < 6 || code.length > 10) {
+        return NextResponse.json(
+          { data: null, error: 'Verification code must be between 6 and 10 digits.' },
+          { status: 400 },
+        );
       }
 
       const { error } = await authClient.auth.verifyOtp({
