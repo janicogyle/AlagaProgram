@@ -177,6 +177,13 @@ CREATE TABLE IF NOT EXISTS public.account_requests (
   face_verification_provider TEXT,
   face_verified_at TIMESTAMPTZ,
   face_verification_error TEXT,
+  ocr_verification_status TEXT CHECK (ocr_verification_status IS NULL OR ocr_verification_status = 'passed'),
+  ocr_id_type TEXT,
+  ocr_id_number_masked TEXT,
+  ocr_extracted_name TEXT,
+  ocr_extracted_birth_date DATE,
+  ocr_provider TEXT,
+  ocr_verified_at TIMESTAMPTZ,
   representative_name TEXT,
   representative_contact TEXT,
   representative_relationship TEXT,
@@ -280,6 +287,18 @@ ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS face_verification_p
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS face_verified_at TIMESTAMPTZ;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS face_verification_error TEXT;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS primary_sector TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS ocr_verification_status TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS ocr_id_type TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS ocr_id_number_masked TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS ocr_extracted_name TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS ocr_extracted_birth_date DATE;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS ocr_provider TEXT;
+ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS ocr_verified_at TIMESTAMPTZ;
+ALTER TABLE public.account_requests
+  DROP CONSTRAINT IF EXISTS account_requests_ocr_verification_status_check;
+ALTER TABLE public.account_requests
+  ADD CONSTRAINT account_requests_ocr_verification_status_check
+  CHECK (ocr_verification_status IS NULL OR ocr_verification_status = 'passed');
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS secondary_sector TEXT;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS representative_name TEXT;
 ALTER TABLE public.account_requests ADD COLUMN IF NOT EXISTS representative_contact TEXT;

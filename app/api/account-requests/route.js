@@ -7,6 +7,7 @@ import { logActivity } from '@/lib/activityLogger.server';
 import { applyDirectSectorFilter } from '@/lib/sectorAccess';
 import { validateSectorPair } from '@/lib/beneficiarySectors';
 import { verifyFaceMatch } from '@/lib/faceVerification.server';
+import { hashRemoteIdentityImage, verifyIdentityOcrToken } from '@/lib/identityOcr.server';
 import { verifyEmailVerificationToken } from '@/lib/emailVerification.server';
 
 export const runtime = 'nodejs';
@@ -15,7 +16,7 @@ const LOCKED_CITIZENSHIP = 'Filipino';
 const SOLO_PARENT_MARRIED_ERROR = 'Married civil status is not allowed for Solo Parent classification.';
 const MINOR_PWD_REPRESENTATIVE_ERROR =
   'Beneficiaries below 18 years old must provide a guardian or representative before registration can be completed.';
-const VALID_ID_BOTH_SIDES_ERROR = 'Please upload both the front and back images of your valid ID.';
+const VALID_ID_REQUIRED_ERROR = 'Please upload an OCR-verified valid ID image.';
 const FACE_VERIFICATION_FAILED_ERROR =
   'Face verification failed. Please make sure your selfie clearly matches the photo on your valid ID.';
 const MIN_BIRTHDATE = '1909-01-01';
@@ -209,6 +210,13 @@ async function insertAccountRequestWithRetry(db, payload) {
     'selfie_url',
     'face_verification_status',
     // Do not silently drop password_hash; approval/login flow depends on it.
+    'ocr_verification_status',
+    'ocr_id_type',
+    'ocr_id_number_masked',
+    'ocr_extracted_name',
+    'ocr_extracted_birth_date',
+    'ocr_provider',
+    'ocr_verified_at',
     'password_hash',
     'email',
     // These prevent an entered-but-unverified channel from being treated as trusted.
@@ -328,6 +336,13 @@ export async function GET(request) {
       'face_verification_provider',
       'face_verified_at',
       'face_verification_error',
+      'ocr_verification_status',
+      'ocr_id_type',
+      'ocr_id_number_masked',
+      'ocr_extracted_name',
+      'ocr_extracted_birth_date',
+      'ocr_provider',
+      'ocr_verified_at',
       'representative_name',
       'representative_contact',
       'representative_relationship',
@@ -476,13 +491,21 @@ export async function POST(request) {
     const validIdBackUrl = body.validIdBackUrl || body.valid_id_back_url || null;
     const selfieUrl = body.selfieUrl || body.selfie_url || null;
 
-    if (!validIdFrontUrl || !validIdBackUrl) {
-      return NextResponse.json({ data: null, error: VALID_ID_BOTH_SIDES_ERROR }, { status: 400 });
+    if (!validIdFrontUrl) {
+      return NextResponse.json({ data: null, error: VALID_ID_REQUIRED_ERROR }, { status: 400 });
     }
     if (!selfieUrl) {
       return NextResponse.json({ data: null, error: 'Selfie/face capture is required.' }, { status: 400 });
     }
 
+    const ocrTokenCheck = verifyIdentityOcrToken(body.ocrVerificationToken, {
+      firstName: body.firstName,
+      lastName: body.lastName,
+      birthDate: body.birthday,
+    });
+    if (!ocrTokenCheck.ok) {
+      return NextResponse.json({ data: null, error: ocrTokenCheck.error }, { status: 403 });
+    }
     const identityUrlsForValidation = [validIdFrontUrl, validIdBackUrl, selfieUrl].filter(Boolean);
     const identityDocCheck = validateCloudinaryDocumentUrls(identityUrlsForValidation, {
       label: 'Identity document',
@@ -494,6 +517,27 @@ export async function POST(request) {
     const cloudinaryIdentityUrls = filterCloudinaryUrls(identityUrlsForValidation);
     if (cloudinaryIdentityUrls.length !== identityUrlsForValidation.length) {
       return NextResponse.json({ data: null, error: 'Identity documents must be uploaded to Cloudinary.' }, { status: 400 });
+    }
+    let uploadedIdHashes;
+    try {
+      uploadedIdHashes = await Promise.all(
+        [validIdFrontUrl, validIdBackUrl].filter(Boolean).map((url) => hashRemoteIdentityImage(url)),
+      );
+    } catch (error) {
+      return NextResponse.json(
+        { data: null, error: error?.message || 'Unable to validate the OCR-verified ID image.' },
+        { status: 400 },
+      );
+    }
+    const expectedIdHashes = ocrTokenCheck.payload.imageHashes || [];
+    if (
+      uploadedIdHashes.length !== expectedIdHashes.length ||
+      uploadedIdHashes.some((hash, index) => hash !== expectedIdHashes[index])
+    ) {
+      return NextResponse.json(
+        { data: null, error: 'The uploaded ID does not match the OCR-verified image. Please verify it again.' },
+        { status: 400 },
+      );
     }
     const verifiedFace = await verifyFaceMatch({ idImageUrl: validIdFrontUrl, selfieUrl });
     if (verifiedFace.status !== 'passed') {
@@ -684,7 +728,7 @@ export async function POST(request) {
       is_senior_citizen: sectorFlags.is_senior_citizen,
       is_solo_parent: sectorFlags.is_solo_parent,
       valid_id_url: validIdFrontUrl || cloudinaryValidIdUrls[0] || null,
-      valid_id_urls: cloudinaryValidIdUrls.length ? cloudinaryValidIdUrls : [validIdFrontUrl, validIdBackUrl],
+      valid_id_urls: cloudinaryValidIdUrls.length ? cloudinaryValidIdUrls : [validIdFrontUrl, validIdBackUrl].filter(Boolean),
       valid_id_front_url: validIdFrontUrl,
       valid_id_back_url: validIdBackUrl,
       selfie_url: selfieUrl,
@@ -694,6 +738,13 @@ export async function POST(request) {
       face_verified_at: new Date().toISOString(),
       face_verification_error: verifiedFace.error || null,
       representative_name: representativeName || null,
+      ocr_verification_status: 'passed',
+      ocr_id_type: ocrTokenCheck.payload.idType,
+      ocr_id_number_masked: ocrTokenCheck.payload.maskedIdNumber,
+      ocr_extracted_name: ocrTokenCheck.payload.fullName,
+      ocr_extracted_birth_date: ocrTokenCheck.payload.birthDate,
+      ocr_provider: 'ocr.space',
+      ocr_verified_at: new Date(ocrTokenCheck.payload.iat * 1000).toISOString(),
       representative_contact: representativeContact || null,
       representative_relationship: representativeRelationship || null,
       representative_valid_id_url: cloudinaryRepresentativeUrls[0] || null,

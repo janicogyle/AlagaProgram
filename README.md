@@ -29,6 +29,9 @@ SMS_CRON_SECRET=...              # used to authorize the eligibility reminder cr
 # Cloudinary (document / Valid ID image storage)
 CLOUDINARY_URL=cloudinary://<api_key>:<api_secret>@<cloud_name>
 # Or set separately:
+
+# OCR.Space identity verification (server-side only)
+OCR_SPACE_API_KEY=...
 # CLOUDINARY_CLOUD_NAME=...
 # CLOUDINARY_API_KEY=...
 # CLOUDINARY_API_SECRET=...
@@ -43,6 +46,7 @@ If deploying to Vercel, add these in **Project Settings → Environment Variable
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes (signup OTP, admin actions) |
 | `CLOUDINARY_URL` | Yes (Valid ID uploads) |
 | `UNISMS_API_KEY` | Yes (SMS OTP on signup) |
+| `OCR_SPACE_API_KEY` | Yes (signup ID OCR and signed verification tokens) |
 | `UNISMS_SENDER_ID` | Yes (real SMS OTP/status messages) |
 | `UNISMS_LINK_API_KEY` | Yes (account resubmission link SMS) |
 | `ACCOUNT_RESUBMISSION_BASE_URL` | Yes (public HTTPS base URL for resubmission links) |
@@ -56,6 +60,7 @@ Without `UNISMS_API_KEY`, `UNISMS_SENDER_ID`, and `SMS_OTP_SECRET`, signup Step 
 
 To enable QR ID cards, run `setup-step5.sql` in the Supabase SQL Editor (creates `public.beneficiary_cards`).
 To enable SMS OTPs and logs, run `setup-step6.sql` in the Supabase SQL Editor (creates `public.sms_otps` and `public.sms_logs`).
+To store structured signup OCR results, run `setup-step26-account-request-ocr.sql` and reload the PostgREST schema cache.
 To track whether signup verified SMS or email, run `setup-step24-verification-method.sql`. Contact numbers entered during email verification are saved as unverified and are not used for approval SMS.
 To enable the Admin and coordinator account roles with fixed sector access, run `setup-step25-coordinator-roles.sql`.
 To remove legacy Supabase document storage, run `setup-step7.sql` after migrating uploads to Cloudinary.

@@ -35,7 +35,7 @@ export function DataPrivacyNotice({ styles }) {
             <li>Identity and demographic data: name, birthdate, age, birthplace, sex, citizenship, and civil status</li>
             <li>Contact and location data: mobile number, verified email when selected, and residential address</li>
             <li>Program and eligibility data: PWD, Senior Citizen, or Solo Parent classification and supporting records</li>
-            <li>Identity evidence: front and back ID images, selfie or live face capture, and supporting documents</li>
+            <li>Identity evidence: ID image, structured OCR results, optional reverse image, selfie or live face capture, and supporting documents</li>
             <li>Representative data: name, contact details, relationship, authority, and representative ID when applicable</li>
             <li>Account and security data: password hash, verification method and status, OTP records, sessions, and account status</li>
             <li>Service records: control numbers, assistance category, requirements, status, remarks, release history, and renewals</li>
@@ -111,7 +111,8 @@ export function DataPrivacyNotice({ styles }) {
             Current technical services include Supabase for database and authentication functions,
             Cloudinary for uploaded document and image storage, UniSMS for SMS delivery, Resend or configured
             email infrastructure for transactional messages, Google when you voluntarily choose Google
-            sign-in, and the configured web-hosting provider. Face matching runs in the ALAGA server
+            sign-in, OCR.Space for extracting identity details from submitted ID images, and the configured
+            web-hosting provider. Face matching runs in the ALAGA server
             environment using face-api.js; it is not described as a separate cloud face-recognition service.
             Providers may process data on infrastructure outside the Philippines. The barangay remains
             accountable for transferred data and should maintain appropriate contracts and safeguards.
@@ -274,8 +275,9 @@ export function TermsAndConditions({ styles }) {
         <li>
           <span className={styles.legalHeading}>Identity and Face Verification</span>
           <p className={styles.legalParagraph}>
-            Identity verification may require clear front and back ID images and a selfie or live face
-            capture. Automated face comparison can make mistakes. A failed or uncertain comparison may
+            Identity verification requires one clear supported ID image, automated OCR, and a selfie or live
+            face capture. A reverse image is requested only when required details are missing. Automated OCR
+            and face comparison can make mistakes. A failed or uncertain comparison may
             require recapture, additional evidence, or in-person/manual review; it must not by itself decide
             program eligibility. You may challenge a result and request human review.
           </p>

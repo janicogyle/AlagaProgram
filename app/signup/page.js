@@ -101,7 +101,7 @@ const TOTAL_STEPS = STEPS.length;
 const ESTIMATED_TOTAL_MINUTES = 8;
 const MINOR_PWD_REPRESENTATIVE_ERROR =
   'Beneficiaries below 18 years old must provide a guardian or representative before registration can be completed.';
-const VALID_ID_BOTH_SIDES_ERROR = 'Please upload both the front and back images of your valid ID.';
+const OCR_ID_REQUIRED_ERROR = 'Please upload and confirm a supported ID before continuing.';
 const SELFIE_CAPTURE_ERROR = 'Please retake your selfie and try again.';
 const SIGNUP_DRAFT_STORAGE_KEY = 'alaga-signup-draft';
 const SIGNUP_VERIFIED_EMAIL_KEY = 'alaga-signup-verified-email';
@@ -127,7 +127,7 @@ const sectorCardDetails = {
 
 const signupRequirements = [
   ['Estimated completion', '5-10 minutes'],
-  ['Government-issued ID', 'Front and back images required'],
+  ['Government-issued ID', 'One clear ID image with automatic OCR'],
   ['SMS verification', 'Active mobile number required'],
   ['Final review', 'Check all details before submission'],
 ];
@@ -159,7 +159,7 @@ const validIdExamples = [
   },
   {
     title: 'Other accepted examples',
-    items: ["Voter's ID", 'Postal ID', 'PRC ID', 'Barangay ID or Certificate of Residency'],
+    items: ["Voter's ID", 'PRC ID'],
   },
 ];
 
@@ -291,6 +291,7 @@ export default function BeneficiarySignupPage() {
   const router = useRouter();
   const stepContainerRef = useRef(null);
   const identityUploadRef = useRef('');
+  const selfieSectionRef = useRef(null);
 
   // Multi-step state
   const [currentStep, setCurrentStep] = useState(1);
@@ -305,6 +306,10 @@ export default function BeneficiarySignupPage() {
   const [selfieFiles, setSelfieFiles] = useState([]);
   const [identityUrls, setIdentityUrls] = useState({ front: '', back: '', selfie: '' });
   const [faceVerification, setFaceVerification] = useState(null);
+  const [ocrVerification, setOcrVerification] = useState(null);
+  const [ocrVerifying, setOcrVerifying] = useState(false);
+  const [ocrConfirmed, setOcrConfirmed] = useState(false);
+  const [needsSecondSide, setNeedsSecondSide] = useState(false);
   const [identityVerifying, setIdentityVerifying] = useState(false);
   const [representativeValidIdFiles, setRepresentativeValidIdFiles] = useState([]);
   const [validIdError, setValidIdError] = useState('');
@@ -490,7 +495,7 @@ export default function BeneficiarySignupPage() {
     !!String(form.representativeContact || '').trim() ||
     !!String(form.representativeRelationship || '').trim();
   const shouldShowRepresentativeId = requiresRepresentative || hasRepresentativeInfo;
-  const hasUploadedIdentityImages = validIdFrontFiles.length > 0 && validIdBackFiles.length > 0;
+  const hasVerifiedIdentityImage = validIdFrontFiles.length > 0 && ocrConfirmed && !!ocrVerification?.token;
   const progressPercent = Math.round(((currentStep - 1) / (TOTAL_STEPS - 1)) * 100);
   const remainingSteps = Math.max(0, TOTAL_STEPS - currentStep);
   const estimatedRemainingMinutes = Math.max(1, Math.ceil((remainingSteps / TOTAL_STEPS) * ESTIMATED_TOTAL_MINUTES));
@@ -801,18 +806,31 @@ export default function BeneficiarySignupPage() {
     setSelfieFiles([]);
   };
 
+  const resetOcrVerification = () => {
+    resetFaceVerification();
+    setOcrVerification(null);
+    setOcrConfirmed(false);
+    setNeedsSecondSide(false);
+  };
+
   const handleValidIdFrontChange = (files) => {
     setValidIdFrontFiles(files);
-    resetFaceVerification();
+    setValidIdBackFiles([]);
+    resetOcrVerification();
     if (validIdError) setValidIdError('');
+    if (files[0]) window.setTimeout(() => verifyIdentityOcr(files[0], null), 0);
   };
 
   const handleValidIdBackChange = (files) => {
     setValidIdBackFiles(files);
     resetFaceVerification();
+    setOcrVerification(null);
+    setOcrConfirmed(false);
     if (validIdError) setValidIdError('');
+    if (files[0] && validIdFrontFiles[0]) {
+      window.setTimeout(() => verifyIdentityOcr(validIdFrontFiles[0], files[0]), 0);
+    }
   };
-
 
   const handleRepresentativeValidIdChange = (files) => {
     setRepresentativeValidIdFiles(files);
@@ -1114,15 +1132,63 @@ export default function BeneficiarySignupPage() {
     return path;
   };
 
+  const verifyIdentityOcr = async (primaryFile = validIdFrontFiles[0], reverseFile = validIdBackFiles[0] || null) => {
+    if (!primaryFile || ocrVerifying) return;
+    setOcrVerifying(true);
+    setValidIdError('');
+    setOcrVerification(null);
+    setOcrConfirmed(false);
+    try {
+      const ocrForm = new FormData();
+      ocrForm.append('primaryId', primaryFile);
+      if (reverseFile) ocrForm.append('reverseId', reverseFile);
+      ocrForm.append('firstName', form.firstName);
+      ocrForm.append('lastName', form.lastName);
+      ocrForm.append('birthDate', form.birthday);
+
+      const response = await fetch('/api/account-requests/verify-id-ocr', {
+        method: 'POST',
+        body: ocrForm,
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (result?.data?.code === 'SECOND_SIDE_REQUIRED') {
+          setNeedsSecondSide(true);
+          setValidIdError(result.error || 'Upload the reverse side so OCR can find the missing details.');
+          setStatus({ type: 'error', message: result.error || 'The reverse side is required for this ID.' });
+          return;
+        }
+        setNeedsSecondSide(false);
+        throw new Error(result.error || 'OCR could not verify this ID. Retake a clearer image.');
+      }
+      setNeedsSecondSide(false);
+      setOcrVerification(result.data);
+      setStatus({ type: 'success', message: 'ID details extracted successfully. Please review and confirm them.' });
+    } catch (error) {
+      const message = error?.message || 'OCR could not verify this ID. Retake a clearer image.';
+      setValidIdError(message);
+      setStatus({ type: 'error', message });
+    } finally {
+      setOcrVerifying(false);
+    }
+  };
+
+  const handleConfirmOcr = () => {
+    if (!ocrVerification?.token) return;
+    setOcrConfirmed(true);
+    setValidIdError('');
+    setStatus({ type: 'success', message: 'ID confirmed. Continue with the live face selfie.' });
+    window.setTimeout(() => selfieSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
   const handleVerifyIdentity = async (capturedSelfieFile = null) => {
     if (identityVerifying) return { ok: false };
     const selfieFile = capturedSelfieFile || selfieFiles[0];
     setValidIdError('');
     setFaceVerification(null);
 
-    if (!validIdFrontFiles.length || !validIdBackFiles.length) {
-      setValidIdError(VALID_ID_BOTH_SIDES_ERROR);
-      setStatus({ type: 'error', message: VALID_ID_BOTH_SIDES_ERROR });
+    if (!validIdFrontFiles.length || !ocrConfirmed || !ocrVerification?.token) {
+      setValidIdError(OCR_ID_REQUIRED_ERROR);
+      setStatus({ type: 'error', message: OCR_ID_REQUIRED_ERROR });
       return { ok: false };
     }
     if (!selfieFile) {
@@ -1135,22 +1201,28 @@ export default function BeneficiarySignupPage() {
     setIdentityVerifying(true);
     try {
       const [frontUrl, backUrl, selfieUrl] = await Promise.all([
-        uploadIdentityFile(validIdFrontFiles[0], 'validIdFront'),
-        uploadIdentityFile(validIdBackFiles[0], 'validIdBack'),
+        identityUrls.front || uploadIdentityFile(validIdFrontFiles[0], 'validIdFront'),
+        identityUrls.back || (validIdBackFiles[0] ? uploadIdentityFile(validIdBackFiles[0], 'validIdBack') : Promise.resolve('')),
         uploadIdentityFile(selfieFile, 'selfie'),
       ]);
       const urls = { front: frontUrl, back: backUrl, selfie: selfieUrl };
-      const verification = {
-        status: 'passed',
-        score: null,
-        provider: 'live-selfie-capture',
-        verifiedAt: new Date().toISOString(),
-        error: null,
-        diagnostics: null,
-      };
+      const verificationResponse = await fetch('/api/account-requests/verify-face', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactNumber: getIdentityUploadReference(),
+          validIdFrontUrl: frontUrl,
+          selfieUrl,
+        }),
+      });
+      const verificationJson = await verificationResponse.json().catch(() => ({}));
+      const verification = verificationJson?.data;
+      if (!verificationResponse.ok || verification?.status !== 'passed') {
+        throw new Error(verificationJson.error || verification?.error || SELFIE_CAPTURE_ERROR);
+      }
       setIdentityUrls(urls);
       setFaceVerification(verification);
-      setStatus({ type: 'success', message: 'Face selfie saved. Your selfie will be used as your beneficiary profile photo.' });
+      setStatus({ type: 'success', message: 'Face match passed. Your selfie will be used as your beneficiary profile photo.' });
       return { ok: true, urls, verification };
     } catch (error) {
       const message = error?.message || SELFIE_CAPTURE_ERROR;
@@ -1169,7 +1241,7 @@ export default function BeneficiarySignupPage() {
 
   const handleRetakeLiveSelfie = () => {
     setSelfieFiles([]);
-    setIdentityUrls({ front: '', back: '', selfie: '' });
+    setIdentityUrls((prev) => ({ ...prev, selfie: '' }));
     setFaceVerification(null);
     setValidIdError('');
   };
@@ -1274,9 +1346,9 @@ export default function BeneficiarySignupPage() {
         return true;
       }
       case 4: {
-        if (!validIdFrontFiles.length || !validIdBackFiles.length) {
-          setValidIdError(VALID_ID_BOTH_SIDES_ERROR);
-          setStatus({ type: 'error', message: VALID_ID_BOTH_SIDES_ERROR });
+        if (!validIdFrontFiles.length || !ocrConfirmed || !ocrVerification?.token) {
+          setValidIdError(OCR_ID_REQUIRED_ERROR);
+          setStatus({ type: 'error', message: OCR_ID_REQUIRED_ERROR });
           return false;
         }
         if (!selfieFiles.length) {
@@ -1359,7 +1431,7 @@ export default function BeneficiarySignupPage() {
       case 4:
         return (
           validIdFrontFiles.length > 0 &&
-          validIdBackFiles.length > 0 &&
+          ocrConfirmed && !!ocrVerification?.token &&
           selfieFiles.length > 0 &&
           faceVerification?.status === 'passed' &&
           (!shouldShowRepresentativeId || representativeValidIdFiles.length > 0)
@@ -1471,7 +1543,7 @@ export default function BeneficiarySignupPage() {
 
       if (
         !verifiedIdentityUrls.front ||
-        !verifiedIdentityUrls.back ||
+        !ocrVerification?.token ||
         !verifiedIdentityUrls.selfie ||
         verifiedFace?.status !== 'passed'
       ) {
@@ -1546,8 +1618,9 @@ export default function BeneficiarySignupPage() {
           validIdUrl: verifiedIdentityUrls.front || null,
           validIdUrls: [verifiedIdentityUrls.front, verifiedIdentityUrls.back].filter(Boolean),
           validIdFrontUrl: verifiedIdentityUrls.front,
-          validIdBackUrl: verifiedIdentityUrls.back,
+          validIdBackUrl: verifiedIdentityUrls.back || null,
           selfieUrl: verifiedIdentityUrls.selfie,
+          ocrVerificationToken: ocrVerification.token,
           faceVerificationStatus: verifiedFace?.status,
           faceVerificationScore: verifiedFace?.score ?? null,
           faceVerificationProvider: verifiedFace?.provider || null,
@@ -2131,14 +2204,14 @@ export default function BeneficiarySignupPage() {
       <SectionHeader
         id="upload-heading"
         title="Identity Verification"
-        subtitle="Upload both sides of your valid ID and complete face capture."
+        subtitle="Upload one clear ID image for automatic OCR, then complete live face verification."
       />
       <div className={styles.validIdGuide}>
         <div>
-          <h4 className={styles.validIdGuideTitle}>Examples of valid IDs in the Philippines</h4>
+          <h4 className={styles.validIdGuideTitle}>Supported Philippine IDs</h4>
           <p className={styles.validIdGuideText}>
-            Upload a clear government-issued ID that matches the beneficiary information. For ALAGA
-            registration, sector IDs are preferred when available.
+            OCR automatically detects the ID type and checks the extracted name and birth date against
+            the beneficiary information entered in Step 2.
           </p>
         </div>
         <div className={styles.validIdExampleGrid}>
@@ -2154,48 +2227,98 @@ export default function BeneficiarySignupPage() {
           ))}
         </div>
         <p className={styles.validIdGuideNote}>
-          Make sure the name and photo are readable. Upload the front and back side when the ID has
-          details on both sides.
+          Use a well-lit, in-focus photo with all edges visible. A reverse-side photo is requested only
+          when OCR cannot find required details on the first image.
         </p>
       </div>
       <div className={styles.uploadOwnerHeader}>
         <span className={styles.uploadOwnerBadge}>Beneficiary</span>
         <div>
           <h4 className={styles.uploadOwnerTitle}>Beneficiary Valid ID</h4>
-          <p className={styles.uploadOwnerText}>Upload the beneficiary&apos;s own valid ID: front side and back side.</p>
+          <p className={styles.uploadOwnerText}>Take a photo or upload one image of the beneficiary&apos;s supported ID.</p>
         </div>
       </div>
       <div className={styles.validIdRow}>
         <FileUpload
-          label="Beneficiary Valid ID - Front"
+          label="Valid ID image"
           documentType="validIdImage"
           multiple={false}
           files={validIdFrontFiles}
           onChange={handleValidIdFrontChange}
+          capture="environment"
+          actionText="Take a photo or drag and drop an image here, or"
           required
         />
       </div>
-      <div className={styles.validIdRow}>
-        <FileUpload
-          label="Beneficiary Valid ID - Back"
-          documentType="validIdImage"
-          multiple={false}
-          files={validIdBackFiles}
-          onChange={handleValidIdBackChange}
-          required
-        />
-      </div>
-      {hasUploadedIdentityImages && (
-        <FaceRecognitionCapture
-          onCapture={handleLiveSelfieCapture}
-          onRetake={handleRetakeLiveSelfie}
-          disabled={identityVerifying}
-          verifying={identityVerifying}
-          status={faceVerification?.status || ''}
-          error={validIdError}
-        />
+      {ocrVerifying && (
+        <div className={styles.ocrProgress} role="status">
+          Reading and validating the ID with OCR.Space...
+        </div>
       )}
-      {!hasUploadedIdentityImages && validIdError && <p className={styles.fieldError}>{validIdError}</p>}
+      {needsSecondSide && (
+        <div className={styles.validIdRow}>
+          <p className={styles.fieldNote}>
+            This ID was recognized, but OCR needs details from the reverse side. Upload one clear reverse-side image.
+          </p>
+          <FileUpload
+            label="Reverse side of ID"
+            documentType="validIdImage"
+            multiple={false}
+            files={validIdBackFiles}
+            onChange={handleValidIdBackChange}
+            capture="environment"
+            actionText="Take a reverse-side photo or drag and drop it here, or"
+            required
+          />
+        </div>
+      )}
+      {ocrVerification?.token && (
+        <div className={styles.ocrConfirmationCard}>
+          <div className={styles.ocrConfirmationHeader}>
+            <div>
+              <span className={styles.uploadOwnerBadge}>OCR verified</span>
+              <h4 className={styles.ocrConfirmationTitle}>{ocrVerification.idTypeLabel}</h4>
+            </div>
+            {ocrConfirmed && <span className={styles.verifiedBadge}>Details confirmed</span>}
+          </div>
+          <dl className={styles.ocrDetailsGrid}>
+            <div><dt>Full name</dt><dd>{ocrVerification.fields?.fullName || '—'}</dd></div>
+            <div><dt>ID number</dt><dd>{ocrVerification.maskedIdNumber || '—'}</dd></div>
+            <div><dt>Date of birth</dt><dd>{formatBirthday(ocrVerification.fields?.birthDate)}</dd></div>
+            {ocrVerification.fields?.nationality && (
+              <div><dt>Nationality</dt><dd>{ocrVerification.fields.nationality}</dd></div>
+            )}
+            {ocrVerification.fields?.sex && (
+              <div><dt>Sex</dt><dd>{ocrVerification.fields.sex}</dd></div>
+            )}
+            {ocrVerification.fields?.expiryDate && (
+              <div><dt>Expiry date</dt><dd>{formatBirthday(ocrVerification.fields.expiryDate)}</dd></div>
+            )}
+            {ocrVerification.fields?.address && (
+              <div className={styles.ocrDetailWide}><dt>Address</dt><dd>{ocrVerification.fields.address}</dd></div>
+            )}
+          </dl>
+          {!ocrConfirmed && (
+            <div className={styles.ocrConfirmActions}>
+              <p>Confirm that these details belong to the beneficiary before continuing.</p>
+              <Button type="button" onClick={handleConfirmOcr}>Confirm ID Details</Button>
+            </div>
+          )}
+        </div>
+      )}
+      {!ocrVerifying && validIdError && <p className={styles.fieldError}>{validIdError}</p>}
+      {hasVerifiedIdentityImage && (
+        <div ref={selfieSectionRef} className={styles.selfieVerificationSection}>
+          <FaceRecognitionCapture
+            onCapture={handleLiveSelfieCapture}
+            onRetake={handleRetakeLiveSelfie}
+            disabled={identityVerifying}
+            verifying={identityVerifying}
+            status={faceVerification?.status || ''}
+            error={faceVerification?.status === 'passed' ? '' : validIdError}
+          />
+        </div>
+      )}
       {shouldShowRepresentativeId && (
         <div className={styles.representativeUploadGroup}>
           <div className={styles.uploadOwnerHeader}>
@@ -2407,8 +2530,8 @@ export default function BeneficiarySignupPage() {
             </div>
             <div className={styles.reviewFileList}>
               {[
-                ['Front ID', validIdFrontFiles[0]?.name],
-                ['Back ID', validIdBackFiles[0]?.name],
+                ['Valid ID', validIdFrontFiles[0]?.name],
+                ...(validIdBackFiles[0] ? [['Reverse ID', validIdBackFiles[0].name]] : []),
                 ['Face Selfie', selfieFiles[0]?.name],
               ].map(([label, name]) => (
                 <span key={label} className={styles.reviewFileBadge}>
@@ -2419,6 +2542,9 @@ export default function BeneficiarySignupPage() {
                   {label}: {name || 'Missing'}
                 </span>
               ))}
+              <span className={styles.reviewFileBadge}>
+                OCR: {ocrConfirmed ? `${ocrVerification?.idTypeLabel || 'Supported ID'} verified` : 'Pending'}
+              </span>
               <span className={styles.reviewFileBadge}>
                 {faceVerification?.status === 'passed' ? (
                   <>
@@ -2713,8 +2839,9 @@ export default function BeneficiarySignupPage() {
               <li>
                 <span className={styles.legalHeading}>Identity Documents and Face Verification</span>
                 <p className={styles.legalParagraph}>
-                  Registration may require uploading both sides of a valid ID and a selfie/face capture for identity
-                  verification. Face verification may be automatic or may require manual review by authorized personnel.
+                  Registration requires one clear supported ID image, OCR-based detail extraction, and a selfie/face
+                  capture for identity verification. A reverse-side image is requested only when OCR cannot find required
+                  details. Face verification may be automatic or may require manual review by authorized personnel.
                 </p>
                 <p className={styles.legalParagraph}>
                   If face verification fails or documents are unreadable, your application may be delayed, returned for

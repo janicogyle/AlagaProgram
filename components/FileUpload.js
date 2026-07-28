@@ -21,6 +21,8 @@ export default function FileUpload({
   multiple = true,
   label,
   required = false,
+  capture,
+  actionText = 'Drag and drop files here, or',
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [sizeErrors, setSizeErrors] = useState({});
@@ -146,6 +148,7 @@ export default function FileUpload({
           multiple={multiple}
           onChange={handleFileSelect}
           accept={docConfig.accept}
+          capture={capture}
           className={styles.hiddenInput}
         />
         <div className={styles.dropZoneContent}>
@@ -155,10 +158,14 @@ export default function FileUpload({
             <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
           <p className={styles.dropText}>
-            <span>Drag and drop files here, or </span>
+            <span>{actionText} </span>
             <span className={styles.browseLink}>browse</span>
           </p>
-          <p className={styles.hint}>Supported: PDF, JPG, PNG · Max 2MB</p>
+          <p className={styles.hint}>
+            {documentType === 'validIdImage' || documentType === 'selfie'
+              ? 'Supported: JPG, PNG · Max 2MB'
+              : 'Supported: PDF, JPG, PNG · Max 2MB'}
+          </p>
           <p className={styles.hint}>Please upload files up to 2MB only.</p>
         </div>
       </div>

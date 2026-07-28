@@ -909,6 +909,29 @@ export default function AccountRequestsPage() {
                   </div>
                 </div>
                 <div>
+                  <span className={styles.label}>OCR Identity Verification</span>
+                  <div className={styles.value}>
+                    <Badge variant={detailsRequest.ocr_verification_status === 'passed' ? 'success' : 'warning'}>
+                      {detailsRequest.ocr_verification_status === 'passed' ? 'OCR Verified' : 'Not OCR Verified'}
+                    </Badge>
+                    {detailsRequest.ocr_id_type && (
+                      <span className={styles.subtleText}>Type: {String(detailsRequest.ocr_id_type).replaceAll('_', ' ')}</span>
+                    )}
+                    {detailsRequest.ocr_extracted_name && (
+                      <span className={styles.subtleText}>Name: {detailsRequest.ocr_extracted_name}</span>
+                    )}
+                    {detailsRequest.ocr_extracted_birth_date && (
+                      <span className={styles.subtleText}>Birth date: {formatDateOnly(detailsRequest.ocr_extracted_birth_date)}</span>
+                    )}
+                    {detailsRequest.ocr_id_number_masked && (
+                      <span className={styles.subtleText}>ID: {detailsRequest.ocr_id_number_masked}</span>
+                    )}
+                    {detailsRequest.ocr_verified_at && (
+                      <span className={styles.subtleText}>Verified: {formatDate(detailsRequest.ocr_verified_at)}</span>
+                    )}
+                  </div>
+                <div>
+                </div>
                   <span className={styles.label}>Face Verification</span>
                   <div className={styles.value}>
                     <Badge variant={getFaceVerificationBadgeVariant(detailsRequest.face_verification_status)}>
