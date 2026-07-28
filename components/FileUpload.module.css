@@ -157,6 +157,7 @@
   border-radius: 9px;
   object-fit: contain;
   background: #000000;
+  transform: scaleX(-1);
 }
 
 .cameraError {

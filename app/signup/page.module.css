@@ -892,6 +892,7 @@
   border-radius: 8px;
   background: #111827;
   object-fit: cover;
+  transform: scaleX(-1);
 }
 
 .ocrProgress {
