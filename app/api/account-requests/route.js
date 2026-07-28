@@ -539,7 +539,11 @@ export async function POST(request) {
         { status: 400 },
       );
     }
-    const verifiedFace = await verifyFaceMatch({ idImageUrl: validIdFrontUrl, selfieUrl });
+    const verifiedFace = await verifyFaceMatch({
+      idImageUrl: validIdFrontUrl,
+      alternateIdImageUrl: validIdBackUrl,
+      selfieUrl,
+    });
     if (verifiedFace.status !== 'passed') {
       return NextResponse.json(
         { data: null, error: verifiedFace.error || FACE_VERIFICATION_FAILED_ERROR },

@@ -44,10 +44,10 @@ export async function POST(request) {
       return NextResponse.json({ data: null, error: 'Invalid request body.' }, { status: 400 });
     }
 
-    const selectedIdImageField = body.validIdFrontUrl ? 'validIdFrontUrl' : 'valid_id_front_url';
     const idImageUrl = clean(body.validIdFrontUrl || body.valid_id_front_url);
+    const alternateIdImageUrl = clean(body.validIdBackUrl || body.valid_id_back_url);
     const selfieUrl = clean(body.selfieUrl || body.selfie_url);
-    const docCheck = validateCloudinaryDocumentUrls([idImageUrl, selfieUrl], { label: 'Face verification image' });
+    const docCheck = validateCloudinaryDocumentUrls([idImageUrl, alternateIdImageUrl, selfieUrl].filter(Boolean), { label: 'Face verification image' });
     if (!docCheck.ok) {
       return NextResponse.json({ data: null, error: docCheck.error }, { status: 400 });
     }
@@ -57,7 +57,7 @@ export async function POST(request) {
       return NextResponse.json({ data: null, error: ref.error }, { status: ref.status || 400 });
     }
 
-    const result = await verifyFaceMatch({ idImageUrl, selfieUrl });
+    const result = await verifyFaceMatch({ idImageUrl, alternateIdImageUrl, selfieUrl });
     const now = new Date().toISOString();
     const payload = {
       status: result.status,
@@ -65,10 +65,7 @@ export async function POST(request) {
       provider: result.provider,
       verifiedAt: now,
       error: result.error || null,
-      diagnostics: {
-        ...(result.diagnostics || {}),
-        selectedIdImageField,
-      },
+      diagnostics: result.diagnostics || {},
     };
 
     await logActivity(

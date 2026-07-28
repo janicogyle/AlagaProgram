@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styles from './FileUpload.module.css';
 
 const documentTypes = {
@@ -27,6 +27,10 @@ export default function FileUpload({
   const [isDragging, setIsDragging] = useState(false);
   const [sizeErrors, setSizeErrors] = useState({});
   const inputRef = useRef(null);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState('');
   const docConfig = documentTypes[documentType] || documentTypes.other;
   const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
@@ -73,6 +77,65 @@ export default function FileUpload({
         onChange(validFiles.slice(0, 1));
       }
     }
+  };
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setCameraOpen(false);
+  };
+
+  useEffect(() => () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
+
+  const openCamera = async () => {
+    setCameraError('');
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Camera access is not supported by this browser. Use Upload image instead.');
+      return;
+    }
+
+    try {
+      stopCamera();
+      setCameraOpen(true);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: capture === 'user' ? 'user' : { ideal: 'environment' } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      window.requestAnimationFrame(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(() => {});
+        }
+      });
+    } catch {
+      stopCamera();
+      setCameraError('Camera access was unavailable or denied. Allow camera access or use Upload image.');
+    }
+  };
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    if (!video?.videoWidth || !video?.videoHeight) {
+      setCameraError('The camera is still starting. Please wait a moment and try again.');
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        setCameraError('The photo could not be captured. Please try again.');
+        return;
+      }
+      const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      handleFiles([file]);
+      stopCamera();
+    }, 'image/jpeg', 0.9);
   };
 
   const removeFile = (index) => {
@@ -148,7 +211,6 @@ export default function FileUpload({
           multiple={multiple}
           onChange={handleFileSelect}
           accept={docConfig.accept}
-          capture={capture}
           className={styles.hiddenInput}
         />
         <div className={styles.dropZoneContent}>
@@ -170,6 +232,32 @@ export default function FileUpload({
         </div>
       </div>
 
+      {capture && (
+        <div className={styles.sourceActions}>
+          <button type="button" className={styles.sourceButton} onClick={() => inputRef.current?.click()}>
+            Upload image
+          </button>
+          <button type="button" className={styles.sourceButtonPrimary} onClick={openCamera}>
+            Take photo
+          </button>
+        </div>
+      )}
+
+      {cameraError && <p className={styles.cameraError} role="alert">{cameraError}</p>}
+
+      {capture && cameraOpen && (
+        <div className={styles.cameraPanel}>
+          <video ref={videoRef} className={styles.cameraVideo} autoPlay playsInline muted />
+          <div className={styles.cameraControls}>
+            <button type="button" className={styles.sourceButtonPrimary} onClick={capturePhoto}>
+              Capture photo
+            </button>
+            <button type="button" className={styles.sourceButton} onClick={stopCamera}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       {files.length > 0 && (
         <div className={styles.fileList}>
           {files.map((file, index) => {

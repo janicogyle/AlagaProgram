@@ -1212,6 +1212,7 @@ export default function BeneficiarySignupPage() {
         body: JSON.stringify({
           contactNumber: getIdentityUploadReference(),
           validIdFrontUrl: frontUrl,
+          validIdBackUrl: backUrl || null,
           selfieUrl,
         }),
       });
@@ -2246,7 +2247,7 @@ export default function BeneficiarySignupPage() {
           files={validIdFrontFiles}
           onChange={handleValidIdFrontChange}
           capture="environment"
-          actionText="Take a photo or drag and drop an image here, or"
+          actionText="Drag and drop an image here, or"
           required
         />
       </div>
@@ -2267,7 +2268,7 @@ export default function BeneficiarySignupPage() {
             files={validIdBackFiles}
             onChange={handleValidIdBackChange}
             capture="environment"
-            actionText="Take a reverse-side photo or drag and drop it here, or"
+            actionText="Drag and drop a reverse-side image here, or"
             required
           />
         </div>
@@ -2275,13 +2276,16 @@ export default function BeneficiarySignupPage() {
       {ocrVerification?.token && (
         <div className={styles.ocrConfirmationCard}>
           <div className={styles.ocrConfirmationHeader}>
-            <div>
-              <span className={styles.uploadOwnerBadge}>OCR verified</span>
-              <h4 className={styles.ocrConfirmationTitle}>{ocrVerification.idTypeLabel}</h4>
-            </div>
-            {ocrConfirmed && <span className={styles.verifiedBadge}>Details confirmed</span>}
+            {ocrConfirmed ? (
+              <span className={styles.verifiedBadge}>Identity verified</span>
+            ) : (
+              <div>
+                <span className={styles.uploadOwnerBadge}>OCR verified</span>
+                <h4 className={styles.ocrConfirmationTitle}>{ocrVerification.idTypeLabel}</h4>
+              </div>
+            )}
           </div>
-          <dl className={styles.ocrDetailsGrid}>
+          {!ocrConfirmed && <dl className={styles.ocrDetailsGrid}>
             <div><dt>Full name</dt><dd>{ocrVerification.fields?.fullName || '—'}</dd></div>
             <div><dt>ID number</dt><dd>{ocrVerification.maskedIdNumber || '—'}</dd></div>
             <div><dt>Date of birth</dt><dd>{formatBirthday(ocrVerification.fields?.birthDate)}</dd></div>
@@ -2297,7 +2301,7 @@ export default function BeneficiarySignupPage() {
             {ocrVerification.fields?.address && (
               <div className={styles.ocrDetailWide}><dt>Address</dt><dd>{ocrVerification.fields.address}</dd></div>
             )}
-          </dl>
+          </dl>}
           {!ocrConfirmed && (
             <div className={styles.ocrConfirmActions}>
               <p>Confirm that these details belong to the beneficiary before continuing.</p>

@@ -106,6 +106,65 @@
   margin: 0;
 }
 
+.sourceActions,
+.cameraControls {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.sourceButton,
+.sourceButtonPrimary {
+  min-width: 130px;
+  padding: 0.65rem 1rem;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sourceButton {
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  background: #ffffff;
+}
+
+.sourceButtonPrimary {
+  border: 1px solid #1d4ed8;
+  color: #ffffff;
+  background: #2563eb;
+}
+
+.sourceButton:hover,
+.sourceButtonPrimary:hover {
+  filter: brightness(0.96);
+}
+
+.cameraPanel {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.8rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #0f172a;
+}
+
+.cameraVideo {
+  width: 100%;
+  max-height: 460px;
+  border-radius: 9px;
+  object-fit: contain;
+  background: #000000;
+}
+
+.cameraError {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
 .fileList {
   display: flex;
   flex-direction: column;
