@@ -28,7 +28,7 @@ export default function FileUpload({
   const [sizeErrors, setSizeErrors] = useState({});
   const inputRef = useRef(null);
   const docConfig = documentTypes[documentType] || documentTypes.other;
-  const MAX_FILE_SIZE = 2 * 1024 * 1024;
+  const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -58,7 +58,7 @@ export default function FileUpload({
     
     for (const file of newFiles) {
       if (file.size > MAX_FILE_SIZE) {
-        errors[file.name] = `File exceeds 2MB limit (${formatFileSize(file.size)})`;
+        errors[file.name] = `File exceeds 5MB limit (${formatFileSize(file.size)})`;
       } else {
         validFiles.push(file);
       }
@@ -163,10 +163,10 @@ export default function FileUpload({
           </p>
           <p className={styles.hint}>
             {documentType === 'validIdImage' || documentType === 'selfie'
-              ? 'Supported: JPG, PNG · Max 2MB'
-              : 'Supported: PDF, JPG, PNG · Max 2MB'}
+              ? 'Supported: JPG, PNG · Max 5MB'
+              : 'Supported: PDF, JPG, PNG · Max 5MB'}
           </p>
-          <p className={styles.hint}>Please upload files up to 2MB only.</p>
+          <p className={styles.hint}>Please upload files up to 5MB only.</p>
         </div>
       </div>
 

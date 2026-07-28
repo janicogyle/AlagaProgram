@@ -1789,7 +1789,7 @@ export default function BeneficiaryRequestPage() {
                 <div key={`${req}-${idx}`} className={styles.requirementUploadItem}>
                   <div className={styles.requirementUploadHeader}>
                     <span className={styles.requirementUploadLabel}>{req}</span>
-                    <span className={styles.requirementUploadLimit}>JPG, PNG, PDF · 2MB per file</span>
+                    <span className={styles.requirementUploadLimit}>JPG, PNG, PDF · 5MB per file</span>
                   </div>
 
                   {existingFiles.length > 0 && uploadedFiles.length === 0 && (
