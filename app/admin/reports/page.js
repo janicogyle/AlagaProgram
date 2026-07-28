@@ -73,6 +73,32 @@ const defaultReportTypes = [
     bgColor: '#f3e8ff',
   },
 ];
+async function fetchWithStaffSession(url, options = {}) {
+  if (!supabase) return { response: null, unauthorized: false, error: 'Database client not available.' };
+
+  const send = async (accessToken) => {
+    const headers = new Headers(options.headers || {});
+    headers.set('Authorization', `Bearer ${accessToken}`);
+    return fetch(url, { ...options, headers });
+  };
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  let accessToken = sessionData?.session?.access_token || '';
+  if (!accessToken) return { response: null, unauthorized: true, error: 'Your session has expired.' };
+
+  let response = await send(accessToken);
+  if (response.status === 401) {
+    const { data: refreshedData } = await supabase.auth.refreshSession();
+    accessToken = refreshedData?.session?.access_token || '';
+    if (accessToken) response = await send(accessToken);
+  }
+
+  return {
+    response,
+    unauthorized: response.status === 401,
+    error: response.status === 401 ? 'Your session has expired.' : '',
+  };
+}
 
 export default function ReportsPage() {
   const [reportTypes, setReportTypes] = useState(defaultReportTypes);
@@ -100,32 +126,30 @@ export default function ReportsPage() {
   // Fetch report counts through the authenticated API so sector access is enforced server-side.
   useEffect(() => {
     const fetchCounts = async () => {
-      if (!supabase) {
-        console.error('Database client not available');
-        return;
-      }
-
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
-        const params = new URLSearchParams({
-          year: String(reportYear),
-        });
-        const response = await fetch(`/api/reports?${params.toString()}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || payload?.error) {
-          throw new Error(payload?.error || 'Failed to fetch report counts.');
+        const params = new URLSearchParams({ year: String(reportYear) });
+        const result = await fetchWithStaffSession(`/api/reports?${params.toString()}`);
+        if (result.unauthorized) {
+          setStatus({ type: 'error', message: 'Your session expired. Please sign in again.' });
+          window.location.assign('/admin-login');
+          return;
+        }
+        if (!result.response) {
+          setStatus({ type: 'error', message: result.error || 'Unable to load report counts.' });
+          return;
+        }
+
+        const payload = await result.response.json().catch(() => ({}));
+        if (!result.response.ok || payload?.error) {
+          setStatus({ type: 'error', message: payload?.error || 'Failed to fetch report counts.' });
+          return;
         }
         const counts = payload?.data?.counts || {};
-
         setReportTypes((prev) =>
           prev.map((report) => ({ ...report, count: Number(counts[report.id] || 0) })),
         );
-
-      } catch (err) {
-        console.error('Failed to fetch report counts:', err);
+      } catch {
+        setStatus({ type: 'error', message: 'Unable to load report counts. Please try again.' });
       }
     };
 
@@ -317,14 +341,20 @@ export default function ReportsPage() {
         format: selectedFormat,
         year: reportYear,
       };
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-
-      const response = await fetch('/api/reports', {
+      const result = await fetchWithStaffSession('/api/reports', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+      if (result.unauthorized) {
+        setStatus({ type: 'error', message: 'Your session expired. Please sign in again.' });
+        window.location.assign('/admin-login');
+        return;
+      }
+      if (!result.response) {
+        throw new Error(result.error || 'Failed to generate report.');
+      }
+      const response = result.response;
 
       if (!response.ok) {
         let errorMessage = response.statusText || 'Failed to generate report.';

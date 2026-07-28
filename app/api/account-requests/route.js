@@ -16,7 +16,7 @@ const LOCKED_CITIZENSHIP = 'Filipino';
 const SOLO_PARENT_MARRIED_ERROR = 'Married civil status is not allowed for Solo Parent classification.';
 const MINOR_PWD_REPRESENTATIVE_ERROR =
   'Beneficiaries below 18 years old must provide a guardian or representative before registration can be completed.';
-const VALID_ID_REQUIRED_ERROR = 'Please upload an OCR-verified valid ID image.';
+const VALID_ID_REQUIRED_ERROR = 'Please upload OCR-verified front and back images of the valid ID.';
 const FACE_VERIFICATION_FAILED_ERROR =
   'Face verification failed. Please make sure your selfie clearly matches the photo on your valid ID.';
 const MIN_BIRTHDATE = '1909-01-01';
@@ -491,7 +491,7 @@ export async function POST(request) {
     const validIdBackUrl = body.validIdBackUrl || body.valid_id_back_url || null;
     const selfieUrl = body.selfieUrl || body.selfie_url || null;
 
-    if (!validIdFrontUrl) {
+    if (!validIdFrontUrl || !validIdBackUrl) {
       return NextResponse.json({ data: null, error: VALID_ID_REQUIRED_ERROR }, { status: 400 });
     }
     if (!selfieUrl) {
@@ -544,7 +544,7 @@ export async function POST(request) {
       alternateIdImageUrl: validIdBackUrl,
       selfieUrl,
     });
-    if (verifiedFace.status !== 'passed') {
+    if (!['passed', 'manual_review'].includes(verifiedFace.status)) {
       return NextResponse.json(
         { data: null, error: verifiedFace.error || FACE_VERIFICATION_FAILED_ERROR },
         { status: 400 },
