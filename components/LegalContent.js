@@ -1,6 +1,6 @@
 'use client';
 
-const EFFECTIVE_DATE = 'July 26, 2026';
+const EFFECTIVE_DATE = 'July 29, 2026';
 const PRIVACY_EMAIL = 'barangaystarita2023@gmail.com';
 
 export function DataPrivacyNotice({ styles }) {
@@ -35,7 +35,7 @@ export function DataPrivacyNotice({ styles }) {
             <li>Identity and demographic data: name, birthdate, age, birthplace, sex, citizenship, and civil status</li>
             <li>Contact and location data: mobile number, verified email when selected, and residential address</li>
             <li>Program and eligibility data: PWD, Senior Citizen, or Solo Parent classification and supporting records</li>
-            <li>Identity evidence: ID image, structured OCR results, optional reverse image, selfie or live face capture, and supporting documents</li>
+            <li>Identity evidence: front and back ID images, structured OCR results, selfie or live face capture, and supporting documents</li>
             <li>Representative data: name, contact details, relationship, authority, and representative ID when applicable</li>
             <li>Account and security data: password hash, verification method and status, OTP records, sessions, and account status</li>
             <li>Service records: control numbers, assistance category, requirements, status, remarks, release history, and renewals</li>
@@ -49,8 +49,48 @@ export function DataPrivacyNotice({ styles }) {
           <span className={styles.legalHeading}>Sensitive Personal Information</span>
           <p className={styles.legalParagraph}>
             Birthdate, civil status, government-issued identifiers and documents, sector or eligibility
-            information, and face images or face-comparison results may be sensitive personal information.
-            These records require a higher level of protection and are not collected for advertising or sale.
+            information, disability or health-related information, and face images or face-comparison results
+            may be sensitive personal information. These records require a higher level of protection and are
+            not collected for advertising or sale.
+          </p>
+        </li>
+
+        <li>
+          <span className={styles.legalHeading}>
+            PWD, Senior Citizen, and Solo Parent Data Handling
+          </span>
+          <p className={styles.legalParagraph}>
+            This notice applies equally when a person registers under one or more supported sectors. The
+            system may record a primary and secondary sector classification, but personnel may access and use
+            sector information only when reasonably necessary for their assigned official duties.
+          </p>
+          <ul className={styles.legalSubList}>
+            <li>
+              <strong>Persons with Disability (PWDs):</strong> the system processes PWD classification,
+              disability or health-related eligibility evidence when submitted, PWD identification, and
+              guardian or representative information where applicable. This information is used only to
+              verify eligibility, provide accessible or appropriate services, prevent fraud, and administer
+              authorized PWD assistance.
+            </li>
+            <li>
+              <strong>Senior Citizens:</strong> the system processes birthdate or age, Senior Citizen
+              classification and identification, eligibility records, and representative information where
+              applicable. This information is used only to verify age and eligibility and to administer
+              authorized senior-citizen services and assistance.
+            </li>
+            <li>
+              <strong>Solo Parents:</strong> the system processes Solo Parent classification, civil status
+              and other eligibility evidence when required, Solo Parent identification, and dependent or
+              representative information only when necessary for the requested service. This information is
+              used only to verify eligibility and administer authorized solo-parent services and assistance.
+            </li>
+          </ul>
+          <p className={styles.legalParagraph}>
+            Sector information must not be used for unrelated profiling, public disclosure, political
+            targeting, commercial marketing, or unlawful discrimination. A person will not be denied a
+            service solely because an automated OCR or face-comparison tool produced an uncertain result;
+            authorized personnel must provide human review and an appropriate correction, resubmission, or
+            in-person verification route.
           </p>
         </li>
 
@@ -139,9 +179,12 @@ export function DataPrivacyNotice({ styles }) {
           <p className={styles.legalParagraph}>
             Data is retained only for as long as necessary for the stated purposes, required government
             records and audit rules, the establishment or defense of legal claims, or another period required
-            by law. Different records may require different periods. When retention is no longer justified,
-            records must be securely deleted, anonymized, or otherwise disposed of so they cannot be
-            reconstructed or processed without authority.
+            by law. Retention must be assessed separately for pending, approved, rejected, withdrawn, expired,
+            or abandoned registrations; identity documents and selfies; OCR and face-comparison results;
+            beneficiary and assistance records; representative records; OTP and delivery logs; QR-card
+            records; and security or audit logs. When retention is no longer justified, records and copies
+            held by service providers must be securely deleted, anonymized, or otherwise disposed of so they
+            cannot be reconstructed or processed without authority.
           </p>
           <p className={styles.legalParagraph}>
             Barangay Sta. Rita must approve and publish a records retention and disposal schedule. Until that
@@ -273,13 +316,43 @@ export function TermsAndConditions({ styles }) {
         </li>
 
         <li>
-          <span className={styles.legalHeading}>Identity and Face Verification</span>
+          <span className={styles.legalHeading}>ID Uploads and Document Requirements</span>
           <p className={styles.legalParagraph}>
-            Identity verification requires one clear supported ID image, automated OCR, and a selfie or live
-            face capture. A reverse image is requested only when required details are missing. Automated OCR
-            and face comparison can make mistakes. A failed or uncertain comparison may
-            require recapture, additional evidence, or in-person/manual review; it must not by itself decide
-            program eligibility. You may challenge a result and request human review.
+            Online identity verification requires clear front and back images of a supported, valid ID.
+            Identity images must be submitted in JPG, JPEG, or PNG format and must comply with the file-size
+            limit displayed by the upload form. The images must be readable, current where an expiry date
+            applies, unaltered, and must belong to the beneficiary. A parent, guardian, or representative
+            must upload their own valid ID when the registration workflow requires it.
+          </p>
+          <p className={styles.legalParagraph}>
+            Assistance applications, renewals, or eligibility review may require additional certificates,
+            prescriptions, IDs, or other supporting records appropriate to the requested service. Supporting
+            documents may be accepted as PDF, JPG, JPEG, or PNG where the relevant upload form allows them.
+            The portal may reject unsupported, corrupted, unreadable, incomplete, mismatched, unsafe, or
+            apparently altered files and may request clearer copies, missing pages, original documents for
+            in-person inspection, or other proportionate evidence.
+          </p>
+          <p className={styles.legalParagraph}>
+            Uploading a document does not establish that it is authentic, current, complete, or sufficient
+            and does not guarantee registration, eligibility, assistance, renewal, or payment. Do not upload
+            passwords, unrelated records, or personal information that the form does not reasonably request.
+          </p>
+        </li>
+
+        <li>
+          <span className={styles.legalHeading}>OCR, Face Comparison, and Human Verification</span>
+          <p className={styles.legalParagraph}>
+            The system uses OCR to detect a supported ID type and compare extracted identity details, such as
+            name and birthdate, with the registration information. It also compares the face detected on the
+            front of the ID with the submitted selfie or live face capture. The system may verify that the
+            ID images later submitted with the application are the same images that passed the OCR step.
+          </p>
+          <p className={styles.legalParagraph}>
+            OCR and face comparison can make mistakes and do not independently authenticate a document or
+            determine PWD, Senior Citizen, or Solo Parent eligibility. An unreadable document, mismatch,
+            failed result, or uncertain result may require recapture, correction, resubmission, additional
+            evidence, or in-person/manual review. You may challenge an automated result and request human
+            review through the barangay.
           </p>
         </li>
 
@@ -287,10 +360,11 @@ export function TermsAndConditions({ styles }) {
           <span className={styles.legalHeading}>Application Review</span>
           <p className={styles.legalParagraph}>
             Authorized personnel may approve, reject, archive, or mark an application incomplete based on
-            verified eligibility rules and submitted records. When reasonably possible, an adverse or
-            incomplete result should state what is missing or provide a route for correction,
-            resubmission, or in-person clarification. Decisions must not be based on unlawful
-            discrimination.
+            applicable eligibility rules, submitted records, verification results, and any necessary manual
+            review. An adverse or incomplete result should state the reason or what is missing and provide an
+            available route for correction, resubmission, human review, or in-person clarification. A final
+            adverse eligibility decision must not be based solely on an automated OCR or face-comparison
+            result and must not involve unlawful discrimination.
           </p>
         </li>
 
