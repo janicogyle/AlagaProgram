@@ -12,6 +12,7 @@ import FileUpload from '../../components/FileUpload';
 import ConstellationBackground from '../../components/ConstellationBackground';
 import LegalContent from '@/components/LegalContent';
 import SectionHeader from '@/components/SectionHeader';
+import { analyzeImageQualityPixels, getImageQualityIssue } from '@/lib/imageQuality.mjs';
 import {
   BENEFICIARY_SECTOR_OPTIONS,
   deriveSectorFlags,
@@ -127,13 +128,6 @@ const sectorCardDetails = {
   },
 };
 
-const signupRequirements = [
-  ['Estimated completion', '5-10 minutes'],
-  ['Government-issued ID', 'Clear front and back images with automatic OCR'],
-  ['SMS verification', 'Active mobile number required'],
-  ['Final review', 'Check all details before submission'],
-];
-
 const philippinesDateFormatter = new Intl.DateTimeFormat('en-PH', {
   timeZone: 'Asia/Manila',
   weekday: 'long',
@@ -215,6 +209,31 @@ function FaceRecognitionCapture({ onCapture, onRetake, disabled = false, status,
     canvas.height = video.videoHeight;
     const context = canvas.getContext('2d');
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const sampleScale = Math.min(1, 720 / Math.max(canvas.width, canvas.height));
+    const sampleCanvas = document.createElement('canvas');
+    sampleCanvas.width = Math.max(2, Math.round(canvas.width * sampleScale));
+    sampleCanvas.height = Math.max(2, Math.round(canvas.height * sampleScale));
+    const sampleContext = sampleCanvas.getContext('2d', { willReadFrequently: true });
+    sampleContext.drawImage(canvas, 0, 0, sampleCanvas.width, sampleCanvas.height);
+    const imageData = sampleContext.getImageData(0, 0, sampleCanvas.width, sampleCanvas.height);
+    const quality = analyzeImageQualityPixels({
+      data: imageData.data,
+      width: sampleCanvas.width,
+      height: sampleCanvas.height,
+      step: 2,
+    });
+    const qualityIssue = getImageQualityIssue(quality, {
+      label: 'Selfie camera',
+      minSharpness: 28,
+      minBrightness: 58,
+      maxBrightness: 220,
+      minContrast: 16,
+    });
+    if (qualityIssue) {
+      setCameraError(qualityIssue);
+      return;
+    }
+    setCameraError('');
     canvas.toBlob((blob) => {
       if (!blob) return;
       const file = new File([blob], `live-selfie-${Date.now()}.jpg`, { type: 'image/jpeg' });
@@ -252,7 +271,7 @@ function FaceRecognitionCapture({ onCapture, onRetake, disabled = false, status,
           <h4 className={styles.faceRecognitionTitle}>Face Selfie</h4>
           <p className={styles.faceRecognitionHint}>Capture a live selfie to verify your identity.</p>
         </div>
-        {verifying && <span className={styles.faceRecognitionLoading}>Verifying identity...</span>}
+          {verifying && <span className={styles.faceRecognitionLoading}>Verifying details...</span>}
       </div>
 
       <div className={styles.faceRecognitionBody}>
@@ -279,10 +298,10 @@ function FaceRecognitionCapture({ onCapture, onRetake, disabled = false, status,
               </Button>
             )}
           </div>
-          {verifying && <span className={styles.faceStatusText}>Saving selfie...</span>}
+          {verifying && <span className={styles.faceStatusText}>Checking selfie...</span>}
           {status === 'passed' && <span className={styles.verifiedBadge}>Face Selfie Verified</span>}
           {status === 'manual_review' && !verifying && <span className={styles.faceStatusText}>Admin will review your ID and selfie</span>}
-          {status === 'failed' && !verifying && <p className={styles.fieldError}>Face Selfie Failed</p>}
+          {status === 'failed' && !verifying && <p className={styles.fieldError}>Please retake your selfie</p>}
           {(error || cameraError) && <p className={styles.fieldError}>{error || cameraError}</p>}
         </div>
       </div>
@@ -1153,14 +1172,14 @@ export default function BeneficiarySignupPage() {
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(result.error || 'OCR could not verify this ID. Retake clearer front and back images.');
+        throw new Error(result.error || 'We could not verify this ID. Retake clearer front and back images.');
       }
       setOcrVerification(result.data);
       setOcrConfirmed(true);
       setStatus({ type: 'success', message: 'Identity verified. Continue with the live face selfie.' });
       window.setTimeout(() => selfieSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
     } catch (error) {
-      const message = error?.message || 'OCR could not verify this ID. Retake clearer front and back images.';
+      const message = error?.message || 'We could not verify this ID. Retake clearer front and back images.';
       setValidIdError(message);
       setStatus({ type: 'error', message });
     } finally {
@@ -1212,7 +1231,7 @@ export default function BeneficiarySignupPage() {
       setFaceVerification(verification);
       setStatus({
         type: 'success',
-        message: verification.status === 'passed' ? 'Face match passed.' : 'Selfie saved. Admin will review your ID and selfie.',
+        message: verification.status === 'passed' ? 'Identity details verified.' : 'Selfie saved. An admin will review your ID and selfie.',
       });
       return { ok: true, urls, verification };
     } catch (error) {
@@ -2202,7 +2221,7 @@ export default function BeneficiarySignupPage() {
         <div>
           <h4 className={styles.validIdGuideTitle}>Supported Philippine IDs</h4>
           <p className={styles.validIdGuideText}>
-            OCR automatically detects the ID type and checks the extracted name and birth date against
+            The system reads the ID type, name, and birth date, then checks them against
             the beneficiary information entered in Step 2.
           </p>
         </div>
@@ -2244,7 +2263,7 @@ export default function BeneficiarySignupPage() {
       </div>
       {ocrVerifying && (
         <div className={styles.ocrProgress} role="status">
-          Reading and validating the ID with OCR.Space...
+          Verifying details...
         </div>
       )}
       <div className={styles.validIdRow}>
@@ -2501,7 +2520,7 @@ export default function BeneficiarySignupPage() {
                 </span>
               ))}
               <span className={styles.reviewFileBadge}>
-                OCR: {ocrConfirmed ? `${ocrVerification?.idTypeLabel || 'Supported ID'} verified` : 'Pending'}
+                ID details: {ocrConfirmed ? `${ocrVerification?.idTypeLabel || 'Supported ID'} verified` : 'Pending'}
               </span>
               <span className={styles.reviewFileBadge}>
                 {faceVerification?.status === 'passed' ? (
@@ -2564,22 +2583,6 @@ export default function BeneficiarySignupPage() {
     );
   };
 
-  const renderInfoPanel = () => (
-    <div className={styles.infoPanel} aria-label="Registration reminders">
-      {signupRequirements.map(([label, value]) => (
-        <div key={label} className={styles.infoItem}>
-          <span className={styles.infoIcon} aria-hidden="true">
-            <CheckIcon />
-          </span>
-          <span>
-            <strong>{label}</strong>
-            <small>{value}</small>
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-
   const renderSummaryPanel = () => (
     <aside className={styles.summaryCard} aria-label="Registration summary">
       <p className={styles.summaryKicker}>Registration summary</p>
@@ -2595,10 +2598,6 @@ export default function BeneficiarySignupPage() {
         <div>
           <span>Remaining steps</span>
           <strong>{remainingSteps}</strong>
-        </div>
-        <div>
-          <span>Estimated remaining time</span>
-          <strong>{estimatedRemainingMinutes} min</strong>
         </div>
       </div>
       <ol className={styles.summarySteps}>
@@ -2661,10 +2660,6 @@ export default function BeneficiarySignupPage() {
           <p className={styles.heroSubtitle}>
             Complete the online registration form for PWD, senior citizen, or solo parent assistance.
           </p>
-          <div className={styles.heroMeta} aria-label="Signup requirements">
-            <span className={styles.heroPill}>Estimated time: 5-10 minutes</span>
-            <span className={styles.heroPill}>Step {currentStep} of {TOTAL_STEPS}</span>
-          </div>
         </div>
         <div className={styles.heroAside} aria-label="Application progress">
           <span className={styles.heroAsideLabel}>Current step</span>
@@ -2682,7 +2677,6 @@ export default function BeneficiarySignupPage() {
               </div>
               <span className={styles.saveNote}>{progressPercent}% complete</span>
             </div>
-            {renderInfoPanel()}
 
             {/* Progress Bar */}
             {renderProgressBar()}

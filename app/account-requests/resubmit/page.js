@@ -69,7 +69,7 @@ const MINOR_PWD_REPRESENTATIVE_ERROR =
   'Beneficiaries below 18 years old must provide a guardian or representative before registration can be completed.';
 const VALID_ID_BOTH_SIDES_ERROR = 'Please upload both the front and back images of your valid ID.';
 const FACE_VERIFICATION_FAILED_ERROR =
-  'Face verification failed. Please make sure your selfie clearly matches the photo on your valid ID.';
+  'We could not verify your selfie. Please make sure your selfie clearly matches the photo on your valid ID.';
 
 const getCivilStatusOptions = (isSoloParent) =>
   civilStatusOptions.map((option) => ({
@@ -419,7 +419,7 @@ function ResubmitAccountRequestPageContent() {
       setExistingValidIdFront(frontUrl);
       setExistingValidIdBack(backUrl);
       setExistingSelfie(selfieUrl);
-      setStatus({ type: 'success', message: 'Face verification passed.' });
+      setStatus({ type: 'success', message: 'Identity details verified.' });
       return { ok: true, urls, verification };
     } catch (error) {
       const message = error?.message || FACE_VERIFICATION_FAILED_ERROR;
@@ -825,10 +825,10 @@ function ResubmitAccountRequestPageContent() {
                       disabled={identityVerifying}
                     />
                     <Button type="button" onClick={handleVerifyIdentity} disabled={identityVerifying}>
-                      {identityVerifying ? 'Verifying Face...' : 'Verify Face Match'}
+                      {identityVerifying ? 'Verifying details...' : 'Verify identity'}
                     </Button>
                     {faceVerification?.status === 'passed' && (
-                      <span className={styles.faceStatus}>Face Match Passed</span>
+                      <span className={styles.faceStatus}>Identity verified</span>
                     )}
                     {validIdError && <p className={styles.fieldError}>{validIdError}</p>}
                     {existingRepresentativeValidId && (
