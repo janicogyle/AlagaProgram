@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import PageHeader from '../../../components/PageHeader';
 import KpiCard from '../../../components/KpiCard';
 import Card from '../../../components/Card';
@@ -323,6 +322,7 @@ export default function BeneficiaryDashboardPage() {
 
           <div className={styles.quickActions}>
             <Button
+              className={styles.quickActionPrimary}
               href={
                 isIdRestricted
                   ? '/beneficiary/profile'
@@ -331,17 +331,18 @@ export default function BeneficiaryDashboardPage() {
                     : '/beneficiary/requests'
               }
               disabled={!isIdRestricted && !editableRequest && hasActiveRequest}
+              title={hasActiveRequest ? 'You already have an active request under review.' : undefined}
             >
               {isIdRestricted ? 'Renew ID' : editableRequest ? 'Edit Incomplete Request' : 'New Request'}
             </Button>
             {!isIdRestricted && (
-              <Link href="/beneficiary/history">
-                <Button variant="secondary">My Requests</Button>
-              </Link>
+              <Button href="/beneficiary/history" variant="secondary" className={styles.quickActionSecondary}>
+                My Requests
+              </Button>
             )}
-            <Link href="/beneficiary/profile">
-              <Button variant="secondary">My Profile</Button>
-            </Link>
+            <Button href="/beneficiary/profile" variant="secondary" className={styles.quickActionSecondary}>
+              My Profile
+            </Button>
           </div>
           </div>
         </Card>
