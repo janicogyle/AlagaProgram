@@ -2289,6 +2289,18 @@
 }
 
 @media (max-width: 760px) {
+  :global(html) {
+    height: auto !important;
+    min-height: 100%;
+    overflow-y: auto !important;
+  }
+
+  :global(body) {
+    height: auto !important;
+    min-height: 100%;
+    overflow-y: visible !important;
+  }
+
   :global(html),
   :global(body),
   .signupShell,
@@ -2307,10 +2319,35 @@
   }
 
   .signupShell {
-    height: auto;
+    height: auto !important;
+    max-height: none !important;
     min-height: 100dvh;
-    overflow-y: visible;
+    overflow-x: clip !important;
+    overflow-y: visible !important;
     padding: 0.75rem 0.75rem 1.5rem;
+  }
+
+  .signupPage,
+  .registrationLayout,
+  .registrationMain,
+  .formCard,
+  .form,
+  .stepContent {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .formCard > div {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .stepContainer {
+    height: auto !important;
+    max-height: none !important;
+    overflow: clip !important;
   }
 
   .heroPanel {
