@@ -157,7 +157,7 @@
 
 @media (max-width: 576px) {
   .pageContent {
-    padding: 18px 16px max(24px, env(safe-area-inset-bottom));
+    padding: 14px 12px max(24px, env(safe-area-inset-bottom));
   }
 
   .logoutOverlay {

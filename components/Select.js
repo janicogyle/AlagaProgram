@@ -12,6 +12,7 @@ export default function Select({
   options = [],
   placeholder = 'Select option',
   required = false,
+  optional = false,
   disabled = false,
   error = '',
   compact = false,
@@ -27,6 +28,7 @@ export default function Select({
         <label htmlFor={selectId} className={styles.label}>
           {label}
           {required && <span className={styles.required}>*</span>}
+          {optional && <span className={styles.optional}>(Optional)</span>}
         </label>
       )}
       <div className={styles.selectWrapper}>

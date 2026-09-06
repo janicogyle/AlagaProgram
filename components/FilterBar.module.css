@@ -29,7 +29,12 @@
 
 @media (max-width: 576px) {
   .filterBar {
-    padding: 10px 14px;
+    padding: 12px 14px;
     gap: 10px;
+  }
+
+  .filterBar > * {
+    width: 100%;
+    max-width: none;
   }
 }

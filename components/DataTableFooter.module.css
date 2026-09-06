@@ -96,3 +96,33 @@
   .pageControls { width: 100%; justify-content: space-between; flex-wrap: wrap; }
   .pageSizeSelect { font-size: 16px; }
 }
+
+@media (max-width: 576px) {
+  .pagination {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .pageSizeLabel {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .pageControls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .pageButton {
+    min-width: 0;
+    padding-inline: 10px;
+  }
+
+  .pageText {
+    min-width: 0;
+    align-self: center;
+    white-space: nowrap;
+  }
+}
