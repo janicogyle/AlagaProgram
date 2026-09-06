@@ -280,6 +280,42 @@
   color: var(--primary-light);
 }
 
+:global(html[data-theme='dark']) .label,
+:global(html[data-theme='dark']) .dropText,
+:global(html[data-theme='dark']) .fileName {
+  color: var(--foreground);
+}
+
+:global(html[data-theme='dark']) .dropZone {
+  background: linear-gradient(180deg, var(--surface-bg) 0%, var(--surface-muted) 100%);
+  border-color: var(--border-strong);
+}
+
+:global(html[data-theme='dark']) .dropZoneContent,
+:global(html[data-theme='dark']) .fileSize {
+  color: var(--text-muted);
+}
+
+:global(html[data-theme='dark']) .dropZoneContent svg,
+:global(html[data-theme='dark']) .filePreview {
+  color: #93c5fd;
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+:global(html[data-theme='dark']) .sourceButton,
+:global(html[data-theme='dark']) .fileItem,
+:global(html[data-theme='dark']) .removeBtn {
+  color: var(--foreground);
+  background: var(--surface-bg);
+  border-color: var(--border-strong);
+}
+
+:global(html[data-theme='dark']) .fileItem:hover {
+  background-color: var(--surface-hover);
+  border-color: #60a5fa;
+}
+
 :global(html[data-theme='dark']) .removeBtn:hover {
   color: #fca5a5;
   background-color: rgba(248, 113, 113, 0.16);

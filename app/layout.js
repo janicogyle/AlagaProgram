@@ -11,7 +11,8 @@ export const metadata = {
   title: "Barangay Sta. Rita - Digital Identification System",
   description: "Digital ID System for Barangay Sta. Rita residents - manage PWD, Senior Citizens, and Solo Parents",
   icons: {
-    icon: "/Brand.png",
+    icon: "/PWA.png",
+    apple: "/PWA.png",
   },
   manifest: "/manifest.json",
 };

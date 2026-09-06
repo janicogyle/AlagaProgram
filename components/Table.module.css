@@ -40,7 +40,7 @@
 }
 
 .tr {
-  cursor: pointer;
+  cursor: default;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -50,7 +50,7 @@
 }
 
 :global(html[data-theme='dark']) .tr:hover {
-  background-color: #172238;
+  background-color: var(--surface-hover);
   box-shadow: inset 3px 0 0 #60a5fa;
 }
 
@@ -239,3 +239,11 @@
     transition: none;
   }
 }
+
+/* Preserve readable text while allowing the results to scroll horizontally. */
+.tableWrapper { scrollbar-width: thin; }
+.th { font-size: 13px; padding: 14px 16px; }
+.td { font-size: 14px; line-height: 1.6; padding: 16px; }
+.emptyCell { color: var(--text-muted); font-size: 14px; padding: 40px 20px; }
+.tr:last-child .td { border-bottom: 0; }
+.tr:focus-within { background: var(--surface-hover); }

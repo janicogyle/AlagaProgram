@@ -263,6 +263,7 @@ export default function ResidentsPage() {
   const [qrFilter, setQrFilter] = useState("");
   const [eligibilityFilter, setEligibilityFilter] = useState("");
   const [sortBy, setSortBy] = useState("created_desc");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [residents, setResidents] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 25, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
@@ -1478,6 +1479,21 @@ export default function ResidentsPage() {
     amount: `₱${formatAmount(row?.amount)}`,
     status: 'Released',
   }));
+  const activeFilterCount = [
+    registrationTypeFilter,
+    sectorFilter,
+    qrFilter,
+    eligibilityFilter,
+    sortBy !== 'created_desc' ? sortBy : '',
+  ].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setRegistrationTypeFilter('');
+    setSectorFilter('');
+    setQrFilter('');
+    setEligibilityFilter('');
+    setSortBy('created_desc');
+  };
 
   return (
     <div className={styles.residentsPage}>
@@ -1494,7 +1510,44 @@ export default function ResidentsPage() {
             placeholder="Search by name, contact number, or control number..."
             className={styles.beneficiarySearch}
           />
-          <div className={styles.filterControls}>
+          <div className={styles.mobileFilterToolbar}>
+            <button
+              type="button"
+              className={`${styles.mobileFilterToggle} ${mobileFiltersOpen ? styles.mobileFilterToggleOpen : ''}`}
+              aria-expanded={mobileFiltersOpen}
+              aria-controls="resident-filter-controls"
+              onClick={() => setMobileFiltersOpen((open) => !open)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M4 6h16M7 12h10M10 18h4" />
+              </svg>
+              <span>Filters</span>
+              {activeFilterCount > 0 ? (
+                <span className={styles.activeFilterCount}>{activeFilterCount}</span>
+              ) : null}
+              <svg
+                className={`${styles.mobileFilterChevron} ${mobileFiltersOpen ? styles.mobileFilterChevronOpen : ''}`}
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            {activeFilterCount > 0 ? (
+              <button type="button" className={styles.clearFiltersButton} onClick={clearFilters}>
+                Clear
+              </button>
+            ) : null}
+          </div>
+          <div
+            id="resident-filter-controls"
+            className={`${styles.filterControls} ${mobileFiltersOpen ? styles.filterControlsOpen : ''}`}
+          >
             <div className={styles.filterGroup}>
               <label className={styles.filterLabel}>Sort By</label>
               <select
@@ -1615,6 +1668,7 @@ export default function ResidentsPage() {
                           onClick={() => setSelectedResident(row)}
                         >
                           <span className={styles.srOnly}>View</span>
+                          <span className={styles.mobileViewLabel} aria-hidden="true">View details</span>
                         </Button>
                         {renderNewRequestAction(row)}
                       </div>

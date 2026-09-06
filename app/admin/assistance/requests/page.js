@@ -188,6 +188,7 @@ export default function RequestsPage() {
   const [sortBy, setSortBy] = useState('date_desc');
   const [registrationTypeFilter, setRegistrationTypeFilter] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [requests, setRequests] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 25, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
@@ -633,6 +634,13 @@ export default function RequestsPage() {
     registrationTypeFilter ||
     sectorFilter ||
     sortBy !== 'date_desc';
+  const activeFilterCount = [
+    typeFilter,
+    statusFilter,
+    registrationTypeFilter,
+    sectorFilter,
+    sortBy !== 'date_desc' ? sortBy : '',
+  ].filter(Boolean).length;
 
   const handleResetFilters = () => {
     setSearchTerm('');
@@ -1106,7 +1114,31 @@ export default function RequestsPage() {
             placeholder="Search by name or control number..."
             className={styles.searchInput}
           />
-          <div className={styles.filterSelects} role="group" aria-label="Filter requests">
+          <div className={styles.touchFilterToolbar}>
+            <button
+              type="button"
+              className={`${styles.touchFilterToggle} ${mobileFiltersOpen ? styles.touchFilterToggleOpen : ''}`}
+              aria-expanded={mobileFiltersOpen}
+              aria-controls="assistance-request-filters"
+              onClick={() => setMobileFiltersOpen((open) => !open)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M4 6h16M7 12h10M10 18h4" />
+              </svg>
+              Filters
+              {activeFilterCount > 0 ? <span className={styles.touchFilterCount}>{activeFilterCount}</span> : null}
+              <span className={styles.touchFilterChevron} aria-hidden="true">⌄</span>
+            </button>
+            {hasActiveFilters ? (
+              <button type="button" className={styles.touchClearFilters} onClick={handleResetFilters}>Clear</button>
+            ) : null}
+          </div>
+          <div
+            id="assistance-request-filters"
+            className={`${styles.filterSelects} ${mobileFiltersOpen ? styles.filterSelectsOpen : ''}`}
+            role="group"
+            aria-label="Filter requests"
+          >
             <Select
               name="sortBy"
               value={sortBy}
@@ -1184,6 +1216,7 @@ export default function RequestsPage() {
               <div key={request.id} className={styles.requestCard}>
                 <div className={styles.cardHeader}>
                   <div className={styles.cardHeaderLeft}>
+                    <span className={styles.cardMobileName}>{request.beneficiary}</span>
                     <span className={styles.cardControlNo}>{request.controlNo}</span>
                     {getStatusBadge(request.status)}
                   </div>
@@ -1197,6 +1230,7 @@ export default function RequestsPage() {
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                         <circle cx="12" cy="12" r="3" />
                       </svg>
+                      <span className={styles.cardMobileViewLabel}>View details</span>
                     </button>
                     {['Pending', 'Resubmitted'].includes(request.status) && (
                       <>

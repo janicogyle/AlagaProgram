@@ -103,3 +103,12 @@
     gap: 6px;
   }
 }
+
+.pageHeader { padding: 24px; gap: 20px; }
+.subtitle { font-size: 15px; line-height: 1.65; max-width: 70ch; }
+.actions { flex-wrap: wrap; }
+@media (max-width: 768px) {
+  .pageHeader { padding: 20px 16px; gap: 16px; }
+  .title { font-size: 24px; }
+  .actions > * { flex: 1 1 auto; }
+}
