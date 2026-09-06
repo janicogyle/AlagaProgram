@@ -13,7 +13,8 @@ export default function Button({
   disabled = false,
   icon = null,
   className = '',
-  href
+  href,
+  ...props
 }) {
   const buttonClasses = `
     ${styles.button} 
@@ -25,7 +26,7 @@ export default function Button({
 
   if (href && !disabled) {
     return (
-      <Link href={href} className={buttonClasses} onClick={onClick}>
+      <Link href={href} className={buttonClasses} onClick={onClick} {...props}>
         {icon && <span className={styles.icon}>{icon}</span>}
         {children}
       </Link>
@@ -38,6 +39,7 @@ export default function Button({
       onClick={onClick}
       disabled={disabled}
       className={buttonClasses}
+      {...props}
     >
       {icon && <span className={styles.icon}>{icon}</span>}
       {children}
