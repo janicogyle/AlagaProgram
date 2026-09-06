@@ -129,7 +129,7 @@ const icons = {
   ),
 };
 
-export default function Sidebar({ user, onLogout, minimized, menuItems: customMenuItems, hideBranding, customTitle, customSubtitle }) {
+export default function Sidebar({ user, onLogout, onNavigate, minimized, menuItems: customMenuItems, hideBranding, customTitle, customSubtitle }) {
   const pathname = usePathname();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const resolvedUser = user;
@@ -186,6 +186,7 @@ export default function Sidebar({ user, onLogout, minimized, menuItems: customMe
                     href={item.href}
                     className={`${styles.menuItem} ${pathname === item.href ? styles.active : ''}`}
                     title={item.name}
+                    onClick={onNavigate}
                   >
                     <span className={styles.menuIcon}>{icons[item.icon]}</span>
                     {!minimized && <span>{item.name}</span>}

@@ -28,14 +28,14 @@
 .skeletonTitle {
   width: 250px;
   height: 2rem;
-  background-color: #e2e8f0;
+  background-color: var(--border-color);
   border-radius: 6px;
 }
 
 .skeletonSubtitle {
   width: 350px;
   height: 1rem;
-  background-color: #e2e8f0;
+  background-color: var(--border-color);
   border-radius: 4px;
 }
 
@@ -47,7 +47,7 @@
 
 .skeletonStatCard {
   background-color: var(--surface-bg);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1.5rem;
   display: flex;
@@ -60,7 +60,7 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background-color: #f1f5f9;
+  background-color: var(--surface-hover);
 }
 
 .skeletonStatContent {
@@ -73,14 +73,14 @@
 .skeletonStatTitle {
   width: 60%;
   height: 0.875rem;
-  background-color: #f1f5f9;
+  background-color: var(--surface-hover);
   border-radius: 4px;
 }
 
 .skeletonStatValue {
   width: 40%;
   height: 1.5rem;
-  background-color: #f1f5f9;
+  background-color: var(--surface-hover);
   border-radius: 4px;
 }
 
@@ -98,7 +98,7 @@
 
 .skeletonChart, .skeletonList {
   background-color: var(--surface-bg);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1.5rem;
   display: flex;
@@ -110,7 +110,7 @@
 .skeletonChartHeader, .skeletonListHeader {
   width: 30%;
   height: 1.25rem;
-  background-color: #f1f5f9;
+  background-color: var(--surface-hover);
   border-radius: 4px;
   margin-bottom: 1rem;
 }

@@ -1,6 +1,10 @@
 .layout {
   display: flex;
+  height: 100vh;
+  height: 100dvh;
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
   background: var(--background);
 }
 
@@ -12,6 +16,8 @@
   background: var(--background);
   transition: margin-left 0.2s ease;
   height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   overflow: hidden;
   min-width: 0;
 }
@@ -22,8 +28,12 @@
 
 .pageContent {
   flex: 1;
+  min-height: 0;
   padding: 24px;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
   min-width: 0;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -137,7 +147,7 @@
 }
 
 /* Tablets and below - Mobile drawer behavior */
-@media (max-width: 900px) {
+@media (max-width: 900px), (max-width: 1200px) and (pointer: coarse) {
   .mainContent {
     margin-left: 0;
     width: 100%;

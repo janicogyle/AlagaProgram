@@ -1664,7 +1664,6 @@ export default function BeneficiarySignupPage() {
     <div className={styles.progressBarWrapper}>
       <div className={styles.progressSummaryLine}>
         <span>Step {currentStep} of {TOTAL_STEPS}</span>
-        <strong>{progressPercent}% complete</strong>
       </div>
       <div className={styles.progressTrack} aria-hidden="true">
         <span style={{ width: `${progressPercent}%` }} />
