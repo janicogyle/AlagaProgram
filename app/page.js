@@ -434,7 +434,7 @@ export default function HomePage() {
               <div className={styles.illustrationCard}>
                 <div className={styles.illustrationHeader}>
                   <div className={styles.illustrationLogo}>
-                    <img src="/Brand.png" alt="Logo" />
+                    <img src="/BARANGAY%20STA.%20RITA.png" alt="Barangay Sta. Rita logo" />
                   </div>
                   <div className={styles.illustrationTitle}>
                     <span>Alaga Program</span>
