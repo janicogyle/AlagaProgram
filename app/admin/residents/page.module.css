@@ -1656,6 +1656,22 @@
   }
 }
 
+@media (max-width: 576px) {
+  .residentDetailsFooter {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+  }
+
+  .residentDetailsFooter > *,
+  .residentDetailsFooter :global(button) {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+  }
+}
+
 @media (max-width: 576px), (max-width: 1200px) and (pointer: coarse) {
   .lockedRequestModal {
     flex-direction: column;

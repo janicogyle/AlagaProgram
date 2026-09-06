@@ -127,8 +127,8 @@
 /* ======================= */
 @media (max-width: 768px) {
   .trigger {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
   }
 
   .dropdown {
@@ -145,8 +145,8 @@
 
 @media (max-width: 576px) {
   .trigger {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 8px;
   }
 
@@ -161,8 +161,9 @@
   }
 
   .menuItem {
-    padding: 14px 16px;
-    font-size: 15px;
+    min-height: 44px;
+    padding: 11px 14px;
+    font-size: 14px;
     border-radius: 8px;
   }
 

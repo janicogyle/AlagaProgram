@@ -1,4 +1,4 @@
-.button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid transparent; border-radius: 10px; font-family: inherit; font-weight: 600; cursor: pointer; min-height: 44px; max-width: 100%; text-align: center; line-height: 1.4; transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s; }
+.button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid transparent; border-radius: 8px; font-family: inherit; font-weight: 600; cursor: pointer; min-height: 44px; max-width: 100%; text-align: center; line-height: 1.4; transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s; }
 .button:disabled { opacity: 0.6; cursor: not-allowed; }
 .primary { background: #1e40af; color: #fff; box-shadow: 0 2px 4px rgb(30 64 175 / 12%); }
 .primary:hover:not(:disabled) { background: #1e3a8a; }

@@ -1,8 +1,9 @@
 .selectGroup { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; }
 .label { font-size: 14px; font-weight: 600; color: var(--foreground); }
 .required { color: var(--danger); margin-left: 3px; }
+.optional { color: var(--text-muted); font-weight: 400; font-size: 13px; margin-left: 5px; }
 .selectWrapper { position: relative; display: flex; align-items: center; }
-.select { width: 100%; min-height: 48px; padding: 12px 38px 12px 14px; border: 1px solid var(--border-strong); border-radius: 10px; font: inherit; font-size: 15px; color: var(--foreground); background: var(--surface-bg); cursor: pointer; appearance: none; transition: border-color 0.2s, box-shadow 0.2s; }
+.select { width: 100%; min-height: 48px; padding: 12px 38px 12px 14px; border: 1px solid var(--border-strong); border-radius: 8px; font: inherit; font-size: 15px; color: var(--foreground); background: var(--surface-bg); cursor: pointer; appearance: none; transition: border-color 0.2s, box-shadow 0.2s; }
 .select:hover:not(:disabled) { border-color: var(--text-muted); }
 .select:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px var(--focus-ring); }
 .select:disabled { background: var(--surface-muted); cursor: not-allowed; }

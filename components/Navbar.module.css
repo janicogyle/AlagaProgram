@@ -401,5 +401,40 @@
 /* Keep the current location visible at every viewport size. */
 .navbar { background: var(--surface-bg); border-bottom-color: var(--border-color); }
 .breadcrumb { display: block; font-size: 14px; font-weight: 600; }
-.menuToggle, .themeToggle, .notificationBtn { box-shadow: none; border-radius: 10px; min-height: 44px; min-width: 44px; }
+.menuToggle, .themeToggle, .notificationBtn {
+  min-height: 44px;
+  min-width: 44px;
+  border-color: var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-bg);
+  color: var(--text-muted);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.menuToggle:hover, .themeToggle:hover, .notificationBtn:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+  color: var(--foreground);
+  box-shadow: none;
+}
+.notificationBtnActive {
+  border-color: var(--primary-color);
+  background: var(--surface-hover);
+  color: var(--primary-color);
+  box-shadow: none;
+}
 .right { flex-shrink: 0; }
+
+@media (max-width: 768px) {
+  .breadcrumb { display: none; }
+  .left { flex: 0 0 auto; }
+  .right { margin-left: auto; }
+}
+
+@media (max-width: 480px) {
+  .navbar {
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-bottom: 8px;
+  }
+}

@@ -4,7 +4,7 @@
 .optional { color: var(--text-muted); font-weight: 400; font-size: 13px; margin-left: 5px; }
 .optionalBlock { display: block; margin: 3px 0 0; }
 .inputWrapper { position: relative; display: flex; align-items: center; }
-.input { width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: 10px; font: inherit; font-size: 15px; background: var(--surface-bg); color: var(--foreground); transition: border-color 0.2s, box-shadow 0.2s; }
+.input { width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: 8px; font: inherit; font-size: 15px; background: var(--surface-bg); color: var(--foreground); transition: border-color 0.2s, box-shadow 0.2s; }
 .input:hover:not(:disabled) { border-color: var(--text-muted); }
 .input:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px var(--focus-ring); }
 .input:disabled { background: var(--surface-muted); cursor: not-allowed; }

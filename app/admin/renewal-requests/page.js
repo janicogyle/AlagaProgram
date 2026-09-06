@@ -181,7 +181,11 @@ export default function RenewalRequestsPage() {
 
   return (
     <div className={styles.page}>
-      <PageHeader title="Renewal Requests" subtitle="Review and process Beneficiary ID renewal requests." />
+      <PageHeader
+        title="Renewal Requests"
+        subtitle="Review and process Beneficiary ID renewal requests."
+        className={styles.pageHeader}
+      />
       <Card className={styles.filterCard}>
         <div className={styles.statusTabs} role="group" aria-label="Renewal request status">
           {statusOptions.map((option) => (
@@ -198,18 +202,74 @@ export default function RenewalRequestsPage() {
           ))}
         </div>
       </Card>
-      <Card>
+      <Card padding={false} className={styles.resultsCard}>
         {setupNotice ? (
           <div className={styles.setupNotice} role="status">
             <h2>Renewal setup required</h2>
             <p>{setupNotice}</p>
           </div>
         ) : loading ? (
-          <p className={styles.meta}>Loading renewal requests...</p>
+          <p className={`${styles.meta} ${styles.resultMessage}`}>Loading renewal requests...</p>
         ) : (
-          <div className={styles.tableShell}>
-            <Table columns={columns} data={rows} emptyMessage="No renewal requests found." fitToContainer />
-          </div>
+          <>
+            <div className={styles.tableShell}>
+              <Table columns={columns} data={rows} emptyMessage="No renewal requests found." fitToContainer />
+            </div>
+            <div className={styles.mobileList}>
+              {rows.length === 0 ? (
+                <div className={styles.mobileEmpty}>
+                  <strong>No renewal requests</strong>
+                  <span>There are no requests matching this status.</span>
+                </div>
+              ) : rows.map((row) => (
+                <article key={row.id} className={styles.requestItem}>
+                  <header className={styles.requestHeader}>
+                    <div className={styles.beneficiaryCell}>
+                      <strong className={styles.beneficiaryName}>{fullName(row.resident)}</strong>
+                      <span className={styles.meta}>{row.resident?.control_number || row.resident?.contact_number || '-'}</span>
+                    </div>
+                    <span className={styles.requestStatus} data-status={row.status}>{row.status}</span>
+                  </header>
+
+                  <dl className={styles.requestDetails}>
+                    <div>
+                      <dt>Current expiration</dt>
+                      <dd>{formatDate(row.current_expires_at)}</dd>
+                    </div>
+                    <div>
+                      <dt>Submitted</dt>
+                      <dd>{formatDateTime(row.created_at)}</dd>
+                    </div>
+                    <div>
+                      <dt>Updated ID</dt>
+                      <dd>
+                        {row.updated_valid_id_url ? (
+                          <button
+                            className={styles.documentLink}
+                            type="button"
+                            onClick={() => setDocumentPreview({ open: true, url: row.updated_valid_id_url, path: row.updated_valid_id_url })}
+                          >
+                            View document
+                          </button>
+                        ) : 'Not provided'}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {row.status !== 'Approved' ? (
+                    <div className={styles.requestActions}>
+                      <Button size="small" variant="secondary" onClick={() => openDecision(row, 'incomplete')}>
+                        Mark incomplete
+                      </Button>
+                      <Button size="small" onClick={() => openDecision(row, 'approve')}>
+                        Approve
+                      </Button>
+                    </div>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          </>
         )}
       </Card>
 
