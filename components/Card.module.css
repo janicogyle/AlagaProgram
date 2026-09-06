@@ -1,4 +1,4 @@
-.card { background: var(--card-bg); border-radius: 16px; border: 1px solid var(--border-color); box-shadow: var(--shadow-soft); min-width: 0; }
+.card { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-soft); min-width: 0; }
 .withPadding { padding: 24px; }
 .cardHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; min-width: 0; }
 .cardHeaderText { flex: 1; min-width: 0; }
@@ -12,8 +12,12 @@
   .withPadding { padding: 18px; }
   .cardHeader { flex-direction: column; align-items: stretch; gap: 12px; }
   .cardHeaderAction { width: 100%; }
+  .cardHeaderAction > * { width: 100%; }
 }
 @media (max-width: 480px) {
-  .withPadding { padding: 16px; }
-  .card { border-radius: 12px; }
+  .withPadding { padding: 14px; }
+  .card { border-radius: 10px; }
+  .cardHeader { margin-bottom: 16px; }
+  .cardTitle { font-size: 16px; }
+  .cardSubtitle { font-size: 13px; line-height: 1.5; }
 }

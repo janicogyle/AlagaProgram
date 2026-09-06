@@ -1,7 +1,10 @@
 .kpiCard {
-  border-radius: 16px;
-  padding: 28px 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--kpi-accent);
+  border-radius: 12px;
+  padding: 24px;
+  background: var(--card-bg);
+  box-shadow: var(--shadow-soft);
   min-width: 0;
   position: relative;
   overflow: hidden;
@@ -10,14 +13,16 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  color: white;
+  color: var(--foreground);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   text-decoration: none;
 }
 
 .kpiCard:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+  border-left-color: var(--kpi-accent);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
 }
 
 .clickable {
@@ -30,19 +35,19 @@
 }
 
 .kpiCard.blue {
-  background: #2563eb;
+  --kpi-accent: #2563eb;
 }
 
 .kpiCard.green {
-  background: #059669;
+  --kpi-accent: #059669;
 }
 
 .kpiCard.orange {
-  background: #d97706;
+  --kpi-accent: #d97706;
 }
 
 .kpiCard.purple {
-  background: #6d28d9;
+  --kpi-accent: #7c3aed;
 }
 
 .kpiContent {
@@ -56,12 +61,12 @@
 .kpiIcon {
   width: 44px;
   height: 44px;
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 12px;
+  background: color-mix(in srgb, var(--kpi-accent) 12%, var(--surface-bg));
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--kpi-accent);
   flex-shrink: 0;
 }
 
@@ -73,7 +78,7 @@
 .kpiValue {
   font-size: 36px;
   font-weight: 700;
-  color: white;
+  color: var(--foreground);
   margin-bottom: 8px;
   line-height: 1.2;
 }
@@ -81,7 +86,7 @@
 .kpiLabel {
   font-size: 15px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-muted);
   line-height: 1.35;
   word-break: normal;
   overflow-wrap: normal;

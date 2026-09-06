@@ -29,3 +29,22 @@
 .action {
   margin-top: 20px;
 }
+
+@media (max-width: 576px) {
+  .emptyState {
+    padding: 40px 16px;
+  }
+
+  .icon {
+    margin-bottom: 12px;
+  }
+
+  .action {
+    width: 100%;
+    margin-top: 16px;
+  }
+
+  .action > * {
+    width: 100%;
+  }
+}

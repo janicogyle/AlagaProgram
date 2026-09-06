@@ -324,16 +324,10 @@
 
 .requestCard {
   background: var(--surface-bg);
-  border: 1px solid rgba(0, 0, 0, 0.04);
-  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
   padding: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-.requestCard:hover {
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
-  transform: translateY(-2px);
+  box-shadow: none;
 }
 
 .requestCard:last-child {
@@ -344,52 +338,128 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--surface-hover);
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .cardHeaderLeft {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
+  min-width: 0;
 }
 
 .cardControlNo {
-  font-size: 13px;
+  font-size: 10px;
   font-weight: 600;
-  color: var(--foreground);
-  font-family: 'Courier New', monospace;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .cardActions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-color);
+}
+
+.cardActions > * {
+  width: 100%;
+  min-width: 0;
+}
+
+.cardActions > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.cardApplicant {
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.cardContact {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.cardStatus {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
+  flex: 0 0 auto;
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cardStatus::before {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+}
+
+.cardStatus[data-status='Approved'] {
+  color: #15803d;
+}
+
+.cardStatus[data-status='Incomplete'] {
+  color: #b91c1c;
+}
+
+.cardStatus[data-status='Resubmitted'] {
+  color: #1d4ed8;
 }
 
 .cardBody {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+  margin: 0 0 14px;
 }
 
 .cardRow {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+
+.cardRow:nth-child(2) {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.cardRow:nth-child(3) {
+  grid-column: 2;
+  grid-row: 1;
 }
 
 .cardLabel {
-  font-size: 13px;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .cardValue {
   font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
-  text-align: right;
+  font-weight: 600;
+  color: var(--foreground);
+  text-align: left;
   min-width: 0;
+  margin: 0;
   overflow-wrap: anywhere;
 }
 
@@ -493,9 +563,15 @@
 }
 
 @media (max-width: 768px) {
+  .accountHeader h2 {
+    font-size: 20px;
+  }
+
   .filters {
-    flex-direction: column;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 132px;
+    align-items: end;
+    gap: 8px;
     padding: 12px 16px;
   }
 
@@ -507,23 +583,26 @@
 
   .filterGroup {
     width: 100%;
-    justify-content: space-between;
+    min-width: 0;
   }
 
   .select {
-    flex: 1;
-    max-width: 12rem;
+    width: 100%;
+    max-width: none;
+    min-height: 48px;
+    background-color: var(--surface-bg);
   }
 
   .mobileCardView {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    padding: 0 12px 12px;
+    display: block;
+    padding: 0;
   }
 
   .requestCard {
-    border-radius: 14px;
-    padding: 14px;
+    border: 0;
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 0;
+    padding: 18px 16px;
   }
 
   .cardHeader {
@@ -535,28 +614,28 @@
     font-size: 12px;
   }
 
-  .cardBody {
-    gap: 8px;
-  }
-
-  .cardLabel {
-    font-size: 12px;
-  }
-
-  .cardValue {
-    font-size: 12px;
-  }
-
-  .cardActions .viewBtn,
-  .cardActions .approveBtn,
-  .cardActions .rejectBtn,
-  .cardActions .releaseBtn {
-    width: 36px;
-    height: 36px;
-  }
 }
 
 @media (max-width: 640px) {
+  .filters {
+    grid-template-columns: minmax(0, 1fr) 116px;
+    padding-inline: 14px;
+  }
+
+  .filterLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .requestPagination label {
+    display: none;
+  }
+
   .applicantCell {
     align-items: flex-start;
   }
