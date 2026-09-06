@@ -21,13 +21,13 @@ export default function DataTableFooter({
 
   return (
     <div className={styles.footer}>
-      <span className={styles.count}>
-        Showing {showing} of {total} {itemName}
+      <span className={styles.count} role="status" aria-live="polite">
+        {hasPagination && showing > 0 ? `Showing ${(safePage - 1) * pageSize + 1}\u2013${Math.min((safePage - 1) * pageSize + showing, total)}` : `Showing ${showing}`} of {total} {itemName}
       </span>
       {hasPagination ? (
         <div className={styles.pagination}>
           <label className={styles.pageSizeLabel}>
-            Rows
+            Rows per page
             <select
               className={styles.pageSizeSelect}
               value={pageSize}

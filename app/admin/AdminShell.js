@@ -193,6 +193,7 @@ export default function AdminShell({ children, initialUser }) {
 
   return (
     <div className={styles.layout}>
+      <a className="skipLink" href="#main-content">Skip to main content</a>
       <WelcomeToast />
       {loggingOut && <LogoutOverlay />}
       {isMobile && (
@@ -208,15 +209,17 @@ export default function AdminShell({ children, initialUser }) {
           if (isMobile) setSidebarOpen(false);
         }}
         minimized={!sidebarOpen}
+        isMobile={isMobile}
       />
       <div className={`${styles.mainContent} ${!sidebarOpen ? styles.sidebarMinimized : ''}`}>
         <Navbar
+          sidebarOpen={sidebarOpen}
           onMenuClick={() => setSidebarOpen((open) => !open)}
           activityRole={user.role}
           theme={theme}
           onThemeToggle={() => setTheme((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'))}
         />
-        <main className={styles.pageContent}>{children}</main>
+        <main id="main-content" tabIndex={-1} className={styles.pageContent}>{children}</main>
       </div>
     </div>
   );

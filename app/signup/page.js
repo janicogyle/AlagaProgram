@@ -295,6 +295,7 @@ function FaceRecognitionCapture({ onCapture, onRetake, disabled = false, status,
 export default function BeneficiarySignupPage() {
   const router = useRouter();
   const stepContainerRef = useRef(null);
+  const statusRef = useRef(null);
   const identityUploadRef = useRef('');
   const selfieSectionRef = useRef(null);
 
@@ -2564,6 +2565,10 @@ export default function BeneficiarySignupPage() {
 
   const continueDisabled = currentStep < TOTAL_STEPS && !canContinueCurrentStep();
 
+  useEffect(() => {
+    if (status?.type === 'error') statusRef.current?.focus();
+  }, [status]);
+
   return (
     <div className={styles.signupShell}>
       <ConstellationBackground className={styles.signupConstellation} />
@@ -2610,6 +2615,8 @@ export default function BeneficiarySignupPage() {
             {status && (
               <div
                 role="alert"
+                ref={statusRef}
+                tabIndex={-1}
                 className={`${styles.statusBanner} ${
                   status.type === 'success' ? styles.statusBannerSuccess : styles.statusBannerError
                 }`}
@@ -2645,7 +2652,7 @@ export default function BeneficiarySignupPage() {
             )}
             <div className={styles.navSpacer} />
             {currentStep < TOTAL_STEPS ? (
-              <Button type="button" className={styles.signupPrimaryButton} onClick={goNext} disabled={continueDisabled}>
+              <Button type="button" className={styles.signupPrimaryButton} onClick={goNext} aria-describedby={continueDisabled ? 'signup-required-hint' : undefined}>
                 Continue
               </Button>
             ) : (
@@ -2658,6 +2665,7 @@ export default function BeneficiarySignupPage() {
               </Button>
             )}
           </div>
+          {continueDisabled && <p id="signup-required-hint" className={styles.continueHint}>Complete the required fields and verification for this step. Select Continue to check what is missing.</p>}
             </form>
           </Card>
         </main>

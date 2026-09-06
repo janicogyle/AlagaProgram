@@ -323,3 +323,9 @@
     width: 100%;
   }
 }
+
+.overlay { margin: 0; border: 0; width: 100%; height: 100%; max-width: none; max-height: none; color: var(--foreground); }
+.overlay:not([open]) { display: none; }
+.overlay::backdrop { background: transparent; }
+.modal { max-height: calc(100dvh - 32px); }
+.body { overscroll-behavior: contain; }

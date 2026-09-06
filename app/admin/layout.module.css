@@ -33,14 +33,14 @@
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior-y: contain;
-  touch-action: pan-y;
+  touch-action: auto;
   min-width: 0;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  scrollbar-width: thin;
 }
 
 .pageContent::-webkit-scrollbar {
-  width: 0;
+  width: 6px;
   height: 0;
 }
 
@@ -174,7 +174,7 @@
 /* Mobile */
 @media (max-width: 576px) {
   .pageContent {
-    padding: 14px 10px 22px;
+    padding: 18px 16px max(24px, env(safe-area-inset-bottom));
   }
 
   .authLoading {
@@ -195,3 +195,5 @@
     animation: none;
   }
 }
+
+

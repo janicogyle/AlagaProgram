@@ -397,3 +397,9 @@
     min-width: 48px;
   }
 }
+
+/* Keep the current location visible at every viewport size. */
+.navbar { background: var(--surface-bg); border-bottom-color: var(--border-color); }
+.breadcrumb { display: block; font-size: 14px; font-weight: 600; }
+.menuToggle, .themeToggle, .notificationBtn { box-shadow: none; border-radius: 10px; min-height: 44px; min-width: 44px; }
+.right { flex-shrink: 0; }

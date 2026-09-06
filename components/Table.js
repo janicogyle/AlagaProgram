@@ -5,14 +5,15 @@ export default function Table({
   data, 
   emptyMessage = 'No data available',
   fitToContainer = false,
+  label = 'Results',
 }) {
   return (
-    <div className={styles.tableWrapper}>
+    <div className={styles.tableWrapper} role="region" aria-label={label} tabIndex={0}>
       <table className={`${styles.table} ${fitToContainer ? styles.fitTable : ''}`}>
         <thead>
           <tr>
             {columns.map((column) => (
-              <th key={column.key} className={styles.th}>
+              <th key={column.key} scope="col" className={styles.th}>
                 {column.label}
               </th>
             ))}

@@ -49,9 +49,9 @@ export function UnifiedLoginForm({
       ) : null}
       <>
         <div className={styles.inputGroup}>
-          <label htmlFor="username">{isBeneficiary ? 'Contact Number' : 'Username'}</label>
+          <label htmlFor="username">{isBeneficiary ? 'Contact Number' : 'Email address'}</label>
           <input
-            type={isBeneficiary ? 'tel' : 'text'}
+            type={isBeneficiary ? 'tel' : 'email'}
             id="username"
             value={displayedUsername}
             onChange={handleUsernameChange}
@@ -70,10 +70,11 @@ export function UnifiedLoginForm({
             <input
               type={showPassword ? 'text' : 'password'}
               id="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isSubmitting}
-              placeholder="your password"
+              placeholder="Enter your password"
               required
             />
             <button

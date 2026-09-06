@@ -86,3 +86,13 @@
     font-size: 12px;
   }
 }
+
+.pageSizeSelect, .pageButton { min-height: 44px; height: auto; border-radius: 8px; }
+.pageButton { padding: 10px 14px; }
+.pageButton:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--primary-color); }
+.count, .pageText, .pageSizeLabel { font-size: 14px; }
+@media (max-width: 768px) {
+  .pagination { width: 100%; gap: 12px; }
+  .pageControls { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+  .pageSizeSelect { font-size: 16px; }
+}

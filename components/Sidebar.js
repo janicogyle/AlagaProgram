@@ -129,7 +129,7 @@ const icons = {
   ),
 };
 
-export default function Sidebar({ user, onLogout, onNavigate, minimized, menuItems: customMenuItems, hideBranding, customTitle, customSubtitle }) {
+export default function Sidebar({ user, onLogout, onNavigate, minimized, isMobile, menuItems: customMenuItems, hideBranding, customTitle, customSubtitle }) {
   const pathname = usePathname();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const resolvedUser = user;
@@ -149,7 +149,7 @@ export default function Sidebar({ user, onLogout, onNavigate, minimized, menuIte
 
   return (
     <>
-    <aside className={minimized ? `${styles.sidebar} ${styles.minimized}` : styles.sidebar}>
+    <aside id="portal-navigation" inert={isMobile && minimized ? true : undefined} className={minimized ? `${styles.sidebar} ${styles.minimized}` : styles.sidebar}>
       {!hideBranding ? (
         <div className={styles.logo}>
           <div className={styles.logoCircle}>
@@ -175,7 +175,7 @@ export default function Sidebar({ user, onLogout, onNavigate, minimized, menuIte
         </div>
       )}
 
-      <nav className={styles.nav}>
+      <nav className={styles.nav} aria-label="Main navigation">
         {sidebarMenuItems.map((section) => (
           <div key={section.section} className={styles.section}>
             {!minimized && <span className={styles.sectionTitle}>{section.section}</span>}
@@ -186,6 +186,8 @@ export default function Sidebar({ user, onLogout, onNavigate, minimized, menuIte
                     href={item.href}
                     className={`${styles.menuItem} ${pathname === item.href ? styles.active : ''}`}
                     title={item.name}
+                    aria-label={item.name}
+                    aria-current={pathname === item.href ? 'page' : undefined}
                     onClick={onNavigate}
                   >
                     <span className={styles.menuIcon}>{icons[item.icon]}</span>

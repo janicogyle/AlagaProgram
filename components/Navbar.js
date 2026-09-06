@@ -1,10 +1,24 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import NotificationPanel from './NotificationPanel';
 import styles from './Navbar.module.css';
 
-export default function Navbar({ title, breadcrumb, onMenuClick, activityRole, theme = 'light', onThemeToggle }) {
+const pageTitles = {
+  '/admin': 'Dashboard', '/admin/analytics': 'Dashboard',
+  '/admin/registration': 'Apply Service Request', '/admin/residents': 'Beneficiaries',
+  '/admin/beneficiary-id': 'Verify Beneficiary ID', '/admin/assistance': 'Assistance Tracking',
+  '/admin/assistance/requests': 'Assistance Requests', '/admin/assistance/guidelines': 'Assistance Guidelines',
+  '/admin/reports': 'Reports', '/admin/account-requests': 'Account Requests',
+  '/admin/renewal-requests': 'Renewal Requests', '/admin/users': 'User Management',
+  '/beneficiary': 'Dashboard', '/beneficiary/dashboard': 'Dashboard',
+  '/beneficiary/requests': 'Request Services', '/beneficiary/history': 'My Requests',
+  '/beneficiary/profile': 'My Profile',
+};
+
+export default function Navbar({ title, breadcrumb, onMenuClick, sidebarOpen, activityRole, theme = 'light', onThemeToggle }) {
+  const pathname = usePathname();
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const notificationBtnRef = useRef(null);
@@ -13,14 +27,14 @@ export default function Navbar({ title, breadcrumb, onMenuClick, activityRole, t
   return (
     <header className={styles.navbar}>
       <div className={styles.left}>
-        <button className={styles.menuToggle} onClick={onMenuClick} aria-label="Toggle menu">
+        <button id="navigation-toggle" type="button" className={styles.menuToggle} onClick={onMenuClick} aria-label={sidebarOpen ? 'Collapse navigation' : 'Open navigation'} aria-expanded={sidebarOpen} aria-controls="portal-navigation">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="3" y1="12" x2="21" y2="12" />
             <line x1="3" y1="6" x2="21" y2="6" />
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
-        <span className={styles.breadcrumb}>{breadcrumb || title}</span>
+        <span className={styles.breadcrumb}>{breadcrumb || title || pageTitles[pathname] || 'Alaga Program'}</span>
       </div>
       <div className={styles.right}>
         <button

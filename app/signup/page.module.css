@@ -2435,3 +2435,9 @@
     font-size: 0.76rem;
   }
 }
+
+.continueHint { margin: 0; color: #475569; font-size: 14px; line-height: 1.6; text-align: right; }
+.navRow { padding-top: 20px; border-top: 1px solid #e2e8f0; }
+@media (max-width: 768px) {
+  .continueHint { text-align: left; }
+}
