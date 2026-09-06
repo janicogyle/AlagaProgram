@@ -1991,7 +1991,7 @@
 
 .registrationLayout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   align-items: stretch;
 }
@@ -2011,6 +2011,7 @@
 
 .cardTopper {
   padding-bottom: 0.8rem;
+  border-bottom: none;
 }
 
 .cardTitle {
@@ -2202,163 +2203,6 @@
   border-radius: 8px;
 }
 
-.summaryCard {
-  position: sticky;
-  top: 1rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 0.75rem;
-  height: 100%;
-  padding: 1rem;
-  border: 1px solid #d8e3f2;
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
-}
-
-.summaryKicker {
-  margin: 0;
-  color: #1d4ed8;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.summaryTitle {
-  margin: 0;
-  color: #0f172a;
-  font-size: 1.08rem;
-  line-height: 1.25;
-}
-
-.summaryProgressRing {
-  display: grid;
-  place-items: center;
-  width: 104px;
-  height: 104px;
-  margin: 0.1rem auto;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at center, #ffffff 58%, transparent 59%),
-    conic-gradient(#1d4ed8 var(--summary-progress), #e2e8f0 0);
-}
-
-.summaryProgressRing span {
-  color: #1d4ed8;
-  font-size: 1.35rem;
-  font-weight: 800;
-}
-
-.summaryStats {
-  display: grid;
-  gap: 0.55rem;
-}
-
-.summaryStats div {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.6rem 0;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.summaryStats span {
-  color: #64748b;
-  font-size: 0.78rem;
-}
-
-.summaryStats strong {
-  color: #0f172a;
-  font-size: 0.84rem;
-}
-
-.summarySteps {
-  display: grid;
-  gap: clamp(0.45rem, 1.2vh, 0.9rem);
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-
-.summarySteps li {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: #64748b;
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-.summarySteps li span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 26px;
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  background: #f1f5f9;
-  color: #64748b;
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-
-.summaryStepActive {
-  color: #1d4ed8 !important;
-}
-
-.summaryStepActive span {
-  background: #dbeafe !important;
-  color: #1d4ed8 !important;
-}
-
-.summaryStepDone {
-  color: #166534 !important;
-}
-
-.summaryStepDone span {
-  background: #dcfce7 !important;
-  color: #166534 !important;
-}
-
-.summaryClock {
-  display: grid;
-  gap: 0.18rem;
-  margin-top: auto;
-  padding: 0.7rem 0.8rem;
-  border: 1px solid #dbeafe;
-  border-radius: 10px;
-  background: #f8fbff;
-}
-
-.summaryClockLabel {
-  display: block;
-  color: #1d4ed8;
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.summaryClock strong {
-  color: #0f172a;
-  font-size: 1.08rem;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  margin-top: 0.2rem;
-}
-
-.summaryClock > span:not(.summaryClockLabel) {
-  display: block;
-  color: #64748b;
-  font-size: 0.72rem;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-}
-
 .reviewCard {
   gap: 0.8rem;
   border: none;
@@ -2391,9 +2235,49 @@
 }
 
 .navRow > button {
-  min-width: 7.5rem;
-  border-radius: 8px;
-  font-weight: 700;
+  min-width: 0;
+  min-height: 38px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.navRow > button.signupBackButton {
+  padding: 8px 16px;
+  border: 1px solid #dbe3ef;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
+}
+
+.navRow > button.signupBackButton:hover:not(:disabled) {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.navRow > button.signupPrimaryButton {
+  padding: 8px 20px;
+  border: 1px solid #1f5cf0;
+  background: #1f5cf0;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(31, 92, 240, 0.16);
+}
+
+.navRow > button.signupPrimaryButton:hover:not(:disabled) {
+  border-color: #194ed1;
+  background: #194ed1;
+  box-shadow: 0 6px 14px rgba(31, 92, 240, 0.22);
+}
+
+@media (min-width: 481px) {
+  .navRow {
+    justify-content: flex-start;
+  }
+
+  .navSpacer {
+    flex: 0 0 0;
+    min-width: 0;
+  }
 }
 
 @media (max-width: 1100px) {
@@ -2402,27 +2286,31 @@
     align-items: stretch;
   }
 
-  .summaryCard {
-    position: static;
-    order: -1;
-    height: auto;
-  }
-
-  .summarySteps {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 760px) {
-  .signupShell {
-    height: 100dvh;
-    overflow-y: auto;
-    scrollbar-width: none;
-    padding: 0.75rem 0.75rem 1.5rem;
+  :global(html),
+  :global(body),
+  .signupShell,
+  .signupShell * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none;
   }
 
-  .signupShell::-webkit-scrollbar {
-    display: none;
+  :global(html)::-webkit-scrollbar,
+  :global(body)::-webkit-scrollbar,
+  .signupShell::-webkit-scrollbar,
+  .signupShell *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .signupShell {
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: visible;
+    padding: 0.75rem 0.75rem 1.5rem;
   }
 
   .heroPanel {
@@ -2474,10 +2362,6 @@
   }
 
   .sectorChips {
-    grid-template-columns: 1fr;
-  }
-
-  .summarySteps {
     grid-template-columns: 1fr;
   }
 
