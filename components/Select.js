@@ -1,9 +1,11 @@
 'use client';
 
+import { useId } from 'react';
 import styles from './Select.module.css';
 
 export default function Select({
   label,
+  id,
   name,
   value,
   onChange,
@@ -14,25 +16,32 @@ export default function Select({
   error = '',
   compact = false,
   allowEmptyOption = false,
-  className = ''
+  className = '',
+  ...props
 }) {
+  const generatedId = useId();
+  const selectId = id || generatedId;
   return (
     <div className={`${styles.selectGroup} ${compact ? styles.compact : ''} ${className}`}>
       {label && (
-        <label htmlFor={name} className={styles.label}>
+        <label htmlFor={selectId} className={styles.label}>
           {label}
           {required && <span className={styles.required}>*</span>}
         </label>
       )}
       <div className={styles.selectWrapper}>
         <select
-          id={name}
+          id={selectId}
           name={name}
           value={value}
           onChange={onChange}
           required={required}
           disabled={disabled}
           className={`${styles.select} ${error ? styles.selectError : ''}`}
+          {...props}
+          aria-label={props['aria-label'] || (!label ? placeholder : undefined)}
+          aria-invalid={error ? true : props['aria-invalid']}
+          aria-describedby={[props['aria-describedby'], error && `${selectId}-error`].filter(Boolean).join(' ') || undefined}
         >
           <option value="" disabled={!allowEmptyOption}>{placeholder}</option>
           {options.map((option) => (
@@ -47,7 +56,7 @@ export default function Select({
           </svg>
         </span>
       </div>
-      {error && <span className={styles.errorMessage}>{error}</span>}
+      {error && <span id={`${selectId}-error`} className={styles.errorMessage}>{error}</span>}
     </div>
   );
 }

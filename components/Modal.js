@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import styles from './Modal.module.css';
 
 export default function Modal({ 
@@ -11,34 +11,30 @@ export default function Modal({
   footer,
   size = 'medium' 
 }) {
-  // Close on escape key
+  const dialogRef = useRef(null);
+  const titleId = useId();
+
+  // Native modal dialogs contain keyboard focus and restore it when closed.
   useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
-    
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
-    }
-    
+    if (!isOpen) return;
+    const dialog = dialogRef.current;
+    dialog.showModal();
     return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = '';
+      dialog.close();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
+    <dialog ref={dialogRef} className={styles.overlay} aria-labelledby={titleId} onCancel={(event) => { event.preventDefault(); onClose(); }} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <div 
         className={`${styles.modal} ${styles[size]}`} 
         onClick={(e) => e.stopPropagation()}
       >
         <div className={styles.header}>
-          <h3 className={styles.title}>{title}</h3>
-          <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
+          <h3 id={titleId} className={styles.title}>{title}</h3>
+          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Close dialog">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
@@ -54,6 +50,6 @@ export default function Modal({
           </div>
         )}
       </div>
-    </div>
+    </dialog>
   );
 }

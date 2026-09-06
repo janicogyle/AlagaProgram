@@ -418,3 +418,10 @@
 
 }
   
+
+/* Make the primary sign-in action immediately recognizable. */
+.loginButton { background: #1e40af; border-color: #1e40af; color: #fff; min-height: 50px; box-shadow: none; }
+.loginButton:hover:not(:disabled) { background: #1e3a8a; color: #fff; }
+.loginButton::before { display: none; }
+.passwordToggle { width: 44px; height: 44px; right: 4px; background: transparent; border: none; border-radius: 8px; }
+.inputGroup input::placeholder { color: #64748b; }

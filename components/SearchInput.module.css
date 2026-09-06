@@ -16,7 +16,7 @@
 
 .searchInput {
   width: 100%;
-  padding: 10px 16px 10px 44px;
+  padding: 12px 48px 12px 44px;
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   font-size: 14px;
@@ -24,7 +24,7 @@
   background-color: var(--surface-bg);
   color: var(--foreground);
   transition: all 0.2s ease;
-  min-height: 42px;
+  min-height: 48px;
 }
 
 .searchInput:focus {
@@ -44,8 +44,12 @@
   }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 768px) {
   .searchInput {
     font-size: 16px;
   }
 }
+
+.searchInput::-webkit-search-cancel-button { appearance: none; }
+.clearButton { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; min-width: 44px; min-height: 44px; border: none; border-radius: 8px; background: transparent; color: var(--text-muted); cursor: pointer; }
+.clearButton:hover { background: var(--surface-hover); color: var(--foreground); }

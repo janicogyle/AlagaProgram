@@ -467,6 +467,9 @@
 
 .uploadedDocsSection {
   margin-top: 2px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .uploadedDocsHeading {
@@ -480,6 +483,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
+  min-width: 0;
 }
 
 .uploadedDocItem {
@@ -498,7 +503,9 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
+  width: 100%;
   min-width: 0;
+  overflow: hidden;
 }
 
 .uploadedDocName {
@@ -515,6 +522,9 @@
 }
 
 .uploadedDocFilename {
+  display: block;
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
   color: var(--text-muted);
   font-size: 12px;
@@ -522,6 +532,81 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Dark theme: request cards, details, verification, and documents */
+:global(html[data-theme='dark']) .detailSection,
+:global(html[data-theme='dark']) .profileDetailSection {
+  background: var(--surface-muted);
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+:global(html[data-theme='dark']) .selfRequestSection {
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.22), var(--surface-muted));
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+:global(html[data-theme='dark']) .selfRequestBadge {
+  background: rgba(59, 130, 246, 0.22);
+  color: #bfdbfe;
+}
+
+:global(html[data-theme='dark']) .detailField,
+:global(html[data-theme='dark']) .infoCard,
+:global(html[data-theme='dark']) .verificationPanel,
+:global(html[data-theme='dark']) .uploadedDocItem {
+  background: var(--surface-bg);
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+:global(html[data-theme='dark']) .infoLabel,
+:global(html[data-theme='dark']) .detailFieldLabel,
+:global(html[data-theme='dark']) .uploadedDocType,
+:global(html[data-theme='dark']) .uploadedDocFilename {
+  color: #cbd5e1;
+}
+
+:global(html[data-theme='dark']) .infoValue {
+  color: #93c5fd;
+}
+
+:global(html[data-theme='dark']) .verificationRow,
+:global(html[data-theme='dark']) .verificationHeading,
+:global(html[data-theme='dark']) .uploadedDocsHeading,
+:global(html[data-theme='dark']) .uploadedDocName {
+  color: #e5e7eb;
+}
+
+:global(html[data-theme='dark']) .verificationRow input:disabled {
+  opacity: 0.9;
+}
+
+:global(html[data-theme='dark']) .validIdLink {
+  background: rgba(30, 64, 175, 0.22);
+  border-color: rgba(96, 165, 250, 0.48);
+  color: #bfdbfe;
+}
+
+:global(html[data-theme='dark']) .validIdLink:hover {
+  background: rgba(37, 99, 235, 0.32);
+}
+
+:global(html[data-theme='dark']) .verificationStatusComplete {
+  background: rgba(22, 163, 74, 0.2);
+  color: #bbf7d0;
+}
+
+:global(html[data-theme='dark']) .verificationStatusComplete span {
+  color: #86efac;
+}
+
+:global(html[data-theme='dark']) .verificationStatusIncomplete {
+  background: rgba(217, 119, 6, 0.22);
+  color: #fde68a;
+}
+
+:global(html[data-theme='dark']) .verificationStatusIncomplete span {
+  color: #fcd34d;
 }
 
 .walkInNotice {
@@ -627,6 +712,10 @@
   flex: 0 0 auto;
 }
 
+.touchFilterToolbar {
+  display: none;
+}
+
 .filterSelectType {
   --select-max-width: 13rem;
 }
@@ -704,6 +793,11 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.cardMobileName,
+.cardMobileViewLabel {
+  display: none;
 }
 
 .cardControlNo {
@@ -985,19 +1079,135 @@
   }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 576px), (max-width: 1200px) and (pointer: coarse) {
   .requestsPage {
     gap: 14px;
   }
 
-  .summaryCards {
-    grid-template-columns: 1fr;
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
     gap: 10px;
+    padding: 12px;
+  }
+
+  .searchInput {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
+  }
+
+  .touchFilterToolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .touchFilterToggle,
+  .touchClearFilters {
+    min-height: 40px;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  .touchFilterToggle {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    gap: 7px;
+    padding: 8px 11px;
+    border: 1px solid #1d4ed8;
+    background: #1d4ed8;
+    color: #ffffff;
+  }
+
+  .touchFilterToggle:hover {
+    background-color: #1d4ed8;
+  }
+
+  .touchFilterToggleOpen,
+  .touchFilterToggleOpen:hover {
+    border-color: #93c5fd;
+    background-color: #ffffff;
+    color: #1d4ed8;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.12);
+  }
+
+  .touchFilterCount {
+    display: inline-grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #1d4ed8;
+    font-size: 11px;
+  }
+
+  .touchFilterToggleOpen .touchFilterCount {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+
+  .touchFilterChevron {
+    margin-left: auto;
+    font-size: 17px;
+    line-height: 1;
+    transition: transform 0.2s ease;
+  }
+
+  .touchFilterToggleOpen .touchFilterChevron {
+    transform: rotate(180deg);
+  }
+
+  .touchClearFilters {
+    padding: 8px 12px;
+    border: 1px solid #bfdbfe;
+    background: var(--surface-bg);
+    color: #1d4ed8;
+  }
+
+  .filterSelects {
+    display: none;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .filterSelectsOpen {
+    display: grid;
+  }
+
+  .filterSelects .resetFiltersBtn {
+    display: none;
+  }
+
+  :global(html[data-theme='dark']) .touchFilterToggleOpen,
+  :global(html[data-theme='dark']) .touchFilterToggleOpen:hover,
+  :global(html[data-theme='dark']) .touchClearFilters {
+    border-color: rgba(96, 165, 250, 0.45);
+    background: rgba(30, 64, 175, 0.18);
+    color: #93c5fd;
+  }
+
+  .requestDetails {
+    gap: 12px;
+  }
+
+  .summaryCards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .summaryCard {
     flex-direction: row;
     justify-content: flex-start;
+    gap: 8px;
+    padding: 12px;
   }
 
   .summaryIcon {
@@ -1009,23 +1219,223 @@
     font-size: 18px;
   }
 
-  .assistanceInfo {
+  .mobileCardView {
+    gap: 10px;
+  }
+
+  .requestCard {
+    padding: 12px 14px;
+  }
+
+  .cardHeader {
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .cardHeaderLeft {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .cardHeaderLeft > :not(.cardMobileName),
+  .cardBody,
+  .cardActions > button:not(.viewBtn) {
+    display: none;
+  }
+
+  .cardMobileName {
+    display: block;
+    color: var(--foreground);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .cardActions .viewBtn {
+    width: auto;
+    min-width: auto;
+    height: 40px;
+    gap: 7px;
+    padding: 0 12px;
+    border-color: #bfdbfe;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    white-space: nowrap;
+  }
+
+  .cardActions .viewBtn:hover {
+    border-color: #bfdbfe;
+    background-color: #eff6ff;
+    color: #1d4ed8;
+    transform: none;
+  }
+
+  :global(html[data-theme='dark']) .cardActions .viewBtn,
+  :global(html[data-theme='dark']) .cardActions .viewBtn:hover {
+    color: #93c5fd;
+    border-color: rgba(96, 165, 250, 0.45);
+    background: rgba(30, 64, 175, 0.18);
+  }
+
+  .cardMobileViewLabel {
+    display: inline;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .detailsHeader {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 10px;
+  }
+
+  .controlNumber {
+    font-size: 14px;
+  }
+
+  .detailsGrid {
+    gap: 10px;
+  }
+
+  .detailSection {
+    padding: 12px;
+    border-radius: 12px;
+    background: var(--surface-muted);
+  }
+
+  .detailSection h4 {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    font-size: 12px;
+    font-weight: 650;
+  }
+
+  .detailSectionTitleRow {
+    gap: 8px;
+    padding-bottom: 8px;
+  }
+
+  .detailSectionTitleRow h4 {
+    margin: 0;
+    padding: 0;
+  }
+
+  .selfRequestBadge {
+    padding: 3px 7px;
+    font-size: 10px;
+  }
+
+  .selfRequestNote {
+    margin: 8px 0 10px;
+    font-size: 11px;
+  }
+
+  .detailFieldsGrid {
+    display: grid;
     grid-template-columns: 1fr;
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+  }
+
+  .detailField,
+  .wideDetailField {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    grid-column: auto;
+    padding: 9px 11px;
+    border: 0;
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .detailField:last-child {
+    border-bottom: 0;
+  }
+
+  .detailFieldLabel {
+    flex: 0 0 auto;
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  .detailFieldValue {
+    min-width: 0;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: right;
+  }
+
+  .detailRow {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .detailRow:last-child {
+    border-bottom: 0;
+  }
+
+  .detailLabel {
+    flex: 0 0 38%;
+    font-size: 11px;
+  }
+
+  .detailValue {
+    flex: 1;
+    font-size: 12px;
+    text-align: right;
+  }
+
+  .assistanceInfo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
 
   .infoCard {
-    padding: 12px;
+    min-height: 0;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 10px;
     text-align: left;
   }
 
+  .wideInfoCard {
+    grid-column: 1 / -1;
+    gap: 10px;
+  }
+
+  .verificationPanel {
+    padding: 12px;
+  }
+
   .uploadedDocItem {
-    flex-direction: column;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 11px;
   }
 
   .validIdLink {
-    width: 100%;
+    width: auto;
+    min-width: 64px;
+    min-height: 40px;
+    padding: 7px 11px;
   }
 
   .infoLabel {
@@ -1048,6 +1458,12 @@
   .remarksInput {
     padding: 10px;
     font-size: 13px;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1200px) and (orientation: landscape) and (pointer: coarse) {
+  .mobileCardView {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

@@ -404,7 +404,7 @@ export default function GuidelinesPage() {
                   <div className={styles.cardHeader}>
                     <div
                       className={styles.cardIcon}
-                      style={{ backgroundColor: data.iconBg, color: data.iconColor }}
+                      style={{ '--icon-bg': data.iconBg, '--icon-color': data.iconColor }}
                     >
                       {data.icon}
                     </div>
