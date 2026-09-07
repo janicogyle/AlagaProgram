@@ -22,30 +22,42 @@
 
 .controlNumberBar {
 	grid-column: 1 / -1;
-	display: flex;
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	align-items: center;
-	justify-content: space-between;
-	gap: 20px;
+	gap: 16px;
 	background:
-		linear-gradient(135deg, rgba(30, 64, 175, 0.98), rgba(37, 99, 235, 0.9)),
-		var(--primary-color);
-	padding: 18px 22px;
+		linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 8%, transparent), transparent 72%),
+		var(--surface-bg);
+	padding: 16px 18px;
+	border: 1px solid color-mix(in srgb, var(--primary-color) 34%, var(--border-color));
 	border-radius: 14px;
-	color: #ffffff;
+	color: var(--foreground);
 	min-width: 0;
-	box-shadow: 0 14px 28px rgba(30, 64, 175, 0.22);
+	box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.controlNumberBar > div {
+	min-width: 0;
+}
+
+.controlNumberBar > div:last-child {
+	padding-left: 16px;
+	border-left: 1px solid color-mix(in srgb, var(--primary-color) 22%, var(--border-color));
+	text-align: right;
 }
 
 .controlNumberLabel {
-	font-size: 14px;
-	font-weight: 500;
-	opacity: 0.9;
+	font-size: 12px;
+	font-weight: 700;
+	color: var(--text-muted);
 }
 
 .controlNumberValue {
 	margin-top: 4px;
-	font-size: 20px;
-	font-weight: 700;
+	font-size: 18px;
+	font-weight: 800;
+	color: var(--primary-color);
 	letter-spacing: 0.02em;
 	font-family: 'Courier New', monospace;
 	overflow-wrap: anywhere;
@@ -69,12 +81,12 @@
 .progressBarWrapper {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
-	padding: 18px;
+	gap: 10px;
+	padding: 16px 18px;
 	border: 1px solid var(--border-color);
 	border-radius: 16px;
 	background: var(--surface-bg);
-	box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+	box-shadow: 0 8px 24px rgba(15, 23, 42, 0.055);
 }
 
 .progressSummary {
@@ -120,7 +132,7 @@
 
 .progressTrack {
 	width: 100%;
-	height: 8px;
+	height: 6px;
 	overflow: hidden;
 	border-radius: 999px;
 	background: var(--surface-hover);
@@ -135,19 +147,15 @@
 }
 
 .progressBarScroll {
-	overflow-x: auto;
-	-webkit-overflow-scrolling: touch;
-	scrollbar-width: none;
-}
-
-.progressBarScroll::-webkit-scrollbar {
-	display: none;
+	overflow: visible;
+	padding: 2px 0 0;
 }
 
 .progressBar {
 	display: flex;
 	align-items: flex-start;
-	min-width: 680px;
+	width: 100%;
+	min-width: 0;
 }
 
 .progressSegment {
@@ -158,8 +166,9 @@
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 7px;
-	min-width: 96px;
+	flex: 0 1 112px;
+	gap: 6px;
+	min-width: 0;
 	border: 0;
 	background: transparent;
 	padding: 0;
@@ -179,6 +188,19 @@
 
 .progressStepClickable:hover .progressCircle {
 	transform: scale(1.06);
+}
+
+.progressStepClickable:hover .progressLabel {
+	color: var(--primary-color);
+}
+
+.progressStepClickable:focus-visible {
+	outline: none;
+}
+
+.progressStepClickable:focus-visible .progressCircle {
+	outline: 3px solid color-mix(in srgb, var(--primary-color) 28%, transparent);
+	outline-offset: 3px;
 }
 
 .progressCircle {
@@ -214,8 +236,8 @@
 	flex: 1;
 	display: flex;
 	align-items: center;
-	min-width: 42px;
-	padding-top: 17px;
+	min-width: 12px;
+	padding: 16px 8px 0;
 }
 
 .progressLine {
@@ -242,11 +264,12 @@
 	color: var(--primary-color);
 }
 
-.stepIndicator {
+.mobileProgressHint {
+	display: none;
 	margin: 0;
-	font-size: 13px;
-	font-weight: 700;
 	color: var(--text-muted);
+	font-size: 12px;
+	line-height: 1.4;
 	text-align: center;
 }
 
@@ -845,10 +868,9 @@
 	}
 
 	.controlNumberBar {
-		flex-direction: row;
 		gap: 12px;
 		text-align: left;
-		padding: 14px 20px;
+		padding: 14px 16px;
 	}
 
 	.controlNumberValue {
@@ -871,9 +893,6 @@
 		font-size: 13px;
 	}
 
-	.progressBar {
-		min-width: 640px;
-	}
 }
 
 @media (max-width: 768px) {
@@ -919,7 +938,65 @@
 	}
 
 	.progressBarWrapper {
+		gap: 10px;
 		padding: 14px;
+		border-radius: 14px;
+		box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+	}
+
+	.progressSummary {
+		align-items: center;
+	}
+
+	.progressSummary strong {
+		font-size: 15px;
+	}
+
+	.progressCount {
+		padding: 5px 9px;
+		font-size: 11px;
+	}
+
+	.progressTrack {
+		height: 6px;
+	}
+
+	.progressBarScroll {
+		overflow: visible;
+	}
+
+	.progressBar {
+		width: 100%;
+		min-width: 0;
+	}
+
+	.progressStep {
+		flex: 0 0 34px;
+		min-width: 34px;
+		gap: 0;
+	}
+
+	.progressCircle {
+		width: 32px;
+		height: 32px;
+		font-size: 12px;
+	}
+
+	.progressLineWrapper {
+		min-width: 0;
+		padding: 15px 5px 0;
+	}
+
+	.progressLine {
+		height: 2px;
+	}
+
+	.progressLabel {
+		display: none;
+	}
+
+	.mobileProgressHint {
+		display: block;
 	}
 
 	.summaryList div {
@@ -955,24 +1032,20 @@
 		gap: 14px;
 	}
 
-	.progressBar {
-		min-width: 560px;
-	}
-
-	.progressStep {
-		min-width: 82px;
-	}
-
-	.progressLabel {
-		font-size: 11px;
-	}
-
 	.controlNumberBar {
-		flex-direction: column;
 		text-align: left;
-		align-items: flex-start;
-		gap: 4px;
-		padding: 12px 14px;
+		align-items: stretch;
+		gap: 10px;
+		padding: 12px;
+	}
+
+	.controlNumberBar > div {
+		min-width: 0;
+		padding: 2px;
+	}
+
+	.controlNumberBar > div:last-child {
+		padding-left: 10px;
 	}
 
 	.cooldownBanner {

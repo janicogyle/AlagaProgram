@@ -5,10 +5,14 @@
   justify-content: center;
   padding: 60px 24px;
   text-align: center;
+  margin: 8px;
+  border: 1px dashed color-mix(in srgb, var(--primary-color) 24%, var(--border-color));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--primary-color) 3%, var(--surface-muted));
 }
 
 .icon {
-  color: var(--border-strong);
+  color: color-mix(in srgb, var(--primary-color) 58%, var(--text-muted));
   margin-bottom: 16px;
 }
 

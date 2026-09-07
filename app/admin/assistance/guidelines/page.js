@@ -484,7 +484,7 @@ export default function GuidelinesPage() {
                 </Link>.
               </p>
             </div>
-            <div className={styles.flowConnector}>→</div>
+            <div className={styles.flowConnector} aria-hidden="true">→</div>
             <div className={styles.flowStep}>
               <div className={styles.stepNumber}>2</div>
               <h3 className={styles.stepTitle}>Request Submission</h3>
@@ -492,7 +492,7 @@ export default function GuidelinesPage() {
                 Submit an assistance request with all required documents at the barangay hall.
               </p>
             </div>
-            <div className={styles.flowConnector}>→</div>
+            <div className={styles.flowConnector} aria-hidden="true">→</div>
             <div className={styles.flowStep}>
               <div className={styles.stepNumber}>3</div>
               <h3 className={styles.stepTitle}>Verification</h3>
@@ -500,7 +500,7 @@ export default function GuidelinesPage() {
                 The submitted documents and request details will be verified by authorized personnel.
               </p>
             </div>
-            <div className={styles.flowConnector}>→</div>
+            <div className={styles.flowConnector} aria-hidden="true">→</div>
             <div className={styles.flowStep}>
               <div className={styles.stepNumber}>4</div>
               <h3 className={styles.stepTitle}>Approval & Disbursement</h3>

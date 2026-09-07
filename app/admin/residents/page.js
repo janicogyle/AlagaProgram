@@ -1125,10 +1125,6 @@ export default function ResidentsPage() {
                     ? 'warning'
                     : 'secondary';
 
-        const expires = row?.qr_card?.expires_at
-          ? new Date(row.qr_card.expires_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: '2-digit' })
-          : null;
-
         return (
           <div className={styles.qrStatusCell}>
             <Badge variant={variant}>
@@ -1141,11 +1137,6 @@ export default function ResidentsPage() {
                 {status}
               </span>
             </Badge>
-            {expires ? (
-              <div className={styles.qrExpiryText}>
-                Expires: {expires}
-              </div>
-            ) : null}
           </div>
         );
       },
@@ -1181,6 +1172,7 @@ export default function ResidentsPage() {
             variant="secondary"
             size="small"
             className={`${styles.actionButton} ${styles.iconActionButton}`}
+            title="View beneficiary details"
             icon={
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
@@ -1458,6 +1450,7 @@ export default function ResidentsPage() {
   };
 
   const effectiveResident = residentDetails?.resident || selectedResident;
+  const idCardExpiry = effectiveResident?.qr_card?.expires_at || selectedResident?.qr_card?.expires_at;
   const hasExistingIdCard = !!effectiveResident?.qr_card?.id;
   const isWalkInResident = effectiveResident?.registration_type === 'Walk-In';
   const canIssueNewIdCard = isAdmin && !hasExistingIdCard && effectiveResident?.status === 'Active';
@@ -1810,6 +1803,11 @@ export default function ResidentsPage() {
                       Eligibility: {getEligibilityBadge(cooldownInfo)}
                       {renderEligibleAgainText(cooldownInfo)}
                     </span>
+                    {idCardExpiry ? (
+                      <span className={styles.assistanceResidentDetail}>
+                        ID expires: {formatCardDate(idCardExpiry)}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
                 <Badge variant={effectiveResident?.status === "Active" ? "success" : "secondary"}>

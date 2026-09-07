@@ -1139,6 +1139,7 @@ export default function RegistrationPage() {
             <Card
               title="ATTACH REQUIREMENTS"
               subtitle="Confirm that the resident's requirements have been completed"
+              className={styles.sideCard}
             >
               <div className={styles.formFields}>
                 {formData.assistanceType ? (
@@ -1204,7 +1205,11 @@ export default function RegistrationPage() {
             </Card>
 
           {/* Assistance Request Card */}
-          <Card title="Initial Assistance Request" subtitle="Optional: log an assistance request upon registration">
+          <Card
+            title="Initial Assistance Request"
+            subtitle="Optional: log an assistance request upon registration"
+            className={styles.sideCard}
+          >
             <div className={styles.formFields}>
               {assistanceRequestBlocked ? (
                 <div className={styles.eligibilityBanner} role="status">

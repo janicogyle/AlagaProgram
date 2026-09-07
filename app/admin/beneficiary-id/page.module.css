@@ -67,10 +67,12 @@
   position: relative;
   overflow: hidden;
   min-width: 116px;
+  min-height: 46px;
+  border: 1px solid transparent;
   border-radius: 10px;
   font-weight: 700;
-  box-shadow: 0 8px 18px rgba(30, 64, 175, 0.12);
-  transition: transform 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease, border-color 0.22s ease;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.07);
+  transition: transform 0.22s ease, color 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease, border-color 0.22s ease;
 }
 
 .verificationAction::after {
@@ -78,7 +80,7 @@
   position: absolute;
   inset: -70% auto -70% -45%;
   width: 34%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.38), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
   transform: skewX(-18deg);
   transition: left 0.55s ease;
   pointer-events: none;
@@ -97,42 +99,109 @@
 }
 
 .actions .scanButton {
-  background: linear-gradient(135deg, #1e40af, #2563eb);
-  box-shadow: 0 10px 22px rgba(30, 64, 175, 0.24);
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+  background: linear-gradient(135deg, #f8fbff, #eff6ff);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.1);
 }
 
 .actions .scanButton:hover:not(:disabled) {
-  background: linear-gradient(135deg, #1e3a8a, #2563eb);
-  box-shadow: 0 14px 26px rgba(30, 64, 175, 0.3);
+  color: #ffffff;
+  border-color: #2563eb;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
 }
 
 .actions .verifyButton {
-  background: linear-gradient(135deg, #2563eb, #60a5fa);
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.2);
+  color: #047857;
+  border-color: #a7f3d0;
+  background: linear-gradient(135deg, #f7fef9, #ecfdf5);
+  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.09);
 }
 
 .actions .verifyButton:hover:not(:disabled) {
-  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
-  box-shadow: 0 14px 26px rgba(37, 99, 235, 0.28);
+  color: #ffffff;
+  border-color: #059669;
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 12px 24px rgba(5, 150, 105, 0.2);
 }
 
 .actions .clearButton {
-  background: var(--surface-bg);
-  border-color: var(--border-strong);
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  color: #334155;
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
 }
 
 .actions .clearButton:hover:not(:disabled) {
-  color: #1d4ed8;
-  border-color: #93c5fd;
-  background: #eff6ff;
-  box-shadow: 0 12px 22px rgba(37, 99, 235, 0.14);
+  color: #0f172a;
+  border-color: #94a3b8;
+  background: #f8fafc;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.1);
+}
+
+.actions .verificationAction:disabled {
+  color: #94a3b8;
+  border-color: #dbe3ef;
+  background: #f1f5f9;
+  box-shadow: none;
+  opacity: 1;
 }
 
 :global(html[data-theme='dark']) .actions .clearButton:hover:not(:disabled) {
   color: #bfdbfe;
   border-color: rgba(96, 165, 250, 0.45);
   background: rgba(59, 130, 246, 0.16);
+}
+
+:global(html[data-theme='dark']) .actions .scanButton {
+  color: #dbeafe;
+  border-color: rgba(96, 165, 250, 0.58);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.32), rgba(30, 64, 175, 0.18));
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.16);
+}
+
+:global(html[data-theme='dark']) .actions .scanButton:hover:not(:disabled) {
+  color: #ffffff;
+  border-color: rgba(147, 197, 253, 0.8);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.5), rgba(30, 64, 175, 0.3));
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.22);
+}
+
+:global(html[data-theme='dark']) .actions .verifyButton:not(:disabled) {
+  color: #d1fae5;
+  border-color: rgba(52, 211, 153, 0.52);
+  background: linear-gradient(135deg, rgba(5, 150, 105, 0.28), rgba(6, 78, 59, 0.18));
+  box-shadow: 0 10px 24px rgba(5, 150, 105, 0.14);
+}
+
+:global(html[data-theme='dark']) .actions .verifyButton:hover:not(:disabled) {
+  color: #ffffff;
+  border-color: rgba(110, 231, 183, 0.75);
+  background: linear-gradient(135deg, rgba(5, 150, 105, 0.44), rgba(6, 95, 70, 0.28));
+  box-shadow: 0 12px 28px rgba(5, 150, 105, 0.2);
+}
+
+:global(html[data-theme='dark']) .actions .clearButton {
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.34);
+  background: linear-gradient(135deg, rgba(51, 65, 85, 0.32), rgba(15, 23, 42, 0.18));
+  box-shadow: 0 8px 20px rgba(1, 6, 18, 0.2);
+}
+
+:global(html[data-theme='dark']) .actions .clearButton:hover:not(:disabled) {
+  color: #ffffff;
+  border-color: rgba(147, 197, 253, 0.52);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(30, 41, 59, 0.28));
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.12);
+}
+
+:global(html[data-theme='dark']) .actions .verificationAction:disabled {
+  color: #94a3b8;
+  border-color: rgba(100, 116, 139, 0.3);
+  background: rgba(30, 41, 59, 0.56);
+  box-shadow: none;
+  opacity: 1;
 }
 
 .verificationAction:focus-visible {
@@ -434,22 +503,37 @@
 }
 
 .latestRequestActionButton {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #d5deea;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface-hover);
-  color: var(--text-muted);
-  transition: background-color 0.2s ease, color 0.2s ease;
+  background: linear-gradient(135deg, #ffffff, #f8fafc);
+  color: #475569;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.06);
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .latestRequestActionButton:hover {
-  background: var(--border-color);
-  color: var(--text-muted);
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.14);
+}
+
+:global(html[data-theme='dark']) .latestRequestActionButton {
+  color: #dbeafe;
+  border-color: rgba(96, 165, 250, 0.34);
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.13), rgba(15, 23, 42, 0.2));
+}
+
+:global(html[data-theme='dark']) .latestRequestActionButton:hover {
+  color: #ffffff;
+  border-color: rgba(147, 197, 253, 0.62);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.3), rgba(30, 64, 175, 0.2));
 }
 
 .latestRequestModal {

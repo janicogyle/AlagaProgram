@@ -55,6 +55,7 @@ export default function AdminShell({ children, initialUser }) {
     return () => {
       document.documentElement.classList.remove('appShellActive');
       document.body.classList.remove('appShellActive');
+      document.documentElement.removeAttribute('data-theme');
     };
   }, []);
 

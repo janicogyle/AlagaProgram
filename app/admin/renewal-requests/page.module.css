@@ -12,24 +12,28 @@
 
 .filterCard {
   overflow: hidden;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--primary-color) 3%, transparent), transparent 64px),
+    var(--card-bg);
 }
 
 .statusTabs {
   display: grid;
   grid-template-columns: repeat(4, minmax(120px, 1fr));
-  gap: 0;
+  gap: 6px;
   align-items: center;
   padding: 4px;
   width: min(560px, 100%);
   max-width: 100%;
-  border-bottom: 1px solid var(--border-color);
-  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--surface-muted);
 }
 
 .statusTab {
   min-width: 0;
   border: 0;
-  border-radius: 0;
+  border-radius: 9px;
   color: var(--text-muted);
   box-shadow: none;
 }
@@ -40,9 +44,9 @@
 }
 
 .statusTab.statusTabActive {
-  background: transparent;
+  background: var(--surface-bg);
   color: var(--primary-color);
-  box-shadow: inset 0 -2px 0 var(--primary-color);
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.08), inset 0 0 0 1px color-mix(in srgb, var(--primary-color) 30%, transparent);
 }
 
 .statusTab.statusTabActive:hover {
@@ -86,6 +90,7 @@
 
 .actionsCell button {
   flex: 1 1 96px;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.06);
 }
 
 .beneficiaryCell {
@@ -130,6 +135,9 @@
 
 .resultsCard {
   overflow: hidden;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--primary-color) 3%, transparent), transparent 60px),
+    var(--card-bg);
 }
 
 .resultMessage {
@@ -159,12 +167,22 @@
 }
 
 .requestItem {
-  padding: 18px;
-  border-bottom: 1px solid var(--border-color);
+  position: relative;
+  margin: 12px;
+  padding: 16px 16px 16px 20px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 14%, var(--border-color));
+  border-radius: 14px;
+  background: var(--surface-bg);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
 }
 
-.requestItem:last-child {
-  border-bottom: 0;
+.requestItem::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--primary-color), color-mix(in srgb, var(--primary-color) 42%, #22c55e));
 }
 
 .requestHeader {
@@ -215,6 +233,10 @@
   align-content: start;
   gap: 3px;
   min-width: 0;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  border-radius: 10px;
+  background: var(--surface-muted);
 }
 
 .requestDetails dt {
@@ -279,6 +301,17 @@
 .tableShell th:nth-child(6),
 .tableShell td:nth-child(6) {
   width: 23%;
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  border-left: 1px solid color-mix(in srgb, var(--primary-color) 10%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-color) 2.5%, var(--surface-bg));
+  box-shadow: -12px 0 24px -22px rgba(15, 23, 42, 0.8);
+}
+
+.tableShell th:nth-child(6) {
+  z-index: 12;
+  background: color-mix(in srgb, var(--primary-color) 5%, var(--surface-muted));
 }
 
 :global(html[data-theme='dark']) .documentLink:hover {
@@ -312,11 +345,18 @@
   min-height: 92px;
   resize: vertical;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 10px 12px;
   background: var(--surface-bg);
   color: var(--foreground);
   font: inherit;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.remarksInput:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .modalFooter {
@@ -414,7 +454,7 @@
   .statusTabs {
     width: 100%;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    padding: 0;
+    padding: 4px;
   }
 
   .statusTab {
@@ -432,7 +472,8 @@
 
 @media (max-width: 480px) {
   .requestItem {
-    padding: 16px 14px;
+    margin: 10px;
+    padding: 15px 13px 15px 17px;
   }
 
   .requestDetails {

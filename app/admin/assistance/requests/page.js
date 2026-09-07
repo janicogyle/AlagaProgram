@@ -15,7 +15,6 @@ import { resolveAssistanceAmount } from '@/lib/assistanceAmounts.mjs';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import {
   Card,
-  Select,
   Table,
   Badge,
   Button,
@@ -1087,7 +1086,7 @@ export default function RequestsPage() {
         </div>
       </div>
 
-      <Card padding={false}>
+      <Card padding={false} className={styles.requestsCard}>
         <PageHeader
           title="Assistance Requests"
           subtitle="Review and process pending assistance requests"
@@ -1139,51 +1138,36 @@ export default function RequestsPage() {
             role="group"
             aria-label="Filter requests"
           >
-            <Select
-              name="sortBy"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              options={sortOptions}
-              placeholder="Sort By"
-              compact
-              className={styles.filterSelectSort}
-            />
-            <Select
-              name="registrationType"
-              value={registrationTypeFilter}
-              onChange={(e) => setRegistrationTypeFilter(e.target.value)}
-              options={registrationTypeOptions}
-              placeholder="Registration Type"
-              compact
-              className={styles.filterSelectRegistration}
-            />
-            <Select
-              name="sector"
-              value={sectorFilter}
-              onChange={(e) => setSectorFilter(e.target.value)}
-              options={sectorOptions}
-              placeholder="Sector"
-              compact
-              className={styles.filterSelectSector}
-            />
-            <Select
-              name="type"
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              options={typeOptions}
-              placeholder="All Types"
-              compact
-              className={styles.filterSelectType}
-            />
-            <Select
-              name="status"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              options={statusOptions}
-              placeholder="All Status"
-              compact
-              className={styles.filterSelectStatus}
-            />
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel} htmlFor="request-sort">Sort By</label>
+              <select id="request-sort" className={styles.select} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                {sortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </div>
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel} htmlFor="request-registration">Registration Type</label>
+              <select id="request-registration" className={styles.select} value={registrationTypeFilter} onChange={(e) => setRegistrationTypeFilter(e.target.value)}>
+                {registrationTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </div>
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel} htmlFor="request-sector">Sector</label>
+              <select id="request-sector" className={styles.select} value={sectorFilter} onChange={(e) => setSectorFilter(e.target.value)}>
+                {sectorOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </div>
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel} htmlFor="request-type">Assistance Type</label>
+              <select id="request-type" className={styles.select} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                {typeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </div>
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel} htmlFor="request-status">Status</label>
+              <select id="request-status" className={styles.select} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </div>
             <Button
               type="button"
               variant="secondary"
@@ -1201,7 +1185,7 @@ export default function RequestsPage() {
           {loading ? (
             <div className={styles.emptyCard}>Loading requests...</div>
           ) : (
-            <Table columns={columns} data={filteredRequests} />
+            <Table columns={columns} data={filteredRequests} fitToContainer />
           )}
         </div>
 

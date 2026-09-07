@@ -61,6 +61,7 @@ export default function BeneficiaryShell({ children }) {
     return () => {
       document.documentElement.classList.remove('appShellActive');
       document.body.classList.remove('appShellActive');
+      document.documentElement.removeAttribute('data-theme');
     };
   }, []);
 
