@@ -105,7 +105,7 @@ export function UnifiedLoginForm({
       </>
       <button
         type="submit"
-        className={styles.loginButton}
+        className={`${styles.loginButton} ${role === 'admin' ? styles.adminLoginButton : ''}`}
         disabled={submitDisabled || isSubmitting}
         onPointerEnter={(event) => {
           const bounds = event.currentTarget.getBoundingClientRect();

@@ -6,6 +6,9 @@
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+  background: color-mix(in srgb, var(--primary-color) 2%, var(--card-bg));
+  min-width: 0;
+  container-type: inline-size;
 }
 
 .count {
@@ -18,6 +21,7 @@
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .pageSizeLabel {
@@ -31,7 +35,7 @@
 .pageSizeSelect {
   height: 32px;
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
+  border-radius: 9px;
   background: var(--surface-bg);
   color: var(--foreground);
   padding: 0 28px 0 10px;
@@ -44,16 +48,47 @@
   gap: 8px;
 }
 
+@container (max-width: 720px) {
+  .footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pagination {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@container (max-width: 480px) {
+  .pagination {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .pageSizeLabel {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .pageControls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+}
+
 .pageButton {
   height: 32px;
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  background: var(--surface-bg);
-  color: var(--foreground);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--primary-color) 5%, var(--surface-bg));
+  color: var(--primary-color);
   padding: 0 10px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
 .pageButton:disabled {
@@ -89,7 +124,7 @@
 
 .pageSizeSelect, .pageButton { min-height: 44px; height: auto; border-radius: 8px; }
 .pageButton { padding: 10px 14px; }
-.pageButton:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--primary-color); }
+.pageButton:hover:not(:disabled) { background: var(--primary-color); border-color: var(--primary-color); color: #ffffff; transform: translateY(-1px); }
 .count, .pageText, .pageSizeLabel { font-size: 14px; }
 @media (max-width: 768px) {
   .pagination { width: 100%; gap: 12px; }

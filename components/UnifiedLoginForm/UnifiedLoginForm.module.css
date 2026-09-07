@@ -423,5 +423,24 @@
 .loginButton { background: #1e40af; border-color: #1e40af; color: #fff; min-height: 50px; box-shadow: none; }
 .loginButton:hover:not(:disabled) { background: #1e3a8a; color: #fff; }
 .loginButton::before { display: none; }
+
+/* Keep the administrator action light until the pointer-origin hover fill appears. */
+.adminLoginButton {
+  background: transparent;
+  border: 1px solid rgba(37, 99, 235, 0.52);
+  color: #1d4ed8;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.08);
+}
+
+.adminLoginButton::before {
+  display: block;
+}
+
+.adminLoginButton:hover:not(:disabled) {
+  background: transparent;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
 .passwordToggle { width: 44px; height: 44px; right: 4px; background: transparent; border: none; border-radius: 8px; }
 .inputGroup input::placeholder { color: #64748b; }

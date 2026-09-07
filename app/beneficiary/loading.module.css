@@ -4,21 +4,8 @@
   flex-direction: column;
   gap: 2rem;
   width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  animation: pulse 1.5s infinite ease-in-out;
-}
-
-@keyframes pulse {
-  0% {
-    opacity: 0.6;
-  }
-  50% {
-    opacity: 0.3;
-  }
-  100% {
-    opacity: 0.6;
-  }
+  max-width: none;
+  margin: 0;
 }
 
 .skeletonHeader {
@@ -30,6 +17,36 @@
   border-radius: 20px;
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-soft);
+}
+
+.skeletonProfilePic,
+.skeletonTitle,
+.skeletonSubtitle,
+.skeletonActionCard,
+.skeletonRecordHeader,
+.skeletonRecordItem {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeletonProfilePic::after,
+.skeletonTitle::after,
+.skeletonSubtitle::after,
+.skeletonActionCard::after,
+.skeletonRecordHeader::after,
+.skeletonRecordItem::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary-color) 9%, var(--surface-bg)), transparent);
+  animation: skeletonShimmer 1.5s infinite;
+}
+
+@keyframes skeletonShimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .skeletonProfilePic {
@@ -67,7 +84,7 @@
 }
 
 .skeletonActionCard {
-  background-color: var(--surface-muted);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--primary-color) 5%, var(--surface-muted)), var(--surface-muted));
   border: 1px solid var(--border-color);
   border-radius: 20px;
   height: 120px;
@@ -103,4 +120,47 @@
   height: 4rem;
   background-color: var(--surface-muted);
   border-radius: 8px;
+}
+
+@media (max-width: 640px) {
+  .skeletonContainer {
+    padding: 0;
+    gap: 1rem;
+  }
+
+  .skeletonHeader {
+    padding: 1rem;
+    border-radius: 16px;
+  }
+
+  .skeletonProfilePic {
+    width: 56px;
+    height: 56px;
+  }
+
+  .skeletonTitle,
+  .skeletonSubtitle {
+    max-width: 100%;
+  }
+
+  .skeletonActionGrid {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .skeletonRecordContent {
+    padding: 1rem;
+    border-radius: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonProfilePic::after,
+  .skeletonTitle::after,
+  .skeletonSubtitle::after,
+  .skeletonActionCard::after,
+  .skeletonRecordHeader::after,
+  .skeletonRecordItem::after {
+    animation: none;
+  }
 }

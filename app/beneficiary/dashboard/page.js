@@ -271,10 +271,10 @@ export default function BeneficiaryDashboardPage() {
 
       <div className={styles.topSection}>
         <div className={styles.statsGrid}>
-          <KpiCard title="Total Requests" value={stats.total} color="blue" icon="file" compact />
-          <KpiCard title="Active Requests" value={stats.active} color="green" icon="assistance" compact />
-          <KpiCard title="Completed Requests" value={stats.completed} color="orange" icon="completion" compact />
-          <KpiCard title="Incomplete Requests" value={stats.rejected} color="purple" icon="incomplete" compact />
+          <KpiCard title="Total Requests" value={stats.total} subtitle="Requests" color="blue" variant="summary" />
+          <KpiCard title="Active Requests" value={stats.active} subtitle="Active" color="green" variant="summary" />
+          <KpiCard title="Completed Requests" value={stats.completed} subtitle="Completed" color="orange" variant="summary" />
+          <KpiCard title="Incomplete Requests" value={stats.rejected} subtitle="Incomplete" color="purple" variant="summary" />
         </div>
 
         <Card className={styles.nextStepsCard} fillHeight>

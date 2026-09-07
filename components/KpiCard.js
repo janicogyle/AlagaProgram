@@ -2,9 +2,25 @@ import Link from 'next/link';
 import styles from './KpiCard.module.css';
 import { getKpiIcon } from './kpiIcons';
 
-export default function KpiCard({ title, value, color = 'blue', icon = 'users', compact = false, href }) {
-  const className = `${styles.kpiCard} ${styles[color]} ${compact ? styles.compact : ''} ${href ? styles.clickable : ''}`;
-  const content = (
+export default function KpiCard({
+  title,
+  value,
+  subtitle,
+  color = 'blue',
+  icon = 'users',
+  compact = false,
+  variant = 'default',
+  href,
+}) {
+  const isSummary = variant === 'summary';
+  const className = `${styles.kpiCard} ${styles[color]} ${compact ? styles.compact : ''} ${isSummary ? styles.summary : ''} ${href ? styles.clickable : ''}`;
+  const content = isSummary ? (
+    <div className={styles.kpiContent}>
+      <div className={styles.summaryTitle}>{title}</div>
+      <div className={styles.kpiValue}>{value}</div>
+      {subtitle ? <div className={styles.summaryLabel}>{subtitle}</div> : null}
+    </div>
+  ) : (
     <>
       <div className={styles.kpiContent}>
         <div className={styles.kpiValue}>{value}</div>

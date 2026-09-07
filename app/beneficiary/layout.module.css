@@ -37,11 +37,17 @@
   min-width: 0;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--primary-color) 30%, transparent) transparent;
 }
 
 .pageContent::-webkit-scrollbar {
   width: 6px;
   height: 0;
+}
+
+.pageContent::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary-color) 30%, transparent);
 }
 
 .logoutOverlay {
@@ -63,8 +69,10 @@
   width: min(360px, 100%);
   padding: 18px;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--card-bg);
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--primary-color) 7%, transparent), transparent 58%),
+    var(--card-bg);
   box-shadow: var(--shadow-strong);
   color: var(--foreground);
 }

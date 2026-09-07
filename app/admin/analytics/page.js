@@ -319,6 +319,13 @@ export default function AnalyticsPage() {
     if (title === 'Released Assistance') return '/admin/assistance';
     return undefined;
   };
+  const getKpiSubtitle = (title) => {
+    if (title === 'Total Beneficiaries') return 'Beneficiaries';
+    if (title === 'New Registrations') return 'Registrations';
+    if (title === 'Active Request') return 'Active';
+    if (title === 'Released Assistance') return 'Released';
+    return '';
+  };
   const getChartTotal = (items) => items.reduce((total, item) => total + (Number(item.value) || 0), 0);
   const formatShare = (value, total) => `${total > 0 ? Math.round((Number(value || 0) / total) * 100) : 0}%`;
   const formatLabelList = (labels) => {
@@ -372,8 +379,10 @@ export default function AnalyticsPage() {
             key={index}
             title={kpi.title}
             value={`${kpi.current}${kpi.format || ''}`}
+            subtitle={getKpiSubtitle(kpi.title)}
             color={kpi.color}
             icon={kpi.icon}
+            variant="summary"
             href={getKpiHref(kpi.title)}
           />
         ))}
