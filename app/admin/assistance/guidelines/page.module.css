@@ -1,10 +1,11 @@
 .guidelinesPage {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 24px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 24px;
 }
 
 .statusBanner {
@@ -24,6 +25,18 @@
   background: #fef2f2;
   border-color: #fecaca;
   color: #b91c1c;
+}
+
+:global(html[data-theme='dark']) .statusBannerSuccess {
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(74, 222, 128, 0.35);
+  color: #bbf7d0;
+}
+
+:global(html[data-theme='dark']) .statusBannerError {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #fecaca;
 }
 
 /* Page Header */
@@ -49,14 +62,14 @@
 .content {
   display: flex;
   flex-direction: column;
-  gap: 48px;
+  gap: 32px;
 }
 
 /* Sections */
 .section {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 18px;
 }
 
 .sectionTitle {
@@ -85,22 +98,38 @@
 .requirementsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  gap: 24px;
+  gap: 16px;
 }
 
 .requirementCard {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: var(--surface-bg);
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
-  transition: all 0.2s ease-in-out;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--icon-color) 5%, transparent), transparent 58%),
+    var(--surface-bg);
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, #2563eb 18%, var(--border-color));
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.055);
+  transition: transform 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.requirementCard > div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .requirementCard:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  transform: translateY(-3px);
+  border-color: #2563eb;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.12), 0 4px 8px rgba(15, 23, 42, 0.06);
+}
+
+:global(html[data-theme='dark']) .requirementCard:hover {
+  border-color: #60a5fa;
+  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.2);
 }
 
 .cardHeader {
@@ -112,12 +141,27 @@
 }
 
 .cardIcon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
+  color: var(--icon-color);
+  background: var(--icon-bg);
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.cardIcon svg {
+  width: 22px;
+  height: 22px;
+}
+
+:global(html[data-theme='dark']) .cardIcon {
+  color: color-mix(in srgb, var(--icon-color) 60%, #ffffff);
+  background: color-mix(in srgb, var(--icon-color) 16%, var(--surface-muted));
+  border-color: color-mix(in srgb, var(--icon-color) 34%, var(--border-color));
 }
 
 .cardTitle {
@@ -224,6 +268,11 @@
   border-radius: 8px;
 }
 
+:global(html[data-theme='dark']) .ceilingAmount {
+  color: #bfdbfe;
+  background-color: rgba(59, 130, 246, 0.18);
+}
+
 :global(html[data-theme='dark']) .editWarning {
   background-color: rgba(251, 191, 36, 0.16);
   border-color: rgba(251, 191, 36, 0.38);
@@ -248,6 +297,8 @@
   border: 1px solid var(--border-strong);
   font-size: 14px;
   font-family: inherit;
+  background: var(--surface-bg);
+  color: var(--foreground);
 }
 
 .editInput:focus {
@@ -278,6 +329,8 @@
   font-size: 14px;
   font-family: inherit;
   min-width: 0;
+  background: var(--surface-bg);
+  color: var(--foreground);
 }
 
 .requirementInput:focus {
@@ -296,7 +349,7 @@
 
 @media (max-width: 1024px) {
   .guidelinesPage {
-    padding: 20px;
+    padding: 0;
     gap: 28px;
   }
 
@@ -308,7 +361,7 @@
 
 @media (max-width: 768px) {
   .guidelinesPage {
-    padding: 16px;
+    padding: 0;
     gap: 24px;
   }
 
@@ -347,7 +400,7 @@
 
 @media (max-width: 576px) {
   .guidelinesPage {
-    padding: 12px;
+    padding: 0;
   }
 
   .section {
@@ -391,58 +444,104 @@
 /* Process Flow */
 .flow {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
+  align-items: stretch;
+  gap: 12px;
 }
 
 .flowStep {
   flex: 1;
-  min-width: 200px;
-  text-align: center;
-  padding: 20px;
-  background-color: var(--surface-muted);
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
+  min-width: 0;
+  min-height: 190px;
+  padding: 22px;
+  text-align: left;
+  background: var(--surface-bg);
+  border: 1px solid color-mix(in srgb, #2563eb 18%, var(--border-color));
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.055);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.flowStep:hover {
+  transform: translateY(-3px);
+  border-color: #2563eb;
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.11);
 }
 
 .stepNumber {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background-color: #1e40af;
-  color: #ffffff;
-  font-size: 18px;
+  background: color-mix(in srgb, #2563eb 10%, var(--surface-bg));
+  border: 1px solid color-mix(in srgb, #2563eb 42%, transparent);
+  color: #1d4ed8;
+  font-size: 16px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 16px auto;
+  margin: 0 0 20px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
 }
 
 .stepTitle {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
   color: var(--foreground);
-  margin: 0 0 8px 0;
+  margin: 0 0 9px;
 }
 
 .stepDescription {
   font-size: 14px;
+  line-height: 1.55;
   color: var(--text-muted);
   margin: 0;
 }
 
 .flowConnector {
   display: none;
-  font-size: 24px;
-  color: var(--text-muted);
+  align-self: center;
+  flex: 0 0 32px;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: color-mix(in srgb, #2563eb 8%, var(--surface-bg));
+  color: #2563eb;
+  font-size: 18px;
+  line-height: 1;
 }
 
 @media (min-width: 768px) {
   .flowConnector {
-    display: block;
+    display: flex;
+  }
+}
+
+:global(html[data-theme='dark']) .flowStep:hover {
+  border-color: #60a5fa;
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.2);
+}
+
+:global(html[data-theme='dark']) .stepNumber {
+  color: #93c5fd;
+  border-color: rgba(96, 165, 250, 0.45);
+}
+
+@media (max-width: 900px) {
+  .flow {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .flowStep {
+    min-height: 0;
+    width: 100%;
+  }
+
+  .flowConnector {
+    display: flex;
+    transform: rotate(90deg);
   }
 }
 

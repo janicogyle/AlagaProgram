@@ -13,64 +13,48 @@ const defaultReportTypes = [
     title: 'PWD',
     description: 'Summary of released assistance for Persons with Disability',
     count: 0,
-    color: '#1e40af',
-    bgColor: '#dbeafe',
   },
   {
     id: 'senior',
     title: 'Senior Citizens',
     description: 'Summary of released assistance for Senior Citizens',
     count: 0,
-    color: '#16a34a',
-    bgColor: '#dcfce7',
   },
   {
     id: 'soloparent',
     title: 'Solo Parents',
     description: 'Summary of released assistance for Solo Parents',
     count: 0,
-    color: '#dc2626',
-    bgColor: '#fee2e2',
   },
   {
     id: 'all',
     title: 'All Sectors',
     description: 'Summary of all released assistance',
     count: 0,
-    color: '#7c3aed',
-    bgColor: '#ede9fe',
   },
   {
     id: 'eligible_beneficiaries',
     title: 'Eligible Beneficiaries',
     description: 'Active beneficiaries eligible for assistance now',
     count: 0,
-    color: '#047857',
-    bgColor: '#d1fae5',
   },
   {
     id: 'not_yet_eligible',
     title: 'Not Yet Eligible Beneficiaries',
     description: 'Beneficiaries blocked by cooldown or active requests',
     count: 0,
-    color: '#b45309',
-    bgColor: '#fef3c7',
   },
   {
     id: 'online_registration',
     title: 'Online Registration',
     description: 'Beneficiaries approved from online signups',
     count: 0,
-    color: '#2563eb',
-    bgColor: '#dbeafe',
   },
   {
     id: 'walkin_registration',
     title: 'Walk-In Registration',
     description: 'Beneficiaries encoded by staff walk-in registration',
     count: 0,
-    color: '#9333ea',
-    bgColor: '#f3e8ff',
   },
 ];
 async function fetchWithStaffSession(url, options = {}) {
@@ -423,20 +407,22 @@ export default function ReportsPage() {
           {status.message}
         </div>
       )}
-      <Card title="Generate Reports" subtitle="Select a report type to generate and export reports (PDF/Excel)">
+      <Card>
+        <div className={styles.sectionHeader}>
+          <div>
+            <h1 className={styles.sectionTitle}>Reports</h1>
+            <p className={styles.sectionSubtitle}>Choose a report to export as PDF or Excel.</p>
+          </div>
+        </div>
         <div className={styles.reportGrid}>
           {reportTypes.map((report) => (
             <button
               key={report.id}
-              className={`${styles.reportCard} ${
-                ['pwd', 'senior', 'soloparent', 'all'].includes(report.id) ? styles.featuredReportCard : ''
-              }`}
+              className={styles.reportCard}
               onClick={() => handleReportClick(report)}
-              style={{ '--report-color': report.color, '--report-bg': report.bgColor }}
             >
               <div
                 className={styles.reportIcon}
-                style={{ background: report.bgColor, color: report.color }}
                 aria-hidden="true"
               >
                 {getReportBadge(report)}
@@ -445,7 +431,24 @@ export default function ReportsPage() {
                 <h3 className={styles.reportTitle}>{report.title}</h3>
                 <p className={styles.reportDesc}>{report.description}</p>
               </div>
-              <span className={styles.reportCount}>{report.count} records</span>
+              <span className={styles.reportMeta}>
+                <span className={styles.reportCount}>
+                  {report.count} {report.count === 1 ? 'record' : 'records'}
+                </span>
+                <svg
+                  className={styles.reportArrow}
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14" />
+                  <path d="m13 6 6 6-6 6" />
+                </svg>
+              </span>
             </button>
           ))}
         </div>

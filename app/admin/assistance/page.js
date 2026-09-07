@@ -90,8 +90,10 @@ export default function AssistancePage() {
   const [typeFilter, setTypeFilter] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('Released');
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedRecord, setSelectedRecord] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
@@ -298,6 +300,13 @@ export default function AssistancePage() {
     sectorFilter ||
     statusFilter !== 'Released' ||
     sortBy !== 'date_desc';
+  const activeFilterCount = [
+    typeFilter,
+    registrationTypeFilter,
+    sectorFilter,
+    statusFilter !== 'Released' ? statusFilter : '',
+    sortBy !== 'date_desc' ? sortBy : '',
+  ].filter(Boolean).length;
 
   const handleResetFilters = () => {
     setSearchTerm('');
@@ -573,7 +582,31 @@ export default function AssistancePage() {
             placeholder="Search by name or control number..."
             className={styles.searchInput}
           />
-          <div className={styles.filterSelects} role="group" aria-label="Filter records">
+          <div className={styles.touchFilterToolbar}>
+            <button
+              type="button"
+              className={`${styles.touchFilterToggle} ${mobileFiltersOpen ? styles.touchFilterToggleOpen : ''}`}
+              aria-expanded={mobileFiltersOpen}
+              aria-controls="assistance-record-filters"
+              onClick={() => setMobileFiltersOpen((open) => !open)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M4 6h16M7 12h10M10 18h4" />
+              </svg>
+              Filters
+              {activeFilterCount > 0 ? <span className={styles.touchFilterCount}>{activeFilterCount}</span> : null}
+              <span className={styles.touchFilterChevron} aria-hidden="true">⌄</span>
+            </button>
+            {hasActiveFilters ? (
+              <button type="button" className={styles.touchClearFilters} onClick={handleResetFilters}>Clear</button>
+            ) : null}
+          </div>
+          <div
+            id="assistance-record-filters"
+            className={`${styles.filterSelects} ${mobileFiltersOpen ? styles.filterSelectsOpen : ''}`}
+            role="group"
+            aria-label="Filter records"
+          >
             <Select
               name="sortBy"
               value={sortBy}
@@ -650,8 +683,21 @@ export default function AssistancePage() {
             filteredAssistance.map((record) => (
               <div key={record.id} className={styles.recordCard}>
                 <div className={styles.cardHeader}>
+                  <span className={styles.mobileRecordName}>{record.beneficiary || 'Not provided'}</span>
                   <span className={styles.controlNo}>{record.controlNo}</span>
                   {getStatusBadge(record.status)}
+                  <button
+                    type="button"
+                    className={styles.mobileRecordViewButton}
+                    onClick={() => setSelectedRecord(record)}
+                    aria-label={`View details for ${record.beneficiary || 'beneficiary'}`}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    View details
+                  </button>
                 </div>
                 <div className={styles.cardBody}>
                   <div className={styles.cardRow}>
@@ -692,6 +738,47 @@ export default function AssistancePage() {
           itemName="records"
         />
       </Card>
+
+      <Modal
+        isOpen={!!selectedRecord}
+        onClose={() => setSelectedRecord(null)}
+        title="Assistance Record Details"
+        size="medium"
+        footer={
+          <Button variant="secondary" onClick={() => setSelectedRecord(null)}>
+            Close
+          </Button>
+        }
+      >
+        {selectedRecord ? (
+          <div className={styles.recordDetailsModal}>
+            <div className={styles.recordDetailsHeader}>
+              <span className={styles.recordDetailsControl}>{selectedRecord.controlNo || 'No control number'}</span>
+              {getStatusBadge(selectedRecord.status)}
+            </div>
+            <div className={styles.recordDetailsList}>
+              {[
+                ['Requester', selectedRecord.requester || 'Not provided'],
+                ['Beneficiary', selectedRecord.beneficiary || 'Not provided'],
+                ['Assistance Type', selectedRecord.type || 'Not provided'],
+                ['Amount', formatCurrency(selectedRecord.amount)],
+                ['Date', selectedRecord.date || 'Not provided'],
+                ['Registration', selectedRecord.requestSource === 'walk-in' ? 'Walk-in' : 'Online'],
+                ['Sector', selectedRecord.sectors?.join(', ') || 'Not provided'],
+              ].map(([label, value]) => (
+                <div key={label} className={styles.recordDetailRow}>
+                  <span className={styles.recordDetailLabel}>{label}</span>
+                  <span className={styles.recordDetailValue}>{value}</span>
+                </div>
+              ))}
+              <div className={styles.recordDetailRow}>
+                <span className={styles.recordDetailLabel}>Eligibility</span>
+                <span className={styles.recordDetailValue}>{getEligibilityBadge(selectedRecord.cooldownInfo)}</span>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
 
       {/* <Modal
         isOpen={showModal}

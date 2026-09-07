@@ -26,28 +26,40 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px;
-  background: color-mix(in srgb, var(--surface-bg) 82%, transparent);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: color-mix(in srgb, var(--surface-bg) 88%, var(--primary-light) 12%);
+  border: 1px solid color-mix(in srgb, var(--primary-light) 34%, var(--border-color));
+  border-radius: 14px;
   cursor: pointer;
-  color: var(--text-muted);
-  box-shadow: var(--shadow-soft);
-  transition: all 0.2s ease;
+  color: color-mix(in srgb, var(--primary-color) 72%, var(--text-muted));
+  box-shadow: 0 8px 22px rgba(30, 64, 175, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
   min-height: 44px;
   min-width: 44px;
   touch-action: manipulation;
 }
 
 .menuToggle:hover {
-  background-color: var(--surface-bg);
-  border-color: var(--primary-light);
+  background-color: color-mix(in srgb, var(--surface-bg) 78%, var(--primary-light) 22%);
+  border-color: color-mix(in srgb, var(--primary-light) 58%, var(--border-color));
   color: var(--primary-color);
-  box-shadow: 0 12px 26px rgba(29, 78, 216, 0.1);
+  box-shadow: 0 10px 24px rgba(29, 78, 216, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.76);
 }
 
 .menuToggle:active {
-  transform: scale(0.95);
+  transform: scale(0.96);
+  background-color: color-mix(in srgb, var(--surface-bg) 70%, var(--primary-light) 30%);
+}
+
+:global(html[data-theme='dark']) .menuToggle {
+  color: #93c5fd;
+  border-color: rgba(96, 165, 250, 0.3);
+  background: rgba(30, 64, 175, 0.16);
+  box-shadow: 0 8px 22px rgba(2, 6, 23, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .breadcrumb {
@@ -107,22 +119,32 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 44px;
+  height: 44px;
   min-height: 44px;
   min-width: 44px;
-  padding: 10px;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--surface-bg) 82%, transparent);
-  color: var(--text-muted);
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--primary-light) 26%, var(--border-color));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-bg) 90%, var(--primary-light) 10%);
+  color: color-mix(in srgb, var(--primary-color) 52%, var(--text-muted));
   cursor: pointer;
-  transition: all 0.2s ease;
+  box-shadow: 0 8px 22px rgba(30, 64, 175, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
   touch-action: manipulation;
 }
 
 .themeToggle:hover {
   color: var(--primary-color);
-  background: var(--surface-bg);
-  border-color: var(--primary-light);
+  background-color: color-mix(in srgb, var(--surface-bg) 78%, var(--primary-light) 22%);
+  border-color: color-mix(in srgb, var(--primary-light) 58%, var(--border-color));
+  box-shadow: 0 10px 24px rgba(29, 78, 216, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.76);
+}
+
+.themeToggle:active {
+  transform: scale(0.96);
 }
 
 .notificationBtn {
@@ -130,13 +152,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px;
-  background: transparent;
-  border: 1px solid transparent;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: color-mix(in srgb, var(--surface-bg) 90%, var(--primary-light) 10%);
+  border: 1px solid color-mix(in srgb, var(--primary-light) 26%, var(--border-color));
   cursor: pointer;
-  color: var(--text-muted);
-  border-radius: 12px;
-  transition: all 0.2s ease;
+  color: color-mix(in srgb, var(--primary-color) 52%, var(--text-muted));
+  border-radius: 14px;
+  box-shadow: 0 8px 22px rgba(30, 64, 175, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
   min-height: 44px;
   min-width: 44px;
   touch-action: manipulation;
@@ -144,8 +171,9 @@
 
 .notificationBtn:hover {
   color: var(--primary-color);
-  background-color: color-mix(in srgb, var(--primary-color) 12%, var(--surface-bg));
-  border-color: var(--border-color);
+  background-color: color-mix(in srgb, var(--surface-bg) 78%, var(--primary-light) 22%);
+  border-color: color-mix(in srgb, var(--primary-light) 58%, var(--border-color));
+  box-shadow: 0 10px 24px rgba(29, 78, 216, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.76);
 }
 
 .notificationBtn:active {
@@ -154,8 +182,23 @@
 
 .notificationBtnActive {
   color: var(--primary-color);
-  background-color: color-mix(in srgb, var(--primary-color) 14%, var(--surface-bg));
-  border-color: var(--primary-light);
+  background-color: color-mix(in srgb, var(--surface-bg) 72%, var(--primary-light) 28%);
+  border-color: color-mix(in srgb, var(--primary-light) 68%, var(--border-color));
+  box-shadow: 0 10px 24px rgba(29, 78, 216, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+:global(html[data-theme='dark']) .themeToggle,
+:global(html[data-theme='dark']) .notificationBtn {
+  color: #93c5fd;
+  border-color: rgba(96, 165, 250, 0.26);
+  background: rgba(30, 64, 175, 0.13);
+  box-shadow: 0 8px 22px rgba(2, 6, 23, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+:global(html[data-theme='dark']) .notificationBtnActive {
+  color: #bfdbfe;
+  border-color: rgba(96, 165, 250, 0.56);
+  background: rgba(37, 99, 235, 0.24);
 }
 
 .notificationBadge {
@@ -221,7 +264,7 @@
   }
 
   .menuToggle {
-    padding: 8px;
+    padding: 0;
   }
 }
 
@@ -278,7 +321,7 @@
   }
 
   .menuToggle {
-    padding: 8px;
+    padding: 0;
     min-height: 44px;
     min-width: 44px;
   }
@@ -301,8 +344,8 @@
   }
 
   .menuToggle {
-    padding: 6px;
-    border-radius: 6px;
+    padding: 0;
+    border-radius: 14px;
   }
 }
 
@@ -352,5 +395,46 @@
   .themeToggle {
     min-height: 48px;
     min-width: 48px;
+  }
+}
+
+/* Keep the current location visible at every viewport size. */
+.navbar { background: var(--surface-bg); border-bottom-color: var(--border-color); }
+.breadcrumb { display: block; font-size: 14px; font-weight: 600; }
+.menuToggle, .themeToggle, .notificationBtn {
+  min-height: 44px;
+  min-width: 44px;
+  border-color: var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-bg);
+  color: var(--text-muted);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.menuToggle:hover, .themeToggle:hover, .notificationBtn:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+  color: var(--foreground);
+  box-shadow: none;
+}
+.notificationBtnActive {
+  border-color: var(--primary-color);
+  background: var(--surface-hover);
+  color: var(--primary-color);
+  box-shadow: none;
+}
+.right { flex-shrink: 0; }
+
+@media (max-width: 768px) {
+  .breadcrumb { display: none; }
+  .left { flex: 0 0 auto; }
+  .right { margin-left: auto; }
+}
+
+@media (max-width: 480px) {
+  .navbar {
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-bottom: 8px;
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import {
   formatPhContactNumber,
   normalizePhContactNumber,
@@ -10,6 +10,8 @@ import styles from './Input.module.css';
 
 export default function Input({
   label,
+  id,
+  hint,
   type = 'text',
   name,
   value,
@@ -29,6 +31,9 @@ export default function Input({
   ...props
 }) {
   const [showPassword, setShowPassword] = useState(false);
+  const generatedId = useId();
+  const inputId = id || generatedId;
+  const describedBy = [props['aria-describedby'], hint && `${inputId}-hint`, error && `${inputId}-error`].filter(Boolean).join(' ') || undefined;
   const isPassword = type === 'password';
   const isContactMask = mask === 'ph-contact';
   const resolvedType = isContactMask && type === 'text' ? 'tel' : type;
@@ -74,7 +79,7 @@ export default function Input({
   return (
     <div className={groupClassName}>
       {label && (
-        <label htmlFor={name} className={labelClassName}>
+        <label htmlFor={inputId} className={labelClassName}>
           {label}
           {required && <span className={styles.required}>*</span>}
           {optional && <span className={optionalClassName}>(Optional)</span>}
@@ -83,7 +88,7 @@ export default function Input({
       <div className={styles.inputWrapper}>
         {icon && <span className={styles.inputIcon}>{icon}</span>}
         <input
-          id={name}
+          id={inputId}
           type={inputType}
           name={name}
           value={displayValue}
@@ -95,13 +100,18 @@ export default function Input({
           disabled={disabled}
           className={inputClassName}
           {...props}
+          aria-invalid={error ? true : props['aria-invalid']}
+          aria-describedby={describedBy}
+          style={{ ...props.style, ...(isPassword ? { paddingRight: '64px' } : {}) }}
         />
         {isPassword && (
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             className={styles.passwordToggle}
-            tabIndex={-1}
+            disabled={disabled}
+            aria-pressed={showPassword}
+            aria-controls={inputId}
             aria-label={showPassword ? 'Hide password' : 'Show password'}
           >
             {showPassword ? (
@@ -120,7 +130,8 @@ export default function Input({
           </button>
         )}
       </div>
-      {error && <span className={styles.errorMessage}>{error}</span>}
+      {hint && <span id={`${inputId}-hint`} className={styles.helperText}>{hint}</span>}
+      {error && <span id={`${inputId}-error`} className={styles.errorMessage}>{error}</span>}
     </div>
   );
 }

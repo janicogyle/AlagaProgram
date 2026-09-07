@@ -1,7 +1,10 @@
 .kpiCard {
-  border-radius: 16px;
-  padding: 28px 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--kpi-accent);
+  border-radius: 12px;
+  padding: 24px;
+  background: var(--card-bg);
+  box-shadow: var(--shadow-soft);
   min-width: 0;
   position: relative;
   overflow: hidden;
@@ -10,14 +13,16 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  color: white;
+  color: var(--foreground);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   text-decoration: none;
 }
 
 .kpiCard:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+  border-left-color: var(--kpi-accent);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
 }
 
 .clickable {
@@ -30,19 +35,115 @@
 }
 
 .kpiCard.blue {
-  background: #2563eb;
+  --kpi-accent: #2563eb;
 }
 
 .kpiCard.green {
-  background: #059669;
+  --kpi-accent: #059669;
 }
 
 .kpiCard.orange {
-  background: #d97706;
+  --kpi-accent: #d97706;
 }
 
 .kpiCard.purple {
-  background: #6d28d9;
+  --kpi-accent: #7c3aed;
+}
+
+.kpiCard.summary {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--kpi-border);
+  border-radius: 12px;
+  background: var(--kpi-background);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.summary.blue {
+  --kpi-border: #bfdbfe;
+  --kpi-background: #f8fbff;
+}
+
+.summary.green {
+  --kpi-border: #bbf7d0;
+  --kpi-background: #f7fef9;
+}
+
+.summary.orange {
+  --kpi-border: #fde68a;
+  --kpi-background: #fffbeb;
+}
+
+.summary.purple {
+  --kpi-border: #ddd6fe;
+  --kpi-background: #faf8ff;
+}
+
+.kpiCard.summary:hover {
+  border-color: var(--kpi-border);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.09);
+}
+
+.summary .kpiContent {
+  gap: 6px;
+  overflow: visible;
+}
+
+.summary .kpiValue {
+  margin: 0;
+  font-size: clamp(19px, 1.8vw, 26px);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.summaryTitle,
+.summaryLabel {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.summaryTitle {
+  font-weight: 600;
+}
+
+.summaryLabel {
+  font-weight: 500;
+}
+
+:global(html[data-theme='dark']) .summary {
+  --kpi-border: rgba(148, 163, 184, 0.28);
+  --kpi-background: var(--surface-bg);
+  box-shadow: 0 12px 28px rgba(3, 7, 18, 0.2);
+}
+
+:global(html[data-theme='dark']) .summary.blue {
+  --kpi-border: rgba(96, 165, 250, 0.5);
+  --kpi-background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), var(--surface-bg));
+}
+
+:global(html[data-theme='dark']) .summary.green {
+  --kpi-border: rgba(74, 222, 128, 0.5);
+  --kpi-background: linear-gradient(135deg, rgba(22, 163, 74, 0.18), var(--surface-bg));
+}
+
+:global(html[data-theme='dark']) .summary.orange {
+  --kpi-border: rgba(251, 191, 36, 0.55);
+  --kpi-background: linear-gradient(135deg, rgba(217, 119, 6, 0.2), var(--surface-bg));
+}
+
+:global(html[data-theme='dark']) .summary.purple {
+  --kpi-border: rgba(167, 139, 250, 0.52);
+  --kpi-background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), var(--surface-bg));
+}
+
+:global(html[data-theme='dark']) .summaryTitle,
+:global(html[data-theme='dark']) .summaryLabel {
+  color: #cbd5e1;
 }
 
 .kpiContent {
@@ -56,12 +157,12 @@
 .kpiIcon {
   width: 44px;
   height: 44px;
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 12px;
+  background: color-mix(in srgb, var(--kpi-accent) 12%, var(--surface-bg));
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--kpi-accent);
   flex-shrink: 0;
 }
 
@@ -73,7 +174,7 @@
 .kpiValue {
   font-size: 36px;
   font-weight: 700;
-  color: white;
+  color: var(--foreground);
   margin-bottom: 8px;
   line-height: 1.2;
 }
@@ -81,7 +182,7 @@
 .kpiLabel {
   font-size: 15px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-muted);
   line-height: 1.35;
   word-break: normal;
   overflow-wrap: normal;
@@ -232,6 +333,27 @@
     height: 19px;
   }
 
+  .summary {
+    min-height: 0;
+    padding: 12px;
+    gap: 4px;
+  }
+
+  .summary .kpiContent {
+    gap: 4px;
+  }
+
+  .summary .kpiValue {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.1;
+  }
+
+  .summaryTitle,
+  .summaryLabel {
+    font-size: 11px;
+  }
+
   .compact {
     min-height: 78px;
     padding: 14px 14px 14px 16px;
@@ -255,6 +377,11 @@
 }
 
 @media (max-width: 375px) {
+  .kpiCard.summary {
+    min-height: 0;
+    padding: 12px;
+  }
+
   .kpiCard,
   .compact {
     min-height: 72px;

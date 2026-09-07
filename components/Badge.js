@@ -39,7 +39,7 @@ export default function Badge({ children, variant }) {
   const colorVariant = variant || variants[displayText] || variants[children] || 'default';
 
   return (
-    <span className={`${styles.badge} ${styles[colorVariant]}`}>
+    <span className={`${styles.badge} ${styles[colorVariant]}`} data-ui="badge">
       {displayText}
     </span>
   );

@@ -15,7 +15,6 @@ import { resolveAssistanceAmount } from '@/lib/assistanceAmounts.mjs';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import {
   Card,
-  Select,
   Table,
   Badge,
   Button,
@@ -188,6 +187,7 @@ export default function RequestsPage() {
   const [sortBy, setSortBy] = useState('date_desc');
   const [registrationTypeFilter, setRegistrationTypeFilter] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [requests, setRequests] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 25, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
@@ -633,6 +633,13 @@ export default function RequestsPage() {
     registrationTypeFilter ||
     sectorFilter ||
     sortBy !== 'date_desc';
+  const activeFilterCount = [
+    typeFilter,
+    statusFilter,
+    registrationTypeFilter,
+    sectorFilter,
+    sortBy !== 'date_desc' ? sortBy : '',
+  ].filter(Boolean).length;
 
   const handleResetFilters = () => {
     setSearchTerm('');
@@ -1079,7 +1086,7 @@ export default function RequestsPage() {
         </div>
       </div>
 
-      <Card padding={false}>
+      <Card padding={false} className={styles.requestsCard}>
         <PageHeader
           title="Assistance Requests"
           subtitle="Review and process pending assistance requests"
@@ -1106,52 +1113,61 @@ export default function RequestsPage() {
             placeholder="Search by name or control number..."
             className={styles.searchInput}
           />
-          <div className={styles.filterSelects} role="group" aria-label="Filter requests">
-            <Select
-              name="sortBy"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              options={sortOptions}
-              placeholder="Sort By"
-              compact
-              className={styles.filterSelectSort}
-            />
-            <Select
-              name="registrationType"
-              value={registrationTypeFilter}
-              onChange={(e) => setRegistrationTypeFilter(e.target.value)}
-              options={registrationTypeOptions}
-              placeholder="Registration Type"
-              compact
-              className={styles.filterSelectRegistration}
-            />
-            <Select
-              name="sector"
-              value={sectorFilter}
-              onChange={(e) => setSectorFilter(e.target.value)}
-              options={sectorOptions}
-              placeholder="Sector"
-              compact
-              className={styles.filterSelectSector}
-            />
-            <Select
-              name="type"
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              options={typeOptions}
-              placeholder="All Types"
-              compact
-              className={styles.filterSelectType}
-            />
-            <Select
-              name="status"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              options={statusOptions}
-              placeholder="All Status"
-              compact
-              className={styles.filterSelectStatus}
-            />
+          <div className={styles.touchFilterToolbar}>
+            <button
+              type="button"
+              className={`${styles.touchFilterToggle} ${mobileFiltersOpen ? styles.touchFilterToggleOpen : ''}`}
+              aria-expanded={mobileFiltersOpen}
+              aria-controls="assistance-request-filters"
+              onClick={() => setMobileFiltersOpen((open) => !open)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M4 6h16M7 12h10M10 18h4" />
+              </svg>
+              Filters
+              {activeFilterCount > 0 ? <span className={styles.touchFilterCount}>{activeFilterCount}</span> : null}
+              <span className={styles.touchFilterChevron} aria-hidden="true">⌄</span>
+            </button>
+            {hasActiveFilters ? (
+              <button type="button" className={styles.touchClearFilters} onClick={handleResetFilters}>Clear</button>
+            ) : null}
+          </div>
+          <div
+            id="assistance-request-filters"
+            className={`${styles.filterSelects} ${mobileFiltersOpen ? styles.filterSelectsOpen : ''}`}
+            role="group"
+            aria-label="Filter requests"
+          >
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel} htmlFor="request-sort">Sort By</label>
+              <select id="request-sort" className={styles.select} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                {sortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </div>
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel} htmlFor="request-registration">Registration Type</label>
+              <select id="request-registration" className={styles.select} value={registrationTypeFilter} onChange={(e) => setRegistrationTypeFilter(e.target.value)}>
+                {registrationTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </div>
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel} htmlFor="request-sector">Sector</label>
+              <select id="request-sector" className={styles.select} value={sectorFilter} onChange={(e) => setSectorFilter(e.target.value)}>
+                {sectorOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </div>
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel} htmlFor="request-type">Assistance Type</label>
+              <select id="request-type" className={styles.select} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                {typeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </div>
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel} htmlFor="request-status">Status</label>
+              <select id="request-status" className={styles.select} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </div>
             <Button
               type="button"
               variant="secondary"
@@ -1169,7 +1185,7 @@ export default function RequestsPage() {
           {loading ? (
             <div className={styles.emptyCard}>Loading requests...</div>
           ) : (
-            <Table columns={columns} data={filteredRequests} />
+            <Table columns={columns} data={filteredRequests} fitToContainer />
           )}
         </div>
 
@@ -1184,6 +1200,7 @@ export default function RequestsPage() {
               <div key={request.id} className={styles.requestCard}>
                 <div className={styles.cardHeader}>
                   <div className={styles.cardHeaderLeft}>
+                    <span className={styles.cardMobileName}>{request.beneficiary}</span>
                     <span className={styles.cardControlNo}>{request.controlNo}</span>
                     {getStatusBadge(request.status)}
                   </div>
@@ -1197,6 +1214,7 @@ export default function RequestsPage() {
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                         <circle cx="12" cy="12" r="3" />
                       </svg>
+                      <span className={styles.cardMobileViewLabel}>View details</span>
                     </button>
                     {['Pending', 'Resubmitted'].includes(request.status) && (
                       <>

@@ -1,6 +1,10 @@
 .layout {
   display: flex;
+  height: 100vh;
+  height: 100dvh;
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
   background: var(--background);
 }
 
@@ -12,6 +16,8 @@
   background: var(--background);
   transition: margin-left 0.2s ease;
   height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   overflow: hidden;
   min-width: 0;
 }
@@ -22,16 +28,51 @@
 
 .pageContent {
   flex: 1;
+  min-height: 0;
   padding: 24px;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  touch-action: auto;
   min-width: 0;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--primary-color) 30%, transparent) transparent;
 }
 
 .pageContent::-webkit-scrollbar {
-  width: 0;
+  width: 6px;
   height: 0;
+}
+
+.pageContent::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary-color) 30%, transparent);
+}
+
+/* Admin tables use restrained inline status markers instead of repeated pills. */
+.pageContent :global(table [data-ui='badge']) {
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  line-height: 1.35;
+}
+
+.pageContent :global(table [data-ui='badge'])::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.82;
+}
+
+.pageContent :global(table [data-ui='badge'] svg) {
+  display: none;
 }
 
 .authLoading {
@@ -62,8 +103,10 @@
   width: min(360px, 100%);
   padding: 18px;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--card-bg);
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--primary-color) 7%, transparent), transparent 58%),
+    var(--card-bg);
   box-shadow: var(--shadow-strong);
   color: var(--foreground);
 }
@@ -137,7 +180,7 @@
 }
 
 /* Tablets and below - Mobile drawer behavior */
-@media (max-width: 900px) {
+@media (max-width: 900px), (max-width: 1200px) and (pointer: coarse) {
   .mainContent {
     margin-left: 0;
     width: 100%;
@@ -164,7 +207,7 @@
 /* Mobile */
 @media (max-width: 576px) {
   .pageContent {
-    padding: 14px 10px 22px;
+    padding: 14px 12px max(24px, env(safe-area-inset-bottom));
   }
 
   .authLoading {
@@ -185,3 +228,5 @@
     animation: none;
   }
 }
+
+

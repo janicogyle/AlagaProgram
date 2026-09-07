@@ -4,19 +4,42 @@
   flex-direction: column;
   gap: 2rem;
   width: 100%;
-  animation: pulse 1.5s infinite ease-in-out;
 }
 
-@keyframes pulse {
-  0% {
-    opacity: 0.6;
-  }
-  50% {
-    opacity: 0.3;
-  }
-  100% {
-    opacity: 0.6;
-  }
+.skeletonTitle,
+.skeletonSubtitle,
+.skeletonStatCard,
+.skeletonIcon,
+.skeletonStatTitle,
+.skeletonStatValue,
+.skeletonChartHeader,
+.skeletonListHeader,
+.skeletonChartBody,
+.skeletonListItem {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeletonTitle::after,
+.skeletonSubtitle::after,
+.skeletonStatCard::after,
+.skeletonIcon::after,
+.skeletonStatTitle::after,
+.skeletonStatValue::after,
+.skeletonChartHeader::after,
+.skeletonListHeader::after,
+.skeletonChartBody::after,
+.skeletonListItem::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary-color) 9%, var(--surface-bg)), transparent);
+  animation: skeletonShimmer 1.5s infinite;
+}
+
+@keyframes skeletonShimmer {
+  100% { transform: translateX(100%); }
 }
 
 .skeletonHeader {
@@ -28,14 +51,14 @@
 .skeletonTitle {
   width: 250px;
   height: 2rem;
-  background-color: #e2e8f0;
+  background-color: var(--border-color);
   border-radius: 6px;
 }
 
 .skeletonSubtitle {
   width: 350px;
   height: 1rem;
-  background-color: #e2e8f0;
+  background-color: var(--border-color);
   border-radius: 4px;
 }
 
@@ -46,9 +69,9 @@
 }
 
 .skeletonStatCard {
-  background-color: var(--surface-bg);
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--primary-color) 5%, var(--surface-bg)), var(--surface-bg));
+  border: 1px solid color-mix(in srgb, var(--primary-color) 12%, var(--border-color));
+  border-radius: 16px;
   padding: 1.5rem;
   display: flex;
   align-items: center;
@@ -60,7 +83,7 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background-color: #f1f5f9;
+  background-color: var(--surface-hover);
 }
 
 .skeletonStatContent {
@@ -73,14 +96,14 @@
 .skeletonStatTitle {
   width: 60%;
   height: 0.875rem;
-  background-color: #f1f5f9;
+  background-color: var(--surface-hover);
   border-radius: 4px;
 }
 
 .skeletonStatValue {
   width: 40%;
   height: 1.5rem;
-  background-color: #f1f5f9;
+  background-color: var(--surface-hover);
   border-radius: 4px;
 }
 
@@ -98,8 +121,8 @@
 
 .skeletonChart, .skeletonList {
   background-color: var(--surface-bg);
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
@@ -110,7 +133,7 @@
 .skeletonChartHeader, .skeletonListHeader {
   width: 30%;
   height: 1.25rem;
-  background-color: #f1f5f9;
+  background-color: var(--surface-hover);
   border-radius: 4px;
   margin-bottom: 1rem;
 }
@@ -127,4 +150,47 @@
   height: 3rem;
   background-color: var(--surface-muted);
   border-radius: 6px;
+}
+
+@media (max-width: 640px) {
+  .skeletonContainer {
+    padding: 0;
+    gap: 1rem;
+  }
+
+  .skeletonStatsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .skeletonStatCard {
+    padding: 1rem;
+    border-radius: 14px;
+  }
+
+  .skeletonIcon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .skeletonChart,
+  .skeletonList {
+    padding: 1rem;
+    border-radius: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonTitle::after,
+  .skeletonSubtitle::after,
+  .skeletonStatCard::after,
+  .skeletonIcon::after,
+  .skeletonStatTitle::after,
+  .skeletonStatValue::after,
+  .skeletonChartHeader::after,
+  .skeletonListHeader::after,
+  .skeletonChartBody::after,
+  .skeletonListItem::after {
+    animation: none;
+  }
 }

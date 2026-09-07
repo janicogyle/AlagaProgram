@@ -49,9 +49,9 @@ export function UnifiedLoginForm({
       ) : null}
       <>
         <div className={styles.inputGroup}>
-          <label htmlFor="username">{isBeneficiary ? 'Contact Number' : 'Username'}</label>
+          <label htmlFor="username">{isBeneficiary ? 'Contact Number' : 'Email address'}</label>
           <input
-            type={isBeneficiary ? 'tel' : 'text'}
+            type={isBeneficiary ? 'tel' : 'email'}
             id="username"
             value={displayedUsername}
             onChange={handleUsernameChange}
@@ -70,10 +70,11 @@ export function UnifiedLoginForm({
             <input
               type={showPassword ? 'text' : 'password'}
               id="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isSubmitting}
-              placeholder="your password"
+              placeholder="Enter your password"
               required
             />
             <button
@@ -104,7 +105,7 @@ export function UnifiedLoginForm({
       </>
       <button
         type="submit"
-        className={styles.loginButton}
+        className={`${styles.loginButton} ${role === 'admin' ? styles.adminLoginButton : ''}`}
         disabled={submitDisabled || isSubmitting}
         onPointerEnter={(event) => {
           const bounds = event.currentTarget.getBoundingClientRect();

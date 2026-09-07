@@ -5,14 +5,15 @@ export default function Table({
   data, 
   emptyMessage = 'No data available',
   fitToContainer = false,
+  label = 'Results',
 }) {
   return (
-    <div className={styles.tableWrapper}>
+    <div className={styles.tableWrapper} role="region" aria-label={label} tabIndex={0}>
       <table className={`${styles.table} ${fitToContainer ? styles.fitTable : ''}`}>
         <thead>
           <tr>
             {columns.map((column) => (
-              <th key={column.key} className={styles.th}>
+              <th key={column.key} scope="col" className={styles.th} data-column={column.key}>
                 {column.label}
               </th>
             ))}
@@ -29,7 +30,7 @@ export default function Table({
             data.map((row, rowIndex) => (
               <tr key={row.id || rowIndex} className={styles.tr}>
                 {columns.map((column) => (
-                  <td key={column.key} className={styles.td}>
+                  <td key={column.key} className={styles.td} data-column={column.key}>
                     {column.render ? column.render(row[column.key], row) : row[column.key]}
                   </td>
                 ))}

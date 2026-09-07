@@ -616,9 +616,9 @@ export default function UsersPage() {
       key: 'role',
       label: 'Role',
       render: (role, row) => (
-        <Badge variant={role === 'Admin' ? 'primary' : 'secondary'}>
+        <span className={`${styles.roleCell} ${role === 'Admin' ? styles.roleCellAdmin : ''}`}>
           {getRoleLabel(role, row.sector_access)}
-        </Badge>
+        </span>
       ),
     },
     {
@@ -658,8 +658,9 @@ export default function UsersPage() {
         <PageHeader
           title="System Users"
           subtitle="Manage user accounts and access permissions"
+          className={styles.usersHeader}
         >
-          <Button onClick={handleOpenModal}>
+          <Button size="small" className={styles.addUserButton} onClick={handleOpenModal}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
@@ -668,11 +669,13 @@ export default function UsersPage() {
           </Button>
         </PageHeader>
 
-        <FilterBar>
+        <FilterBar className={styles.usersFilters}>
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
-            placeholder="Search by name or email..."
+            placeholder="Search users..."
+            label="Search by name or email"
+            className={styles.userSearch}
           />
           <Select
             name="role"
@@ -680,6 +683,8 @@ export default function UsersPage() {
             onChange={(e) => setRoleFilter(e.target.value)}
             options={filterRoleOptions}
             placeholder="All Roles"
+            compact
+            className={styles.roleFilter}
           />
         </FilterBar>
 
@@ -710,15 +715,17 @@ export default function UsersPage() {
                 <div className={styles.cardRow}>
                   <span className={styles.cardLabel}>Role</span>
                   <span className={styles.cardValue}>
-                    <Badge variant={user.role === 'Admin' ? 'primary' : 'secondary'}>
-                      {getRoleLabel(user.role, user.sector_access)}
-                    </Badge>
+                    {getRoleLabel(user.role, user.sector_access)}
                   </span>
                 </div>
                 <div className={styles.cardRow}>
                   <span className={styles.cardLabel}>Status</span>
-                  <span className={styles.cardValue}>
-                    <Badge variant={user.status === 'Active' ? 'success' : 'danger'}>{user.status}</Badge>
+                  <span
+                    className={`${styles.cardValue} ${styles.cardStatus} ${
+                      user.status === 'Active' ? styles.cardStatusActive : styles.cardStatusInactive
+                    }`}
+                  >
+                    {user.status}
                   </span>
                 </div>
                 <div className={styles.cardRow}>
@@ -798,50 +805,50 @@ export default function UsersPage() {
               <div className={styles.detailsIdentity}>
                 <h4>{detailsState.user.full_name}</h4>
                 <p>{detailsState.user.email}</p>
+                <div className={styles.detailsIdentityMeta}>
+                  <span className={styles.detailsRole}>
+                    {getRoleLabel(detailsState.user.role, detailsState.user.sector_access)}
+                  </span>
+                  <span
+                    className={`${styles.detailsStatus} ${
+                      detailsState.user.status === 'Active' ? styles.detailsStatusActive : styles.detailsStatusInactive
+                    }`}
+                  >
+                    {detailsState.user.status}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div className={styles.detailsGrid}>
-              <div className={styles.detailItem}>
-                <span className={styles.detailLabel}>Username</span>
-                <span className={styles.detailValue}>{detailsState.user.full_name}</span>
+            <section className={styles.detailsSection}>
+              <h5>Account information</h5>
+              <div className={styles.detailsGrid}>
+                <div className={styles.detailItem}>
+                  <span className={styles.detailLabel}>Username</span>
+                  <span className={styles.detailValue}>{detailsState.user.full_name}</span>
+                </div>
+                <div className={styles.detailItem}>
+                  <span className={styles.detailLabel}>Email</span>
+                  <span className={styles.detailValue}>{detailsState.user.email}</span>
+                </div>
+                <div className={styles.detailItem}>
+                  <span className={styles.detailLabel}>Contact Number</span>
+                  <span className={styles.detailValue}>{detailsState.user.contact_number || 'Not provided'}</span>
+                </div>
+                <div className={styles.detailItem}>
+                  <span className={styles.detailLabel}>Last Login</span>
+                  <span className={styles.detailValue}>
+                    {detailsState.user.last_login ? new Date(detailsState.user.last_login).toLocaleString() : 'Never'}
+                  </span>
+                </div>
+                <div className={`${styles.detailItem} ${styles.detailItemWide}`}>
+                  <span className={styles.detailLabel}>Sector Access</span>
+                  <span className={styles.detailValue}>
+                    {formatSectorAccess(detailsState.user.sector_access, detailsState.user.role)}
+                  </span>
+                </div>
               </div>
-              <div className={styles.detailItem}>
-                <span className={styles.detailLabel}>Email</span>
-                <span className={styles.detailValue}>{detailsState.user.email}</span>
-              </div>
-              <div className={styles.detailItem}>
-                <span className={styles.detailLabel}>Contact Number</span>
-                <span className={styles.detailValue}>{detailsState.user.contact_number || 'Not provided'}</span>
-              </div>
-              <div className={styles.detailItem}>
-                <span className={styles.detailLabel}>Last Login</span>
-                <span className={styles.detailValue}>
-                  {detailsState.user.last_login ? new Date(detailsState.user.last_login).toLocaleString() : 'Never'}
-                </span>
-              </div>
-              <div className={styles.detailItem}>
-                <span className={styles.detailLabel}>Sector Access</span>
-                <span className={styles.detailValue}>
-                  {formatSectorAccess(detailsState.user.sector_access, detailsState.user.role)}
-                </span>
-              </div>
-            </div>
-
-            <div className={styles.detailsMeta}>
-              <div className={styles.metaPill}>
-                <span className={styles.detailLabel}>Role</span>
-                <Badge variant={detailsState.user.role === 'Admin' ? 'primary' : 'secondary'}>
-                  {getRoleLabel(detailsState.user.role, detailsState.user.sector_access)}
-                </Badge>
-              </div>
-              <div className={styles.metaPill}>
-                <span className={styles.detailLabel}>Status</span>
-                <Badge variant={detailsState.user.status === 'Active' ? 'success' : 'danger'}>
-                  {detailsState.user.status}
-                </Badge>
-              </div>
-            </div>
+            </section>
           </div>
         )}
       </Modal>

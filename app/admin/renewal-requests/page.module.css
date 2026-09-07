@@ -5,8 +5,16 @@
   min-width: 0;
 }
 
+.page .pageHeader {
+  padding: 2px 0 0;
+  border-bottom: 0;
+}
+
 .filterCard {
   overflow: hidden;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--primary-color) 3%, transparent), transparent 64px),
+    var(--card-bg);
 }
 
 .statusTabs {
@@ -24,7 +32,9 @@
 
 .statusTab {
   min-width: 0;
+  border: 0;
   border-radius: 9px;
+  color: var(--text-muted);
   box-shadow: none;
 }
 
@@ -33,9 +43,20 @@
   border-color: transparent;
 }
 
+.statusTab.statusTabActive {
+  background: var(--surface-bg);
+  color: var(--primary-color);
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.08), inset 0 0 0 1px color-mix(in srgb, var(--primary-color) 30%, transparent);
+}
+
+.statusTab.statusTabActive:hover {
+  background: var(--surface-hover);
+}
+
 .statusTab:focus-visible {
-  outline: 2px solid var(--primary-color);
-  outline-offset: 2px;
+  outline: none;
+  background: var(--surface-hover);
+  box-shadow: inset 0 -2px 0 var(--primary-color);
 }
 
 .setupNotice {
@@ -69,6 +90,7 @@
 
 .actionsCell button {
   flex: 1 1 96px;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.06);
 }
 
 .beneficiaryCell {
@@ -106,8 +128,144 @@
 }
 
 .tableShell > div {
-  border-radius: 14px;
+  border: 0;
+  border-radius: 0;
   overflow-x: hidden;
+}
+
+.resultsCard {
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--primary-color) 3%, transparent), transparent 60px),
+    var(--card-bg);
+}
+
+.resultMessage {
+  padding: 28px 24px;
+}
+
+.mobileList {
+  display: none;
+}
+
+.mobileEmpty {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 48px 20px;
+  text-align: center;
+}
+
+.mobileEmpty strong {
+  color: var(--foreground);
+  font-size: 14px;
+}
+
+.mobileEmpty span {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.requestItem {
+  position: relative;
+  margin: 12px;
+  padding: 16px 16px 16px 20px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 14%, var(--border-color));
+  border-radius: 14px;
+  background: var(--surface-bg);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.requestItem::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--primary-color), color-mix(in srgb, var(--primary-color) 42%, #22c55e));
+}
+
+.requestHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+}
+
+.requestStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.requestStatus::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+}
+
+.requestStatus[data-status='Approved'] {
+  color: #15803d;
+}
+
+.requestStatus[data-status='Incomplete'] {
+  color: #b91c1c;
+}
+
+.requestDetails {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 14px 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.requestDetails div {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  border-radius: 10px;
+  background: var(--surface-muted);
+}
+
+.requestDetails dt {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.requestDetails dd {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.requestActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.requestActions button {
+  width: 100%;
+  min-width: 0;
 }
 
 .tableShell table {
@@ -143,6 +301,17 @@
 .tableShell th:nth-child(6),
 .tableShell td:nth-child(6) {
   width: 23%;
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  border-left: 1px solid color-mix(in srgb, var(--primary-color) 10%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-color) 2.5%, var(--surface-bg));
+  box-shadow: -12px 0 24px -22px rgba(15, 23, 42, 0.8);
+}
+
+.tableShell th:nth-child(6) {
+  z-index: 12;
+  background: color-mix(in srgb, var(--primary-color) 5%, var(--surface-muted));
 }
 
 :global(html[data-theme='dark']) .documentLink:hover {
@@ -176,11 +345,18 @@
   min-height: 92px;
   resize: vertical;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 10px 12px;
   background: var(--surface-bg);
   color: var(--foreground);
   font: inherit;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.remarksInput:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .modalFooter {
@@ -196,9 +372,7 @@
   }
 
   .filterCard {
-    background:
-      linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 8%, transparent), transparent 64%),
-      var(--card-bg);
+    background: var(--card-bg);
   }
 
   .statusTabs {
@@ -264,18 +438,55 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .page {
+    gap: 14px;
+  }
+
+  .tableShell {
+    display: none;
+  }
+
+  .mobileList {
+    display: block;
+  }
+
   .statusTabs {
     width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 4px;
   }
 
   .statusTab {
     min-width: 0;
+    min-height: 44px;
+    padding-inline: 6px;
+    font-size: 12px;
   }
 
   .modalFooter,
   .modalFooter button {
     width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .requestItem {
+    margin: 10px;
+    padding: 15px 13px 15px 17px;
+  }
+
+  .requestDetails {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 14px;
+  }
+
+  .requestDetails div:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .statusTab {
+    padding-inline: 3px;
+    font-size: 11px;
   }
 }

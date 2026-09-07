@@ -2,7 +2,7 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 20px 24px;
+  padding: 22px 24px;
   border-bottom: 1px solid var(--border-color);
   gap: 16px;
 }
@@ -13,7 +13,7 @@
 }
 
 .title {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--foreground);
   margin: 0;
@@ -40,7 +40,7 @@
 /* ======================= */
 @media (max-width: 1200px) {
   .title {
-    font-size: 24px;
+    font-size: 23px;
   }
 }
 
@@ -68,12 +68,12 @@
   .pageHeader {
     flex-direction: column;
     align-items: stretch;
-    padding: 14px 16px;
-    gap: 12px;
+    padding: 18px 16px;
+    gap: 14px;
   }
 
   .title {
-    font-size: 22px;
+    font-size: 21px;
   }
 
   .actions {
@@ -81,16 +81,20 @@
     flex-wrap: wrap;
     gap: 8px;
   }
+
+  .actions > * {
+    flex: 1 1 160px;
+  }
 }
 
 @media (max-width: 576px) {
   .pageHeader {
-    padding: 12px 14px;
-    gap: 10px;
+    padding: 16px 14px;
+    gap: 12px;
   }
 
   .title {
-    font-size: 22px;
+    font-size: 20px;
     letter-spacing: -0.01em;
   }
 
@@ -103,3 +107,6 @@
     gap: 6px;
   }
 }
+
+.subtitle { max-width: 70ch; }
+.actions { flex-wrap: wrap; }

@@ -99,7 +99,6 @@ const STEPS = [
   { number: 6, label: 'Review & Submit' },
 ];
 const TOTAL_STEPS = STEPS.length;
-const ESTIMATED_TOTAL_MINUTES = 8;
 const MINOR_PWD_REPRESENTATIVE_ERROR =
   'Beneficiaries below 18 years old must provide a guardian or representative before registration can be completed.';
 const OCR_ID_REQUIRED_ERROR = 'Please upload and confirm a supported ID before continuing.';
@@ -119,7 +118,7 @@ const sectorCardDetails = {
   pwd: {
     title: 'Person with Disability (PWD)',
     description: 'For residents registering with a disability classification or guardian support.',
-    mark: 'PW',
+    mark: 'PWD',
   },
   solo_parent: {
     title: 'Solo Parent',
@@ -127,22 +126,6 @@ const sectorCardDetails = {
     mark: 'SP',
   },
 };
-
-const philippinesDateFormatter = new Intl.DateTimeFormat('en-PH', {
-  timeZone: 'Asia/Manila',
-  weekday: 'long',
-  month: 'long',
-  day: 'numeric',
-  year: 'numeric',
-});
-
-const philippinesTimeFormatter = new Intl.DateTimeFormat('en-PH', {
-  timeZone: 'Asia/Manila',
-  hour: 'numeric',
-  minute: '2-digit',
-  second: '2-digit',
-  hour12: true,
-});
 
 const validIdExamples = [
   {
@@ -312,13 +295,13 @@ function FaceRecognitionCapture({ onCapture, onRetake, disabled = false, status,
 export default function BeneficiarySignupPage() {
   const router = useRouter();
   const stepContainerRef = useRef(null);
+  const statusRef = useRef(null);
   const identityUploadRef = useRef('');
   const selfieSectionRef = useRef(null);
 
   // Multi-step state
   const [currentStep, setCurrentStep] = useState(1);
   const [slideDirection, setSlideDirection] = useState('next');
-  const [currentPhilippinesTime, setCurrentPhilippinesTime] = useState(null);
 
   // Form state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -388,16 +371,6 @@ export default function BeneficiarySignupPage() {
     barangay: 'Sta. Rita',
     city: 'Olongapo City',
   });
-
-  useEffect(() => {
-    const updateTime = () => setCurrentPhilippinesTime(new Date());
-    updateTime();
-    const tickTimer = window.setInterval(updateTime, 1000);
-
-    return () => {
-      window.clearInterval(tickTimer);
-    };
-  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -519,15 +492,7 @@ export default function BeneficiarySignupPage() {
   const hasVerifiedIdentityImage = validIdFrontFiles.length > 0 && validIdBackFiles.length > 0
     && ocrConfirmed && !!ocrVerification?.token;
   const progressPercent = Math.round(((currentStep - 1) / (TOTAL_STEPS - 1)) * 100);
-  const remainingSteps = Math.max(0, TOTAL_STEPS - currentStep);
-  const estimatedRemainingMinutes = Math.max(1, Math.ceil((remainingSteps / TOTAL_STEPS) * ESTIMATED_TOTAL_MINUTES));
   const currentStepLabel = STEPS[currentStep - 1]?.label || 'Registration';
-  const currentPhilippinesDateLabel = currentPhilippinesTime
-    ? philippinesDateFormatter.format(currentPhilippinesTime)
-    : 'Fetching Philippine Standard Time';
-  const currentPhilippinesTimeLabel = currentPhilippinesTime
-    ? philippinesTimeFormatter.format(currentPhilippinesTime)
-    : 'Syncing...';
 
   const resetOtpState = () => {
     setOtpCode('');
@@ -1700,7 +1665,6 @@ export default function BeneficiarySignupPage() {
     <div className={styles.progressBarWrapper}>
       <div className={styles.progressSummaryLine}>
         <span>Step {currentStep} of {TOTAL_STEPS}</span>
-        <strong>{progressPercent}% complete</strong>
       </div>
       <div className={styles.progressTrack} aria-hidden="true">
         <span style={{ width: `${progressPercent}%` }} />
@@ -2583,44 +2547,6 @@ export default function BeneficiarySignupPage() {
     );
   };
 
-  const renderSummaryPanel = () => (
-    <aside className={styles.summaryCard} aria-label="Registration summary">
-      <p className={styles.summaryKicker}>Registration summary</p>
-      <h2 className={styles.summaryTitle}>{currentStepLabel}</h2>
-      <div className={styles.summaryProgressRing} style={{ '--summary-progress': `${progressPercent}%` }}>
-        <span>{progressPercent}%</span>
-      </div>
-      <div className={styles.summaryStats}>
-        <div>
-          <span>Current step</span>
-          <strong>{currentStep} of {TOTAL_STEPS}</strong>
-        </div>
-        <div>
-          <span>Remaining steps</span>
-          <strong>{remainingSteps}</strong>
-        </div>
-      </div>
-      <ol className={styles.summarySteps}>
-        {STEPS.map((step) => (
-          <li
-            key={step.number}
-            className={`${step.number < currentStep ? styles.summaryStepDone : ''} ${
-              step.number === currentStep ? styles.summaryStepActive : ''
-            }`}
-          >
-            <span>{step.number < currentStep ? <CheckIcon /> : step.number}</span>
-            {step.label}
-          </li>
-        ))}
-      </ol>
-      <div className={styles.summaryClock} aria-live="polite">
-        <span className={styles.summaryClockLabel}>Philippine Standard Time</span>
-        <span>{currentPhilippinesDateLabel}</span>
-        <strong>{currentPhilippinesTimeLabel}</strong>
-      </div>
-    </aside>
-  );
-
   const renderCurrentStep = () => {
     switch (currentStep) {
       case 1: return renderStep1();
@@ -2638,6 +2564,10 @@ export default function BeneficiarySignupPage() {
   // ===========================
 
   const continueDisabled = currentStep < TOTAL_STEPS && !canContinueCurrentStep();
+
+  useEffect(() => {
+    if (status?.type === 'error') statusRef.current?.focus();
+  }, [status]);
 
   return (
     <div className={styles.signupShell}>
@@ -2685,6 +2615,8 @@ export default function BeneficiarySignupPage() {
             {status && (
               <div
                 role="alert"
+                ref={statusRef}
+                tabIndex={-1}
                 className={`${styles.statusBanner} ${
                   status.type === 'success' ? styles.statusBannerSuccess : styles.statusBannerError
                 }`}
@@ -2710,33 +2642,34 @@ export default function BeneficiarySignupPage() {
           {/* Navigation */}
           <div className={styles.navRow}>
             {currentStep === 1 ? (
-              <Button type="button" variant="outline" onClick={handleCancel}>
+              <Button type="button" variant="outline" className={styles.signupBackButton} onClick={handleCancel}>
                 Back
               </Button>
             ) : (
-              <Button type="button" variant="outline" onClick={goPrev}>
+              <Button type="button" variant="outline" className={styles.signupBackButton} onClick={goPrev}>
                 Back
               </Button>
             )}
             <div className={styles.navSpacer} />
             {currentStep < TOTAL_STEPS ? (
-              <Button type="button" onClick={goNext} disabled={continueDisabled}>
+              <Button type="button" className={styles.signupPrimaryButton} onClick={goNext} aria-describedby={continueDisabled ? 'signup-required-hint' : undefined}>
                 Continue
               </Button>
             ) : (
               <Button
                 type="submit"
+                className={styles.signupPrimaryButton}
                 disabled={isSubmitting || !hasAgreed || !isSelectedVerificationComplete}
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Registration'}
               </Button>
             )}
           </div>
+          {continueDisabled && <p id="signup-required-hint" className={styles.continueHint}>Complete the required fields and verification for this step. Select Continue to check what is missing.</p>}
             </form>
           </Card>
         </main>
 
-        {renderSummaryPanel()}
       </div>
 
       <p className={styles.secondaryLinks}>

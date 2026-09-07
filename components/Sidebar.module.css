@@ -265,7 +265,6 @@
   border-color: rgba(191, 219, 254, 0.34);
   color: #f8fafc;
   box-shadow:
-    inset 3px 0 0 #93c5fd,
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
     0 12px 26px rgba(3, 7, 18, 0.18);
 }
@@ -473,7 +472,7 @@
 }
 
 /* Tablets and below - Mobile drawer behavior */
-@media (max-width: 900px) {
+@media (max-width: 900px), (max-width: 1200px) and (pointer: coarse) {
   .sidebar {
     position: fixed;
     left: 10px;

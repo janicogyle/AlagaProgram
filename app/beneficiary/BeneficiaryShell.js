@@ -61,6 +61,7 @@ export default function BeneficiaryShell({ children }) {
     return () => {
       document.documentElement.classList.remove('appShellActive');
       document.body.classList.remove('appShellActive');
+      document.documentElement.removeAttribute('data-theme');
     };
   }, []);
 
@@ -96,7 +97,8 @@ export default function BeneficiaryShell({ children }) {
 
   useEffect(() => {
     const checkMobile = () => {
-      const mobile = window.innerWidth <= 900;
+      const mobile = window.innerWidth <= 900 ||
+        (window.innerWidth <= 1200 && window.matchMedia('(pointer: coarse)').matches);
       setIsMobile(mobile);
       if (mobile) {
         setSidebarOpen(false);
@@ -141,6 +143,7 @@ export default function BeneficiaryShell({ children }) {
 
   return (
     <div className={styles.layout}>
+      <a className="skipLink" href="#main-content">Skip to main content</a>
       <WelcomeToast />
       {loggingOut && <LogoutOverlay />}
       {isMobile && (
@@ -154,6 +157,8 @@ export default function BeneficiaryShell({ children }) {
         user={beneficiaryUser}
         onLogout={handleLogout}
         minimized={!sidebarOpen}
+        isMobile={isMobile}
+        onNavigate={() => { if (isMobile) setSidebarOpen(false); }}
         menuItems={resolvedMenuItems}
         hideBranding
         customTitle="Beneficiary Portal"
@@ -164,12 +169,13 @@ export default function BeneficiaryShell({ children }) {
         className={`${styles.mainContent} ${!sidebarOpen ? styles.sidebarMinimized : ''}`}
       >
         <Navbar
+          sidebarOpen={sidebarOpen}
           onMenuClick={() => setSidebarOpen((open) => !open)}
           activityRole="Beneficiary"
           theme={theme}
           onThemeToggle={() => setTheme((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'))}
         />
-        <main className={styles.pageContent}>{children}</main>
+        <main id="main-content" tabIndex={-1} className={styles.pageContent}>{children}</main>
       </div>
     </div>
   );

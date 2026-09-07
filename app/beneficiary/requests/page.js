@@ -1555,6 +1555,14 @@ export default function BeneficiaryRequestPage() {
                 onClick={() => handleStepClick(step.number)}
                 disabled={step.number > currentStep}
                 aria-current={step.number === currentStep ? 'step' : undefined}
+                aria-label={`Step ${step.number}: ${step.label}${
+                  step.number === currentStep
+                    ? ', current step'
+                    : step.number < currentStep
+                      ? ', completed, tap to review'
+                      : ', locked'
+                }`}
+                title={step.number < currentStep ? `Return to ${step.label}` : step.label}
               >
                 <span
                   className={`${styles.progressCircle} ${
@@ -1575,7 +1583,11 @@ export default function BeneficiaryRequestPage() {
           ))}
         </div>
       </div>
-      <p className={styles.stepIndicator}>Step {currentStep} of {TOTAL_STEPS}</p>
+      <p className={styles.mobileProgressHint}>
+        {currentStep > 1
+          ? 'Tap any completed step to review your answers.'
+          : 'Complete this step to unlock the next one.'}
+      </p>
     </div>
   );
 

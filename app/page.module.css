@@ -3430,14 +3430,96 @@
 @media (max-width: 576px) {
   .heroContainer {
     padding: 42px 16px 52px;
+    gap: 24px;
+  }
+
+  .heroTitle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .heroVisual {
+    order: -1;
+    width: 100%;
   }
 
   .heroDescription {
     font-size: 0.95rem;
   }
 
+  .heroActions {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .heroBtn,
+  .heroBtnOutline {
+    width: auto;
+    min-width: 0;
+    min-height: 56px;
+    padding: 0 16px;
+    border-radius: 999px;
+    font-size: clamp(13px, 3.8vw, 16px);
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  .heroBtn {
+    flex: 1.35 1 0;
+  }
+
+  .heroBtnOutline {
+    flex: 1 1 0;
+  }
+
   .heroIllustration {
-    max-width: 280px;
+    width: 100%;
+    max-width: 520px;
+  }
+
+  .illustrationCard {
+    padding: 24px;
+  }
+
+  .illustrationHeader {
+    align-items: center;
+    gap: 14px;
+  }
+
+  .illustrationLogo {
+    width: 72px;
+    height: 72px;
+    flex: 0 0 72px;
+    background: #ffffff;
+  }
+
+  .illustrationLogo img {
+    object-fit: contain;
+  }
+
+  .illustrationTitle {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .illustrationTitle span {
+    font-size: 20px;
+    line-height: 1.2;
+  }
+
+  .illustrationTitle small {
+    margin-top: 4px;
+    font-size: 13px;
+    line-height: 1.35;
   }
 
   .contact {
