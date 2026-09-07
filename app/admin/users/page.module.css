@@ -294,15 +294,34 @@
   position: sticky;
   right: 0;
   z-index: 2;
-  width: 76px;
+  width: 104px;
+  min-width: 104px;
   border-left: 1px solid color-mix(in srgb, var(--primary-color) 10%, var(--border-color));
-  background: color-mix(in srgb, var(--primary-color) 2.5%, var(--surface-bg));
-  box-shadow: -12px 0 24px -22px rgba(15, 23, 42, 0.8);
+  background: var(--surface-bg);
+  box-shadow: -12px 0 24px -14px rgba(15, 23, 42, 0.32);
 }
 
 .tableView th:last-child {
   z-index: 12;
-  background: color-mix(in srgb, var(--primary-color) 5%, var(--surface-muted));
+  white-space: nowrap;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.tableView tbody tr:hover td:last-child {
+  background: #f5f9ff;
+}
+
+:global(html[data-theme='dark']) .tableView th:last-child {
+  background: linear-gradient(180deg, #1e293b 0%, #172033 100%);
+}
+
+:global(html[data-theme='dark']) .tableView td:last-child {
+  background: var(--surface-bg);
+  box-shadow: -12px 0 24px -14px rgba(0, 0, 0, 0.7);
+}
+
+:global(html[data-theme='dark']) .tableView tbody tr:hover td:last-child {
+  background: #17233a;
 }
 
 .mobileCardView {
