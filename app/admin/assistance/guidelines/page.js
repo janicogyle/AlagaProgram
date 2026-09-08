@@ -478,7 +478,7 @@ export default function GuidelinesPage() {
               <div className={styles.stepNumber}>1</div>
               <h3 className={styles.stepTitle}>Registration</h3>
               <p className={styles.stepDescription}>
-                New residents must be registered in the system. Go to the{' '}
+                New residents must be registered in the system. Go to the
                 <Link href="/admin/registration" className={styles.link}>
                   Registration Page
                 </Link>.
