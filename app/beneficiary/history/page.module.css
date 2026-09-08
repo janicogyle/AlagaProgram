@@ -396,10 +396,15 @@
     gap: 4px;
   }
 
-  .modalFooterActions,
+  .modalFooterActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
   .modalFooterActions a,
   .modalFooterActions button {
-    width: 100%;
+    width: auto;
+    min-width: 104px;
   }
 }
 

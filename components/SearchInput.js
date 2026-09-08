@@ -9,6 +9,9 @@ export default function SearchInput({
   placeholder = 'Search...', 
   className = '',
   label,
+  name = 'site-search',
+  autoComplete = 'off',
+  disabled = false,
 }) {
   const inputRef = useRef(null);
   return (
@@ -29,6 +32,9 @@ export default function SearchInput({
       <input
         ref={inputRef}
         type="search"
+        name={name}
+        autoComplete={autoComplete}
+        disabled={disabled}
         aria-label={label || placeholder}
         placeholder={placeholder}
         value={value}

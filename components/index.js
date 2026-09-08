@@ -7,6 +7,7 @@ export { default as Badge } from './Badge';
 export { default as Table } from './Table';
 export { default as StatCard } from './StatCard';
 export { default as Navbar } from './Navbar';
+export { default as MobileBottomNavigation } from './MobileBottomNavigation';
 export { default as Sidebar } from './Sidebar';
 export { default as FileUpload } from './FileUpload';
 

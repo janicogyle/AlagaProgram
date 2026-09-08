@@ -422,6 +422,27 @@
   color: var(--text-muted);
 }
 
+/* Match the restrained dot-style status markers used in admin tables. */
+.profileStatus :global([data-ui='badge']) {
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  line-height: 1.35;
+}
+
+.profileStatus :global([data-ui='badge'])::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.82;
+}
+
 .infoSections {
   display: flex;
   flex-direction: column;
@@ -888,7 +909,20 @@
   }
 
   .modalFooter {
-    justify-content: stretch;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    width: 100%;
+    gap: 8px;
+  }
+
+  .modalFooter button {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px;
+    white-space: normal;
+    line-height: 1.2;
   }
 
   .detailRow {
@@ -932,19 +966,20 @@
 
   .actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
   }
 
   .actions button {
-    width: auto;
+    width: 100%;
+    min-width: 0;
     min-height: 40px;
-    padding: 8px 12px;
+    padding: 8px;
     border-radius: 8px;
     font-size: 13px;
   }
 
   .actions button:nth-child(3) {
-    grid-column: 1 / -1;
+    grid-column: auto;
   }
 }

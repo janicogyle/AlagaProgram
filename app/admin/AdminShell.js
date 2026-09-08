@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import WelcomeToast from '@/components/WelcomeToast';
+import MobileBottomNavigation from '@/components/MobileBottomNavigation';
 import styles from './layout.module.css';
 import { supabase } from '@/lib/supabaseClient';
 import { isAdminRole, isPortalRole } from '@/lib/userRoles';
@@ -137,7 +138,7 @@ export default function AdminShell({ children, initialUser }) {
     const checkMobile = () => {
       const mobile =
         window.innerWidth <= 900 ||
-        (window.innerWidth <= 1200 && window.matchMedia('(pointer: coarse)').matches);
+        (window.innerWidth <= 1366 && window.matchMedia('(pointer: coarse)').matches);
       setIsMobile(mobile);
       if (mobile) {
         setSidebarOpen(false);
@@ -219,9 +220,20 @@ export default function AdminShell({ children, initialUser }) {
           activityRole={user.role}
           theme={theme}
           onThemeToggle={() => setTheme((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'))}
+          hideMenuToggle={isMobile}
+          hideActions={isMobile}
         />
         <main id="main-content" tabIndex={-1} className={styles.pageContent}>{children}</main>
       </div>
+      {isMobile && (
+        <MobileBottomNavigation
+          user={user}
+          onLogout={handleLogout}
+          activityRole={user.role}
+          theme={theme}
+          onThemeToggle={() => setTheme((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'))}
+        />
+      )}
     </div>
   );
 }

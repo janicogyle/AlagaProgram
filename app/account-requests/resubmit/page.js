@@ -682,6 +682,7 @@ function ResubmitAccountRequestPageContent() {
                         onChange={handleSectorSelectChange}
                         options={getSecondarySectorOptions(form.primarySector)}
                         placeholder="No secondary sector"
+                        allowEmptyOption
                       />
                     </div>
                   </section>

@@ -180,7 +180,7 @@
 }
 
 /* Tablets and below - Mobile drawer behavior */
-@media (max-width: 900px), (max-width: 1200px) and (pointer: coarse) {
+@media (max-width: 900px), (max-width: 1366px) and (pointer: coarse) {
   .mainContent {
     margin-left: 0;
     width: 100%;
@@ -191,7 +191,7 @@
   }
 
   .pageContent {
-    padding: 18px 16px 24px;
+    padding: 18px 16px calc(108px + env(safe-area-inset-bottom));
   }
 
   .overlay {
@@ -207,7 +207,7 @@
 /* Mobile */
 @media (max-width: 576px) {
   .pageContent {
-    padding: 14px 12px max(24px, env(safe-area-inset-bottom));
+    padding: 14px 12px calc(104px + env(safe-area-inset-bottom));
   }
 
   .authLoading {

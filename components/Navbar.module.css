@@ -427,6 +427,10 @@
 .right { flex-shrink: 0; }
 
 @media (max-width: 768px) {
+  .mobileNavigationOnly {
+    display: none;
+  }
+
   .breadcrumb { display: none; }
   .left { flex: 0 0 auto; }
   .right { margin-left: auto; }

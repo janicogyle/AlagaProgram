@@ -986,7 +986,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 16px;
-  padding: 0 16px 16px;
+  padding: 16px;
 }
 
 @media (min-width: 769px) {
@@ -1239,7 +1239,7 @@
   .mobileCardView {
     grid-template-columns: 1fr;
     gap: 10px;
-    padding: 0 12px 12px;
+    padding: 12px;
   }
 
   .requestCard {
@@ -1435,9 +1435,11 @@
   }
 
   .touchFilterChevron {
+    display: block;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
     margin-left: auto;
-    font-size: 17px;
-    line-height: 1;
     transition: transform 0.2s ease;
   }
 
@@ -1728,12 +1730,15 @@
   }
 
   .modalFooter {
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 8px;
   }
 
   .modalFooter button {
-    width: 100%;
+    width: auto;
+    min-width: 104px;
   }
 
   .remarksInput {
@@ -1769,5 +1774,50 @@
   .detailLabel,
   .detailValue {
     font-size: 12px;
+  }
+}
+
+/* Match the Beneficiaries toolbar layout on touch tablets. */
+@media (min-width: 577px) and (max-width: 1200px) and (pointer: coarse) {
+  .filters {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .searchInput {
+    flex: 1 1 360px;
+    width: auto;
+    max-width: 500px;
+  }
+
+  .touchFilterToolbar {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .touchFilterToggle {
+    flex: 0 0 auto;
+  }
+
+  .filterSelects {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px 10px;
+  }
+
+  .filterGroup {
+    gap: 4px;
+  }
+
+  .select {
+    min-height: 40px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+}
+
+@media (min-width: 577px) and (max-width: 720px) and (pointer: coarse) {
+  .filterSelects {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
