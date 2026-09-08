@@ -39,6 +39,8 @@ const sectorAccessOptions = [
   { value: 'solo_parent', label: 'Solo Parent' },
 ];
 
+const ACCOUNT_ACTION_MIN_AGE_MS = 24 * 60 * 60 * 1000;
+
 const normalizeSectorAccess = (value) => {
   if (!Array.isArray(value)) return [];
   return value.filter((item) => sectorAccessOptions.some((option) => option.value === item));
@@ -58,6 +60,7 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [users, setUsers] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     fullName: '',
@@ -76,6 +79,10 @@ export default function UsersPage() {
     title: '',
     message: '',
     confirmLabel: 'Confirm',
+    confirmVariant: 'primary',
+    requiresPassword: false,
+    adminPassword: '',
+    error: '',
     busy: false,
     onConfirm: null,
   });
@@ -120,7 +127,15 @@ export default function UsersPage() {
   };
 
   const closeConfirm = () => {
-    setConfirmState((prev) => ({ ...prev, open: false, busy: false, onConfirm: null }));
+    setConfirmState((prev) => ({
+      ...prev,
+      open: false,
+      requiresPassword: false,
+      adminPassword: '',
+      error: '',
+      busy: false,
+      onConfirm: null,
+    }));
   };
 
   const getAuthHeaders = async () => {
@@ -161,6 +176,7 @@ export default function UsersPage() {
       }
 
       setUsers(result.data || []);
+      setCurrentUserId(result.currentUserId || null);
     } catch (error) {
       console.error('Failed to fetch users:', error);
       setUsers([]);
@@ -179,6 +195,18 @@ export default function UsersPage() {
     const matchesRole = !roleFilter || getRoleLabel(user.role, user.sector_access) === roleFilter;
     return matchesSearch && matchesRole;
   });
+  const activeAdminCount = users.filter(
+    (user) => user.role === 'Admin' && user.status === 'Active',
+  ).length;
+
+  const endCurrentAdminSession = async () => {
+    await fetch('/api/admin/session', { method: 'DELETE' }).catch(() => {});
+    await supabase?.auth.signOut().catch(() => {});
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('adminUser');
+      window.location.replace('/admin-login');
+    }
+  };
 
   const handleFieldChange = (e) => {
     const { name, value } = e.target;
@@ -526,15 +554,22 @@ export default function UsersPage() {
       title: `${action} user`,
       message: `Are you sure you want to ${action.toLowerCase()} ${user.full_name}?`,
       confirmLabel: action,
+      confirmVariant: newStatus === 'Inactive' ? 'danger' : 'success',
+      requiresPassword: newStatus === 'Inactive',
+      adminPassword: '',
+      error: '',
       busy: false,
-      onConfirm: async () => {
+      onConfirm: async (adminPassword) => {
         setConfirmState((prev) => ({ ...prev, busy: true }));
         try {
           const authHeaders = await getAuthHeaders();
           const response = await fetch(`/api/users/${user.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', ...authHeaders },
-            body: JSON.stringify({ status: newStatus }),
+            body: JSON.stringify({
+              status: newStatus,
+              ...(newStatus === 'Inactive' ? { adminPassword } : {}),
+            }),
           });
 
           const result = await response.json();
@@ -543,32 +578,113 @@ export default function UsersPage() {
             throw new Error(result.error || 'Failed to update status');
           }
 
+          if (user.id === currentUserId && newStatus === 'Inactive') {
+            await endCurrentAdminSession();
+            return;
+          }
+
           closeConfirm();
           openAlert({ title: 'Success', message: `User ${action.toLowerCase()}d successfully!` });
+          setSearchTerm('');
           fetchUsers();
         } catch (error) {
-          closeConfirm();
-          openAlert({
-            title: 'Update failed',
-            message: error.message || 'Unknown error',
-          });
+          setConfirmState((prev) => ({
+            ...prev,
+            busy: false,
+            error: error.message || 'Unable to verify your password.',
+          }));
           console.error('Toggle status error:', error);
         }
       },
     });
   };
 
-  const getUserActions = (user) => [
-    { label: 'View Details', onClick: () => openDetails(user) },
-    { label: 'Edit', onClick: () => openEdit(user) },
-    { label: 'Reset Password', onClick: () => openResetPassword(user) },
-    { type: 'divider' },
-    {
-      label: user.status === 'Active' ? 'Deactivate' : 'Activate',
-      onClick: () => confirmToggleStatus(user),
-      variant: user.status === 'Active' ? 'danger' : 'success',
-    },
-  ];
+  const confirmRemoveUser = (user) => {
+    setConfirmState({
+      open: true,
+      title: 'Remove user',
+      message: `Permanently remove ${user.full_name} (${user.email}) from the system? This deletes their account and cannot be undone.`,
+      confirmLabel: 'Remove User',
+      confirmVariant: 'danger',
+      requiresPassword: true,
+      adminPassword: '',
+      error: '',
+      busy: false,
+      onConfirm: async (adminPassword) => {
+        setConfirmState((prev) => ({ ...prev, busy: true }));
+        try {
+          const authHeaders = await getAuthHeaders();
+          const response = await fetch(`/api/users/${user.id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json', ...authHeaders },
+            body: JSON.stringify({ adminPassword }),
+          });
+          const result = await response.json();
+
+          if (!response.ok || result.error) {
+            throw new Error(result.error || 'Failed to remove user');
+          }
+
+          if (user.id === currentUserId) {
+            await endCurrentAdminSession();
+            return;
+          }
+
+          setUsers((currentUsers) => currentUsers.filter((item) => item.id !== user.id));
+          setSearchTerm('');
+          closeConfirm();
+          openAlert({ title: 'User removed', message: `${user.full_name} was permanently removed.` });
+        } catch (error) {
+          setConfirmState((prev) => ({
+            ...prev,
+            busy: false,
+            error: error.message || 'Unable to verify your password.',
+          }));
+          console.error('Remove user error:', error);
+        }
+      },
+    });
+  };
+
+  const getUserActions = (user) => {
+    const actions = [
+      { label: 'View Details', onClick: () => openDetails(user) },
+      { label: 'Edit', onClick: () => openEdit(user) },
+      { label: 'Reset Password', onClick: () => openResetPassword(user) },
+    ];
+    const isLastActiveAdmin =
+      user.role === 'Admin' && user.status === 'Active' && activeAdminCount <= 1;
+    const createdAtMs = Date.parse(user.created_at);
+    const isNewAccount =
+      !Number.isFinite(createdAtMs) || Date.now() - createdAtMs < ACCOUNT_ACTION_MIN_AGE_MS;
+    const lastAdminReason = isLastActiveAdmin
+      ? 'At least one active administrator must remain.'
+      : undefined;
+    const accountAgeReason = isNewAccount
+      ? Number.isFinite(createdAtMs)
+        ? `This action becomes available after ${new Date(createdAtMs + ACCOUNT_ACTION_MIN_AGE_MS).toLocaleString()}.`
+        : 'The account creation date could not be verified.'
+      : undefined;
+    const deactivateDisabled = user.status === 'Active' && (isLastActiveAdmin || isNewAccount);
+    const accountActions = [
+      {
+        label: user.status === 'Active' ? 'Deactivate' : 'Activate',
+        onClick: () => confirmToggleStatus(user),
+        variant: user.status === 'Active' ? 'danger' : 'success',
+        disabled: deactivateDisabled,
+        title: deactivateDisabled ? lastAdminReason || accountAgeReason : undefined,
+      },
+      {
+        label: 'Remove User',
+        onClick: () => confirmRemoveUser(user),
+        variant: 'danger',
+        disabled: isLastActiveAdmin || isNewAccount,
+        title: lastAdminReason || accountAgeReason,
+      },
+    ];
+
+    return [...actions, { type: 'divider' }, ...accountActions];
+  };
 
   const canSubmitResetPassword =
     resetPwState.password.length >= 6 &&
@@ -676,6 +792,7 @@ export default function UsersPage() {
             placeholder="Search users..."
             label="Search by name or email"
             className={styles.userSearch}
+            disabled={confirmState.open}
           />
           <Select
             name="role"
@@ -778,15 +895,41 @@ export default function UsersPage() {
               Cancel
             </Button>
             <Button
-              onClick={() => confirmState.onConfirm?.()}
-              disabled={confirmState.busy}
+              variant={confirmState.confirmVariant || 'primary'}
+              onClick={() => confirmState.onConfirm?.(confirmState.adminPassword)}
+              disabled={
+                confirmState.busy ||
+                (confirmState.requiresPassword && !confirmState.adminPassword.trim())
+              }
             >
               {confirmState.busy ? 'Working...' : confirmState.confirmLabel}
             </Button>
           </>
         }
       >
-        <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{confirmState.message}</p>
+        <div style={{ display: 'grid', gap: 12 }}>
+          <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{confirmState.message}</p>
+          {confirmState.requiresPassword ? (
+            <Input
+              label="Your Admin Password"
+              type="password"
+              name="confirmAdminPassword"
+              value={confirmState.adminPassword}
+              onChange={(event) =>
+                setConfirmState((prev) => ({
+                  ...prev,
+                  adminPassword: event.target.value,
+                  error: '',
+                }))
+              }
+              placeholder="Enter your password to continue"
+              autoComplete="off"
+              disabled={confirmState.busy}
+              required
+              error={confirmState.error}
+            />
+          ) : null}
+        </div>
       </Modal>
 
       {/* View Details Modal */}

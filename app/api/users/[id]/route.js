@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
-import { requireAdmin } from '@/lib/apiAuth';
+import { requireAdmin, verifyUserPassword } from '@/lib/apiAuth';
 import { logStaffActivity } from '@/lib/activityLogger.server';
 import { normalizeSectorAccess } from '@/lib/sectorAccess';
 import { getRoleSectorAccess, isCreatableUserRole } from '@/lib/userRoles';
+
+const ACCOUNT_ACTION_MIN_AGE_MS = 24 * 60 * 60 * 1000;
+
+function isAccountTooNew(createdAt) {
+  const createdAtMs = Date.parse(createdAt);
+  return !Number.isFinite(createdAtMs) || Date.now() - createdAtMs < ACCOUNT_ACTION_MIN_AGE_MS;
+}
 
 export async function PATCH(request, { params }) {
   const auth = await requireAdmin(request);
@@ -17,8 +24,13 @@ export async function PATCH(request, { params }) {
     }
 
     let updates;
+    let adminPassword;
     try {
-      updates = await request.json();
+      const body = await request.json();
+      if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Invalid body');
+      adminPassword = body.adminPassword;
+      updates = { ...body };
+      delete updates.adminPassword;
     } catch {
       return NextResponse.json({ data: null, error: 'Invalid request body.' }, { status: 400 });
     }
@@ -50,12 +62,53 @@ export async function PATCH(request, { params }) {
     // Fetch current profile for rollback + to detect no-op email change
     const { data: existingUser, error: existingError } = await supabaseAdmin
       .from('users')
-      .select('id, email, role, status, sector_access')
+      .select('id, email, role, status, sector_access, created_at')
       .eq('id', userId)
       .single();
 
     if (existingError || !existingUser) {
       return NextResponse.json({ data: null, error: 'User not found.' }, { status: 404 });
+    }
+
+    const isDeactivation = existingUser.status === 'Active' && updates.status === 'Inactive';
+    if (isDeactivation) {
+      if (isAccountTooNew(existingUser.created_at)) {
+        return NextResponse.json(
+          { data: null, error: 'An account must be at least 24 hours old before it can be deactivated.' },
+          { status: 409 },
+        );
+      }
+
+      if (existingUser.role === 'Admin') {
+        const { count: activeAdminCount, error: countError } = await supabaseAdmin
+          .from('users')
+          .select('id', { count: 'exact', head: true })
+          .eq('role', 'Admin')
+          .eq('status', 'Active');
+
+        if (countError) throw countError;
+        if ((activeAdminCount || 0) <= 1) {
+          return NextResponse.json(
+            { data: null, error: 'The last active administrator cannot be deactivated.' },
+            { status: 409 },
+          );
+        }
+      }
+
+      if (typeof adminPassword !== 'string' || !adminPassword.trim()) {
+        return NextResponse.json(
+          { data: null, error: 'Your admin password is required to deactivate an account.' },
+          { status: 400 },
+        );
+      }
+
+      const passwordCheck = await verifyUserPassword(auth.profile.email, adminPassword);
+      if (!passwordCheck.ok) {
+        return NextResponse.json(
+          { data: null, error: passwordCheck.error || 'Admin password verification failed.' },
+          { status: 403 },
+        );
+      }
     }
 
     const requestedRole = updates.role;
@@ -172,10 +225,36 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ success: false, error: 'User ID is required.' }, { status: 400 });
     }
 
-    // Check if user exists
+    let body;
+    try {
+      body = await request.json();
+      if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Invalid body');
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Your admin password is required to remove an account.' },
+        { status: 400 },
+      );
+    }
+
+    if (typeof body.adminPassword !== 'string' || !body.adminPassword.trim()) {
+      return NextResponse.json(
+        { success: false, error: 'Your admin password is required to remove an account.' },
+        { status: 400 },
+      );
+    }
+
+    const passwordCheck = await verifyUserPassword(auth.profile.email, body.adminPassword);
+    if (!passwordCheck.ok) {
+      return NextResponse.json(
+        { success: false, error: passwordCheck.error || 'Admin password verification failed.' },
+        { status: 403 },
+      );
+    }
+
+    // Capture the profile before deletion for validation and the audit trail.
     const { data: existingUser, error: fetchError } = await supabaseAdmin
       .from('users')
-      .select('id')
+      .select('id, full_name, email, role, status, created_at')
       .eq('id', userId)
       .single();
 
@@ -183,27 +262,47 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ success: false, error: 'User not found.' }, { status: 404 });
     }
 
-    // Delete from users table first
-    const { error: dbError } = await supabaseAdmin.from('users').delete().eq('id', userId);
-
-    if (dbError) throw dbError;
-
-    // Delete from auth
-    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
-
-    if (authError) {
-      console.error('Auth deletion failed:', authError);
-      // Continue even if auth deletion fails (user record already deleted)
+    if (isAccountTooNew(existingUser.created_at)) {
+      return NextResponse.json(
+        { success: false, error: 'An account must be at least 24 hours old before it can be removed.' },
+        { status: 409 },
+      );
     }
+
+    if (existingUser.role === 'Admin' && existingUser.status === 'Active') {
+      const { count: activeAdminCount, error: countError } = await supabaseAdmin
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'Admin')
+        .eq('status', 'Active');
+
+      if (countError) throw countError;
+      if ((activeAdminCount || 0) <= 1) {
+        return NextResponse.json(
+          { success: false, error: 'The last active administrator cannot be removed.' },
+          { status: 409 },
+        );
+      }
+    }
+
+    // Deleting the Auth identity cascades to public.users and other linked account data.
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (authError) {
+      throw new Error(authError.message || 'Failed to remove the authentication account.');
+    }
+
+    // Keep this explicit cleanup for installations where the cascade was not configured.
+    const { error: dbError } = await supabaseAdmin.from('users').delete().eq('id', userId);
+    if (dbError) throw dbError;
 
     await logStaffActivity(
       auth,
       {
         action: 'Deleted user account',
-        message: 'Admin user account was deleted.',
+        message: `Deleted ${existingUser.role} account for ${existingUser.full_name}.`,
         entity_type: 'user',
         entity_id: userId,
-        reference_number: userId,
+        reference_number: existingUser.email,
         link: '/admin/users',
       },
       supabaseAdmin,

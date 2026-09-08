@@ -472,7 +472,7 @@
 }
 
 /* Tablets and below - Mobile drawer behavior */
-@media (max-width: 900px), (max-width: 1200px) and (pointer: coarse) {
+@media (max-width: 900px), (max-width: 1366px) and (pointer: coarse) {
   .sidebar {
     position: fixed;
     left: 10px;
@@ -547,7 +547,9 @@
   }
 
   .logoutModalActions {
-    flex-direction: column-reverse;
+    flex-direction: row;
+    justify-content: flex-end;
+    flex-wrap: wrap;
   }
 }
 

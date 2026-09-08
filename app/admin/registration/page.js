@@ -83,6 +83,13 @@ const MISSING_REQUIREMENTS_VERIFICATION_ERROR =
   'Database is missing requirements verification columns. Run setup-step10.sql in Supabase SQL Editor, then try again.';
 const LOCKED_CITIZENSHIP = 'Filipino';
 const SOLO_PARENT_MARRIED_ERROR = 'Married civil status is not allowed for Solo Parent classification.';
+const REGISTRATION_WIZARD_STEPS = [
+  { number: 1, label: 'Personal' },
+  { number: 2, label: 'Assistance' },
+  { number: 3, label: 'Checklist' },
+  { number: 4, label: 'Review' },
+];
+const REGISTRATION_WIZARD_TOTAL = REGISTRATION_WIZARD_STEPS.length;
 
 const isCheckedRequirement = (item) => {
   if (item === true || item === 'true' || item === 1 || item === '1') return true;
@@ -162,6 +169,7 @@ export default function RegistrationPage() {
     requirementsCompleted: false, // fallback when no checklist is defined
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mobileStep, setMobileStep] = useState(1);
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState(null);
   const [contactCheck, setContactCheck] = useState({
@@ -620,7 +628,7 @@ export default function RegistrationPage() {
     }
   };
 
-  const validateForm = () => {
+  const getFormErrors = () => {
     const newErrors = {};
 
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
@@ -698,8 +706,49 @@ export default function RegistrationPage() {
       }
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
+  };
+
+  const getWizardStepForError = (errorName) => {
+    if (['sectors'].includes(errorName)) return 2;
+    if (['assistanceType', 'assistanceAmount', 'representativeName', 'representativeContact'].includes(errorName)) return 2;
+    if (['requirementsChecklist', 'requirementsCompleted'].includes(errorName)) return 3;
+    return 1;
+  };
+
+  const validateWizardStep = (step) => {
+    const allErrors = getFormErrors();
+    const stepErrors = Object.fromEntries(
+      Object.entries(allErrors).filter(([name, message]) => {
+        if (!message || getWizardStepForError(name) !== step) return false;
+        if (
+          step === 1 &&
+          name === 'birthday' &&
+          (String(message).includes('unless classified as PWD') || String(message).includes('Senior Citizen'))
+        ) {
+          return false;
+        }
+        return true;
+      }),
+    );
+
+    setErrors((previous) => {
+      const next = { ...previous };
+      Object.keys(next).forEach((name) => {
+        if (getWizardStepForError(name) === step) delete next[name];
+      });
+      return { ...next, ...stepErrors };
+    });
+    return Object.keys(stepErrors).length === 0;
+  };
+
+  const handleWizardNext = () => {
+    if (!validateWizardStep(mobileStep)) return;
+    setMobileStep((step) => Math.min(step + 1, REGISTRATION_WIZARD_TOTAL));
+  };
+
+  const handleWizardPrevious = () => {
+    setMobileStep((step) => Math.max(step - 1, 1));
   };
 
   const handleSubmit = async (e) => {
@@ -717,7 +766,11 @@ export default function RegistrationPage() {
       }
     }
     
-    if (!validateForm()) {
+    const formErrors = getFormErrors();
+    setErrors(formErrors);
+    if (Object.keys(formErrors).length > 0) {
+      const firstErrorStep = Math.min(...Object.keys(formErrors).map(getWizardStepForError));
+      setMobileStep(firstErrorStep);
       return;
     }
 
@@ -771,7 +824,6 @@ export default function RegistrationPage() {
         return;
       }
 
-      let createdAssistanceRequestId = '';
       if (formData.assistanceType && residentData) {
         if (!supabase) {
           throw new Error('Database client not available');
@@ -832,8 +884,6 @@ export default function RegistrationPage() {
           throw new Error(assistanceJson?.error || 'Failed to create assistance request.');
         }
 
-        const savedAssistance = assistanceJson?.data || null;
-        createdAssistanceRequestId = savedAssistance?.id || '';
         const insertPayload = payload;
 
         const requirementsColsInPayload =
@@ -906,10 +956,7 @@ export default function RegistrationPage() {
         message: 'Registration saved successfully. Beneficiary and request have been recorded.',
       });
 
-      const redirectUrl = createdAssistanceRequestId
-        ? `/admin/assistance/requests?request=${encodeURIComponent(createdAssistanceRequestId)}`
-        : '/admin/assistance/requests';
-      router.push(redirectUrl);
+      router.push('/admin/assistance/requests');
     } catch (error) {
       console.error('Error:', error);
       setStatus({
@@ -952,6 +999,7 @@ export default function RegistrationPage() {
       requirementsCompleted: false,
     });
     void refreshResidentControlNumber();
+    setMobileStep(1);
   };
 
   const selectedAssistanceRequirements = formData.assistanceType
@@ -980,8 +1028,41 @@ export default function RegistrationPage() {
           <div className={styles.controlNumberValue}>{controlNumber}</div>
         </div>
 
+        <div className={styles.mobileWizardProgress} aria-label="Registration progress">
+          <div className={styles.mobileWizardProgressHeader}>
+            <div>
+              <span>Application progress</span>
+              <strong>{REGISTRATION_WIZARD_STEPS[mobileStep - 1]?.label}</strong>
+            </div>
+            <span className={styles.mobileWizardCount}>Step {mobileStep} of {REGISTRATION_WIZARD_TOTAL}</span>
+          </div>
+          <div className={styles.mobileWizardTrack} aria-hidden="true">
+            <span style={{ width: `${((mobileStep - 1) / (REGISTRATION_WIZARD_TOTAL - 1)) * 100}%` }} />
+          </div>
+          <div className={styles.mobileWizardSteps}>
+            {REGISTRATION_WIZARD_STEPS.map((step) => (
+              <button
+                key={step.number}
+                type="button"
+                className={`${styles.mobileWizardStep} ${step.number === mobileStep ? styles.mobileWizardStepActive : ''} ${step.number < mobileStep ? styles.mobileWizardStepComplete : ''}`}
+                onClick={() => step.number < mobileStep && setMobileStep(step.number)}
+                disabled={step.number > mobileStep}
+                aria-current={step.number === mobileStep ? 'step' : undefined}
+                aria-label={`Step ${step.number}: ${step.label}`}
+              >
+                <span>{step.number}</span>
+                <small>{step.label}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Personal Information */}
-        <Card title="Personal Information" subtitle="Enter the basic information of the resident" className={styles.mainCard}>
+        <Card
+          title="Personal Information"
+          subtitle="Enter the basic information of the resident"
+          className={`${styles.mainCard} ${styles.wizardPanel} ${mobileStep === 1 ? styles.wizardPanelActive : ''}`}
+        >
           <div className={styles.formFields}>
             <div className={styles.row3}>
               <Input
@@ -1139,7 +1220,7 @@ export default function RegistrationPage() {
             <Card
               title="ATTACH REQUIREMENTS"
               subtitle="Confirm that the resident's requirements have been completed"
-              className={styles.sideCard}
+              className={`${styles.sideCard} ${styles.wizardPanel} ${mobileStep === 3 ? styles.wizardPanelActive : ''}`}
             >
               <div className={styles.formFields}>
                 {formData.assistanceType ? (
@@ -1208,7 +1289,7 @@ export default function RegistrationPage() {
           <Card
             title="Initial Assistance Request"
             subtitle="Optional: log an assistance request upon registration"
-            className={styles.sideCard}
+            className={`${styles.sideCard} ${styles.wizardPanel} ${mobileStep === 2 ? styles.wizardPanelActive : ''}`}
           >
             <div className={styles.formFields}>
               {assistanceRequestBlocked ? (
@@ -1275,6 +1356,7 @@ export default function RegistrationPage() {
                     onChange={handleSectorSelectChange}
                     options={getSecondarySectorOptions(formData.primarySector)}
                     placeholder="No secondary sector"
+                    allowEmptyOption
                   />
                 </div>
               </div>
@@ -1292,8 +1374,58 @@ export default function RegistrationPage() {
             </div>
           </Card>
 
+          <Card
+            title="Review Registration"
+            subtitle="Confirm the resident and assistance details before saving"
+            className={`${styles.sideCard} ${styles.wizardPanel} ${styles.wizardReview} ${mobileStep === 4 ? styles.wizardPanelActive : ''}`}
+          >
+            <dl className={styles.wizardReviewGrid}>
+              <div><dt>Full Name</dt><dd>{buildResidentFullName() || 'Not provided'}</dd></div>
+              <div><dt>Control Number</dt><dd>{controlNumber || 'Generating…'}</dd></div>
+              <div><dt>Address</dt><dd>{[formData.houseNo, formData.purok && `Purok ${formData.purok}`, 'Sta. Rita', formData.city].filter(Boolean).join(', ')}</dd></div>
+              <div><dt>Birthday / Age</dt><dd>{formData.birthday ? `${formData.birthday} · ${calculateAge(formData.birthday)}` : 'Not provided'}</dd></div>
+              <div><dt>Birthplace</dt><dd>{formData.birthplace || 'Not provided'}</dd></div>
+              <div><dt>Sex</dt><dd>{formData.sex || 'Not provided'}</dd></div>
+              <div><dt>Citizenship</dt><dd>{formData.citizenship || 'Not provided'}</dd></div>
+              <div><dt>Civil Status</dt><dd>{formData.civilStatus || 'Not provided'}</dd></div>
+              <div><dt>Contact Number</dt><dd>{formData.contactNumber || 'Not provided'}</dd></div>
+              <div><dt>Primary Sector</dt><dd>{formData.primarySector || 'Not provided'}</dd></div>
+              <div><dt>Secondary Sector</dt><dd>{formData.secondarySector || 'None'}</dd></div>
+              <div><dt>Assistance</dt><dd>{formData.assistanceType || 'No initial request'}</dd></div>
+              <div><dt>Budget Ceiling</dt><dd>{formData.assistanceAmount ? `₱${Number(formData.assistanceAmount).toLocaleString('en-PH')}` : 'Not applicable'}</dd></div>
+              <div><dt>Representative</dt><dd>{formData.representativeName || 'None'}</dd></div>
+              <div><dt>Representative Contact</dt><dd>{formData.representativeContact || 'None'}</dd></div>
+              <div><dt>Relationship</dt><dd>{formData.representativeRelationship || 'None'}</dd></div>
+            </dl>
+          </Card>
+
+          <div className={`${styles.actions} ${styles.mobileWizardActions}`}>
+            <Button type="button" variant="secondary" onClick={handleCancel} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            {mobileStep > 1 && (
+              <Button type="button" variant="secondary" onClick={handleWizardPrevious} disabled={isSubmitting}>
+                Previous
+              </Button>
+            )}
+            {mobileStep < REGISTRATION_WIZARD_TOTAL ? (
+              <Button key="wizard-next" type="button" onClick={handleWizardNext} disabled={isSubmitting || contactCheck.checking}>
+                Next
+              </Button>
+            ) : (
+              <Button
+                key="wizard-submit"
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting || contactCheck.checking}
+              >
+                {isSubmitting ? 'Saving...' : 'Save'}
+              </Button>
+            )}
+          </div>
+
           {/* Action Buttons */}
-          <div className={styles.actions}>
+          <div className={`${styles.actions} ${styles.desktopActions}`}>
             <Button type="button" variant="secondary" onClick={handleCancel} disabled={isSubmitting}>
               Cancel
             </Button>
