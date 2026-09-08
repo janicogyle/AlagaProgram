@@ -16,7 +16,7 @@ export async function GET(request) {
 
     if (error) throw error;
 
-    return NextResponse.json({ data, error: null });
+    return NextResponse.json({ data, error: null, currentUserId: auth.authUser.id });
   } catch (error) {
     console.error('Fetch users error:', error);
     return NextResponse.json(

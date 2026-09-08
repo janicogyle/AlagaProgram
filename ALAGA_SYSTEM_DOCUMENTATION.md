@@ -348,7 +348,7 @@ Technical considerations relevant to the Philippine Data Privacy Act (not legal 
 
 # 19. RESPONSIVE DESIGN AND ACCESSIBILITY
 
-Actual responsive support includes desktop/tablet/mobile media queries, mobile sidebar overlay, coarse-pointer detection, collapsible navigation, responsive forms/filters/modals, and mobile card alternatives for several tables. Shells treat <=900px as mobile, or <=1200px with coarse pointer.
+Actual responsive support includes desktop/tablet/mobile media queries, a floating admin bottom navigation with a More tools sheet, coarse-pointer detection, collapsible desktop navigation, responsive forms/filters/modals, and mobile card alternatives for several tables. Shells treat <=900px as mobile, or <=1200px with coarse pointer.
 
 Accessibility-oriented implementation includes skip links, `:focus-visible`, reduced-motion rules, native `<dialog>` focus containment/restoration, Escape close, labels, many ARIA labels/live regions, semantic headings, keyboard signup steps, hidden-sidebar `inert`, and alt text.
 
@@ -428,7 +428,7 @@ Admin opens resident -> Edit -> password reauthentication -> modify permitted fi
 | Email | Verification/status | Applicant/Beneficiary | Fully Implemented when configured | `lib/emailNotify.server.js` |
 | Reports | PDF/XLSX reports | Staff | Fully Implemented with limits | `app/admin/reports/page.js` |
 | ID renewal | Submit/review/extend | Beneficiary/Admin | Fully Implemented; non-transactional | `app/api/beneficiary/id-renewal/route.js` |
-| Users | Create/edit/deactivate/reset | Admin | Fully Implemented | `app/admin/users/page.js` |
+| Users | Create/edit/deactivate/remove/reset; password confirmation, 24-hour new-account hold, and last-active-admin protection | Admin | Fully Implemented | `app/admin/users/page.js` |
 | Scheduled reminders | Eligibility/expiry SMS | System | Partially Implemented; scheduler absent | `app/api/cron/` |
 | PWA | Installable shell | All | Partially Implemented; no offline data | `next.config.mjs` |
 | Backup/recovery | Restore data/files | Admin | Not Implemented | — |

@@ -17,7 +17,7 @@ const pageTitles = {
   '/beneficiary/profile': 'My Profile',
 };
 
-export default function Navbar({ title, breadcrumb, onMenuClick, sidebarOpen, activityRole, theme = 'light', onThemeToggle }) {
+export default function Navbar({ title, breadcrumb, onMenuClick, sidebarOpen, activityRole, theme = 'light', onThemeToggle, hideMenuToggle = false, hideActions = false }) {
   const pathname = usePathname();
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -25,18 +25,18 @@ export default function Navbar({ title, breadcrumb, onMenuClick, sidebarOpen, ac
   const isDark = theme === 'dark';
 
   return (
-    <header className={styles.navbar}>
+    <header className={`${styles.navbar} ${hideMenuToggle && hideActions ? styles.mobileNavigationOnly : ''}`}>
       <div className={styles.left}>
-        <button id="navigation-toggle" type="button" className={styles.menuToggle} onClick={onMenuClick} aria-label={sidebarOpen ? 'Collapse navigation' : 'Open navigation'} aria-expanded={sidebarOpen} aria-controls="portal-navigation">
+        {!hideMenuToggle && <button id="navigation-toggle" type="button" className={styles.menuToggle} onClick={onMenuClick} aria-label={sidebarOpen ? 'Collapse navigation' : 'Open navigation'} aria-expanded={sidebarOpen} aria-controls="portal-navigation">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="3" y1="12" x2="21" y2="12" />
             <line x1="3" y1="6" x2="21" y2="6" />
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
-        </button>
+        </button>}
         <span className={styles.breadcrumb}>{breadcrumb || title || pageTitles[pathname] || 'Alaga Program'}</span>
       </div>
-      <div className={styles.right}>
+      {!hideActions && <div className={styles.right}>
         <button
           type="button"
           className={styles.themeToggle}
@@ -84,7 +84,7 @@ export default function Navbar({ title, breadcrumb, onMenuClick, sidebarOpen, ac
             activityRole={activityRole}
           />
         </div>
-      </div>
+      </div>}
     </header>
   );
 }

@@ -637,20 +637,27 @@ export default function BeneficiaryIdVerifyPage() {
         />
 
         <div className={styles.cardContent}>
-        <label className={styles.label} htmlFor="cardRef">
-          Card Reference
-        </label>
-        <input
-          id="cardRef"
-          className={styles.input}
-          type="text"
-          value={token}
-          onChange={(e) => setToken(normalizeCardReferenceInput(e.target.value))}
-          placeholder="Enter card reference"
-        />
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!loading && token.trim()) handleVerify();
+          }}
+        >
+          <label className={styles.label} htmlFor="cardRef">
+            Card Reference
+          </label>
+          <input
+            id="cardRef"
+            className={styles.input}
+            type="text"
+            value={token}
+            onChange={(e) => setToken(normalizeCardReferenceInput(e.target.value))}
+            placeholder="Enter card reference"
+          />
 
-        <div className={styles.actions}>
+          <div className={styles.actions}>
           <Button
+            type="button"
             className={`${styles.verificationAction} ${styles.scanButton}`}
             icon={
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -670,18 +677,19 @@ export default function BeneficiaryIdVerifyPage() {
             Scan QR
           </Button>
           <Button
+            type="submit"
             className={`${styles.verificationAction} ${styles.verifyButton}`}
             icon={
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M20 6 9 17l-5-5" />
               </svg>
             }
-            onClick={() => handleVerify()}
             disabled={loading || !token.trim()}
           >
             {loading ? 'Verifying…' : 'Verify'}
           </Button>
           <Button
+            type="button"
             variant="secondary"
             className={`${styles.verificationAction} ${styles.clearButton}`}
             icon={
@@ -699,7 +707,8 @@ export default function BeneficiaryIdVerifyPage() {
           >
             Clear
           </Button>
-        </div>
+          </div>
+        </form>
 
         {result && (
           <div className={styles.resultBox}>
@@ -744,9 +753,11 @@ export default function BeneficiaryIdVerifyPage() {
                       {displayValue(resident.contact_number)}
                     </p>
                   </div>
-                  <Badge variant={resident.status === 'Active' ? 'success' : 'secondary'}>
-                    {displayValue(resident.status)}
-                  </Badge>
+                  <div className={styles.profileStatus}>
+                    <Badge variant={resident.status === 'Active' ? 'success' : 'secondary'}>
+                      {displayValue(resident.status)}
+                    </Badge>
+                  </div>
                 </div>
 
                 <section className={styles.latestRequestSection}>

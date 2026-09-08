@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '../../components/Sidebar';
 import Navbar from '../../components/Navbar';
+import MobileBottomNavigation from '../../components/MobileBottomNavigation';
 import WelcomeToast from '../../components/WelcomeToast';
 import styles from './layout.module.css';
 
@@ -17,6 +18,16 @@ const beneficiaryMenuItems = [
       { name: 'My Profile', href: '/beneficiary/profile', icon: 'user' },
     ],
   },
+];
+
+const beneficiaryPrimaryItems = [
+  { name: 'Dashboard', shortName: 'Home', href: '/beneficiary/dashboard', icon: 'dashboard' },
+  { name: 'Request Services', shortName: 'Services', href: '/beneficiary/requests', icon: 'registration' },
+  { name: 'My Requests', shortName: 'Requests', href: '/beneficiary/history', icon: 'requests' },
+];
+
+const beneficiaryMoreItems = [
+  { name: 'My Profile', href: '/beneficiary/profile', icon: 'users' },
 ];
 
 const RESTRICTED_ID_STATUSES = new Set(['Expired', 'Renewal Pending']);
@@ -41,16 +52,11 @@ export default function BeneficiaryShell({ children }) {
   const [isMobile, setIsMobile] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [idStatus, setIdStatus] = useState('');
-  const [theme, setTheme] = useState(() => {
-    if (typeof window === 'undefined') return 'light';
-    const storedTheme = window.localStorage.getItem('alagaTheme');
-    if (storedTheme === 'dark' || storedTheme === 'light') return storedTheme;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
-  const [beneficiaryUser] = useState(() => {
-    if (typeof window === 'undefined') return { name: 'Beneficiary', role: 'Beneficiary' };
-    const name = window.localStorage.getItem('beneficiaryName');
-    return { name: name || 'Beneficiary', role: 'Beneficiary' };
+  const [theme, setTheme] = useState('light');
+  const [themeReady, setThemeReady] = useState(false);
+  const [beneficiaryUser, setBeneficiaryUser] = useState({
+    name: 'Beneficiary',
+    role: 'Beneficiary',
   });
 
   useEffect(() => {
@@ -91,14 +97,35 @@ export default function BeneficiaryShell({ children }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    const storedTheme = window.localStorage.getItem('alagaTheme');
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const initialTheme = storedTheme === 'dark' || storedTheme === 'light'
+      ? storedTheme
+      : systemTheme;
+
+    document.documentElement.dataset.theme = initialTheme;
+    const name = window.localStorage.getItem('beneficiaryName');
+
+    const hydrationTimer = window.setTimeout(() => {
+      setTheme(initialTheme);
+      setThemeReady(true);
+      setBeneficiaryUser({ name: name || 'Beneficiary', role: 'Beneficiary' });
+    }, 0);
+
+    return () => window.clearTimeout(hydrationTimer);
+  }, []);
+
+  useEffect(() => {
+    if (!themeReady || typeof window === 'undefined') return;
+
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('alagaTheme', theme);
-  }, [theme]);
+  }, [theme, themeReady]);
 
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth <= 900 ||
-        (window.innerWidth <= 1200 && window.matchMedia('(pointer: coarse)').matches);
+        (window.innerWidth <= 1366 && window.matchMedia('(pointer: coarse)').matches);
       setIsMobile(mobile);
       if (mobile) {
         setSidebarOpen(false);
@@ -140,6 +167,9 @@ export default function BeneficiaryShell({ children }) {
         )),
       }))
     : beneficiaryMenuItems;
+  const resolvedPrimaryItems = RESTRICTED_ID_STATUSES.has(idStatus)
+    ? beneficiaryPrimaryItems.filter((item) => item.href === '/beneficiary/dashboard')
+    : beneficiaryPrimaryItems;
 
   return (
     <div className={styles.layout}>
@@ -174,9 +204,24 @@ export default function BeneficiaryShell({ children }) {
           activityRole="Beneficiary"
           theme={theme}
           onThemeToggle={() => setTheme((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'))}
+          hideMenuToggle={isMobile}
+          hideActions={isMobile}
         />
         <main id="main-content" tabIndex={-1} className={styles.pageContent}>{children}</main>
       </div>
+      {isMobile && (
+        <MobileBottomNavigation
+          user={beneficiaryUser}
+          onLogout={handleLogout}
+          activityRole="Beneficiary"
+          theme={theme}
+          onThemeToggle={() => setTheme((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'))}
+          primaryItems={resolvedPrimaryItems}
+          moreItems={beneficiaryMoreItems}
+          navigationLabel="Mobile beneficiary navigation"
+          moreTitle="More"
+        />
+      )}
     </div>
   );
 }

@@ -1808,11 +1808,14 @@ export default function ResidentsPage() {
                         ID expires: {formatCardDate(idCardExpiry)}
                       </span>
                     ) : null}
+                    <span className={styles.assistanceResidentDetail}>
+                      Status:{' '}
+                      <Badge variant={effectiveResident?.status === "Active" ? "success" : "secondary"}>
+                        {effectiveResident?.status || "-"}
+                      </Badge>
+                    </span>
                   </div>
                 </div>
-                <Badge variant={effectiveResident?.status === "Active" ? "success" : "secondary"}>
-                  {effectiveResident?.status || "-"}
-                </Badge>
               </div>
             </div>
 
@@ -2035,11 +2038,14 @@ export default function ResidentsPage() {
                     Eligibility: {getEligibilityBadge(cooldownInfo)}
                     {renderEligibleAgainText(cooldownInfo)}
                   </span>
+                  <span className={styles.assistanceResidentDetail}>
+                    Status:{' '}
+                    <Badge variant={effectiveResident?.status === 'Active' ? 'success' : 'secondary'}>
+                      {effectiveResident?.status || '-'}
+                    </Badge>
+                  </span>
                 </div>
               </div>
-              <Badge variant={effectiveResident?.status === 'Active' ? 'success' : 'secondary'}>
-                {effectiveResident?.status || '-'}
-              </Badge>
             </div>
           </div>
 
@@ -2295,6 +2301,7 @@ export default function ResidentsPage() {
                 onChange={handleEditChange}
                 options={getSecondarySectorOptions(editForm.primary_sector)}
                 placeholder="No secondary sector"
+                allowEmptyOption
               />
             </div>
           </div>

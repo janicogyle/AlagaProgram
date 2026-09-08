@@ -112,6 +112,8 @@ export default function ActionMenu({
               <button
                 key={index}
                 className={`${styles.menuItem} ${item.variant === 'danger' ? styles.danger : ''} ${item.variant === 'success' ? styles.success : ''}`}
+                disabled={item.disabled}
+                title={item.title}
                 onClick={() => {
                   item.onClick?.();
                   setIsOpen(false);
