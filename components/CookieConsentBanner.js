@@ -1,31 +1,46 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import styles from './CookieConsentBanner.module.css';
 import Button from './Button';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
 
 const COOKIE_CONSENT_KEY = 'cookie_consent';
+const COOKIE_CONSENT_EVENT = 'cookie-consent-change';
+
+function subscribeToConsent(onStoreChange) {
+  window.addEventListener('storage', onStoreChange);
+  window.addEventListener(COOKIE_CONSENT_EVENT, onStoreChange);
+
+  return () => {
+    window.removeEventListener('storage', onStoreChange);
+    window.removeEventListener(COOKIE_CONSENT_EVENT, onStoreChange);
+  };
+}
+
+function getConsentSnapshot() {
+  try {
+    return window.localStorage.getItem(COOKIE_CONSENT_KEY) !== 'true';
+  } catch {
+    return false;
+  }
+}
+
+function getServerConsentSnapshot() {
+  return false;
+}
 
 export default function CookieConsentBanner() {
-  const [showBanner, setShowBanner] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    try {
-      const consent = window.localStorage.getItem(COOKIE_CONSENT_KEY);
-      return consent !== 'true';
-    } catch {
-      return false;
-    }
-  });
+  const showBanner = useSyncExternalStore(subscribeToConsent, getConsentSnapshot, getServerConsentSnapshot);
   const [isPrivacyModalOpen, setPrivacyModalOpen] = useState(false);
 
   const handleAccept = () => {
     try {
       window.localStorage.setItem(COOKIE_CONSENT_KEY, 'true');
+      window.dispatchEvent(new Event(COOKIE_CONSENT_EVENT));
     } catch (error) {
       console.error('Could not write to localStorage:', error);
     }
-    setShowBanner(false);
   };
 
   const openPrivacyModal = (e) => {
