@@ -4,6 +4,9 @@
   display: flex;
   flex-direction: column;
   overflow-x: clip;
+  overflow-y: visible;
+  overscroll-behavior-y: auto;
+  touch-action: pan-y;
 }
 
 .pageContent {
@@ -11,14 +14,7 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-}
-
-.pageContentZoomed {
-  zoom: var(--uiScale);
-}
-
-.magnifierButton {
-  display: none;
+  overflow: visible;
 }
 
 .floatingTimeChip {
@@ -28,7 +24,7 @@
 @media (min-width: 1025px) {
   .floatingTimeChip {
     position: fixed;
-    right: 104px;
+    right: 34px;
     bottom: 34px;
     min-width: 152px;
     min-height: 58px;
@@ -85,55 +81,6 @@
     white-space: nowrap;
   }
 
-  .magnifierButton {
-    position: fixed;
-    right: 34px;
-    bottom: 34px;
-    width: 58px;
-    height: 58px;
-    border-radius: 999px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #1d4ed8;
-    background: rgba(255, 255, 255, 0.92);
-    border: 1px solid rgba(15, 23, 42, 0.1);
-    box-shadow: 0 22px 60px rgba(15, 23, 42, 0.22);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    z-index: 1100;
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    animation: float 5.5s ease-in-out infinite;
-  }
-
-  .magnifierButton:hover {
-    background: rgba(255, 255, 255, 0.98);
-    box-shadow: 0 26px 70px rgba(15, 23, 42, 0.26);
-  }
-
-  .magnifierButton:active {
-    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
-  }
-}
-
-.magnifierBadge {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  min-width: 40px;
-  height: 24px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: #1d4ed8;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid rgba(255, 255, 255, 0.95);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
 }
 
 /* ======================= */
@@ -1029,11 +976,8 @@
 .navLink:focus-visible,
 .navLoginBtn:focus-visible,
 .navSignupBtn:focus-visible,
-.magnifierButton:focus-visible,
 .heroBtn:focus-visible,
-.heroBtnOutline:focus-visible,
-.processNoteButtonPrimary:focus-visible,
-.processNoteButtonSecondary:focus-visible {
+.heroBtnOutline:focus-visible {
   outline: 3px solid rgba(96, 165, 250, 0.7);
   outline-offset: 2px;
 }
@@ -1041,8 +985,6 @@
 .navLink:active,
 .heroBtn:active,
 .heroBtnOutline:active,
-.processNoteButtonPrimary:active,
-.processNoteButtonSecondary:active,
 .navLoginBtn:active,
 .navSignupBtn:active {
   transform: translateY(0);
@@ -1155,19 +1097,6 @@
   margin: 4px 0 0;
 }
 
-.processNotePill {
-  display: inline-flex;
-  align-items: center;
-  padding: 7px 12px;
-  border-radius: 999px;
-  background: rgba(239, 246, 255, 0.9);
-  border: 1px solid rgba(219, 234, 254, 0.9);
-  color: #1d4ed8;
-  font-size: 12px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
 .processNoteList {
   margin: 0;
   padding: 0;
@@ -1229,61 +1158,6 @@
   border-radius: 2px;
 }
 
-.processNoteActions {
-  margin-top: 16px;
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.processNoteButtonPrimary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 18px;
-  font-size: 14px;
-  font-weight: 700;
-  color: #ffffff;
-  background: #1e40af;
-  border-radius: 10px;
-  transition: all 0.2s ease;
-}
-
-.processNoteButtonPrimary:hover {
-  background: #1e3a8a;
-  transform: translateY(-1px);
-}
-
-.processNoteButtonPrimary:focus-visible {
-  outline: 3px solid rgba(96, 165, 250, 0.7);
-  outline-offset: 2px;
-}
-
-.processNoteButtonSecondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 18px;
-  font-size: 14px;
-  font-weight: 700;
-  color: #1e40af;
-  background: #ffffff;
-  border-radius: 10px;
-  border: 1px solid rgba(30, 64, 175, 0.35);
-  transition: all 0.2s ease;
-}
-
-.processNoteButtonSecondary:hover {
-  background: rgba(30, 64, 175, 0.05);
-  transform: translateY(-1px);
-}
-
-.processNoteButtonSecondary:focus-visible {
-  outline: 3px solid rgba(96, 165, 250, 0.7);
-  outline-offset: 2px;
-}
-
 @media (max-width: 768px) {
   .processNoteBox {
     padding: 20px;
@@ -1297,15 +1171,6 @@
     grid-template-columns: 1fr;
   }
 
-  .processNoteActions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .processNoteButtonPrimary,
-  .processNoteButtonSecondary {
-    width: 100%;
-  }
 }
 
 .processCard {
@@ -3271,78 +3136,12 @@
   background: #08111f;
 }
 
-.sectionReveal {
-  opacity: 0;
-  transform: translateY(34px);
-  filter: blur(8px);
-  transition:
-    opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.85s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: opacity, transform, filter;
-}
-
-.sectionRevealVisible {
-  opacity: 1;
-  transform: translateY(0);
-  filter: blur(0);
-}
-
-.sectionReveal [data-reveal-item] {
-  opacity: 0;
-  transform: translateY(22px);
-  transition:
-    opacity 0.72s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.72s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.22s ease,
-    box-shadow 0.22s ease,
-    background-color 0.22s ease,
-    color 0.22s ease;
-  transition-delay: 0.12s;
-  will-change: opacity, transform;
-}
-
-.sectionRevealVisible [data-reveal-item] {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.sectionRevealVisible [data-reveal-item]:nth-child(2) {
-  transition-delay: 0.18s;
-}
-
-.sectionRevealVisible [data-reveal-item]:nth-child(3) {
-  transition-delay: 0.24s;
-}
-
-.sectionRevealVisible [data-reveal-item]:nth-child(4) {
-  transition-delay: 0.3s;
-}
-
-.sectionRevealVisible [data-reveal-item]:nth-child(5) {
-  transition-delay: 0.36s;
-}
-
-.sectionRevealVisible [data-reveal-item]:nth-child(6) {
-  transition-delay: 0.42s;
-}
-
-.sectionRevealVisible .processCard:hover {
+.processCard:hover {
   transform: translateY(-4px);
 }
 
-.sectionRevealVisible .contactItem:hover {
+.contactItem:hover {
   transform: translateY(-2px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sectionReveal,
-  .sectionReveal [data-reveal-item] {
-    opacity: 1;
-    transform: none;
-    filter: none;
-    transition: none;
-  }
 }
 
 @media (max-width: 1024px) {

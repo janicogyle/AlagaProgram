@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { motion, useReducedMotion } from 'framer-motion';
 import ConstellationBackground from '../components/ConstellationBackground';
 import { assistanceData } from '@/lib/assistanceData';
 import styles from './page.module.css';
 
-const magnifierLevels = [1, 1.15, 1.3];
-const defaultMagnifierLevel = magnifierLevels[0];
 const philippinesFloatingDateFormatter = new Intl.DateTimeFormat('en-PH', {
   timeZone: 'Asia/Manila',
   month: 'short',
@@ -22,45 +21,26 @@ const philippinesFloatingTimeFormatter = new Intl.DateTimeFormat('en-PH', {
   hour12: true,
 });
 
-function getSavedMagnifierLevel() {
-  try {
-    const raw = window.localStorage.getItem('homepage_ui_scale');
-    if (!raw) return defaultMagnifierLevel;
-    const value = Number(raw);
-    if (!Number.isFinite(value)) return defaultMagnifierLevel;
-    return magnifierLevels.reduce(
-      (best, next) => (Math.abs(next - value) < Math.abs(best - value) ? next : best),
-      defaultMagnifierLevel
-    );
-  } catch {
-    return defaultMagnifierLevel;
-  }
-}
+const sectionMotion = {
+  hidden: { opacity: 0, y: 36 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1], staggerChildren: 0.1 },
+  },
+};
+
+const itemMotion = {
+  hidden: { opacity: 0, y: 22 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } },
+};
 
 export default function HomePage() {
+  const reduceMotion = useReducedMotion();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [heroInfoIndex, setHeroInfoIndex] = useState(0);
   const closeMobileMenu = () => setMobileMenuOpen(false);
-  const [uiScale, setUiScale] = useState(defaultMagnifierLevel);
-  const [magnifierReady, setMagnifierReady] = useState(false);
   const [floatingPhilippinesTime, setFloatingPhilippinesTime] = useState(null);
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setUiScale(getSavedMagnifierLevel());
-      setMagnifierReady(true);
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, []);
-
-  useEffect(() => {
-    if (!magnifierReady) return;
-    try {
-      window.localStorage.setItem('homepage_ui_scale', String(uiScale));
-    } catch {
-    }
-  }, [magnifierReady, uiScale]);
 
   useEffect(() => {
     const updateTime = () => setFloatingPhilippinesTime(new Date());
@@ -71,14 +51,6 @@ export default function HomePage() {
       window.clearInterval(tickTimer);
     };
   }, []);
-
-  const toggleMagnifier = () => {
-    setUiScale((value) => {
-      const idx = magnifierLevels.indexOf(value);
-      const next = magnifierLevels[(idx + 1) % magnifierLevels.length];
-      return next;
-    });
-  };
 
   const floatingDateLabel = floatingPhilippinesTime
     ? philippinesFloatingDateFormatter.format(floatingPhilippinesTime)
@@ -257,32 +229,6 @@ export default function HomePage() {
     return () => window.clearInterval(id);
   }, [heroInfoCards.length]);
 
-  useEffect(() => {
-    const sections = Array.from(document.querySelectorAll('[data-section-reveal]'));
-    if (!sections.length) return;
-
-    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-    if (reduceMotion || !('IntersectionObserver' in window)) {
-      sections.forEach((section) => section.classList.add(styles.sectionRevealVisible));
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          entry.target.classList.add(styles.sectionRevealVisible);
-          observer.unobserve(entry.target);
-        });
-      },
-      { threshold: 0.16, rootMargin: '0px 0px -10% 0px' }
-    );
-
-    sections.forEach((section) => observer.observe(section));
-
-    return () => observer.disconnect();
-  }, []);
-
   const processSteps = [
     {
       step: '01',
@@ -338,23 +284,7 @@ export default function HomePage() {
         <span className={styles.floatingTimeDate}>{floatingDateLabel}</span>
         <strong>{floatingTimeLabel}</strong>
       </div>
-      <button
-        type="button"
-        className={styles.magnifierButton}
-        onClick={toggleMagnifier}
-        aria-label={`Magnifier: ${Math.round(uiScale * 100)}%`}
-        aria-pressed={uiScale !== 1}
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="11" cy="11" r="7" />
-          <path d="M20 20l-3.5-3.5" />
-        </svg>
-        <span className={styles.magnifierBadge}>{Math.round(uiScale * 100)}%</span>
-      </button>
-      <div
-        className={`${styles.pageContent} ${uiScale !== 1 ? styles.pageContentZoomed : ''}`}
-        style={{ '--uiScale': uiScale }}
-      >
+      <div className={styles.pageContent}>
       {/* Header / Navigation */}
       <header className={styles.header}>
         <div className={styles.headerContainer}>
@@ -407,10 +337,16 @@ export default function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <section id="home" className={`${styles.hero} ${styles.sectionReveal}`} data-section-reveal>
+      <motion.section
+        id="home"
+        className={styles.hero}
+        variants={sectionMotion}
+        initial={reduceMotion ? 'visible' : 'hidden'}
+        animate="visible"
+      >
         <ConstellationBackground />
         <div className={styles.heroContainer}>
-          <div className={styles.heroContent} data-reveal-item>
+          <motion.div className={styles.heroContent} variants={itemMotion}>
             <h1 className={styles.heroTitle}>
               Barangay Sta. Rita
               <span className={styles.heroTitleHighlight}>Alaga Program</span>
@@ -428,8 +364,8 @@ export default function HomePage() {
                 Learn More
               </a>
             </div>
-          </div>
-          <div className={styles.heroVisual} data-reveal-item>
+          </motion.div>
+          <motion.div className={styles.heroVisual} variants={itemMotion}>
             <div className={styles.heroIllustration}>
               <div className={styles.illustrationCard}>
                 <div className={styles.illustrationHeader}>
@@ -487,20 +423,20 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
         <div className={styles.heroWave}>
           <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M0 120L60 105C120 90 240 60 360 45C480 30 600 30 720 37.5C840 45 960 60 1080 67.5C1200 75 1320 75 1380 75L1440 75V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" fill="#ffffff"/>
           </svg>
         </div>
-      </section>
+      </motion.section>
 
       {/* About Section */}
-      <section id="about" className={`${styles.about} ${styles.sectionReveal}`} data-section-reveal>
+      <motion.section id="about" className={styles.about} variants={sectionMotion} initial={reduceMotion ? 'visible' : 'hidden'} whileInView="visible" viewport={{ once: true, amount: 0.12 }}>
         <div className={styles.sectionContainer}>
           <div className={styles.aboutWrapper}>
-            <div className={styles.aboutLeft} data-reveal-item>
+            <motion.div className={styles.aboutLeft} variants={itemMotion}>
               <h2 className={styles.aboutMainTitle}>
                 Beneficiary <span className={styles.highlight}>Benefits</span>
               </h2>
@@ -519,11 +455,11 @@ export default function HomePage() {
               <div className={styles.aboutMockup}>
                 <img src="/mockup.png" alt="Alaga Program Mockup" />
               </div>
-            </div>
+            </motion.div>
             <div className={styles.aboutRight}>
               <div className={styles.aboutGrid}>
                 {aboutFeatures.map((feature, index) => (
-                  <div key={index} className={styles.aboutCard} data-reveal-item>
+                  <motion.div key={feature.title} className={styles.aboutCard} variants={itemMotion}>
                     <div className={styles.aboutIcon}>
                       {feature.icon}
                     </div>
@@ -538,26 +474,26 @@ export default function HomePage() {
                         </ul>
                       </div>
                     )}
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Process Section */}
-      <section id="how-it-works" className={`${styles.process} ${styles.sectionReveal}`} data-section-reveal>
+      <motion.section id="how-it-works" className={styles.process} variants={sectionMotion} initial={reduceMotion ? 'visible' : 'hidden'} whileInView="visible" viewport={{ once: true, amount: 0.08 }}>
         <div className={styles.sectionContainer}>
-          <div className={styles.sectionHeader} data-reveal-item>
+          <motion.div className={styles.sectionHeader} variants={itemMotion}>
             <h2 className={styles.sectionTitle}>Simple Registration Process</h2>
             <p className={styles.sectionDescription}>
               Follow these easy steps to register residents and issue Alaga Program cards.
             </p>
-          </div>
+          </motion.div>
           <div className={styles.processGrid}>
             {processSteps.map((item, index) => (
-              <div key={index} className={styles.processCard} data-reveal-item>
+              <motion.div key={item.step} className={styles.processCard} variants={itemMotion}>
                 <div className={styles.processStep}>{item.step}</div>
                 <div className={styles.processIcon}>{item.icon}</div>
                 <h3 className={styles.processTitle}>{item.title}</h3>
@@ -570,10 +506,10 @@ export default function HomePage() {
                     </svg>
                   </div>
                 )}
-              </div>
+              </motion.div>
             ))}
           </div>
-          <div className={styles.processNote} data-reveal-item>
+          <motion.div className={styles.processNote} variants={itemMotion}>
             <div className={styles.processNoteBox}>
               <div className={styles.processNoteHeader}>
                 <div className={styles.processNoteHeaderLeft}>
@@ -589,7 +525,6 @@ export default function HomePage() {
                     <h3 className={styles.processNoteTitle}>Important reminders for registration</h3>
                   </div>
                 </div>
-                <span className={styles.processNotePill}>Registration</span>
               </div>
               <ul className={styles.processNoteList}>
                 <li className={styles.processNoteItem}>
@@ -641,24 +576,16 @@ export default function HomePage() {
                   </span>
                 </li>
               </ul>
-              <div className={styles.processNoteActions}>
-                <Link href="/signup" className={styles.processNoteButtonPrimary}>
-                  Register / Sign Up
-                </Link>
-                <Link href="/login" className={styles.processNoteButtonSecondary}>
-                  Sign In
-                </Link>
-              </div>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Contact Section */}
-      <section id="contact" className={`${styles.contact} ${styles.sectionReveal}`} data-section-reveal>
+      <motion.section id="contact" className={styles.contact} variants={sectionMotion} initial={reduceMotion ? 'visible' : 'hidden'} whileInView="visible" viewport={{ once: true, amount: 0.12 }}>
         <div className={styles.sectionContainer}>
           <div className={styles.contactContent}>
-            <div className={styles.contactInfo} data-reveal-item>
+            <motion.div className={styles.contactInfo} variants={itemMotion}>
               <div className={styles.contactHeader}>
                 <h2 className={styles.sectionTitle}>Get in Touch</h2>
                 <p className={styles.contactDescription}>
@@ -715,8 +642,8 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-            </div>
-            <div className={styles.contactCTA} data-reveal-item>
+            </motion.div>
+            <motion.div className={styles.contactCTA} variants={itemMotion}>
               <div className={styles.ctaBox}>
                 <div className={styles.ctaTop}>
                   <div className={styles.ctaLogo} aria-hidden="true" />
@@ -737,15 +664,15 @@ export default function HomePage() {
                   Sign In to Your Account
                 </Link>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Footer */}
-      <footer className={`${styles.footer} ${styles.sectionReveal}`} data-section-reveal>
+      <motion.footer className={styles.footer} variants={sectionMotion} initial={reduceMotion ? 'visible' : 'hidden'} whileInView="visible" viewport={{ once: true, amount: 0.08 }}>
         <div className={styles.footerContainer}>
-          <div className={styles.footerTop} data-reveal-item>
+          <motion.div className={styles.footerTop} variants={itemMotion}>
             <div className={styles.footerBrand}>
               <div className={styles.footerLogo}>
                 <img src="/Brand.png" alt="Barangay Logo" />
@@ -761,13 +688,13 @@ export default function HomePage() {
               <a href="#how-it-works">How It Works</a>
               <a href="#contact">Contact</a>
             </div>
-          </div>
-          <div className={styles.footerBottom} data-reveal-item>
+          </motion.div>
+          <motion.div className={styles.footerBottom} variants={itemMotion}>
             <p>&copy; 2026 Barangay Sta. Rita. All rights reserved.</p>
             <p>Official Government Digital Service</p>
-          </div>
+          </motion.div>
         </div>
-      </footer>
+      </motion.footer>
       </div>
     </div>
   );
