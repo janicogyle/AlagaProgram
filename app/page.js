@@ -38,7 +38,8 @@ const itemMotion = {
 export default function HomePage() {
   const reduceMotion = useReducedMotion();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [heroInfoIndex, setHeroInfoIndex] = useState(0);
+  const [heroHovered, setHeroHovered] = useState(false);
+  const [heroInfoIndex, setHeroInfoIndex] = useState(3);
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const [floatingPhilippinesTime, setFloatingPhilippinesTime] = useState(null);
 
@@ -209,25 +210,24 @@ export default function HomePage() {
     },
   ];
 
-  const showNextHeroInfo = () => {
-    setHeroInfoIndex((value) => (value + 1) % heroInfoCards.length);
+  const selectRelativeHeroCard = (direction) => {
+    setHeroInfoIndex((value) => (value + direction + heroInfoCards.length) % heroInfoCards.length);
   };
 
-  const handleHeroInfoKeyDown = (event) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    event.preventDefault();
-    showNextHeroInfo();
+  const handleHeroCardKeyDown = (event) => {
+    if (event.key === 'ArrowRight') selectRelativeHeroCard(1);
+    if (event.key === 'ArrowLeft') selectRelativeHeroCard(-1);
   };
 
   useEffect(() => {
-    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-    if (reduceMotion) return;
-    const count = heroInfoCards.length;
-    const id = window.setInterval(() => {
-      setHeroInfoIndex((value) => (value + 1) % count);
-    }, 4000);
-    return () => window.clearInterval(id);
-  }, [heroInfoCards.length]);
+    if (reduceMotion) return undefined;
+
+    const intervalId = window.setInterval(() => {
+      setHeroInfoIndex((value) => (value + 1) % heroInfoCards.length);
+    }, 6000);
+
+    return () => window.clearInterval(intervalId);
+  }, [reduceMotion, heroInfoCards.length]);
 
   const processSteps = [
     {
@@ -279,7 +279,14 @@ export default function HomePage() {
   ];
 
   return (
-    <div className={styles.page}>
+    <div
+      className={`${styles.page} ${heroHovered ? styles.pageGlowSuppressed : ''}`}
+      onPointerMove={(event) => {
+        if (event.pointerType === 'touch') return;
+        event.currentTarget.style.setProperty('--page-glow-x', `${event.clientX}px`);
+        event.currentTarget.style.setProperty('--page-glow-y', `${event.clientY}px`);
+      }}
+    >
       <div className={styles.floatingTimeChip} aria-live="polite" aria-label="Philippine Standard Time">
         <span className={styles.floatingTimeDate}>{floatingDateLabel}</span>
         <strong>{floatingTimeLabel}</strong>
@@ -340,6 +347,8 @@ export default function HomePage() {
       <motion.section
         id="home"
         className={styles.hero}
+        onPointerEnter={(event) => event.pointerType !== 'touch' && setHeroHovered(true)}
+        onPointerLeave={() => setHeroHovered(false)}
         variants={sectionMotion}
         initial={reduceMotion ? 'visible' : 'hidden'}
         animate="visible"
@@ -377,19 +386,55 @@ export default function HomePage() {
                     <small>PWD&apos;s, Senior Citizens, Solo Parents</small>
                   </div>
                 </div>
-                <div
-                  className={styles.infoCarousel}
-                  role="button"
-                  tabIndex={0}
-                  aria-label="Show next highlight"
-                  aria-live="polite"
-                  onClick={showNextHeroInfo}
-                  onKeyDown={handleHeroInfoKeyDown}
-                >
-                  {heroInfoCards.map((card, index) => (
-                    <div
+                <div className={styles.infoCarousel} aria-live="polite">
+                  {heroInfoCards.map((card, index) => {
+                    let position = index - heroInfoIndex;
+                    if (position > heroInfoCards.length / 2) position -= heroInfoCards.length;
+                    if (position < -heroInfoCards.length / 2) position += heroInfoCards.length;
+                    const isActive = position === 0;
+                    const distance = Math.abs(position);
+
+                    return (
+                    <motion.div
                       key={card.key}
-                      className={`${styles.infoSlide} ${index === heroInfoIndex ? styles.infoSlideActive : styles.infoSlideInactive}`}
+                      className={styles.infoSlide}
+                      animate={{
+                        x: position * 48,
+                        y: isActive ? -6 : 12 + distance * 7,
+                        z: isActive ? 24 : -distance * 55,
+                        rotate: position * 5,
+                        rotateY: position * -2.5,
+                        scale: 1 - distance * 0.055,
+                        opacity: distance > 2 ? 0 : isActive ? 1 : 0.68,
+                        zIndex: 10 - distance,
+                        boxShadow: isActive
+                          ? '0 24px 48px rgba(15, 23, 42, 0.20)'
+                          : '0 12px 26px rgba(15, 23, 42, 0.10)',
+                      }}
+                      transition={{
+                        x: { type: 'spring', stiffness: 140, damping: 22, mass: 1.05 },
+                        y: { type: 'spring', stiffness: 150, damping: 22, mass: 1.05 },
+                        z: { duration: 0.68, ease: [0.22, 1, 0.36, 1] },
+                        rotate: { type: 'spring', stiffness: 135, damping: 21, mass: 1.05 },
+                        rotateY: { duration: 0.68, ease: [0.22, 1, 0.36, 1] },
+                        scale: { duration: 0.68, ease: [0.22, 1, 0.36, 1] },
+                        opacity: { duration: 0.48, ease: 'easeOut' },
+                        boxShadow: { duration: 0.68, ease: 'easeOut' },
+                        zIndex: { delay: isActive ? 0.28 : 0 },
+                      }}
+                      drag={isActive && !reduceMotion ? 'x' : false}
+                      dragConstraints={{ left: 0, right: 0 }}
+                      dragElastic={0.65}
+                      onDragEnd={(_, info) => {
+                        if (info.offset.x < -55 || info.velocity.x < -450) selectRelativeHeroCard(1);
+                        if (info.offset.x > 55 || info.velocity.x > 450) selectRelativeHeroCard(-1);
+                      }}
+                      onTap={() => !isActive && setHeroInfoIndex(index)}
+                      role="button"
+                      tabIndex={isActive ? 0 : -1}
+                      aria-label={`${card.title}. Drag left or right to change card.`}
+                      aria-current={isActive ? 'true' : undefined}
+                      onKeyDown={handleHeroCardKeyDown}
                     >
                       <div className={styles.infoSlideHeader}>
                         <div className={styles.infoSlideIcon}>{card.icon}</div>
@@ -406,8 +451,9 @@ export default function HomePage() {
                           </span>
                         ))}
                       </div>
-                    </div>
-                  ))}
+                    </motion.div>
+                    );
+                  })}
                 </div>
                 <div className={styles.infoDots} role="tablist" aria-label="Highlights">
                   {heroInfoCards.map((card, index) => (
@@ -441,20 +487,8 @@ export default function HomePage() {
                 Beneficiary <span className={styles.highlight}>Benefits</span>
               </h2>
               <p className={styles.aboutMainDesc}>
-                The Alaga Program Benefits for Barangay Sta. Rita PWDs, Senior Citizens and Solo Parents. Here are the lists of requirements for specific services:
+                Explore the assistance available to Barangay Sta. Rita PWDs, senior citizens, and solo parents, together with the documents required for each benefit.
               </p>
-              <div className={styles.aboutKeyFeature}>
-                <div className={styles.aboutKeyIcon}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                    <polyline points="22 4 12 14.01 9 11.01" />
-                  </svg>
-                </div>
-                <span className={styles.aboutKeyText}>Barangay Sta. Rita - Olongapo City</span>
-              </div>
-              <div className={styles.aboutMockup}>
-                <img src="/mockup.png" alt="Alaga Program Mockup" />
-              </div>
             </motion.div>
             <div className={styles.aboutRight}>
               <div className={styles.aboutGrid}>
@@ -476,6 +510,32 @@ export default function HomePage() {
                     )}
                   </motion.div>
                 ))}
+              </div>
+            </div>
+            <div className={styles.aboutMockup}>
+              <iframe
+                className={styles.aboutMap}
+                title="Interactive Google Map of Barangay Sta. Rita, Olongapo City"
+                src="https://www.google.com/maps?q=14.84892%2C120.29093&z=16&output=embed"
+                loading="lazy"
+                allowFullScreen
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+              <div className={styles.aboutMapFooter}>
+                <div className={styles.aboutMapLocation}>
+                  <strong>Barangay Sta. Rita</strong>
+                  <span>Olongapo City, Zambales</span>
+                </div>
+                <a
+                  href="https://www.google.com/maps/search/?api=1&query=Barangay+Sta.+Rita%2C+Olongapo+City%2C+Philippines"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View map
+                  <svg width="15" height="15" viewBox="0 0 15 15" aria-hidden="true">
+                    <path d="M5 3h7v7M12 3 4 11" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </a>
               </div>
             </div>
           </div>
@@ -582,11 +642,12 @@ export default function HomePage() {
       </motion.section>
 
       {/* Contact Section */}
-      <motion.section id="contact" className={styles.contact} variants={sectionMotion} initial={reduceMotion ? 'visible' : 'hidden'} whileInView="visible" viewport={{ once: true, amount: 0.12 }}>
+      <motion.section hidden aria-hidden="true" className={styles.contact}>
         <div className={styles.sectionContainer}>
           <div className={styles.contactContent}>
             <motion.div className={styles.contactInfo} variants={itemMotion}>
               <div className={styles.contactHeader}>
+                <span className={styles.contactEyebrow}>Contact &amp; support</span>
                 <h2 className={styles.sectionTitle}>Get in Touch</h2>
                 <p className={styles.contactDescription}>
                   Have questions about the Alaga Program System?
@@ -670,7 +731,20 @@ export default function HomePage() {
       </motion.section>
 
       {/* Footer */}
-      <motion.footer className={styles.footer} variants={sectionMotion} initial={reduceMotion ? 'visible' : 'hidden'} whileInView="visible" viewport={{ once: true, amount: 0.08 }}>
+      <motion.footer
+        id="contact"
+        className={styles.footer}
+        variants={sectionMotion}
+        initial={reduceMotion ? 'visible' : 'hidden'}
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.08 }}
+        onPointerMove={(event) => {
+          if (event.pointerType === 'touch') return;
+          const bounds = event.currentTarget.getBoundingClientRect();
+          event.currentTarget.style.setProperty('--footer-glow-x', `${event.clientX - bounds.left}px`);
+          event.currentTarget.style.setProperty('--footer-glow-y', `${event.clientY - bounds.top}px`);
+        }}
+      >
         <div className={styles.footerContainer}>
           <motion.div className={styles.footerTop} variants={itemMotion}>
             <div className={styles.footerBrand}>
@@ -687,6 +761,24 @@ export default function HomePage() {
               <a href="#about">About</a>
               <a href="#how-it-works">How It Works</a>
               <a href="#contact">Contact</a>
+            </div>
+          </motion.div>
+          <motion.div className={styles.footerContact} variants={itemMotion} aria-label="Barangay contact information">
+            <div>
+              <span>Address</span>
+              <strong>Horseshoe Drive, Olongapo City, Zambales</strong>
+            </div>
+            <div>
+              <span>Phone</span>
+              <a href="tel:0472229225">047 222 9225</a>
+            </div>
+            <div>
+              <span>Email</span>
+              <a href="mailto:barangaystarita2023@gmail.com">barangaystarita2023@gmail.com</a>
+            </div>
+            <div>
+              <span>Office hours</span>
+              <strong>Monday–Friday, 8:00 AM–5:00 PM</strong>
             </div>
           </motion.div>
           <motion.div className={styles.footerBottom} variants={itemMotion}>
