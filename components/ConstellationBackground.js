@@ -179,6 +179,18 @@ export default function ConstellationBackground({ className = '' }) {
 
     function setPointer(clientX, clientY) {
       const rect = container.getBoundingClientRect();
+
+      const isInside =
+        clientX >= rect.left &&
+        clientX <= rect.right &&
+        clientY >= rect.top &&
+        clientY <= rect.bottom;
+
+      if (!isInside) {
+        clearPointer();
+        return;
+      }
+
       mouse.x = clientX - rect.left;
       mouse.y = clientY - rect.top;
       mouse.active = true;
@@ -209,8 +221,8 @@ export default function ConstellationBackground({ className = '' }) {
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(container);
 
-    container.addEventListener('mousemove', handleMouseMove);
-    container.addEventListener('mouseleave', clearPointer);
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('blur', clearPointer);
     container.addEventListener('touchmove', handleTouchMove, { passive: true });
     container.addEventListener('touchend', clearPointer);
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -218,8 +230,8 @@ export default function ConstellationBackground({ className = '' }) {
     return () => {
       cancelAnimationFrame(animationId);
       resizeObserver.disconnect();
-      container.removeEventListener('mousemove', handleMouseMove);
-      container.removeEventListener('mouseleave', clearPointer);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('blur', clearPointer);
       container.removeEventListener('touchmove', handleTouchMove);
       container.removeEventListener('touchend', clearPointer);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
