@@ -5,6 +5,13 @@ import Link from 'next/link';
 import { motion, useReducedMotion } from 'framer-motion';
 import ConstellationBackground from '../components/ConstellationBackground';
 import { assistanceData } from '@/lib/assistanceData';
+import {
+  buildRequirementsMap,
+  getLocalRequirementsMap,
+  getRequirementsForType,
+  isMissingRequirementsColumn,
+} from '@/lib/assistanceRequirements';
+import { supabase } from '@/lib/supabaseClient';
 import styles from './page.module.css';
 
 const philippinesFloatingDateFormatter = new Intl.DateTimeFormat('en-PH', {
@@ -40,6 +47,7 @@ export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [heroHovered, setHeroHovered] = useState(false);
   const [heroInfoIndex, setHeroInfoIndex] = useState(3);
+  const [requirementsByType, setRequirementsByType] = useState({});
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const [floatingPhilippinesTime, setFloatingPhilippinesTime] = useState(null);
 
@@ -50,6 +58,52 @@ export default function HomePage() {
 
     return () => {
       window.clearInterval(tickTimer);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadRequirements = async () => {
+      if (!supabase) {
+        if (active) setRequirementsByType(getLocalRequirementsMap());
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('assistance_budgets')
+        .select('assistance_type, requirements');
+
+      if (!active) return;
+
+      if (error) {
+        if (isMissingRequirementsColumn(error)) {
+          setRequirementsByType(getLocalRequirementsMap());
+        } else {
+          console.warn('Error loading landing-page assistance requirements', error.message);
+        }
+        return;
+      }
+
+      setRequirementsByType(buildRequirementsMap(data || []));
+    };
+
+    loadRequirements();
+
+    if (!supabase) return () => { active = false; };
+
+    const channel = supabase
+      .channel('landing-page-assistance-requirements')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'assistance_budgets' },
+        loadRequirements,
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -135,19 +189,19 @@ export default function HomePage() {
       icon: assistanceData['Medicine Assistance'].icon,
       title: 'Medicine Assistance',
       description: 'Financial support for outpatient medical expenses and medication reimbursements.',
-      requirements: assistanceData['Medicine Assistance'].requirements,
+      requirements: getRequirementsForType('Medicine Assistance', requirementsByType),
     },
     {
       icon: assistanceData['Confinement Assistance'].icon,
       title: 'Confinement Assistance',
       description: 'Coverage for hospital confinement costs and related medical services.',
-      requirements: assistanceData['Confinement Assistance'].requirements,
+      requirements: getRequirementsForType('Confinement Assistance', requirementsByType),
     },
     {
       icon: assistanceData['Burial Assistance'].icon,
       title: 'Burial Assistance',
       description: 'Assistance to help cover funeral and burial expenses for eligible beneficiaries.',
-      requirements: assistanceData['Burial Assistance'].requirements,
+      requirements: getRequirementsForType('Burial Assistance', requirementsByType),
     },
   ];
 
