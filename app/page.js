@@ -436,9 +436,11 @@ export default function HomePage() {
                     <img src="/BARANGAY%20STA.%20RITA.png" alt="Barangay Sta. Rita logo" />
                   </div>
                   <div className={styles.illustrationTitle}>
+                    <small className={styles.illustrationEyebrow}>Official assistance portal</small>
                     <span>Alaga Program</span>
-                    <small>PWD&apos;s, Senior Citizens, Solo Parents</small>
+                    <small>PWDs, Senior Citizens &amp; Solo Parents</small>
                   </div>
+                  <span className={styles.illustrationStatus}><i aria-hidden="true" /> Online</span>
                 </div>
                 <div className={styles.infoCarousel} aria-live="polite">
                   {heroInfoCards.map((card, index) => {
@@ -505,21 +507,29 @@ export default function HomePage() {
                           </span>
                         ))}
                       </div>
+                      <div className={styles.infoSlideFooter}>
+                        <span><i aria-hidden="true" /> For verified Sta. Rita residents</span>
+                        <strong>{String(index + 1).padStart(2, '0')} / {String(heroInfoCards.length).padStart(2, '0')}</strong>
+                      </div>
                     </motion.div>
                     );
                   })}
                 </div>
-                <div className={styles.infoDots} role="tablist" aria-label="Highlights">
-                  {heroInfoCards.map((card, index) => (
-                    <button
-                      key={`${card.key}-dot`}
-                      type="button"
-                      className={`${styles.infoDot} ${index === heroInfoIndex ? styles.infoDotActive : ''}`}
-                      onClick={() => setHeroInfoIndex(index)}
-                      aria-label={`Show: ${card.title}`}
-                      aria-pressed={index === heroInfoIndex}
-                    />
-                  ))}
+                <div className={styles.infoControls}>
+                  <button type="button" className={styles.infoArrow} onClick={() => selectRelativeHeroCard(-1)} aria-label="Previous highlight">←</button>
+                  <div className={styles.infoDots} role="tablist" aria-label="Highlights">
+                    {heroInfoCards.map((card, index) => (
+                      <button
+                        key={`${card.key}-dot`}
+                        type="button"
+                        className={`${styles.infoDot} ${index === heroInfoIndex ? styles.infoDotActive : ''}`}
+                        onClick={() => setHeroInfoIndex(index)}
+                        aria-label={`Show: ${card.title}`}
+                        aria-pressed={index === heroInfoIndex}
+                      />
+                    ))}
+                  </div>
+                  <button type="button" className={styles.infoArrow} onClick={() => selectRelativeHeroCard(1)} aria-label="Next highlight">→</button>
                 </div>
               </div>
             </div>
