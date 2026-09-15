@@ -32,7 +32,6 @@ export default function ConstellationBackground({ className = '' }) {
     const mouse = { x: -1000, y: -1000, active: false };
     const POINTER_RADIUS = 150;
     const CONNECT_DISTANCE = 135;
-    const MOUSE_CONNECT_DISTANCE = 170;
 
     class Particle {
       constructor(w, h) {
@@ -42,7 +41,7 @@ export default function ConstellationBackground({ className = '' }) {
         this.y = this.baseY;
         this.vx = (Math.random() - 0.5) * 0.32;
         this.vy = (Math.random() - 0.5) * 0.32;
-        this.radius = Math.random() * 1.3 + 0.7;
+        this.radius = Math.random() * 1.4 + 0.9;
         this.alpha = Math.random() * 0.3 + 0.45;
         this.phase = Math.random() * Math.PI * 2;
       }
@@ -70,9 +69,10 @@ export default function ConstellationBackground({ className = '' }) {
         const dist = Math.hypot(dx, dy);
 
         if (dist < POINTER_RADIUS) {
-          const force = (1 - dist / POINTER_RADIUS) * 0.038;
-          this.x += dx * force;
-          this.y += dy * force;
+          const force = Math.pow(1 - dist / POINTER_RADIUS, 2) * 5;
+          const angle = dist > 0 ? Math.atan2(dy, dx) : this.phase;
+          this.x -= Math.cos(angle) * force;
+          this.y -= Math.sin(angle) * force;
         }
       }
 
@@ -126,40 +126,16 @@ export default function ConstellationBackground({ className = '' }) {
           const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
           if (dist > CONNECT_DISTANCE) continue;
 
-          let alpha = (1 - dist / CONNECT_DISTANCE) * 0.14;
-
-          if (mouse.active) {
-            const midX = (p1.x + p2.x) / 2;
-            const midY = (p1.y + p2.y) / 2;
-            const mouseDist = Math.hypot(mouse.x - midX, mouse.y - midY);
-            if (mouseDist < MOUSE_CONNECT_DISTANCE) {
-              alpha = Math.min(alpha + (1 - mouseDist / MOUSE_CONNECT_DISTANCE) * 0.38, 0.55);
-            }
-          }
+          const alpha = (1 - dist / CONNECT_DISTANCE) * 0.2;
 
           ctx.beginPath();
           ctx.moveTo(p1.x, p1.y);
           ctx.lineTo(p2.x, p2.y);
           ctx.strokeStyle = `rgba(37, 99, 235, ${alpha})`;
-          ctx.lineWidth = alpha > 0.34 ? 1.15 : 0.65;
+          ctx.lineWidth = 0.8;
           ctx.stroke();
         }
       }
-
-      if (!mouse.active || reducedMotion) return;
-
-      particles.forEach((particle) => {
-        const dist = Math.hypot(mouse.x - particle.x, mouse.y - particle.y);
-        if (dist > MOUSE_CONNECT_DISTANCE) return;
-
-        const alpha = (1 - dist / MOUSE_CONNECT_DISTANCE) * 0.42;
-        ctx.beginPath();
-        ctx.moveTo(mouse.x, mouse.y);
-        ctx.lineTo(particle.x, particle.y);
-        ctx.strokeStyle = `rgba(29, 78, 216, ${alpha})`;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      });
     }
 
     function animate(time) {

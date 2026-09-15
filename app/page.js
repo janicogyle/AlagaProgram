@@ -516,7 +516,11 @@ export default function HomePage() {
                   })}
                 </div>
                 <div className={styles.infoControls}>
-                  <button type="button" className={styles.infoArrow} onClick={() => selectRelativeHeroCard(-1)} aria-label="Previous highlight">←</button>
+                  <button type="button" className={styles.infoArrow} onClick={() => selectRelativeHeroCard(-1)} aria-label="Previous highlight">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="m15 18-6-6 6-6" />
+                    </svg>
+                  </button>
                   <div className={styles.infoDots} role="tablist" aria-label="Highlights">
                     {heroInfoCards.map((card, index) => (
                       <button
@@ -529,7 +533,11 @@ export default function HomePage() {
                       />
                     ))}
                   </div>
-                  <button type="button" className={styles.infoArrow} onClick={() => selectRelativeHeroCard(1)} aria-label="Next highlight">→</button>
+                  <button type="button" className={styles.infoArrow} onClick={() => selectRelativeHeroCard(1)} aria-label="Next highlight">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             </div>
