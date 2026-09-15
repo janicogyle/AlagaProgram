@@ -3902,41 +3902,72 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  margin-top: 22px;
+  gap: 10px;
+  width: max-content;
+  max-width: 100%;
+  margin: 18px auto 0;
 }
 
-.infoDots { padding: 0; }
+.infoDots { flex: 0 0 auto; gap: 7px; padding: 0; }
 .infoArrow {
-  width: 34px;
-  height: 34px;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
   color: #1e40af;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(37, 99, 235, 0.18);
+  background: #ffffff;
+  border: 1px solid rgba(37, 99, 235, 0.22);
   border-radius: 50%;
-  box-shadow: 0 8px 20px rgba(30, 64, 175, 0.1);
+  box-shadow: 0 6px 16px rgba(30, 64, 175, 0.12);
   cursor: pointer;
-  transition: transform 180ms ease, background 180ms ease, color 180ms ease;
+  transition: transform 180ms ease, background 180ms ease, color 180ms ease, box-shadow 180ms ease;
 }
-.infoArrow:hover { color: #fff; background: #1d4ed8; transform: translateY(-2px); }
+.infoArrow svg { width: 18px; height: 18px; }
+.infoArrow:hover { color: #fff; background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 9px 20px rgba(30, 64, 175, 0.2); }
+.infoArrow:focus-visible,
+.infoDot:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+
+@media (min-width: 1025px) and (max-width: 1200px) {
+  .heroContainer { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .heroVisual { left: 0; min-width: 0; }
+  .heroIllustration { width: 100%; max-width: 500px; }
+}
 
 @media (max-width: 1024px) {
   .heroIllustration { width: min(100%, 580px); max-width: 580px; margin-inline: auto; }
 }
 
 @media (max-width: 576px) {
-  .heroIllustration { padding: 8px 0 18px; }
-  .illustrationHeader { min-height: 58px; margin: 0 6px 16px; padding-bottom: 14px; gap: 10px; }
-  .illustrationLogo { width: 48px; height: 48px; flex-basis: 48px; }
+  .footer { padding: 28px 0 18px; }
+  .footerContainer { padding-inline: 18px; }
+  .footerTop { gap: 14px; padding-bottom: 16px; margin-bottom: 16px; }
+  .footerContact {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding-bottom: 18px;
+    margin-bottom: 14px;
+    text-align: left;
+  }
+  .footerContact > div {
+    grid-template-columns: 94px minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+  }
+  .footerContact strong,
+  .footerContact a { font-size: 12px; line-height: 1.4; }
+  .footerBottom { gap: 4px; }
+
+  .heroIllustration { width: min(100%, 340px); padding: 8px 0 12px; }
+  .illustrationHeader { min-height: 48px; margin: 0 6px 10px; padding-bottom: 10px; gap: 10px; }
+  .illustrationLogo { width: 42px; height: 42px; flex-basis: 42px; }
   .illustrationTitle span { font-size: 17px; }
   .illustrationTitle small:not(.illustrationEyebrow) { font-size: 10px; }
   .illustrationStatus { display: none; }
-  .infoCarousel { height: 270px; margin-inline: 4px; }
+  .infoCarousel { height: 220px; margin-inline: 4px; }
   .infoCarousel::before { inset: 9px -3px -8px; }
-  .infoSlide { padding: 20px; border-radius: 19px; gap: 11px; }
-  .infoSlideIcon { width: 42px; height: 42px; border-radius: 13px; }
+  .infoSlide { padding: 16px; border-radius: 19px; gap: 8px; }
+  .infoSlideIcon { width: 38px; height: 38px; border-radius: 12px; }
   .infoSlideTitle { font-size: 17px; }
   .infoSlideDesc { font-size: 12px; line-height: 1.55; }
   .infoBadge { height: 27px; padding-inline: 9px; font-size: 10px; }
@@ -3948,7 +3979,7 @@
 @media (max-width: 370px) {
   .illustrationHeader { margin-inline: 2px; }
   .illustrationEyebrow { display: none; }
-  .infoCarousel { height: 280px; }
-  .infoSlide { padding: 17px; }
+  .infoCarousel { height: 235px; }
+  .infoSlide { padding: 14px; }
   .infoSlideFooter span { max-width: 150px; }
 }
