@@ -232,6 +232,63 @@
   transform: translateY(-1px);
 }
 
+.installButtonDock {
+  position: absolute;
+  top: 116px;
+  right: max(24px, calc((100vw - 1440px) / 2 + 24px));
+  z-index: 20;
+  pointer-events: auto;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.navInstallBtn {
+  min-height: 48px;
+  padding: 12px 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #ffffff;
+  background: #1e40af;
+  border: 1px solid #1e40af;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(29, 78, 216, 0.22);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.navInstallBtn svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.navInstallBtn:hover {
+  color: #ffffff;
+  background: #1e3a8a;
+  border-color: #1e3a8a;
+}
+
+.installNotice {
+  position: absolute;
+  top: 176px;
+  right: max(24px, calc((100vw - 1440px) / 2 + 24px));
+  z-index: 20;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 12px 15px;
+  color: #0f2f6a;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 14px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .mobileMenuBtn {
   display: none;
   width: 44px;
@@ -576,48 +633,8 @@
   font-weight: 600;
 }
 
-.infoDots {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  padding-top: 4px;
-}
-
-.infoDot {
-  appearance: none;
-  -webkit-appearance: none;
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  min-width: 9px;
-  min-height: 9px;
-  border-radius: 999px;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  line-height: 0;
-  font-size: 0;
-  background: rgba(148, 163, 184, 0.55);
-  cursor: pointer;
-  transition: transform 0.25s ease, background 0.25s ease, width 0.25s ease;
-}
-
-.infoDot:hover {
-  background: rgba(29, 78, 216, 0.55);
-}
-
-.infoDotActive {
-  width: 22px;
-  min-width: 22px;
-  height: 9px;
-  min-height: 9px;
-  background: rgba(29, 78, 216, 0.9);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .infoSlide,
-  .infoDot {
+  .infoSlide {
     transition: none;
   }
 }
@@ -1038,6 +1055,7 @@
 .navLink:focus-visible,
 .navLoginBtn:focus-visible,
 .navSignupBtn:focus-visible,
+.navInstallBtn:focus-visible,
 .heroBtn:focus-visible,
 .heroBtnOutline:focus-visible {
   outline: 3px solid rgba(96, 165, 250, 0.7);
@@ -1048,7 +1066,8 @@
 .heroBtn:active,
 .heroBtnOutline:active,
 .navLoginBtn:active,
-.navSignupBtn:active {
+.navSignupBtn:active,
+.navInstallBtn:active {
   transform: translateY(0);
 }
 
@@ -1895,6 +1914,17 @@
     display: flex;
   }
 
+  .installButtonDock {
+    top: 84px;
+    right: 20px;
+  }
+
+  .installButtonDockHidden {
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+  }
+
   .heroTitle {
     font-size: 34px;
   }
@@ -2108,24 +2138,6 @@
   .infoBadge {
     height: 26px;
     font-size: 11.5px;
-  }
-
-  .infoDots {
-    padding-top: 2px;
-  }
-
-  .infoDot {
-    width: 8px;
-    height: 8px;
-    min-width: 8px;
-    min-height: 8px;
-  }
-
-  .infoDotActive {
-    width: 20px;
-    min-width: 20px;
-    height: 8px;
-    min-height: 8px;
   }
 
   .illustrationQR {
@@ -3064,6 +3076,7 @@
 
 .navLoginBtn,
 .navSignupBtn,
+.navInstallBtn,
 .heroBtn,
 .heroBtnOutline,
 .ctaButton {
@@ -3071,7 +3084,8 @@
 }
 
 .navLoginBtn,
-.navSignupBtn {
+.navSignupBtn,
+.navInstallBtn {
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -3084,7 +3098,8 @@
 }
 
 .navLoginBtn::after,
-.navSignupBtn::after {
+.navSignupBtn::after,
+.navInstallBtn::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -3107,7 +3122,8 @@
 }
 
 .navLoginBtn:active,
-.navSignupBtn:active {
+.navSignupBtn:active,
+.navInstallBtn:active {
   transform: translateY(0) scale(0.98);
   transition-duration: 100ms;
 }
@@ -3129,6 +3145,132 @@
   background: #ffffff;
   border-color: rgba(29, 78, 216, 0.24);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.navInstallBtn {
+  color: #ffffff;
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  border-color: transparent;
+  box-shadow:
+    0 10px 24px rgba(29, 78, 216, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.navInstallBtn > * {
+  position: relative;
+  z-index: 1;
+}
+
+.navInstallBtn svg {
+  transform: none;
+}
+
+.navInstallBtn:hover {
+  color: #ffffff;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 52%, #1d4ed8 100%);
+  border-color: rgba(147, 197, 253, 0.65);
+  transform: none;
+}
+
+.navInstallBtn:active {
+  box-shadow:
+    0 7px 18px rgba(29, 78, 216, 0.24),
+    inset 0 2px 5px rgba(15, 23, 42, 0.2);
+  transform: translateY(0) scale(0.97);
+}
+
+@media (min-width: 901px) and (max-width: 1200px) {
+  .headerContainer { padding-inline: 18px; }
+  .nav { gap: 6px; }
+  .navLink { padding-inline: 9px; }
+  .navLoginBtn,
+  .navSignupBtn { margin-left: 0; padding-inline: 15px; }
+}
+
+@media (max-width: 900px) {
+  .installButtonDock {
+    top: 104px;
+    right: max(20px, env(safe-area-inset-right));
+  }
+
+  .navInstallBtn {
+    width: auto;
+    height: 40px;
+    min-height: 40px;
+    padding: 0 16px;
+    gap: 7px;
+    border-radius: 999px;
+    font-size: 12px;
+    box-shadow: 0 10px 26px rgba(29, 78, 216, 0.28);
+  }
+
+  .navInstallBtn svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .navInstallBtn span {
+    display: inline;
+  }
+
+  .installNotice {
+    top: 158px;
+    right: max(20px, env(safe-area-inset-right));
+    max-width: min(320px, calc(100vw - 40px));
+  }
+
+}
+
+@media (max-width: 576px) {
+  .installButtonDock {
+    top: 86px;
+  }
+
+  .navInstallBtn {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    gap: 0;
+    border-radius: 50%;
+  }
+
+  .navInstallBtn svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .navInstallBtn span {
+    display: none;
+  }
+
+  .installNotice {
+    top: 148px;
+    right: max(16px, env(safe-area-inset-right));
+    max-width: min(300px, calc(100vw - 32px));
+    font-size: 12px;
+  }
+
+}
+
+@media (max-width: 375px) {
+  .installButtonDock {
+    top: 82px;
+    right: max(14px, env(safe-area-inset-right));
+  }
+
+  .navInstallBtn {
+    width: 42px;
+    height: 42px;
+    min-height: 42px;
+  }
+
+  .installNotice {
+    top: 142px;
+    right: max(14px, env(safe-area-inset-right));
+    max-width: calc(100vw - 28px);
+  }
+
 }
 
 .hero {
@@ -3896,38 +4038,6 @@
 .infoSlideFooter span { display: inline-flex; align-items: center; gap: 8px; color: #64748b; font-size: 10px; font-weight: 650; }
 .infoSlideFooter strong { color: #94a3b8; font-size: 10px; letter-spacing: 0.08em; }
 
-.infoControls {
-  position: relative;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: max-content;
-  max-width: 100%;
-  margin: 18px auto 0;
-}
-
-.infoDots { flex: 0 0 auto; gap: 7px; padding: 0; }
-.infoArrow {
-  flex: 0 0 40px;
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  color: #1e40af;
-  background: #ffffff;
-  border: 1px solid rgba(37, 99, 235, 0.22);
-  border-radius: 50%;
-  box-shadow: 0 6px 16px rgba(30, 64, 175, 0.12);
-  cursor: pointer;
-  transition: transform 180ms ease, background 180ms ease, color 180ms ease, box-shadow 180ms ease;
-}
-.infoArrow svg { width: 18px; height: 18px; }
-.infoArrow:hover { color: #fff; background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 9px 20px rgba(30, 64, 175, 0.2); }
-.infoArrow:focus-visible,
-.infoDot:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
-
 @media (min-width: 1025px) and (max-width: 1200px) {
   .heroContainer { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .heroVisual { left: 0; min-width: 0; }
@@ -3973,7 +4083,6 @@
   .infoBadge { height: 27px; padding-inline: 9px; font-size: 10px; }
   .infoSlideFooter { gap: 8px; }
   .infoSlideFooter span { font-size: 9px; }
-  .infoControls { display: none; }
 }
 
 @media (max-width: 370px) {
