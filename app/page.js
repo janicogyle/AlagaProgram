@@ -84,12 +84,6 @@ export default function HomePage() {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    if ('serviceWorker' in window.navigator) {
-      window.navigator.serviceWorker.register('/alaga-sw.js').catch((error) => {
-        console.warn('Unable to register the Alaga service worker', error);
-      });
-    }
-
     return () => {
       standaloneQuery.removeEventListener?.('change', updateInstalledState);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
