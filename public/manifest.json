@@ -2,15 +2,25 @@
   "name": "Barangay Sta. Rita - Alaga Program",
   "short_name": "Alaga Program",
   "description": "A digital platform for managing resident profiles, tracking assistance programs, and generating QR-coded identification for PWD, Senior Citizens, and Solo Parents in our barangay.",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "prefer_related_applications": false,
   "background_color": "#ffffff",
   "theme_color": "#1e40af",
   "icons": [
     {
-      "src": "/PWA.png",
-      "sizes": "500x500",
-      "type": "image/png"
+      "src": "/pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

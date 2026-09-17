@@ -48,6 +48,9 @@ export default function HomePage() {
   const [heroHovered, setHeroHovered] = useState(false);
   const [heroInfoIndex, setHeroInfoIndex] = useState(3);
   const [requirementsByType, setRequirementsByType] = useState({});
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
+  const [installMessage, setInstallMessage] = useState('');
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const [floatingPhilippinesTime, setFloatingPhilippinesTime] = useState(null);
 
@@ -60,6 +63,71 @@ export default function HomePage() {
       window.clearInterval(tickTimer);
     };
   }, []);
+
+  useEffect(() => {
+    const standaloneQuery = window.matchMedia('(display-mode: standalone)');
+    const updateInstalledState = () => {
+      setIsAppInstalled(standaloneQuery.matches || window.navigator.standalone === true);
+    };
+    const handleBeforeInstallPrompt = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    const handleAppInstalled = () => {
+      setInstallPrompt(null);
+      setIsAppInstalled(true);
+      setInstallMessage('Alaga Program was installed successfully.');
+    };
+
+    updateInstalledState();
+    standaloneQuery.addEventListener?.('change', updateInstalledState);
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    if ('serviceWorker' in window.navigator) {
+      window.navigator.serviceWorker.register('/alaga-sw.js').catch((error) => {
+        console.warn('Unable to register the Alaga service worker', error);
+      });
+    }
+
+    return () => {
+      standaloneQuery.removeEventListener?.('change', updateInstalledState);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!installMessage) return undefined;
+    const messageTimer = window.setTimeout(() => setInstallMessage(''), 5000);
+    return () => window.clearTimeout(messageTimer);
+  }, [installMessage]);
+
+  const handleInstallApp = async () => {
+    closeMobileMenu();
+
+    if (isAppInstalled) {
+      setInstallMessage('Alaga Program is already installed on this device.');
+      return;
+    }
+
+    if (installPrompt) {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      setInstallPrompt(null);
+      if (choice.outcome !== 'accepted') {
+        setInstallMessage('Installation was cancelled. You can install it whenever you are ready.');
+      }
+      return;
+    }
+
+    const isAppleMobile = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+    setInstallMessage(
+      isAppleMobile
+        ? 'On iPhone or iPad: tap Share, then Add to Home Screen.'
+        : 'The install prompt is unavailable in this browser. Open the deployed site in Chrome or Edge and try again.',
+    );
+  };
 
   useEffect(() => {
     let active = true;
@@ -395,7 +463,37 @@ export default function HomePage() {
             )}
           </button>
         </div>
+
       </header>
+
+      <div className={`${styles.installButtonDock} ${mobileMenuOpen ? styles.installButtonDockHidden : ''}`}>
+        <button
+          type="button"
+          className={styles.navInstallBtn}
+          onClick={handleInstallApp}
+          aria-label={isAppInstalled ? 'Alaga Program is installed' : 'Install Alaga Program app'}
+          title={isAppInstalled ? 'Alaga Program is installed' : 'Install Alaga Program'}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            {isAppInstalled ? (
+              <path d="m5 12 4 4L19 6" />
+            ) : (
+              <>
+                <path d="M12 3v12" />
+                <path d="m7 10 5 5 5-5" />
+                <path d="M5 21h14" />
+              </>
+            )}
+          </svg>
+          <span>{isAppInstalled ? 'Installed' : 'Download App'}</span>
+        </button>
+      </div>
+
+      {installMessage && (
+        <div className={styles.installNotice} role="status" aria-live="polite">
+          {installMessage}
+        </div>
+      )}
 
       {/* Hero Section */}
       <motion.section
@@ -514,30 +612,6 @@ export default function HomePage() {
                     </motion.div>
                     );
                   })}
-                </div>
-                <div className={styles.infoControls}>
-                  <button type="button" className={styles.infoArrow} onClick={() => selectRelativeHeroCard(-1)} aria-label="Previous highlight">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="m15 18-6-6 6-6" />
-                    </svg>
-                  </button>
-                  <div className={styles.infoDots} role="tablist" aria-label="Highlights">
-                    {heroInfoCards.map((card, index) => (
-                      <button
-                        key={`${card.key}-dot`}
-                        type="button"
-                        className={`${styles.infoDot} ${index === heroInfoIndex ? styles.infoDotActive : ''}`}
-                        onClick={() => setHeroInfoIndex(index)}
-                        aria-label={`Show: ${card.title}`}
-                        aria-pressed={index === heroInfoIndex}
-                      />
-                    ))}
-                  </div>
-                  <button type="button" className={styles.infoArrow} onClick={() => selectRelativeHeroCard(1)} aria-label="Next highlight">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="m9 18 6-6-6-6" />
-                    </svg>
-                  </button>
                 </div>
               </div>
             </div>
