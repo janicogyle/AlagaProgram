@@ -21,18 +21,10 @@ const isCheckedRequirement = (row) => {
   return value === true || value === 'true' || value === 1 || value === '1';
 };
 
-function getResidentIdFromRequest(request, body) {
+function getResidentIdFromRequest(request) {
   const session = readBeneficiarySession(request);
   if (session.ok) return { ok: true, residentId: session.residentId, source: 'cookie' };
-
-  const residentId =
-    body?.resident_id ||
-    body?.residentId ||
-    request.headers.get('x-resident-id') ||
-    request.headers.get('x-residentid');
-
-  if (!residentId) return { ok: false, residentId: null, source: 'none' };
-  return { ok: true, residentId: String(residentId), source: 'body' };
+  return { ok: false, residentId: null, source: 'none' };
 }
 
 export async function PATCH(request, { params }) {
@@ -67,7 +59,7 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ data: null, error: 'Missing request id.' }, { status: 400 });
     }
 
-    const resident = getResidentIdFromRequest(request, body);
+    const resident = getResidentIdFromRequest(request);
     if (!resident.ok) {
       return NextResponse.json(
         { data: null, error: 'Unauthorized. Please log in again.' },
@@ -287,7 +279,10 @@ export async function PATCH(request, { params }) {
       'id, control_number, resident_id, requester_name, requester_contact, requester_address, beneficiary_name, beneficiary_contact, beneficiary_address, assistance_type, amount, status, request_date, request_source, processed_by, decision_remarks, valid_id_url, requirements_urls, requirements_files, requirements_checklist, requirements_completed, created_at';
 
     const runUpdate = async (payload) => {
-      let updateQuery = db.from('assistance_requests').update(payload);
+      let updateQuery = db
+        .from('assistance_requests')
+        .update(payload)
+        .eq('status', existing.status);
       updateQuery = isUuid
         ? updateQuery.eq('id', existing.id)
         : updateQuery.eq('control_number', existing.control_number);
@@ -316,7 +311,10 @@ export async function PATCH(request, { params }) {
           .filter((c) => !['requirements_urls', 'requirements_files', 'requirements_checklist', 'requirements_completed', 'request_source'].includes(c))
           .join(', ');
 
-        let updateQuery = db.from('assistance_requests').update(fallbackUpdate);
+        let updateQuery = db
+          .from('assistance_requests')
+          .update(fallbackUpdate)
+          .eq('status', existing.status);
         updateQuery = isUuid
           ? updateQuery.eq('id', existing.id)
           : updateQuery.eq('control_number', existing.control_number);
@@ -326,6 +324,13 @@ export async function PATCH(request, { params }) {
       }
     }
 
+
+    if (updateError?.code === 'PGRST116') {
+      return NextResponse.json(
+        { data: null, error: 'This request was changed while you were editing it. Refresh and try again.' },
+        { status: 409 },
+      );
+    }
 
     if (updateError) {
       const msg = String(updateError?.message || '').toLowerCase();

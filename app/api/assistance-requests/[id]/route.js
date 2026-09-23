@@ -185,7 +185,7 @@ export async function PATCH(request, { params }) {
 
     let accessLookup = db
       .from('assistance_requests')
-      .select('id, resident_id, residents:resident_id(id, is_pwd, is_senior_citizen, is_solo_parent)');
+      .select('id, resident_id, status, residents:resident_id(id, is_pwd, is_senior_citizen, is_solo_parent)');
     accessLookup = isUuid ? accessLookup.eq('id', String(id)) : accessLookup.eq('control_number', String(id));
     const { data: accessRow, error: accessError } = await accessLookup.maybeSingle();
     if (accessError) throw accessError;
@@ -238,8 +238,13 @@ export async function PATCH(request, { params }) {
     let data = null;
     let error = null;
     for (let attempt = 0; attempt < 8; attempt++) {
-      let query = db.from('assistance_requests').update(updatePayload);
-      query = isUuid ? query.eq('id', String(id)) : query.eq('control_number', String(id));
+      // Compare-and-update prevents two staff members from silently overwriting
+      // decisions made from the same previously loaded row.
+      let query = db
+        .from('assistance_requests')
+        .update(updatePayload)
+        .eq('id', accessRow.id)
+        .eq('status', accessRow.status);
       ({ data, error } = await query.select(selectCols.join(', ')).single());
 
       if (!error) break;
@@ -258,6 +263,12 @@ export async function PATCH(request, { params }) {
       }
     }
 
+    if (error?.code === 'PGRST116') {
+      return NextResponse.json(
+        { data: null, error: 'This request was changed by another staff member. Refresh and try again.' },
+        { status: 409 },
+      );
+    }
     if (error) throw error;
 
     const statusLabel = data?.status ? String(data.status) : 'Updated';
@@ -416,8 +427,20 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    const { error: deleteError } = await db.from('assistance_requests').delete().eq('id', row.id);
+    const { data: deleted, error: deleteError } = await db
+      .from('assistance_requests')
+      .delete()
+      .eq('id', row.id)
+      .eq('status', row.status)
+      .select('id')
+      .maybeSingle();
     if (deleteError) throw deleteError;
+    if (!deleted) {
+      return NextResponse.json(
+        { data: null, error: 'This request was changed by another staff member. Refresh and try again.' },
+        { status: 409 },
+      );
+    }
 
     await logStaffActivity(
       auth,

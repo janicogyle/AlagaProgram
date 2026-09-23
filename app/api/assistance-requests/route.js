@@ -9,6 +9,7 @@ import { resolveAssistanceAmount } from '@/lib/assistanceAmounts.mjs';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { forbiddenSectorResponse, getAllowedSectorKeys, rowMatchesSectorAccess } from '@/lib/sectorAccess';
 import { PORTAL_ROLES } from '@/lib/userRoles';
+import { readBeneficiarySession } from '@/lib/beneficiarySession.server';
 
 export const runtime = 'nodejs';
 
@@ -226,6 +227,20 @@ export async function GET(request) {
             : undefined,
         });
       }
+    } else {
+      const session = readBeneficiarySession(request);
+      if (!session.ok) {
+        return NextResponse.json(
+          { data: null, error: session.error || 'Unauthorized.' },
+          { status: 401 },
+        );
+      }
+      if (!residentId || String(residentId) !== String(session.residentId)) {
+        return NextResponse.json(
+          { data: null, error: 'You can only view your own assistance requests.' },
+          { status: 403 },
+        );
+      }
     }
 
     const baseRequestFields = [
@@ -400,6 +415,20 @@ export async function POST(request) {
       const auth = await requireStaffOrAdmin(request);
       if (!auth.ok) return auth.response;
       staffAuth = auth;
+    } else {
+      const session = readBeneficiarySession(request);
+      if (!session.ok) {
+        return NextResponse.json(
+          { data: null, error: session.error || 'Unauthorized.' },
+          { status: 401 },
+        );
+      }
+      if (String(residentId) !== String(session.residentId)) {
+        return NextResponse.json(
+          { data: null, error: 'You can only submit an assistance request for your own account.' },
+          { status: 403 },
+        );
+      }
     }
 
     if (requestSource === 'online' || staffAuth) {
@@ -411,6 +440,10 @@ export async function POST(request) {
 
       if (residentStatusError) throw residentStatusError;
       onlineResidentProfile = residentStatusRow || null;
+
+      if (!onlineResidentProfile) {
+        return NextResponse.json({ data: null, error: 'Beneficiary not found.' }, { status: 404 });
+      }
 
       if (staffAuth && !rowMatchesSectorAccess(onlineResidentProfile, staffAuth.profile)) {
         return forbiddenSectorResponse(NextResponse, 'Beneficiary is outside your assigned sector access.');
@@ -624,7 +657,8 @@ export async function POST(request) {
       beneficiary_address: beneficiaryAddress,
       assistance_type: assistanceType,
       amount,
-      status: body.status || 'Pending',
+      // New requests always enter the review queue. Never trust a client-supplied status.
+      status: 'Pending',
       request_date: requestDate,
       request_source: requestSource,
       valid_id_url:
@@ -697,14 +731,35 @@ export async function POST(request) {
       if (!error) break;
 
       const msg = String(error?.message || '').toLowerCase();
-      const isDuplicate = msg.includes('duplicate') && msg.includes('control_number');
+      const isDuplicate =
+        (error?.code === '23505' || msg.includes('duplicate')) &&
+        msg.includes('control_number');
 
       if (!isDuplicate) {
         break;
       }
     }
 
-    if (error) throw error;
+    if (error) {
+      const message = String(error?.message || '').toLowerCase();
+      const isActiveRequestConflict =
+        error?.code === '23505' &&
+        (message.includes('assistance_requests_one_active_per_category_uidx') ||
+          (!message.includes('control_number') && message.includes('duplicate')));
+
+      if (isActiveRequestConflict) {
+        return NextResponse.json(
+          {
+            data: null,
+            error: `This beneficiary already has a ${assistanceType} request under review.`,
+            code: 'ACTIVE_CATEGORY_REQUEST_EXISTS',
+          },
+          { status: 409 },
+        );
+      }
+
+      throw error;
+    }
 
     const staffActor = await readOptionalStaffActor(request, supabaseAdmin);
     const actor = staffActor || {
