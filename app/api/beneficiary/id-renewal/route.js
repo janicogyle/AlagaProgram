@@ -152,6 +152,12 @@ export async function POST(request) {
         .eq('id', latestRequest.id)
         .select('id, resident_id, card_id, current_expires_at, updated_valid_id_url, remarks, status, admin_remarks, processed_by, processed_at, created_at, updated_at')
         .single();
+      if (error?.code === '23505') {
+        return NextResponse.json(
+          { data: null, error: 'You already have a renewal request under review.' },
+          { status: 409 },
+        );
+      }
       if (error) throw error;
       saved = data;
     } else {
@@ -208,6 +214,12 @@ export async function POST(request) {
     return NextResponse.json({ data: saved, error: null }, { status: latestRequest?.status === 'Incomplete' ? 200 : 201 });
   } catch (error) {
     console.error('Submit beneficiary ID renewal error:', error);
+    if (error?.code === '23505') {
+      return NextResponse.json(
+        { data: null, error: 'You already have a renewal request under review.' },
+        { status: 409 },
+      );
+    }
     return NextResponse.json({ data: null, error: error?.message || 'Failed to submit renewal request.' }, { status: 500 });
   }
 }
