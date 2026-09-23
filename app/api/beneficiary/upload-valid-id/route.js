@@ -7,10 +7,7 @@ export const runtime = 'nodejs';
 function getResidentIdFromRequest(request) {
   const session = readBeneficiarySession(request);
   if (session.ok) return { ok: true, residentId: session.residentId, source: 'cookie' };
-
-  const residentId = request.headers.get('x-resident-id') || request.headers.get('x-residentid');
-  if (!residentId) return { ok: false, residentId: null, source: 'none' };
-  return { ok: true, residentId: String(residentId), source: 'header' };
+  return { ok: false, residentId: null, source: 'none' };
 }
 
 export async function POST(request) {
@@ -31,7 +28,7 @@ export async function POST(request) {
 
     const upload = await uploadDocumentFile({
       file,
-      folder: `alaga/assistance-requests/${controlNumber}`,
+      folder: `alaga/assistance-requests/${resident.residentId}/${controlNumber}`,
     });
 
     if (!upload.ok) {

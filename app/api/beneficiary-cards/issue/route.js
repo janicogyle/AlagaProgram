@@ -210,6 +210,13 @@ export async function POST(request) {
       return NextResponse.json({ data: null, error: err.message, code: err.code }, { status: 500 });
     }
 
+    if (err?.code === '23505') {
+      return NextResponse.json(
+        { data: null, error: 'Another staff member issued this beneficiary card at the same time. Refresh to see the current card.' },
+        { status: 409 },
+      );
+    }
+
     return NextResponse.json({ data: null, error: err.message || 'Failed to issue card.' }, { status: 500 });
   }
 }

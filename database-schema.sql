@@ -47,15 +47,23 @@ CREATE TABLE IF NOT EXISTS public.assistance_requests (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Add index for better query performance
-CREATE UNIQUE INDEX IF NOT EXISTS assistance_requests_assistance_type_control_number_uidx
-  ON public.assistance_requests (assistance_type, control_number);
+-- Control numbers are displayed as global references (YYYY-###), so uniqueness
+-- must not depend on assistance type.
+DROP INDEX IF EXISTS public.assistance_requests_assistance_type_control_number_uidx;
+CREATE UNIQUE INDEX IF NOT EXISTS assistance_requests_control_number_uidx
+  ON public.assistance_requests (control_number);
 
 CREATE INDEX IF NOT EXISTS idx_assistance_requests_resident_id ON public.assistance_requests(resident_id);
 CREATE INDEX IF NOT EXISTS idx_assistance_requests_status ON public.assistance_requests(status);
 CREATE INDEX IF NOT EXISTS idx_assistance_requests_request_date ON public.assistance_requests(request_date);
 CREATE INDEX IF NOT EXISTS idx_assistance_requests_assistance_type_control_number
   ON public.assistance_requests (assistance_type, control_number);
+
+-- Database-level guard against simultaneous duplicate active submissions.
+CREATE UNIQUE INDEX IF NOT EXISTS assistance_requests_one_active_per_category_uidx
+  ON public.assistance_requests (resident_id, assistance_type)
+  WHERE resident_id IS NOT NULL
+    AND status IN ('Pending', 'Resubmitted', 'Approved');
 
 -- Ensure columns exist on older installs
 ALTER TABLE public.assistance_requests ADD COLUMN IF NOT EXISTS requirements_urls JSONB DEFAULT '[]'::jsonb;
