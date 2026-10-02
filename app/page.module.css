@@ -1,7 +1,5 @@
 /* Page Container */
 .page {
-  --page-glow-x: 50vw;
-  --page-glow-y: 50vh;
   position: relative;
   isolation: isolate;
   min-height: 100vh;
@@ -10,32 +8,6 @@
   overflow-x: clip;
   overflow-y: visible;
   overscroll-behavior-y: auto;
-}
-
-.page::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  opacity: 0;
-  background: radial-gradient(
-    320px circle at var(--page-glow-x) var(--page-glow-y),
-    rgba(37, 99, 235, 0.19),
-    rgba(59, 130, 246, 0.08) 42%,
-    transparent 72%
-  );
-  transition: opacity 220ms ease;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .page:hover::after {
-    opacity: 1;
-  }
-
-  .page.pageGlowSuppressed::after {
-    opacity: 0;
-  }
 }
 
 .pageContent {
@@ -1571,36 +1543,12 @@
 /* FOOTER                  */
 /* ======================= */
 .footer {
-  --footer-glow-x: 50%;
-  --footer-glow-y: 50%;
   position: relative;
   z-index: 3;
   isolation: isolate;
   overflow: hidden;
   background: #0f172a;
   padding: 38px 0 22px;
-}
-
-.footer::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0;
-  background: radial-gradient(
-    260px circle at var(--footer-glow-x) var(--footer-glow-y),
-    rgba(37, 99, 235, 0.38),
-    rgba(30, 64, 175, 0.13) 38%,
-    transparent 72%
-  );
-  transition: opacity 220ms ease;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .footer:hover::before {
-    opacity: 1;
-  }
 }
 
 .footerContainer {
@@ -3113,7 +3061,7 @@
 .navLoginBtn:hover,
 .navSignupBtn:hover {
   transform: translateY(-2px) scale(1.025);
-  box-shadow: 0 14px 28px rgba(29, 78, 216, 0.23);
+  box-shadow: none;
 }
 
 .navLoginBtn:hover::after,
