@@ -45,7 +45,6 @@ const itemMotion = {
 export default function HomePage() {
   const reduceMotion = useReducedMotion();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [heroHovered, setHeroHovered] = useState(false);
   const [heroInfoIndex, setHeroInfoIndex] = useState(3);
   const [requirementsByType, setRequirementsByType] = useState({});
   const [installPrompt, setInstallPrompt] = useState(null);
@@ -395,14 +394,7 @@ export default function HomePage() {
   ];
 
   return (
-    <div
-      className={`${styles.page} ${heroHovered ? styles.pageGlowSuppressed : ''}`}
-      onPointerMove={(event) => {
-        if (event.pointerType === 'touch') return;
-        event.currentTarget.style.setProperty('--page-glow-x', `${event.clientX}px`);
-        event.currentTarget.style.setProperty('--page-glow-y', `${event.clientY}px`);
-      }}
-    >
+    <div className={styles.page}>
       <div className={styles.floatingTimeChip} aria-live="polite" aria-label="Philippine Standard Time">
         <span className={styles.floatingTimeDate}>{floatingDateLabel}</span>
         <strong>{floatingTimeLabel}</strong>
@@ -493,8 +485,6 @@ export default function HomePage() {
       <motion.section
         id="home"
         className={styles.hero}
-        onPointerEnter={(event) => event.pointerType !== 'touch' && setHeroHovered(true)}
-        onPointerLeave={() => setHeroHovered(false)}
         variants={sectionMotion}
         initial={reduceMotion ? 'visible' : 'hidden'}
         animate="visible"
@@ -878,12 +868,6 @@ export default function HomePage() {
         initial={reduceMotion ? 'visible' : 'hidden'}
         whileInView="visible"
         viewport={{ once: true, amount: 0.08 }}
-        onPointerMove={(event) => {
-          if (event.pointerType === 'touch') return;
-          const bounds = event.currentTarget.getBoundingClientRect();
-          event.currentTarget.style.setProperty('--footer-glow-x', `${event.clientX - bounds.left}px`);
-          event.currentTarget.style.setProperty('--footer-glow-y', `${event.clientY - bounds.top}px`);
-        }}
       >
         <div className={styles.footerContainer}>
           <motion.div className={styles.footerTop} variants={itemMotion}>
