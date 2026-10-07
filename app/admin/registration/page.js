@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Card from '@/components/Card';
 import Input from '@/components/Input';
@@ -148,6 +148,7 @@ export default function RegistrationPage() {
     citizenship: LOCKED_CITIZENSHIP,
     civilStatus: '',
     contactNumber: '',
+    accountPassword: '',
     // Sector Classification
     primarySector: '',
     secondarySector: '',
@@ -183,6 +184,14 @@ export default function RegistrationPage() {
     cooldownInfo: getCooldownInfo(null),
     blockReason: null,
   });
+  const [staffProfile, setStaffProfile] = useState(null);
+  const [profilePhotoFile, setProfilePhotoFile] = useState(null);
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState('');
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const videoRef = useRef(null);
+  const photoInputRef = useRef(null);
+  const cameraStreamRef = useRef(null);
   const civilStatusOptionsForSectors = civilStatusOptions.map((option) => ({
     ...option,
     disabled: option.value === 'married' && !!formData.sectors?.soloParent,
@@ -200,6 +209,93 @@ export default function RegistrationPage() {
     return { Authorization: `Bearer ${session.access_token}` };
   }, []);
 
+  const stopCamera = useCallback(() => {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    setCameraOpen(false);
+  }, []);
+
+  const setSelectedPhoto = (file) => {
+    if (!file) return;
+    if (!/^image\/(jpeg|png)$/i.test(file.type || '')) {
+      setCameraError('Use a JPG, JPEG, or PNG photo.');
+      return;
+    }
+    setCameraError('');
+    setProfilePhotoFile(file);
+    setProfilePhotoPreview(URL.createObjectURL(file));
+  };
+
+  const startCamera = async () => {
+    setCameraError('');
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Camera access is unavailable on this device. Upload a photo instead.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      cameraStreamRef.current = stream;
+      setCameraOpen(true);
+      window.setTimeout(() => {
+        if (videoRef.current) videoRef.current.srcObject = stream;
+      }, 0);
+    } catch {
+      setCameraError('Camera access was denied or unavailable. Upload a photo instead.');
+    }
+  };
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    if (!video?.videoWidth || !video?.videoHeight) {
+      setCameraError('Camera is still starting. Please try again.');
+      return;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        setCameraError('Could not capture the photo. Please try again.');
+        return;
+      }
+      setSelectedPhoto(new File([blob], `beneficiary-photo-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+      stopCamera();
+    }, 'image/jpeg', 0.9);
+  };
+
+  useEffect(() => () => stopCamera(), [stopCamera]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadStaffProfile = async () => {
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch('/api/admin/profile', { headers });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload?.error) throw new Error(payload?.error || 'Unable to verify staff role.');
+        if (!cancelled) setStaffProfile(payload.data);
+      } catch (error) {
+        if (!cancelled) setStatus({ type: 'error', message: error.message || 'Unable to verify staff role.' });
+      }
+    };
+    void loadStaffProfile();
+    return () => { cancelled = true; };
+  }, [getAuthHeaders]);
+
+  useEffect(() => {
+    if (!staffProfile || staffProfile.role === 'Admin') return;
+    const allowed = Array.isArray(staffProfile.sector_access) ? staffProfile.sector_access : [];
+    if (allowed.length !== 1) return;
+    const primarySector = allowed[0];
+    const flags = deriveSectorFlags(primarySector, '');
+    setFormData((previous) => ({
+      ...previous,
+      primarySector,
+      secondarySector: '',
+      sectors: { pwd: flags.is_pwd, seniorCitizen: flags.is_senior_citizen, soloParent: flags.is_solo_parent },
+    }));
+  }, [staffProfile]);
   // Check whether a contact number is already registered (walk-in duplicate check)
   const checkContactAvailability = async (contactDigits) => {
     if (!contactDigits || contactDigits.length !== 11) {
@@ -567,6 +663,7 @@ export default function RegistrationPage() {
   };
 
   const handleSectorSelectChange = (event) => {
+    if (staffProfile && staffProfile.role !== 'Admin') return;
     const { name, value } = event.target;
     const nextPrimary = name === 'primarySector' ? value : formData.primarySector;
     let nextSecondary = name === 'secondarySector' ? value : formData.secondarySector;
@@ -647,6 +744,9 @@ export default function RegistrationPage() {
     if (formData.sectors.soloParent && formData.civilStatus === 'married') {
       newErrors.civilStatus = SOLO_PARENT_MARRIED_ERROR;
     }
+    if (!existingResidentId && !profilePhotoFile) newErrors.profilePhoto = 'Capture or upload the beneficiary photo.';
+    if (!existingResidentId && String(formData.accountPassword || '').length < 8) newErrors.accountPassword = 'Set an account password with at least 8 characters.';
+
     if (!formData.contactNumber.trim()) {
       newErrors.contactNumber = 'Contact number is required';
     } else if (formData.contactNumber.length !== 11) {
@@ -711,6 +811,7 @@ export default function RegistrationPage() {
 
   const getWizardStepForError = (errorName) => {
     if (['sectors'].includes(errorName)) return 2;
+    if (['profilePhoto', 'accountPassword'].includes(errorName)) return 1;
     if (['assistanceType', 'assistanceAmount', 'representativeName', 'representativeContact'].includes(errorName)) return 2;
     if (['requirementsChecklist', 'requirementsCompleted'].includes(errorName)) return 3;
     return 1;
@@ -752,217 +853,59 @@ export default function RegistrationPage() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    // Re-check contact availability before submitting (for new registrations)
+    e?.preventDefault();
     if (!existingResidentId && formData.contactNumber.length === 11) {
       const isAvailable = await checkContactAvailability(formData.contactNumber);
       if (!isAvailable) {
-        setErrors((prev) => ({
-          ...prev,
-          contactNumber: contactCheck.error || 'This contact number is already registered',
-        }));
+        setErrors((prev) => ({ ...prev, contactNumber: contactCheck.error || 'This contact number is already registered.' }));
         return;
       }
     }
-    
+
     const formErrors = getFormErrors();
     setErrors(formErrors);
-    if (Object.keys(formErrors).length > 0) {
-      const firstErrorStep = Math.min(...Object.keys(formErrors).map(getWizardStepForError));
-      setMobileStep(firstErrorStep);
+    if (Object.keys(formErrors).length) {
+      setMobileStep(Math.min(...Object.keys(formErrors).map(getWizardStepForError)));
       return;
     }
 
     setStatus(null);
     setIsSubmitting(true);
-
     try {
-      const age = calculateAge(formData.birthday);
-
-      // Existing walk-in beneficiaries keep their original control number/profile.
-      const residentControlNumber =
-        existingResidentId ? controlNumber : controlNumber || (await queryNextBeneficiaryControlNumber(supabase));
-      if (!existingResidentId && !controlNumber) {
-        setControlNumber(residentControlNumber);
-      }
-      
-      // 1. Insert or update resident record
-      // For new walk-in registrations, block duplicate contact numbers (allowContactMerge: false)
-      const residentData = await createOrUpdateResident({
-        ...(existingResidentId
-          ? { id: existingResidentId }
-          : { control_number: residentControlNumber }),
-        last_name: formData.lastName,
-        first_name: formData.firstName,
-        middle_name: formData.middleName || null,
-        house_no: formData.houseNo,
-        purok: formData.purok,
-        barangay: formData.barangay,
-        city: formData.city,
-        birthday: formData.birthday,
-        birthplace: formData.birthplace,
-        age: age ? parseInt(age) : null,
-        sex: formData.sex,
-        citizenship: LOCKED_CITIZENSHIP,
-        civil_status: formData.civilStatus,
-        contact_number: formData.contactNumber,
-        primary_sector: formData.primarySector,
-        secondary_sector: formData.secondarySector || null,
-        is_pwd: formData.sectors.pwd,
-        is_senior_citizen: formData.sectors.seniorCitizen,
-        is_solo_parent: formData.sectors.soloParent,
-        representative_name: formData.representativeName,
-        representative_contact: formData.representativeContact,
-        representative_relationship: formData.representativeRelationship,
-        status: 'Active',
-      }, { allowContactMerge: !!existingResidentId });
-
-      // 2. Insert into assistance_requests table if an assistance type is selected
-      if (formData.assistanceType && assistanceRequestBlocked) {
-        setStatus({ type: 'error', message: getAssistanceBlockMessage() });
-        return;
+      let profilePhotoUrl = '';
+      if (profilePhotoFile) {
+        const uploadForm = new FormData();
+        uploadForm.append('file', profilePhotoFile);
+        uploadForm.append('contactNumber', formData.contactNumber);
+        uploadForm.append('documentType', 'selfie');
+        const uploadResponse = await fetch('/api/account-requests/upload-valid-id', { method: 'POST', body: uploadForm });
+        const uploadPayload = await uploadResponse.json().catch(() => ({}));
+        if (!uploadResponse.ok || uploadPayload?.error) throw new Error(uploadPayload?.error || 'Failed to upload beneficiary photo.');
+        profilePhotoUrl = uploadPayload?.data?.url || uploadPayload?.data?.path || '';
       }
 
-      if (formData.assistanceType && residentData) {
-        if (!supabase) {
-          throw new Error('Database client not available');
-        }
-
-        // Admin/Staff: requirements are verified via checklist (no file uploads).
-
-        const requirementsChecklist = selectedAssistanceRequirements.map((label, idx) => ({
-          label,
-          checked: !!formData?.requirementsChecklist?.[idx],
-        }));
-
-        const requirementsCompleted = requirementsChecklist.length
-          ? requirementsChecklist.every((row) => !!row?.checked)
-          : !!formData.requirementsCompleted;
-
-        const beneficiaryName = buildResidentFullName();
-        const beneficiaryContact = String(formData.contactNumber || '').trim();
-        const beneficiaryAddress = buildResidentAddress();
-
-        const representativeName = String(formData.representativeName || '').trim();
-        const representativeContact = String(formData.representativeContact || '').trim();
-
-        const payload = {
-          resident_id: residentData.id || existingResidentId, // Link to the existing/new resident
-
-          // Representative = person requesting on behalf of the beneficiary.
-          // If blank, treat this as a self-request by the beneficiary.
-          requester_name: representativeName || beneficiaryName,
-          requester_contact: representativeContact || beneficiaryContact,
-          requester_address: beneficiaryAddress,
-
-          beneficiary_name: beneficiaryName,
-          beneficiary_contact: beneficiaryContact,
-          beneficiary_address: beneficiaryAddress,
-
-          assistance_type: formData.assistanceType,
-          amount: formData.assistanceAmount || 0,
-          status: 'Pending', // Default status
-          request_date: formData.dateOfRequest,
-          request_source: 'walk-in',
-          requirements_completed: requirementsCompleted,
-          requirements_checklist: requirementsChecklist,
-        };
-
-        const authHeaders = await getAuthHeaders();
-        const assistanceResponse = await fetch('/api/assistance-requests', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...authHeaders },
-          body: JSON.stringify(payload),
-        });
-        const assistanceJson = await assistanceResponse.json().catch(() => ({}));
-
-        if (!assistanceResponse.ok || assistanceJson?.error) {
-          if (assistanceJson?.code === MISSING_REQUIREMENTS_VERIFICATION_CODE) {
-            throw new Error(assistanceJson?.error || MISSING_REQUIREMENTS_VERIFICATION_ERROR);
-          }
-          throw new Error(assistanceJson?.error || 'Failed to create assistance request.');
-        }
-
-        const insertPayload = payload;
-
-        const requirementsColsInPayload =
-          Object.prototype.hasOwnProperty.call(insertPayload, 'requirements_checklist') ||
-          Object.prototype.hasOwnProperty.call(insertPayload, 'requirements_completed');
-
-        if (requirementsColsInPayload) {
-          const savedChecklist = parseRequirementsChecklist(savedAssistance?.requirements_checklist);
-          const hasSavedCompleted = Object.prototype.hasOwnProperty.call(
-            savedAssistance || {},
-            'requirements_completed',
-          );
-          const savedCompleted = toBoolean(savedAssistance?.requirements_completed) === true;
-          const savedChecklistCompleted = savedChecklist.length
-            ? savedChecklist.every(isCheckedRequirement)
-            : savedCompleted;
-          const savedCompletedMatches = hasSavedCompleted
-            ? savedCompleted === requirementsCompleted
-            : savedChecklist.length > 0 && savedChecklistCompleted === requirementsCompleted;
-
-          if (
-            savedChecklist.length !== requirementsChecklist.length ||
-            savedChecklistCompleted !== requirementsCompleted ||
-            !savedCompletedMatches
-          ) {
-            throw new Error(
-              'Requirements verification was not saved correctly. Please refresh the page and try again.',
-            );
-          }
-        }
-      }
-
-      // Reset form after successful submission
-      setFormData({
-        lastName: '',
-        firstName: '',
-        middleName: '',
-        houseNo: '',
-        purok: '',
-        barangay: 'sta-rita',
-        city: 'Olongapo',
-        birthday: '',
-        birthplace: '',
-        sex: '',
-        citizenship: LOCKED_CITIZENSHIP,
-        civilStatus: '',
-        contactNumber: '',
-        sectors: {
-          pwd: false,
-          seniorCitizen: false,
-          soloParent: false,
-        },
-        primarySector: '',
-        secondarySector: '',
-        representativeName: '',
-        representativeContact: '',
-        representativeRelationship: '',
-        assistanceType: '',
-        otherAssistanceType: '',
-        assistanceAmount: '',
-        dateOfRequest: new Date().toISOString().split('T')[0],
-        requirementsChecklist: {},
-        requirementsCompleted: false,
+      const requirementsChecklist = selectedAssistanceRequirements.map((label, index) => ({
+        label,
+        checked: !!formData.requirementsChecklist?.[index],
+      }));
+      const headers = await getAuthHeaders();
+      const response = await fetch('/api/admin/registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({
+          ...formData,
+          existingResidentId: existingResidentId || null,
+          profilePhotoUrl,
+          requirementsChecklist,
+        }),
       });
-      setContactCheck({ checking: false, available: true, error: null });
-      setExistingResidentId('');
-      void refreshResidentControlNumber();
-      setStatus({
-        type: 'success',
-        message: 'Registration saved successfully. Beneficiary and request have been recorded.',
-      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.error) throw new Error(payload?.error || 'Failed to save registration.');
 
-      router.push('/admin/assistance/requests');
+      setStatus({ type: 'success', message: 'Beneficiary account, profile photo, QR/Actual ID, and request were linked successfully.' });
+      router.push('/admin/residents');
     } catch (error) {
-      console.error('Error:', error);
-      setStatus({
-        type: 'error',
-        message: 'Failed to save registration: ' + error.message,
-      });
+      setStatus({ type: 'error', message: `Failed to save registration: ${error.message}` });
     } finally {
       setIsSubmitting(false);
     }
@@ -983,6 +926,7 @@ export default function RegistrationPage() {
       citizenship: LOCKED_CITIZENSHIP,
       civilStatus: '',
       contactNumber: '',
+      accountPassword: '',
       sectors: {
         pwd: false,
         seniorCitizen: false,
@@ -1006,6 +950,8 @@ export default function RegistrationPage() {
     ? getRequirementsFor(formData.assistanceType)
     : [];
   const selectedAssistanceCeiling = formData.assistanceType ? getCeilingFor(formData.assistanceType) : null;
+  const isSectorRestricted = !!staffProfile && staffProfile.role !== 'Admin';
+  const availableSectorOptions = isSectorRestricted ? BENEFICIARY_SECTOR_OPTIONS.filter((option) => (staffProfile.sector_access || []).includes(option.value)) : BENEFICIARY_SECTOR_OPTIONS;
 
   return (
     <div className={styles.registrationPage}>
@@ -1207,15 +1153,31 @@ export default function RegistrationPage() {
                 mask="ph-contact"
                 error={errors.contactNumber || (!contactCheck.available && contactCheck.error ? contactCheck.error : '')}
               />
-              {contactCheck.checking && (
+                            {contactCheck.checking && (
                 <span className={styles.contactChecking}>Checking contact number...</span>
               )}
             </div>
+            <Input label="Beneficiary Account Password" type="password" name="accountPassword" value={formData.accountPassword} onChange={handleChange} placeholder="At least 8 characters" error={errors.accountPassword} required={!existingResidentId} disabled={!!existingResidentId} />
           </div>
         </Card>
 
         {/* Side Cards */}
         <div className={styles.sideCards}>
+          <Card title="Beneficiary Photo" subtitle="Capture or upload the official profile photo for the Actual ID." className={styles.sideCard}>
+            <div className={styles.photoCapture}>
+              {profilePhotoPreview ? <img src={profilePhotoPreview} alt="Beneficiary photo preview" className={styles.photoPreview} /> : cameraOpen ? <video ref={videoRef} autoPlay playsInline muted className={styles.photoPreview} /> : <div className={styles.photoPlaceholder}>No beneficiary photo captured</div>}
+              <input ref={photoInputRef} className={styles.photoFileInput} type="file" accept="image/jpeg,image/png" onChange={(event) => setSelectedPhoto(event.target.files?.[0])} />
+              <div className={styles.photoActions}>
+                {!cameraOpen && !profilePhotoPreview && <Button type="button" onClick={startCamera}>Open Camera</Button>}
+                {cameraOpen && <Button type="button" onClick={capturePhoto}>Take Photo</Button>}
+                {cameraOpen && <Button type="button" variant="secondary" onClick={stopCamera}>Cancel Camera</Button>}
+                {!cameraOpen && <Button type="button" variant="secondary" onClick={() => photoInputRef.current?.click()}>Upload Photo</Button>}
+                {profilePhotoPreview && <Button type="button" variant="secondary" onClick={() => { setProfilePhotoFile(null); setProfilePhotoPreview(''); void startCamera(); }}>Retake</Button>}
+              </div>
+              {cameraError && <p className={styles.errorText}>{cameraError}</p>}
+              {errors.profilePhoto && <p className={styles.errorText}>{errors.profilePhoto}</p>}
+            </div>
+          </Card>
           {/* ATTACH REQUIREMENTS */}
             <Card
               title="ATTACH REQUIREMENTS"
@@ -1345,8 +1307,9 @@ export default function RegistrationPage() {
                     name="primarySector"
                     value={formData.primarySector}
                     onChange={handleSectorSelectChange}
-                    options={BENEFICIARY_SECTOR_OPTIONS}
+                    options={availableSectorOptions}
                     placeholder="Select primary sector"
+                    disabled={!staffProfile || isSectorRestricted}
                     required
                   />
                   <Select
@@ -1354,8 +1317,9 @@ export default function RegistrationPage() {
                     name="secondarySector"
                     value={formData.secondarySector}
                     onChange={handleSectorSelectChange}
-                    options={getSecondarySectorOptions(formData.primarySector)}
+                    options={getSecondarySectorOptions(formData.primarySector).filter((option) => availableSectorOptions.some((allowed) => allowed.value === option.value))}
                     placeholder="No secondary sector"
+                    disabled={!staffProfile || isSectorRestricted}
                     allowEmptyOption
                   />
                 </div>
