@@ -45,6 +45,7 @@ const itemMotion = {
 export default function HomePage() {
   const reduceMotion = useReducedMotion();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [heroInfoIndex, setHeroInfoIndex] = useState(3);
   const [requirementsByType, setRequirementsByType] = useState({});
   const [installPrompt, setInstallPrompt] = useState(null);
@@ -52,6 +53,11 @@ export default function HomePage() {
   const [installMessage, setInstallMessage] = useState('');
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const [floatingPhilippinesTime, setFloatingPhilippinesTime] = useState(null);
+
+  useEffect(() => {
+    const animationFrame = window.requestAnimationFrame(() => setIsHydrated(true));
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, []);
 
   useEffect(() => {
     const updateTime = () => setFloatingPhilippinesTime(new Date());
@@ -486,7 +492,7 @@ export default function HomePage() {
         id="home"
         className={styles.hero}
         variants={sectionMotion}
-        initial={reduceMotion ? 'visible' : 'hidden'}
+        initial="hidden"
         animate="visible"
       >
         <ConstellationBackground />
@@ -560,7 +566,7 @@ export default function HomePage() {
                         boxShadow: { duration: 0.68, ease: 'easeOut' },
                         zIndex: { delay: isActive ? 0.28 : 0 },
                       }}
-                      drag={isActive && !reduceMotion ? 'x' : false}
+                      drag={isHydrated && isActive && !reduceMotion ? 'x' : false}
                       dragConstraints={{ left: 0, right: 0 }}
                       dragElastic={0.65}
                       onDragEnd={(_, info) => {
@@ -609,7 +615,7 @@ export default function HomePage() {
       </motion.section>
 
       {/* About Section */}
-      <motion.section id="about" className={styles.about} variants={sectionMotion} initial={reduceMotion ? 'visible' : 'hidden'} whileInView="visible" viewport={{ once: true, amount: 0.12 }}>
+      <motion.section id="about" className={styles.about} variants={sectionMotion} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.12 }}>
         <div className={styles.sectionContainer}>
           <div className={styles.aboutWrapper}>
             <motion.div className={styles.aboutLeft} variants={itemMotion}>
@@ -673,7 +679,7 @@ export default function HomePage() {
       </motion.section>
 
       {/* Process Section */}
-      <motion.section id="how-it-works" className={styles.process} variants={sectionMotion} initial={reduceMotion ? 'visible' : 'hidden'} whileInView="visible" viewport={{ once: true, amount: 0.08 }}>
+      <motion.section id="how-it-works" className={styles.process} variants={sectionMotion} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.08 }}>
         <div className={styles.sectionContainer}>
           <motion.div className={styles.sectionHeader} variants={itemMotion}>
             <h2 className={styles.sectionTitle}>Simple Registration Process</h2>
@@ -865,7 +871,7 @@ export default function HomePage() {
         id="contact"
         className={styles.footer}
         variants={sectionMotion}
-        initial={reduceMotion ? 'visible' : 'hidden'}
+        initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.08 }}
       >
