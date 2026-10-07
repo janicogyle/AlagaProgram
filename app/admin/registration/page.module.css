@@ -969,3 +969,49 @@
     color: #93c5fd;
   }
 }
+
+.photoCapture {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.photoPreview,
+.photoPlaceholder {
+  width: 100%;
+  min-height: 210px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-muted);
+}
+
+.photoPlaceholder {
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 13px;
+}
+
+.photoFileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.photoActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.photoActions button {
+  min-width: 0;
+}
