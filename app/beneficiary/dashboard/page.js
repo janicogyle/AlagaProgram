@@ -9,11 +9,10 @@ import Button from '../../../components/Button';
 import Badge from '../../../components/Badge';
 import styles from './page.module.css';
 import Modal from '../../../components/Modal';
-import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
 import { deleteClientCache, getClientCache, setClientCache } from '@/lib/clientCache';
+import { buildEligibilityMaps, getResidentEligibility } from '@/lib/residentEligibility';
 
-const isActiveRequestStatus = (status) => status === 'Pending' || status === 'Resubmitted';
-const isEditableRequestStatus = (status) => status === 'Rejected';
+const isActiveRequestStatus = (status) => status === 'Pending' || status === 'Resubmitted' || status === 'Approved';
 const RESTRICTED_ID_STATUSES = new Set(['Expired', 'Renewal Pending']);
 const DASHBOARD_CACHE_MAX_AGE = 15_000;
 const emptyStats = { total: 0, active: 0, pending: 0, completed: 0, rejected: 0, lastDate: null };
@@ -38,8 +37,8 @@ const buildDashboardState = (rows) => {
   }
 
   const pending = safeData.filter((r) => isActiveRequestStatus(r.status)).length;
-  const completed = safeData.filter((r) => r.status === 'Released' || r.status === 'Approved').length;
-  const rejected = safeData.filter((r) => r.status === 'Rejected').length;
+  const completed = safeData.filter((r) => r.status === 'Released').length;
+  const rejected = safeData.filter((r) => r.status === 'Rejected' || r.status === 'Incomplete').length;
 
   return {
     requests: safeData,
@@ -199,31 +198,32 @@ export default function BeneficiaryDashboardPage() {
   }, [loading]);
 
   useEffect(() => {
-    if (!supabase || typeof window === 'undefined') return undefined;
+    if (typeof window === 'undefined') return undefined;
     const residentId = window.localStorage.getItem('beneficiaryResidentId');
     if (!residentId) return undefined;
 
-    const channel = realtimeHelpers.subscribeToTable(
-      'assistance_requests',
-      () => {
-        deleteClientCache(getDashboardCacheKey(residentId));
-        loadDashboard({ silent: true });
-      },
-      `resident_id=eq.${residentId}`,
-    );
+    const refresh = () => {
+      deleteClientCache(getDashboardCacheKey(residentId));
+      loadDashboard({ silent: true });
+    };
+    const interval = window.setInterval(refresh, 60_000);
+    window.addEventListener('focus', refresh);
 
     return () => {
-      realtimeHelpers.unsubscribe(channel);
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refresh);
     };
   }, [loadDashboard]);
 
   const isActiveStatus = isActiveRequestStatus;
-  const isCompletedStatus = (status) => status === 'Released' || status === 'Approved';
-  const isRejectedStatus = (status) => status === 'Rejected';
+  const isCompletedStatus = (status) => status === 'Released';
+  const isRejectedStatus = (status) => status === 'Rejected' || status === 'Incomplete';
 
   const getStatusDescription = (status) => {
     if (isActiveStatus(status)) {
-      return 'Your request is being reviewed by the barangay office.';
+      return status === 'Approved'
+        ? 'Your request is approved and waiting for release.'
+        : 'Your request is being reviewed by the barangay office.';
     }
     if (isCompletedStatus(status)) {
       return 'Your assistance request has been approved and released.';
@@ -234,9 +234,15 @@ export default function BeneficiaryDashboardPage() {
     return 'Status updated by the barangay office.';
   };
 
-  const activeRequest = requests.find((r) => isActiveStatus(r.status));
-  const editableRequest = requests.find((r) => isEditableRequestStatus(r.status));
-  const hasActiveRequest = !!activeRequest;
+  const residentId = requests.find((row) => row?.resident_id)?.resident_id || null;
+  const requestEligibility = getResidentEligibility(residentId, buildEligibilityMaps(requests));
+  const editableRequest = requestEligibility.editableRequest || null;
+  const requestBlocked = !requestEligibility.canCreateRequest && !editableRequest;
+  const requestBlockTitle = requestEligibility.blockReason === 'cooldown'
+    ? `${requestEligibility.cooldownInfo.daysRemaining} day(s) remaining. Next eligible: ${requestEligibility.cooldownInfo.nextEligibleDate}.`
+    : requestEligibility.activeRequest?.status === 'Approved'
+      ? 'Your approved request must be released before the 3-month cooldown can begin.'
+      : 'You already have an active request under review.';
   const isIdRestricted = RESTRICTED_ID_STATUSES.has(idStatus);
 
   const currentRequestRaw = requests[0] || null;
@@ -330,8 +336,8 @@ export default function BeneficiaryDashboardPage() {
                     ? `/beneficiary/requests?edit=${encodeURIComponent(editableRequest.id)}`
                     : '/beneficiary/requests'
               }
-              disabled={!isIdRestricted && !editableRequest && hasActiveRequest}
-              title={hasActiveRequest ? 'You already have an active request under review.' : undefined}
+              disabled={!isIdRestricted && requestBlocked}
+              title={requestBlocked ? requestBlockTitle : undefined}
             >
               {isIdRestricted ? 'Renew ID' : editableRequest ? 'Edit Incomplete Request' : 'New Request'}
             </Button>

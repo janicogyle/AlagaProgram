@@ -31,21 +31,29 @@ export async function POST(request) {
       );
     }
 
-    const { data: releasedRows, error: releasedError } = await supabaseAdmin
+    let { data: releasedRows, error: releasedError } = await supabaseAdmin
       .from('assistance_requests')
-      .select('resident_id, request_date, created_at')
-      .eq('status', 'Released')
-      .order('request_date', { ascending: false })
-      .order('created_at', { ascending: false });
+      .select('resident_id, request_date, released_at, created_at, updated_at')
+      .eq('status', 'Released');
+
+    if (releasedError && String(releasedError.message || '').toLowerCase().includes('released_at')) {
+      ({ data: releasedRows, error: releasedError } = await supabaseAdmin
+        .from('assistance_requests')
+        .select('resident_id, request_date, created_at, updated_at')
+        .eq('status', 'Released'));
+    }
 
     if (releasedError) throw releasedError;
 
     const latestByResident = new Map();
     (releasedRows || []).forEach((row) => {
       if (!row?.resident_id) return;
-      if (!latestByResident.has(row.resident_id)) {
-        latestByResident.set(row.resident_id, row);
-      }
+      const rowDate = new Date(row.released_at || row.updated_at || row.request_date || row.created_at || 0);
+      const existing = latestByResident.get(row.resident_id);
+      const existingDate = existing
+        ? new Date(existing.released_at || existing.updated_at || existing.request_date || existing.created_at || 0)
+        : null;
+      if (!existing || rowDate > existingDate) latestByResident.set(row.resident_id, row);
     });
 
     const residentIds = Array.from(latestByResident.keys());
@@ -63,7 +71,7 @@ export async function POST(request) {
     const reminders = [];
     (residents || []).forEach((resident) => {
       const last = latestByResident.get(resident.id);
-      const lastRequestDate = last?.request_date || last?.created_at || null;
+      const lastRequestDate = last?.released_at || last?.updated_at || last?.request_date || last?.created_at || null;
       const cooldown = getCooldownInfo(lastRequestDate);
       if (!cooldown?.nextEligibleDate || !cooldown.isEligible) return;
 

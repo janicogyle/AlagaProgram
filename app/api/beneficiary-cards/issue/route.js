@@ -25,7 +25,7 @@ function normalizeContactNumber(input) {
 }
 
 async function loadResident(residentId) {
-  const baseColumns = 'id, first_name, last_name, status, contact_number, is_pwd, is_senior_citizen, is_solo_parent';
+  const baseColumns = 'id, first_name, last_name, status, contact_number, primary_sector, secondary_sector, is_pwd, is_senior_citizen, is_solo_parent';
   const { data, error } = await supabaseAdmin
     .from('residents')
     .select(`${baseColumns}, account_request_id`)

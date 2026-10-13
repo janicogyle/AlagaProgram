@@ -7,6 +7,7 @@ import { requireStaffOrAdmin } from '@/lib/apiAuth';
 import { getAllowedSectorKeys, isAdminProfile, rowMatchesSectorAccess } from '@/lib/sectorAccess';
 import { buildEligibilityMaps, getResidentEligibility } from '@/lib/residentEligibility';
 import { getCooldownInfo } from '@/lib/requestCooldown';
+import { buildSectorPairFromSource, getSectorLabel } from '@/lib/beneficiarySectors';
 
 export const runtime = 'nodejs';
 
@@ -19,6 +20,28 @@ const TABLE_REPORT_TYPES = [
   'walkin_registration',
 ];
 const VALID_REPORT_TYPES = [...SECTOR_REPORT_TYPES, ...TABLE_REPORT_TYPES];
+const ELIGIBILITY_STATUSES = ['Pending', 'Resubmitted', 'Approved', 'Released', 'Rejected', 'Incomplete'];
+
+async function loadEligibilityRequests(db, residentIds, { includeId = false } = {}) {
+  const prefix = includeId ? 'id, control_number, ' : '';
+  const baseFields = `${prefix}resident_id, assistance_type, status, request_date, created_at, updated_at`;
+  let { data, error } = await db
+    .from('assistance_requests')
+    .select(`${baseFields}, released_at`)
+    .in('resident_id', residentIds)
+    .in('status', ELIGIBILITY_STATUSES);
+
+  if (error && String(error.message || '').toLowerCase().includes('released_at')) {
+    ({ data, error } = await db
+      .from('assistance_requests')
+      .select(baseFields)
+      .in('resident_id', residentIds)
+      .in('status', ELIGIBILITY_STATUSES));
+  }
+
+  if (error) throw error;
+  return data || [];
+}
 
 export async function GET(request) {
   try {
@@ -233,11 +256,10 @@ function residentName(resident) {
 }
 
 function sectorList(row) {
-  return [
-    row?.is_pwd ? 'PWD' : null,
-    row?.is_senior_citizen ? 'Senior Citizen' : null,
-    row?.is_solo_parent ? 'Solo Parent' : null,
-  ].filter(Boolean).join(', ');
+  const pair = buildSectorPairFromSource(row || {});
+  const primary = getSectorLabel(pair.primarySector) || 'Not assigned';
+  const secondary = getSectorLabel(pair.secondarySector) || 'None';
+  return `Primary: ${primary}; Secondary: ${secondary}`;
 }
 
 function dateOnly(value) {
@@ -251,8 +273,8 @@ async function getSectorAssistanceRows({ db, reportType, year, profile }) {
   const { start, end } = yearWindow(year);
   const sector = sectorConfig(reportType);
   const join = sector?.joinInner
-    ? 'residents:resident_id!inner(first_name, middle_name, last_name, is_pwd, is_senior_citizen, is_solo_parent)'
-    : 'residents:resident_id(first_name, middle_name, last_name, is_pwd, is_senior_citizen, is_solo_parent)';
+    ? 'residents:resident_id!inner(first_name, middle_name, last_name, primary_sector, secondary_sector, is_pwd, is_senior_citizen, is_solo_parent)'
+    : 'residents:resident_id(first_name, middle_name, last_name, primary_sector, secondary_sector, is_pwd, is_senior_citizen, is_solo_parent)';
 
   const runQuery = async (schemaMode) => {
     const fields =
@@ -344,7 +366,7 @@ async function buildTableReport({ db, reportType, year, profile, countOnly = fal
 async function buildEligibleBeneficiariesReport({ db, profile, countOnly }) {
   const { data: residents, error: residentsError } = await db
     .from('residents')
-    .select('id, control_number, first_name, middle_name, last_name, contact_number, status, is_pwd, is_senior_citizen, is_solo_parent')
+    .select('id, control_number, first_name, middle_name, last_name, contact_number, status, primary_sector, secondary_sector, is_pwd, is_senior_citizen, is_solo_parent')
     .eq('status', 'Active')
     .order('last_name', { ascending: true });
   if (residentsError) throw residentsError;
@@ -353,12 +375,7 @@ async function buildEligibleBeneficiariesReport({ db, profile, countOnly }) {
   const residentIds = allowedResidents.map((row) => row.id).filter(Boolean);
   if (!residentIds.length) return { title: 'Eligible Beneficiaries', columns: [], rows: [] };
 
-  const { data: requests, error: requestsError } = await db
-    .from('assistance_requests')
-    .select('resident_id, assistance_type, status, request_date, created_at')
-    .in('resident_id', residentIds)
-    .in('status', ['Pending', 'Resubmitted', 'Approved', 'Released']);
-  if (requestsError) throw requestsError;
+  const requests = await loadEligibilityRequests(db, residentIds);
 
   const maps = buildEligibilityMaps(requests || []);
   const matches = allowedResidents
@@ -386,7 +403,7 @@ async function buildEligibleBeneficiariesReport({ db, profile, countOnly }) {
 async function buildNotYetEligibleReport({ db, profile, countOnly }) {
   const { data: residents, error: residentsError } = await db
     .from('residents')
-    .select('id, control_number, first_name, middle_name, last_name, contact_number, status, is_pwd, is_senior_citizen, is_solo_parent')
+    .select('id, control_number, first_name, middle_name, last_name, contact_number, status, primary_sector, secondary_sector, is_pwd, is_senior_citizen, is_solo_parent')
     .eq('status', 'Active')
     .order('last_name', { ascending: true });
   if (residentsError) throw residentsError;
@@ -395,12 +412,7 @@ async function buildNotYetEligibleReport({ db, profile, countOnly }) {
   const residentIds = allowedResidents.map((row) => row.id).filter(Boolean);
   if (!residentIds.length) return { title: 'Not Yet Eligible Beneficiaries', columns: [], rows: [] };
 
-  const { data: requests, error: requestsError } = await db
-    .from('assistance_requests')
-    .select('id, control_number, resident_id, assistance_type, status, request_date, created_at')
-    .in('resident_id', residentIds)
-    .in('status', ['Pending', 'Resubmitted', 'Approved', 'Released']);
-  if (requestsError) throw requestsError;
+  const requests = await loadEligibilityRequests(db, residentIds, { includeId: true });
 
   const maps = buildEligibilityMaps(requests || []);
   const matches = allowedResidents
@@ -409,10 +421,16 @@ async function buildNotYetEligibleReport({ db, profile, countOnly }) {
       if (eligibility.canCreateRequest) return null;
 
       const latestReleased = maps.latestReleasedByResident?.get(resident.id)?.row;
-      const sourceRequest = eligibility.activeRequest || latestReleased || null;
+      const sourceRequest = eligibility.activeRequest || eligibility.editableRequest || latestReleased || null;
       const type = sourceRequest?.assistance_type || '';
-      const fallbackCooldownInfo = getCooldownInfo(sourceRequest?.request_date || sourceRequest?.created_at || null);
-      const reason = 'Not Yet Eligible';
+      const fallbackCooldownInfo = getCooldownInfo(
+        sourceRequest?.released_at || sourceRequest?.updated_at || sourceRequest?.request_date || sourceRequest?.created_at || null,
+      );
+      const reason = eligibility.blockReason === 'active'
+        ? sourceRequest?.status === 'Approved' ? 'Approved - Awaiting Release' : 'Pending Review'
+        : eligibility.blockReason === 'incomplete'
+          ? 'Incomplete - Edit and Resubmit'
+          : '3-Month Cooldown';
 
       return {
         resident,
@@ -449,7 +467,7 @@ async function buildRegistrationReport({ db, year, profile, online, countOnly })
   const { reportYear, start, end } = yearWindow(year);
   let query = db
     .from('residents')
-    .select('id, control_number, first_name, middle_name, last_name, contact_number, status, created_at, is_pwd, is_senior_citizen, is_solo_parent, account_request_id')
+    .select('id, control_number, first_name, middle_name, last_name, contact_number, status, created_at, primary_sector, secondary_sector, is_pwd, is_senior_citizen, is_solo_parent, account_request_id')
     .gte('created_at', start)
     .lt('created_at', end)
     .order('created_at', { ascending: true });

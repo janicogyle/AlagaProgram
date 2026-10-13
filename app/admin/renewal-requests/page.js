@@ -65,6 +65,8 @@ export default function RenewalRequestsPage() {
       const headers = await getAuthHeaders();
       const params = new URLSearchParams();
       if (statusFilter) params.set('status', statusFilter);
+      const residentId = new URLSearchParams(window.location.search).get('residentId');
+      if (residentId) params.set('residentId', residentId);
       const res = await fetch(`/api/admin/renewal-requests?${params.toString()}`, { headers });
       const json = await res.json().catch(() => ({}));
       if (json?.code === 'RENEWAL_REQUESTS_TABLE_MISSING') {
@@ -119,7 +121,9 @@ export default function RenewalRequestsPage() {
       setAlert({
         open: true,
         title: 'Request updated',
-        message: decision === 'approve' ? 'Renewal request approved.' : 'Renewal request marked incomplete.',
+        message: decision === 'approve'
+          ? `Renewal request approved. New expiration: ${formatDate(json?.data?.new_expires_at)}.`
+          : 'Renewal request marked incomplete.',
       });
     } catch (error) {
       setAlert({ open: true, title: 'Update failed', message: error?.message || 'Failed to update renewal request.' });
