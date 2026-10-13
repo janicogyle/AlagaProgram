@@ -10,7 +10,6 @@ import Button from '../../../components/Button';
 import Badge from '../../../components/Badge';
 import FileUpload from '../../../components/FileUpload';
 import styles from './page.module.css';
-import { createOrUpdateResident } from '@/lib/residents';
 import { assistanceTypeOptions, assistanceData } from '@/lib/assistanceData';
 import {
   buildRequirementsMap,
@@ -19,12 +18,8 @@ import {
   getRequirementsForType,
   isMissingRequirementsColumn,
 } from '@/lib/assistanceRequirements';
-import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { getCooldownInfo } from '@/lib/requestCooldown';
-import {
-  queryNextAssistanceControlNumber,
-  queryNextBeneficiaryControlNumber,
-} from '@/lib/controlNumbers';
 import { buildEligibilityMaps, getResidentEligibility } from '@/lib/residentEligibility';
 
 const EDITABLE_REQUEST_STATUSES = new Set(['Incomplete', 'Rejected']);
@@ -230,21 +225,15 @@ export default function BeneficiaryRequestPage() {
 
   const refreshResidentControlNumber = async () => {
     try {
-      if (typeof window !== 'undefined') {
-        const residentId = window.localStorage.getItem('beneficiaryResidentId');
-        if (residentId && supabase) {
-          const { data } = await supabase
-            .from('residents')
-            .select('control_number')
-            .eq('id', residentId)
-            .maybeSingle();
-
-          const existing = String(data?.control_number || '').trim();
-          if (existing) {
-            setControlNumber(existing);
-            return;
-          }
-        }
+      const response = await fetch('/api/beneficiary/profile', {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const payload = await response.json().catch(() => ({}));
+      const existing = String(payload?.data?.control_number || '').trim();
+      if (response.ok && existing) {
+        setControlNumber(existing);
+        return;
       }
     } catch {
       // fall through
@@ -258,18 +247,13 @@ export default function BeneficiaryRequestPage() {
   }, []);
 
   useEffect(() => {
-    if (!supabase || typeof window === 'undefined') return undefined;
-    const residentId = window.localStorage.getItem('beneficiaryResidentId');
-    if (!residentId) return undefined;
-
-    const channel = realtimeHelpers.subscribeToTable(
-      'assistance_requests',
-      () => setRealtimeRefreshKey((value) => value + 1),
-      `resident_id=eq.${residentId}`,
-    );
-
+    if (typeof window === 'undefined') return undefined;
+    const refresh = () => setRealtimeRefreshKey((value) => value + 1);
+    const interval = window.setInterval(refresh, 60_000);
+    window.addEventListener('focus', refresh);
     return () => {
-      realtimeHelpers.unsubscribe(channel);
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refresh);
     };
   }, []);
 
@@ -286,13 +270,11 @@ export default function BeneficiaryRequestPage() {
       }
 
       const assistanceType = formData.assistanceType;
-      if (!assistanceType || !supabase) {
+      if (!assistanceType) {
         setAssistanceControlPreview('');
         return;
       }
-
-      const next = await queryNextAssistanceControlNumber(supabase, assistanceType);
-      setAssistanceControlPreview(next);
+      setAssistanceControlPreview('Assigned on submission');
     };
 
     void loadAssistanceControlPreview();
@@ -342,7 +324,7 @@ export default function BeneficiaryRequestPage() {
         const rows = Array.isArray(result.data) ? result.data : [];
         const maps = buildEligibilityMaps(rows);
         const eligibility = getResidentEligibility(residentId, maps, formData.assistanceType);
-        setActiveRequest(eligibility.activeRequest || null);
+        setActiveRequest(eligibility.activeRequest || eligibility.editableRequest || null);
         setCooldownInfo(eligibility.cooldownInfo || getCooldownInfo(null));
       } catch (err) {
         console.warn('Failed to load request eligibility:', err);
@@ -364,18 +346,15 @@ export default function BeneficiaryRequestPage() {
         const params = new URLSearchParams(window.location.search);
         if (params.get('edit')) return; // edit-mode loads from the request itself
 
-        const residentId = window.localStorage.getItem('beneficiaryResidentId');
-        if (!residentId || !supabase) return;
-
-        const { data, error } = await supabase
-          .from('residents')
-          .select(
-            'id, control_number, first_name, middle_name, last_name, birthday, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, representative_name, representative_contact, is_pwd, is_senior_citizen, is_solo_parent',
-          )
-          .eq('id', residentId)
-          .single();
-
-        if (error) throw error;
+        const response = await fetch('/api/beneficiary/profile', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload?.error) {
+          throw new Error(payload?.error || 'Unable to load profile.');
+        }
+        const data = payload.data;
 
         const normalizeBarangay = (value) => {
           const raw = String(value || '').toLowerCase();
@@ -717,15 +696,22 @@ export default function BeneficiaryRequestPage() {
   const getCooldownVariant = (statusLabel) => {
     if (statusLabel === 'Eligible') return 'success';
     if (statusLabel === 'Almost Eligible') return 'warning';
-    if (statusLabel === 'Pending' || statusLabel === 'Under Review') return 'warning';
+    if (statusLabel === 'Pending' || statusLabel === 'Under Review' || statusLabel === 'Approved') return 'warning';
     return 'danger';
   };
 
   const getCooldownMessage = (info) => {
-    if (!formData.assistanceType) return 'Select an assistance type to check category eligibility.';
+    if (!formData.assistanceType) return 'Select an assistance type to check request eligibility.';
     if (!info) return 'Checking request eligibility...';
     if (activeRequest) {
-      return `You already have a ${formData.assistanceType} request under review. Please wait for the barangay office to finish processing it.`;
+      const status = String(activeRequest.status || 'Pending');
+      if (EDITABLE_REQUEST_STATUSES.has(status)) {
+        return 'You have an incomplete request. Open My Requests to edit and resubmit that request instead of creating a new one.';
+      }
+      if (status === 'Approved') {
+        return 'Your assistance request is approved. A new request is allowed only after release and the 3-month cooldown.';
+      }
+      return 'You already have an assistance request under review. Please wait for the barangay office to finish processing it.';
     }
     if (info.isEligible) return `You can submit a ${formData.assistanceType} request now.`;
     if (info.nextEligibleDate) {
@@ -1078,8 +1064,7 @@ export default function BeneficiaryRequestPage() {
     if (!isEditMode && activeRequest) {
       setStatus({
         type: 'error',
-        message:
-          `You already have a ${formData.assistanceType} request under review. Please wait for the barangay office to finish processing it.`,
+        message: getCooldownMessage(cooldownInfo),
       });
       return;
     }
@@ -1095,100 +1080,17 @@ export default function BeneficiaryRequestPage() {
     setIsSubmitting(true);
 
     try {
-      const age = calculateAge(formData.birthday);
-
       // IMPORTANT: in edit/resubmit mode, keep the original resident identity.
-      // Updating by contact_number can accidentally create a new resident row, causing Forbidden on resubmit.
+      // The API verifies this UI hint against the signed HttpOnly beneficiary session.
       let residentIdForRequest = null;
-      let residentData = null;
-
-      if (isEditMode) {
-        if (typeof window !== 'undefined') {
-          residentIdForRequest = window.localStorage.getItem('beneficiaryResidentId');
-        }
-        if (!residentIdForRequest) {
-          throw new Error('Missing beneficiary identity. Please log in again.');
-        }
-
-        const residentPayload = {
-          id: residentIdForRequest,
-          last_name: formData.lastName,
-          first_name: formData.firstName,
-          middle_name: formData.middleName || null,
-          house_no: formData.houseNo,
-          street: formData.street,
-          barangay: formData.barangay,
-          city: formData.city,
-          birthday: formData.birthday,
-          birthplace: formData.birthplace,
-          age: age ? parseInt(age) : null,
-          sex: formData.sex,
-          citizenship: formData.citizenship,
-          civil_status: formData.civilStatus,
-          contact_number: formData.contactNumber,
-          is_pwd: formData.sectors.pwd,
-          is_senior_citizen: formData.sectors.seniorCitizen,
-          is_solo_parent: formData.sectors.soloParent,
-          representative_name: formData.representativeName,
-          representative_contact: formData.representativeContact,
-          status: 'Active',
-        };
-
-        residentData = await createOrUpdateResident(residentPayload);
-        residentIdForRequest = residentData?.id || residentIdForRequest;
-      } else {
-        let storedResidentId = null;
-        if (typeof window !== 'undefined') {
-          storedResidentId = window.localStorage.getItem('beneficiaryResidentId');
-        }
-
-        const baseResidentPayload = {
-          last_name: formData.lastName,
-          first_name: formData.firstName,
-          middle_name: formData.middleName || null,
-          house_no: formData.houseNo,
-          purok: formData.purok || null,
-          street: formData.street || null,
-          barangay: formData.barangay,
-          city: formData.city,
-          contact_number: formData.contactNumber || null,
-          is_pwd: formData.sectors.pwd,
-          is_senior_citizen: formData.sectors.seniorCitizen,
-          is_solo_parent: formData.sectors.soloParent,
-          representative_name: formData.representativeName || null,
-          representative_contact: formData.representativeContact || null,
-          status: 'Active',
-        };
-
-        if (storedResidentId) {
-          // Beneficiary already has an account/profile: update that resident by ID.
-          residentData = await createOrUpdateResident({ id: storedResidentId, ...baseResidentPayload });
-          residentIdForRequest = residentData?.id || storedResidentId;
-        } else {
-          const residentControlNumber = await queryNextBeneficiaryControlNumber(supabase);
-          setControlNumber(residentControlNumber);
-
-          const residentPayload = {
-            control_number: residentControlNumber,
-            ...baseResidentPayload,
-            birthday: formData.birthday || null,
-            birthplace: formData.birthplace || null,
-            age: age ? parseInt(age) : null,
-            sex: formData.sex || null,
-            citizenship: formData.citizenship || null,
-            civil_status: formData.civilStatus || null,
-          };
-
-          residentData = await createOrUpdateResident(residentPayload);
-          residentIdForRequest = residentData?.id || null;
-        }
+      if (typeof window !== 'undefined') {
+        residentIdForRequest = window.localStorage.getItem('beneficiaryResidentId');
+      }
+      if (!residentIdForRequest) {
+        throw new Error('Missing beneficiary identity. Please log in again.');
       }
 
       if (formData.assistanceType && residentIdForRequest) {
-        if (!supabase) {
-          throw new Error('Database client not available');
-        }
-
         if (isEditMode && !editingAssistanceControlNumber) {
           throw new Error('Missing request reference number. Please go back and try again.');
         }
@@ -1196,8 +1098,7 @@ export default function BeneficiaryRequestPage() {
         const assistanceTypeForRequest = resolveAssistanceType();
         const assistanceControlNumber = isEditMode
           ? editingAssistanceControlNumber
-          : assistanceControlPreview ||
-            (await queryNextAssistanceControlNumber(supabase, assistanceTypeForRequest));
+          : `pending-${residentIdForRequest}`;
 
         const buildAddress = () => {
           const barangayLabel = formData.barangay === 'sta-rita' ? 'Sta. Rita' : formData.barangay;
@@ -1331,7 +1232,9 @@ export default function BeneficiaryRequestPage() {
         const result = await response.json().catch(() => ({}));
         if (!response.ok || result?.error) {
           if (
-            (result?.code === 'ACTIVE_CATEGORY_REQUEST_EXISTS' || result?.code === 'ACTIVE_REQUEST_EXISTS') &&
+            (result?.code === 'ACTIVE_CATEGORY_REQUEST_EXISTS' ||
+              result?.code === 'ACTIVE_REQUEST_EXISTS' ||
+              result?.code === 'INCOMPLETE_REQUEST_EXISTS') &&
             result?.activeRequest
           ) {
             setActiveRequest(result.activeRequest);

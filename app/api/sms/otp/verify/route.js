@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { OTP_MAX_ATTEMPTS, hashOtp, normalizeSmsContactNumber } from '@/lib/sms.server';
 import { getSignupContactUnavailableReason } from '@/lib/contactRegistration.server';
+import { createSignupUploadToken } from '@/lib/signupUploadAuthorization.server';
 
 export const runtime = 'nodejs';
 
@@ -67,7 +68,14 @@ export async function POST(request) {
     }
 
     if (otpRow.verified_at) {
-      return NextResponse.json({ data: { verified: true, verifiedAt: otpRow.verified_at }, error: null });
+      return NextResponse.json({
+        data: {
+          verified: true,
+          verifiedAt: otpRow.verified_at,
+          uploadToken: purpose === 'signup' ? createSignupUploadToken(contactNumber) : null,
+        },
+        error: null,
+      });
     }
 
     if (otpRow.expires_at && new Date(otpRow.expires_at).getTime() < Date.now()) {
@@ -93,7 +101,14 @@ export async function POST(request) {
 
     if (updateError) throw updateError;
 
-    return NextResponse.json({ data: { verified: true, verifiedAt }, error: null });
+    return NextResponse.json({
+      data: {
+        verified: true,
+        verifiedAt,
+        uploadToken: purpose === 'signup' ? createSignupUploadToken(contactNumber) : null,
+      },
+      error: null,
+    });
   } catch (error) {
     console.error('Verify OTP error:', error);
     return NextResponse.json(

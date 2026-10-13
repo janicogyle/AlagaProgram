@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
-import { requireStaffOrAdmin } from '@/lib/apiAuth';
+import { requireAdmin } from '@/lib/apiAuth';
 import { rowMatchesSectorAccess } from '@/lib/sectorAccess';
 
 export const runtime = 'nodejs';
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ''));
+}
 
 function mapRequest(row) {
   return {
@@ -27,7 +31,7 @@ function isMissingRenewalTableError(error) {
 
 export async function GET(request) {
   try {
-    const auth = await requireStaffOrAdmin(request);
+    const auth = await requireAdmin(request);
     if (!auth.ok) return auth.response;
 
     if (!supabaseAdmin) {
@@ -36,6 +40,11 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const status = String(searchParams.get('status') || '').trim();
+    const residentId = String(searchParams.get('residentId') || '').trim();
+
+    if (residentId && !isUuid(residentId)) {
+      return NextResponse.json({ data: null, error: 'Invalid beneficiary filter.' }, { status: 400 });
+    }
 
     let query = supabaseAdmin
       .from('beneficiary_id_renewal_requests')
@@ -52,12 +61,13 @@ export async function GET(request) {
         processed_at,
         created_at,
         updated_at,
-        residents:resident_id(id, control_number, first_name, middle_name, last_name, contact_number, status, is_pwd, is_senior_citizen, is_solo_parent),
+        residents:resident_id(id, control_number, first_name, middle_name, last_name, contact_number, status, primary_sector, secondary_sector, is_pwd, is_senior_citizen, is_solo_parent),
         beneficiary_cards:card_id(id, issued_at, expires_at, status, revoked_at)
       `)
       .order('created_at', { ascending: false });
 
     if (status) query = query.eq('status', status);
+    if (residentId) query = query.eq('resident_id', residentId);
 
     const { data, error } = await query;
     if (error) throw error;

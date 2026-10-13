@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
-import { requireStaffOrAdmin } from '@/lib/apiAuth';
+import { requireAdmin } from '@/lib/apiAuth';
 import { createOrUpdateResident } from '@/lib/residents';
 import {
   getAccountResubmissionSmsSetupError,
@@ -301,7 +301,7 @@ async function createAndSendResubmissionLink({
 
 export async function GET(request, { params }) {
   try {
-    const auth = await requireStaffOrAdmin(request);
+    const auth = await requireAdmin(request);
     if (!auth.ok) return auth.response;
 
     const db = supabaseAdmin ?? supabase;
@@ -486,7 +486,7 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   try {
-    const auth = await requireStaffOrAdmin(request);
+    const auth = await requireAdmin(request);
     if (!auth.ok) return auth.response;
 
     const db = supabaseAdmin ?? supabase;

@@ -187,9 +187,9 @@ function applyResidentFilters(query, { search, sector, registrationType, approve
     );
   }
 
-  if (sector === 'PWD') nextQuery = nextQuery.eq('is_pwd', true);
-  if (sector === 'Senior Citizen') nextQuery = nextQuery.eq('is_senior_citizen', true);
-  if (sector === 'Solo Parent') nextQuery = nextQuery.eq('is_solo_parent', true);
+  if (sector === 'PWD') nextQuery = nextQuery.eq('primary_sector', 'pwd');
+  if (sector === 'Senior Citizen') nextQuery = nextQuery.eq('primary_sector', 'senior_citizen');
+  if (sector === 'Solo Parent') nextQuery = nextQuery.eq('primary_sector', 'solo_parent');
 
   if (registrationType === 'Online') {
     const contactList = approvedSignupContacts?.length
@@ -275,6 +275,7 @@ export async function GET(request) {
       'citizenship',
       'civil_status',
       'contact_number',
+      'email',
       'house_no',
       'purok',
       'barangay',

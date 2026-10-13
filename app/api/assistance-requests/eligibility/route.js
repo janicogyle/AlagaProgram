@@ -3,7 +3,12 @@ import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
 
-const ELIGIBILITY_STATUSES = ['Pending', 'Resubmitted', 'Approved', 'Released'];
+const ELIGIBILITY_STATUSES = ['Pending', 'Resubmitted', 'Approved', 'Released', 'Rejected', 'Incomplete'];
+
+function isMissingReleasedAt(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return message.includes('released_at') && (message.includes('schema cache') || message.includes('does not exist'));
+}
 
 export async function GET() {
   try {
@@ -15,10 +20,17 @@ export async function GET() {
       );
     }
 
-    const { data, error } = await db
+    let { data, error } = await db
       .from('assistance_requests')
-      .select('resident_id, assistance_type, status, request_date, created_at')
+      .select('id, resident_id, assistance_type, status, request_date, released_at, created_at, updated_at')
       .in('status', ELIGIBILITY_STATUSES);
+
+    if (error && isMissingReleasedAt(error)) {
+      ({ data, error } = await db
+        .from('assistance_requests')
+        .select('id, resident_id, assistance_type, status, request_date, created_at, updated_at')
+        .in('status', ELIGIBILITY_STATUSES));
+    }
 
     if (error) throw error;
 

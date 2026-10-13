@@ -150,6 +150,11 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnread
   const role = normalizeActivityRole(activityRole);
   const canUseStaffAuth = isPortalRole(role);
   const canViewStaffActivity = role === 'Admin';
+  const activityLogsHref = role === 'Beneficiary'
+    ? '/beneficiary/activity-logs'
+    : canUseStaffAuth
+      ? '/admin/activity-logs'
+      : null;
   const [activities, setActivities] = useState(DEFAULT_ACTIVITIES);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all'); // 'all' | 'unread' | 'staff'
@@ -387,12 +392,13 @@ export default function NotificationPanel({ isOpen, onClose, anchorRef, onUnread
   const handleClickActivity = useCallback(
     async (activity) => {
       await markAsRead(activity);
-      if (activity?.link) {
-        router.push(activity.link);
+      const destination = activityLogsHref || activity?.link;
+      if (destination) {
+        router.push(destination);
         onClose();
       }
     },
-    [markAsRead, onClose, router],
+    [activityLogsHref, markAsRead, onClose, router],
   );
 
   if (!isOpen || !mounted) return null;

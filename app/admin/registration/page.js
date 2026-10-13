@@ -85,9 +85,10 @@ const LOCKED_CITIZENSHIP = 'Filipino';
 const SOLO_PARENT_MARRIED_ERROR = 'Married civil status is not allowed for Solo Parent classification.';
 const REGISTRATION_WIZARD_STEPS = [
   { number: 1, label: 'Personal' },
-  { number: 2, label: 'Assistance' },
-  { number: 3, label: 'Checklist' },
-  { number: 4, label: 'Review' },
+  { number: 2, label: 'Photo' },
+  { number: 3, label: 'Assistance' },
+  { number: 4, label: 'Checklist' },
+  { number: 5, label: 'Review' },
 ];
 const REGISTRATION_WIZARD_TOTAL = REGISTRATION_WIZARD_STEPS.length;
 
@@ -148,6 +149,7 @@ export default function RegistrationPage() {
     citizenship: LOCKED_CITIZENSHIP,
     civilStatus: '',
     contactNumber: '',
+    email: '',
     accountPassword: '',
     // Sector Classification
     primarySector: '',
@@ -188,13 +190,23 @@ export default function RegistrationPage() {
   const [profilePhotoFile, setProfilePhotoFile] = useState(null);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState('');
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraStarting, setCameraStarting] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState('');
   const videoRef = useRef(null);
   const photoInputRef = useRef(null);
   const cameraStreamRef = useRef(null);
+  const cameraRequestRef = useRef(0);
+  const wizardTopRef = useRef(null);
+  const selectedSectorFlags = deriveSectorFlags(formData.primarySector, formData.secondarySector);
+  const isSoloParentSectorSelected = selectedSectorFlags.is_solo_parent;
   const civilStatusOptionsForSectors = civilStatusOptions.map((option) => ({
     ...option,
-    disabled: option.value === 'married' && !!formData.sectors?.soloParent,
+    disabled: option.value === 'married' && isSoloParentSectorSelected,
+    label:
+      option.value === 'married' && isSoloParentSectorSelected
+        ? 'Married (Not allowed for Solo Parent)'
+        : option.label,
   }));
 
   const getAuthHeaders = useCallback(async () => {
@@ -210,8 +222,15 @@ export default function RegistrationPage() {
   }, []);
 
   const stopCamera = useCallback(() => {
+    cameraRequestRef.current += 1;
     cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
     cameraStreamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.srcObject = null;
+    }
+    setCameraStarting(false);
+    setCameraReady(false);
     setCameraOpen(false);
   }, []);
 
@@ -228,32 +247,105 @@ export default function RegistrationPage() {
 
   const startCamera = async () => {
     setCameraError('');
+    setCameraReady(false);
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraError('Camera access is unavailable on this device. Upload a photo instead.');
       return;
     }
+
+    const requestId = cameraRequestRef.current + 1;
+    cameraRequestRef.current = requestId;
+    setCameraStarting(true);
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'user' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+      } catch (error) {
+        if (error?.name !== 'OverconstrainedError') throw error;
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
+
+      if (cameraRequestRef.current !== requestId) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
       cameraStreamRef.current = stream;
       setCameraOpen(true);
-      window.setTimeout(() => {
-        if (videoRef.current) videoRef.current.srcObject = stream;
-      }, 0);
-    } catch {
-      setCameraError('Camera access was denied or unavailable. Upload a photo instead.');
+    } catch (error) {
+      if (cameraRequestRef.current !== requestId) return;
+      if (error?.name === 'NotAllowedError' || error?.name === 'SecurityError') {
+        setCameraError('Camera permission is blocked. Allow camera access in the address bar, then try again.');
+      } else if (error?.name === 'NotFoundError' || error?.name === 'DevicesNotFoundError') {
+        setCameraError('No camera was found. Connect a camera or upload a photo instead.');
+      } else if (error?.name === 'NotReadableError' || error?.name === 'TrackStartError') {
+        setCameraError('The camera is being used by another app. Close that app and try again.');
+      } else {
+        setCameraError('The camera could not be started. Check browser permission or upload a photo instead.');
+      }
+    } finally {
+      if (cameraRequestRef.current === requestId) setCameraStarting(false);
     }
   };
 
+  useEffect(() => {
+    if (!cameraOpen) return undefined;
+
+    const video = videoRef.current;
+    const stream = cameraStreamRef.current;
+    if (!video || !stream) return undefined;
+
+    let cancelled = false;
+    const markReady = () => {
+      if (cancelled || !video.videoWidth || !video.videoHeight) return;
+      setCameraReady(true);
+      setCameraError('');
+    };
+    const handleVideoError = () => {
+      if (!cancelled) {
+        setCameraError('The camera preview could not be displayed. Restart the camera or upload a photo.');
+      }
+    };
+
+    video.srcObject = stream;
+    video.addEventListener('loadedmetadata', markReady);
+    video.addEventListener('canplay', markReady);
+    video.addEventListener('error', handleVideoError);
+    void video.play().then(markReady).catch(handleVideoError);
+
+    return () => {
+      cancelled = true;
+      video.removeEventListener('loadedmetadata', markReady);
+      video.removeEventListener('canplay', markReady);
+      video.removeEventListener('error', handleVideoError);
+      if (video.srcObject === stream) video.srcObject = null;
+    };
+  }, [cameraOpen]);
+
   const capturePhoto = () => {
     const video = videoRef.current;
-    if (!video?.videoWidth || !video?.videoHeight) {
-      setCameraError('Camera is still starting. Please try again.');
+    if (!cameraReady || !video?.videoWidth || !video?.videoHeight) {
+      setCameraError('Camera is still starting. Please wait for the preview.');
       return;
     }
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    const context = canvas.getContext('2d');
+    if (!context) {
+      setCameraError('Could not prepare the photo. Please restart the camera.');
+      return;
+    }
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.toBlob((blob) => {
       if (!blob) {
         setCameraError('Could not capture the photo. Please try again.');
@@ -369,13 +461,19 @@ export default function RegistrationPage() {
 
   const getAssistanceBlockMessage = () => {
     if (requestEligibility.blockReason === 'active') {
-      return `This beneficiary already has a ${formData.assistanceType} request under review. Wait for processing before creating another request in this category.`;
+      const status = String(requestEligibility.activeRequest?.status || 'Pending');
+      return status === 'Approved'
+        ? 'This beneficiary already has an approved assistance request. It must be released before another request can be created.'
+        : 'This beneficiary already has an assistance request under review. Wait for processing before creating another request.';
+    }
+    if (requestEligibility.blockReason === 'incomplete') {
+      return 'This beneficiary has an incomplete assistance request. Edit and resubmit that existing request from Assistance Requests.';
     }
     const info = requestEligibility.cooldownInfo;
     if (info?.nextEligibleDate) {
-      return `This beneficiary must wait ${info.daysRemaining} more day(s) before another ${formData.assistanceType} request. Next eligible on ${info.nextEligibleDate}.`;
+      return `This beneficiary must wait ${info.daysRemaining} more day(s) before another assistance request. Next eligible on ${info.nextEligibleDate}.`;
     }
-    return `This beneficiary is not eligible for another ${formData.assistanceType} request yet.`;
+    return 'This beneficiary is not eligible for another assistance request yet.';
   };
 
   useEffect(() => {
@@ -412,6 +510,7 @@ export default function RegistrationPage() {
           citizenship: LOCKED_CITIZENSHIP,
           civilStatus: resident.civil_status || '',
           contactNumber: resident.contact_number || '',
+          email: resident.email || '',
           primarySector: sectorPair.primarySector,
           secondarySector: sectorPair.secondarySector,
           sectors: {
@@ -584,6 +683,11 @@ export default function RegistrationPage() {
     const { name, value, type, checked } = e.target;
     const nextValue = type === 'checkbox' ? checked : value;
 
+    if (name === 'civilStatus' && value === 'married' && isSoloParentSectorSelected) {
+      setErrors((prev) => ({ ...prev, civilStatus: SOLO_PARENT_MARRIED_ERROR }));
+      return;
+    }
+
     // Clear error when user starts changing the field
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
@@ -741,11 +845,16 @@ export default function RegistrationPage() {
     if (formData.primarySector && formData.secondarySector && formData.primarySector === formData.secondarySector) {
       newErrors.sectors = 'Secondary Sector must be different from Primary Sector.';
     }
-    if (formData.sectors.soloParent && formData.civilStatus === 'married') {
+    if (isSoloParentSectorSelected && formData.civilStatus === 'married') {
       newErrors.civilStatus = SOLO_PARENT_MARRIED_ERROR;
     }
     if (!existingResidentId && !profilePhotoFile) newErrors.profilePhoto = 'Capture or upload the beneficiary photo.';
     if (!existingResidentId && String(formData.accountPassword || '').length < 8) newErrors.accountPassword = 'Set an account password with at least 8 characters.';
+
+    const email = String(formData.email || '').trim();
+    if (email && !/^[^\s@]+@gmail\.com$/i.test(email)) {
+      newErrors.email = 'Enter a valid Gmail address ending in @gmail.com.';
+    }
 
     if (!formData.contactNumber.trim()) {
       newErrors.contactNumber = 'Contact number is required';
@@ -759,9 +868,9 @@ export default function RegistrationPage() {
       const ageValue = calculateAge(formData.birthday);
       if (ageValue === '' || Number.isNaN(ageValue) || ageValue < 0) {
         newErrors.birthday = 'Please provide a valid birthday.';
-      } else if (ageValue < 18 && !formData.sectors.pwd) {
+      } else if (ageValue < 18 && !selectedSectorFlags.is_pwd) {
         newErrors.birthday = 'Registrant must be at least 18 years old unless classified as PWD.';
-      } else if (formData.sectors.seniorCitizen && ageValue < 60) {
+      } else if (selectedSectorFlags.is_senior_citizen && ageValue < 60) {
         newErrors.sectors = 'Senior Citizen requires age 60 or above.';
       }
     }
@@ -810,10 +919,10 @@ export default function RegistrationPage() {
   };
 
   const getWizardStepForError = (errorName) => {
-    if (['sectors'].includes(errorName)) return 2;
-    if (['profilePhoto', 'accountPassword'].includes(errorName)) return 1;
-    if (['assistanceType', 'assistanceAmount', 'representativeName', 'representativeContact'].includes(errorName)) return 2;
-    if (['requirementsChecklist', 'requirementsCompleted'].includes(errorName)) return 3;
+    if (errorName === 'profilePhoto') return 2;
+    if (errorName === 'sectors') return 1;
+    if (['assistanceType', 'assistanceAmount', 'representativeName', 'representativeContact'].includes(errorName)) return 3;
+    if (['requirementsChecklist', 'requirementsCompleted'].includes(errorName)) return 4;
     return 1;
   };
 
@@ -822,13 +931,6 @@ export default function RegistrationPage() {
     const stepErrors = Object.fromEntries(
       Object.entries(allErrors).filter(([name, message]) => {
         if (!message || getWizardStepForError(name) !== step) return false;
-        if (
-          step === 1 &&
-          name === 'birthday' &&
-          (String(message).includes('unless classified as PWD') || String(message).includes('Senior Citizen'))
-        ) {
-          return false;
-        }
         return true;
       }),
     );
@@ -846,10 +948,33 @@ export default function RegistrationPage() {
   const handleWizardNext = () => {
     if (!validateWizardStep(mobileStep)) return;
     setMobileStep((step) => Math.min(step + 1, REGISTRATION_WIZARD_TOTAL));
+    window.requestAnimationFrame(() => {
+      wizardTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   };
 
   const handleWizardPrevious = () => {
     setMobileStep((step) => Math.max(step - 1, 1));
+    window.requestAnimationFrame(() => {
+      wizardTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  const handleWizardStepClick = (stepNumber) => {
+    if (stepNumber >= mobileStep) return;
+    setMobileStep(stepNumber);
+    window.requestAnimationFrame(() => {
+      wizardTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  const handleFormSubmit = (event) => {
+    event.preventDefault();
+    if (mobileStep < REGISTRATION_WIZARD_TOTAL) {
+      handleWizardNext();
+      return;
+    }
+    void handleSubmit(event);
   };
 
   const handleSubmit = async (e) => {
@@ -866,19 +991,27 @@ export default function RegistrationPage() {
     setErrors(formErrors);
     if (Object.keys(formErrors).length) {
       setMobileStep(Math.min(...Object.keys(formErrors).map(getWizardStepForError)));
+      window.requestAnimationFrame(() => {
+        wizardTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
       return;
     }
 
     setStatus(null);
     setIsSubmitting(true);
     try {
+      const headers = await getAuthHeaders();
       let profilePhotoUrl = '';
       if (profilePhotoFile) {
         const uploadForm = new FormData();
         uploadForm.append('file', profilePhotoFile);
         uploadForm.append('contactNumber', formData.contactNumber);
         uploadForm.append('documentType', 'selfie');
-        const uploadResponse = await fetch('/api/account-requests/upload-valid-id', { method: 'POST', body: uploadForm });
+        const uploadResponse = await fetch('/api/account-requests/upload-valid-id', {
+          method: 'POST',
+          headers,
+          body: uploadForm,
+        });
         const uploadPayload = await uploadResponse.json().catch(() => ({}));
         if (!uploadResponse.ok || uploadPayload?.error) throw new Error(uploadPayload?.error || 'Failed to upload beneficiary photo.');
         profilePhotoUrl = uploadPayload?.data?.url || uploadPayload?.data?.path || '';
@@ -888,7 +1021,6 @@ export default function RegistrationPage() {
         label,
         checked: !!formData.requirementsChecklist?.[index],
       }));
-      const headers = await getAuthHeaders();
       const response = await fetch('/api/admin/registration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
@@ -926,6 +1058,7 @@ export default function RegistrationPage() {
       citizenship: LOCKED_CITIZENSHIP,
       civilStatus: '',
       contactNumber: '',
+      email: '',
       accountPassword: '',
       sectors: {
         pwd: false,
@@ -952,6 +1085,7 @@ export default function RegistrationPage() {
   const selectedAssistanceCeiling = formData.assistanceType ? getCeilingFor(formData.assistanceType) : null;
   const isSectorRestricted = !!staffProfile && staffProfile.role !== 'Admin';
   const availableSectorOptions = isSectorRestricted ? BENEFICIARY_SECTOR_OPTIONS.filter((option) => (staffProfile.sector_access || []).includes(option.value)) : BENEFICIARY_SECTOR_OPTIONS;
+  const registrationProgress = Math.round((mobileStep / REGISTRATION_WIZARD_TOTAL) * 100);
 
   return (
     <div className={styles.registrationPage}>
@@ -967,23 +1101,33 @@ export default function RegistrationPage() {
           {status.message}
         </div>
       )}
-      <form onSubmit={handleSubmit} className={styles.formGrid}>
+      <form
+        onSubmit={handleFormSubmit}
+        className={`${styles.formGrid} ${styles.formGridSingleStep}`}
+      >
         {/* Control Number */}
         <div className={styles.controlNumberBar}>
           <div className={styles.controlNumberLabel}>Control Number</div>
           <div className={styles.controlNumberValue}>{controlNumber}</div>
         </div>
 
-        <div className={styles.mobileWizardProgress} aria-label="Registration progress">
+        <div ref={wizardTopRef} className={styles.mobileWizardProgress} aria-label="Registration progress">
           <div className={styles.mobileWizardProgressHeader}>
             <div>
               <span>Application progress</span>
               <strong>{REGISTRATION_WIZARD_STEPS[mobileStep - 1]?.label}</strong>
             </div>
-            <span className={styles.mobileWizardCount}>Step {mobileStep} of {REGISTRATION_WIZARD_TOTAL}</span>
+            <span className={styles.mobileWizardCount}>Step {mobileStep} of {REGISTRATION_WIZARD_TOTAL} · {registrationProgress}%</span>
           </div>
-          <div className={styles.mobileWizardTrack} aria-hidden="true">
-            <span style={{ width: `${((mobileStep - 1) / (REGISTRATION_WIZARD_TOTAL - 1)) * 100}%` }} />
+          <div
+            className={styles.mobileWizardTrack}
+            role="progressbar"
+            aria-label="Registration completion"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow={registrationProgress}
+          >
+            <span style={{ width: `${registrationProgress}%` }} />
           </div>
           <div className={styles.mobileWizardSteps}>
             {REGISTRATION_WIZARD_STEPS.map((step) => (
@@ -991,12 +1135,12 @@ export default function RegistrationPage() {
                 key={step.number}
                 type="button"
                 className={`${styles.mobileWizardStep} ${step.number === mobileStep ? styles.mobileWizardStepActive : ''} ${step.number < mobileStep ? styles.mobileWizardStepComplete : ''}`}
-                onClick={() => step.number < mobileStep && setMobileStep(step.number)}
+                onClick={() => handleWizardStepClick(step.number)}
                 disabled={step.number > mobileStep}
                 aria-current={step.number === mobileStep ? 'step' : undefined}
                 aria-label={`Step ${step.number}: ${step.label}`}
               >
-                <span>{step.number}</span>
+                <span>{step.number < mobileStep ? '✓' : step.number}</span>
                 <small>{step.label}</small>
               </button>
             ))}
@@ -1037,6 +1181,33 @@ export default function RegistrationPage() {
                 placeholder="Enter middle name"
                 optional
               />
+            </div>
+
+            <div>
+              <span className={styles.label}>Sector Classification</span>
+              {errors.sectors && <span className={styles.sectorError}>{errors.sectors}</span>}
+              <div className={styles.row}>
+                <Select
+                  label="Primary Sector"
+                  name="primarySector"
+                  value={formData.primarySector}
+                  onChange={handleSectorSelectChange}
+                  options={availableSectorOptions}
+                  placeholder="Select primary sector"
+                  disabled={!staffProfile || isSectorRestricted}
+                  required
+                />
+                <Select
+                  label="Secondary Sector"
+                  name="secondarySector"
+                  value={formData.secondarySector}
+                  onChange={handleSectorSelectChange}
+                  options={getSecondarySectorOptions(formData.primarySector).filter((option) => availableSectorOptions.some((allowed) => allowed.value === option.value))}
+                  placeholder="No secondary sector"
+                  disabled={!staffProfile || isSectorRestricted}
+                  allowEmptyOption
+                />
+              </div>
             </div>
 
             <div className={styles.row}>
@@ -1132,7 +1303,7 @@ export default function RegistrationPage() {
               />
             </div>
 
-            <div className={styles.row}>
+            <div className={styles.row3}>
               <Select
                 label="Civil Status"
                 name="civilStatus"
@@ -1153,7 +1324,18 @@ export default function RegistrationPage() {
                 mask="ph-contact"
                 error={errors.contactNumber || (!contactCheck.available && contactCheck.error ? contactCheck.error : '')}
               />
-                            {contactCheck.checking && (
+              <Input
+                label="Gmail Address"
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="name@gmail.com"
+                autoComplete="email"
+                error={errors.email}
+                optional
+              />
+              {contactCheck.checking && (
                 <span className={styles.contactChecking}>Checking contact number...</span>
               )}
             </div>
@@ -1163,17 +1345,18 @@ export default function RegistrationPage() {
 
         {/* Side Cards */}
         <div className={styles.sideCards}>
-          <Card title="Beneficiary Photo" subtitle="Capture or upload the official profile photo for the Actual ID." className={styles.sideCard}>
+          <Card title="Beneficiary Photo" subtitle="Capture or upload the official profile photo for the Actual ID." className={`${styles.sideCard} ${styles.photoStepCard} ${styles.wizardPanel} ${mobileStep === 2 ? styles.wizardPanelActive : ''}`}>
             <div className={styles.photoCapture}>
               {profilePhotoPreview ? <img src={profilePhotoPreview} alt="Beneficiary photo preview" className={styles.photoPreview} /> : cameraOpen ? <video ref={videoRef} autoPlay playsInline muted className={styles.photoPreview} /> : <div className={styles.photoPlaceholder}>No beneficiary photo captured</div>}
               <input ref={photoInputRef} className={styles.photoFileInput} type="file" accept="image/jpeg,image/png" onChange={(event) => setSelectedPhoto(event.target.files?.[0])} />
               <div className={styles.photoActions}>
-                {!cameraOpen && !profilePhotoPreview && <Button type="button" onClick={startCamera}>Open Camera</Button>}
-                {cameraOpen && <Button type="button" onClick={capturePhoto}>Take Photo</Button>}
+                {!cameraOpen && !profilePhotoPreview && <Button type="button" onClick={startCamera} disabled={cameraStarting}>{cameraStarting ? 'Opening Camera…' : 'Open Camera'}</Button>}
+                {cameraOpen && <Button type="button" onClick={capturePhoto} disabled={!cameraReady}>{cameraReady ? 'Take Photo' : 'Starting Camera…'}</Button>}
                 {cameraOpen && <Button type="button" variant="secondary" onClick={stopCamera}>Cancel Camera</Button>}
                 {!cameraOpen && <Button type="button" variant="secondary" onClick={() => photoInputRef.current?.click()}>Upload Photo</Button>}
                 {profilePhotoPreview && <Button type="button" variant="secondary" onClick={() => { setProfilePhotoFile(null); setProfilePhotoPreview(''); void startCamera(); }}>Retake</Button>}
               </div>
+              {cameraOpen && !cameraReady && !cameraError && <p className={styles.cameraStatus} role="status">Waiting for the camera preview…</p>}
               {cameraError && <p className={styles.errorText}>{cameraError}</p>}
               {errors.profilePhoto && <p className={styles.errorText}>{errors.profilePhoto}</p>}
             </div>
@@ -1182,7 +1365,7 @@ export default function RegistrationPage() {
             <Card
               title="ATTACH REQUIREMENTS"
               subtitle="Confirm that the resident's requirements have been completed"
-              className={`${styles.sideCard} ${styles.wizardPanel} ${mobileStep === 3 ? styles.wizardPanelActive : ''}`}
+              className={`${styles.sideCard} ${styles.wizardPanel} ${mobileStep === 4 ? styles.wizardPanelActive : ''}`}
             >
               <div className={styles.formFields}>
                 {formData.assistanceType ? (
@@ -1251,7 +1434,7 @@ export default function RegistrationPage() {
           <Card
             title="Initial Assistance Request"
             subtitle="Optional: log an assistance request upon registration"
-            className={`${styles.sideCard} ${styles.wizardPanel} ${mobileStep === 2 ? styles.wizardPanelActive : ''}`}
+            className={`${styles.sideCard} ${styles.wizardPanel} ${mobileStep === 3 ? styles.wizardPanelActive : ''}`}
           >
             <div className={styles.formFields}>
               {assistanceRequestBlocked ? (
@@ -1298,33 +1481,6 @@ export default function RegistrationPage() {
                 optional
               />
 
-              <div>
-                <span className={styles.label}>Sector Classification</span>
-                <div className={styles.sectorList}>
-                  {errors.sectors && <span className={styles.sectorError}>{errors.sectors}</span>}
-                  <Select
-                    label="Primary Sector"
-                    name="primarySector"
-                    value={formData.primarySector}
-                    onChange={handleSectorSelectChange}
-                    options={availableSectorOptions}
-                    placeholder="Select primary sector"
-                    disabled={!staffProfile || isSectorRestricted}
-                    required
-                  />
-                  <Select
-                    label="Secondary Sector"
-                    name="secondarySector"
-                    value={formData.secondarySector}
-                    onChange={handleSectorSelectChange}
-                    options={getSecondarySectorOptions(formData.primarySector).filter((option) => availableSectorOptions.some((allowed) => allowed.value === option.value))}
-                    placeholder="No secondary sector"
-                    disabled={!staffProfile || isSectorRestricted}
-                    allowEmptyOption
-                  />
-                </div>
-              </div>
-
               <Input
                 label="Budget Ceiling"
                 name="assistanceAmount"
@@ -1341,7 +1497,7 @@ export default function RegistrationPage() {
           <Card
             title="Review Registration"
             subtitle="Confirm the resident and assistance details before saving"
-            className={`${styles.sideCard} ${styles.wizardPanel} ${styles.wizardReview} ${mobileStep === 4 ? styles.wizardPanelActive : ''}`}
+            className={`${styles.sideCard} ${styles.wizardPanel} ${styles.wizardReview} ${mobileStep === 5 ? styles.wizardPanelActive : ''}`}
           >
             <dl className={styles.wizardReviewGrid}>
               <div><dt>Full Name</dt><dd>{buildResidentFullName() || 'Not provided'}</dd></div>
@@ -1353,6 +1509,7 @@ export default function RegistrationPage() {
               <div><dt>Citizenship</dt><dd>{formData.citizenship || 'Not provided'}</dd></div>
               <div><dt>Civil Status</dt><dd>{formData.civilStatus || 'Not provided'}</dd></div>
               <div><dt>Contact Number</dt><dd>{formData.contactNumber || 'Not provided'}</dd></div>
+              <div><dt>Gmail Address</dt><dd>{formData.email || 'Not provided'}</dd></div>
               <div><dt>Primary Sector</dt><dd>{formData.primarySector || 'Not provided'}</dd></div>
               <div><dt>Secondary Sector</dt><dd>{formData.secondarySector || 'None'}</dd></div>
               <div><dt>Assistance</dt><dd>{formData.assistanceType || 'No initial request'}</dd></div>

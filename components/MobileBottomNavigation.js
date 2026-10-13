@@ -35,6 +35,7 @@ const Icon = ({ name }) => {
     accounts: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6M8 13h8M8 17h5" /></>,
     renewals: <><path d="M20 7h-5V2" /><path d="M20 7a9 9 0 1 0 1 8" /></>,
     users: <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>,
+    activity: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /><path d="M7 3.8 4.8 6M17 3.8 19.2 6" /></>,
     logout: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5M21 12H9" /></>,
   };
 
@@ -52,6 +53,7 @@ const adminMoreItems = [
   { name: 'Verify Beneficiary ID', href: '/admin/beneficiary-id', icon: 'qr' },
   { name: 'Assistance Tracking', href: '/admin/assistance', icon: 'tracking', exact: true },
   { name: 'Assistance Guidelines', href: '/admin/assistance/guidelines', icon: 'guidelines' },
+  { name: 'Activity Logs', href: '/admin/activity-logs', icon: 'activity' },
   { name: 'Reports', href: '/admin/reports', icon: 'reports' },
   { name: 'Account Requests', href: '/admin/account-requests', icon: 'accounts', adminOnly: true },
   { name: 'Renewal Requests', href: '/admin/renewal-requests', icon: 'renewals', adminOnly: true },

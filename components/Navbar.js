@@ -11,10 +11,12 @@ const pageTitles = {
   '/admin/beneficiary-id': 'Verify Beneficiary ID', '/admin/assistance': 'Assistance Tracking',
   '/admin/assistance/requests': 'Assistance Requests', '/admin/assistance/guidelines': 'Assistance Guidelines',
   '/admin/reports': 'Reports', '/admin/account-requests': 'Account Requests',
+  '/admin/activity-logs': 'Activity Logs',
   '/admin/renewal-requests': 'Renewal Requests', '/admin/users': 'User Management',
   '/beneficiary': 'Dashboard', '/beneficiary/dashboard': 'Dashboard',
   '/beneficiary/requests': 'Request Services', '/beneficiary/history': 'My Requests',
   '/beneficiary/profile': 'My Profile',
+  '/beneficiary/activity-logs': 'My Activity History',
 };
 
 export default function Navbar({ title, breadcrumb, onMenuClick, sidebarOpen, activityRole, theme = 'light', onThemeToggle, hideMenuToggle = false, hideActions = false }) {

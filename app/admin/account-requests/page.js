@@ -74,12 +74,10 @@ function buildFullName(request) {
 
 function getSectorBadges(request) {
   const pair = buildSectorPairFromSource(request);
-  const sectors = [getSectorLabel(pair.primarySector), getSectorLabel(pair.secondarySector)].filter(Boolean);
-  const present = new Set(sectors);
-  if ((request.is_pwd || request.isPwd) && !present.has("PWD")) sectors.push("PWD");
-  if ((request.is_senior_citizen || request.isSeniorCitizen) && !present.has("Senior Citizen")) sectors.push("Senior Citizen");
-  if ((request.is_solo_parent || request.isSoloParent) && !present.has("Solo Parent")) sectors.push("Solo Parent");
-  return sectors;
+  return [
+    `Primary: ${getSectorLabel(pair.primarySector) || 'Not assigned'}`,
+    `Secondary: ${getSectorLabel(pair.secondarySector) || 'None'}`,
+  ];
 }
 
 function parseValidIdUrls(value, fallbackValue) {
