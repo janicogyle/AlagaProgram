@@ -80,14 +80,26 @@ export default function AdminShell({ children, initialUser }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    let cancelled = false;
+
+    const endInvalidSession = async (token = '') => {
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+      window.localStorage.removeItem('adminUser');
+      await fetch('/api/admin/session', {
+        method: 'DELETE',
+        headers,
+        credentials: 'include',
+      }).catch(() => {});
+      await supabase?.auth.signOut({ scope: 'local' }).catch(() => {});
+      if (!cancelled) router.replace('/admin-login');
+    };
+
     const ensureAdminSession = async () => {
       try {
         const { data, error } = await supabase.auth.getSession();
         const session = data?.session;
         if (error || !session) {
-          localStorage.removeItem('adminUser');
-          await fetch('/api/admin/session', { method: 'DELETE' }).catch(() => {});
-          router.replace('/admin-login');
+          await endInvalidSession();
           return;
         }
 
@@ -104,15 +116,36 @@ export default function AdminShell({ children, initialUser }) {
           profile.status !== 'Active' ||
           !isPortalRole(profile.role)
         ) {
-          localStorage.removeItem('adminUser');
-          await fetch('/api/admin/session', { method: 'DELETE' }).catch(() => {});
-          await supabase.auth.signOut();
-          router.replace('/admin-login');
+          await endInvalidSession(session.access_token);
           return;
         }
 
-        localStorage.setItem('adminUser', JSON.stringify(profile));
-        setTimeout(() => {
+        if (String(profile.id) !== String(session.user.id)) {
+          await endInvalidSession(session.access_token);
+          return;
+        }
+
+        // Supabase is the source of truth. Reissue the server cookie from this
+        // exact user so a stale Admin cookie cannot take over after refresh.
+        const syncResponse = await fetch('/api/admin/session', {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          credentials: 'include',
+        });
+        const syncPayload = await syncResponse.json().catch(() => ({}));
+        const syncedUser = syncPayload?.data;
+        if (
+          !syncResponse.ok
+          || syncPayload?.error
+          || String(syncedUser?.id || '') !== String(profile.id)
+          || syncedUser?.role !== profile.role
+        ) {
+          await endInvalidSession(session.access_token);
+          return;
+        }
+
+        window.localStorage.setItem('adminUser', JSON.stringify(profile));
+        if (!cancelled) {
           setUser({
             name: profile.full_name || profile.name || 'User',
             role: profile.role || 'Staff',
@@ -120,18 +153,19 @@ export default function AdminShell({ children, initialUser }) {
             id: profile.id,
             sector_access: profile.sector_access || [],
           });
-        }, 0);
+        }
       } catch (e) {
         console.error('Failed to validate admin session:', e);
-        localStorage.removeItem('adminUser');
-        await fetch('/api/admin/session', { method: 'DELETE' }).catch(() => {});
-        router.replace('/admin-login');
+        await endInvalidSession();
       } finally {
-        setAuthChecked(true);
+        if (!cancelled) setAuthChecked(true);
       }
     };
 
-    ensureAdminSession();
+    void ensureAdminSession();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   useEffect(() => {
@@ -174,10 +208,16 @@ export default function AdminShell({ children, initialUser }) {
     setLoggingOut(true);
 
     try {
-      await fetch('/api/admin/session', { method: 'DELETE' }).catch(() => {});
+      const { data } = await supabase?.auth.getSession() || {};
+      const token = data?.session?.access_token || '';
+      await fetch('/api/admin/session', {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        credentials: 'include',
+      }).catch(() => {});
 
       if (supabase) {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: 'local' });
       }
 
       if (typeof window !== 'undefined') {
@@ -191,7 +231,15 @@ export default function AdminShell({ children, initialUser }) {
     }
   };
 
-  if (!authChecked || !user) return <AdminShellLoading />;
+  const adminOnlyPaths = ['/admin/account-requests', '/admin/renewal-requests', '/admin/users'];
+  const isUnauthorizedAdminPath = Boolean(
+    authChecked
+    && user
+    && !isAdminRole(user.role)
+    && adminOnlyPaths.some((path) => pathname.startsWith(path)),
+  );
+
+  if (!authChecked || !user || isUnauthorizedAdminPath) return <AdminShellLoading />;
 
   return (
     <div className={styles.layout}>

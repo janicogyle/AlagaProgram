@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { hashPassword } from '@/lib/passwords.server';
-import { requireStaffOrAdmin } from '@/lib/apiAuth';
+import { requireAdmin } from '@/lib/apiAuth';
 import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/documentUrls.server';
 import { logActivity } from '@/lib/activityLogger.server';
 import { applyDirectSectorFilter } from '@/lib/sectorAccess';
@@ -23,6 +23,7 @@ const MIN_BIRTHDATE = '1909-01-01';
 const MIN_BIRTH_YEAR = 1909;
 const MAX_AGE = 116;
 const MINOR_CIVIL_STATUS_ERROR = 'Beneficiaries below 18 years old must use Single as civil status.';
+const CONSENT_VERSION = '2026-10-13-v1';
 
 function parsePositiveInt(value, fallback, { min = 1, max = 100 } = {}) {
   const parsed = Number.parseInt(String(value || ''), 10);
@@ -277,7 +278,7 @@ async function insertAccountRequestWithRetry(db, payload) {
 
 export async function GET(request) {
   try {
-    const auth = await requireStaffOrAdmin(request);
+    const auth = await requireAdmin(request);
     if (!auth.ok) return auth.response;
 
     const db = supabaseAdmin ?? supabase;
@@ -436,6 +437,13 @@ export async function POST(request) {
     // Only retain an email when it was the address actually verified for this signup.
     const email = verificationMethod === 'email' ? normalizeEmail(body.email) : '';
     const password = body.password;
+
+    if (body.hasAgreed !== true) {
+      return NextResponse.json(
+        { data: null, error: 'Privacy notice and program consent must be accepted before signup.' },
+        { status: 400 },
+      );
+    }
 
     if (
       !body.firstName ||
@@ -754,6 +762,9 @@ export async function POST(request) {
       representative_valid_id_url: cloudinaryRepresentativeUrls[0] || null,
       status: 'Pending',
       password_hash: passwordHash,
+      consent_given_at: new Date().toISOString(),
+      consent_version: CONSENT_VERSION,
+      consent_actor_type: requiresRepresentative ? 'guardian_or_representative' : 'self',
     };
 
     const { data } = await insertAccountRequestWithRetry(db, insertPayload);

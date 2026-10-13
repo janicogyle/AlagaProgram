@@ -1,15 +1,23 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
-import { getCooldownInfo } from '@/lib/requestCooldown';
 import { filterCloudinaryUrls, validateCloudinaryDocumentUrls } from '@/lib/documentUrls.server';
 import { generateNextAssistanceControlNumber } from '@/lib/controlNumbers.server';
 import { logActivity, readOptionalStaffActor } from '@/lib/activityLogger.server';
 import { RESTRICTED_BENEFICIARY_STATUSES } from '@/lib/beneficiaryIdStatus.server';
 import { resolveAssistanceAmount } from '@/lib/assistanceAmounts.mjs';
 import { requireStaffOrAdmin } from '@/lib/apiAuth';
-import { forbiddenSectorResponse, getAllowedSectorKeys, rowMatchesSectorAccess } from '@/lib/sectorAccess';
+import {
+  forbiddenSectorResponse,
+  getAllowedResidentIds,
+  getAllowedSectorKeys,
+  rowMatchesSectorAccess,
+} from '@/lib/sectorAccess';
 import { PORTAL_ROLES } from '@/lib/userRoles';
 import { readBeneficiarySession } from '@/lib/beneficiarySession.server';
+import {
+  getAssistanceEligibilityFailure,
+  loadResidentAssistanceEligibility,
+} from '@/lib/assistanceEligibility.server';
 
 export const runtime = 'nodejs';
 
@@ -24,7 +32,6 @@ const ALLOWED_ASSISTANCE_TYPES = new Set([
   'Confinement Assistance',
   'Burial Assistance',
 ]);
-const ACTIVE_CATEGORY_STATUSES = ['Pending', 'Resubmitted', 'Approved'];
 const REQUIREMENTS_VERIFICATION_COLUMNS = new Set([
   'requirements_checklist',
   'requirements_completed',
@@ -260,6 +267,7 @@ export async function GET(request) {
       'processed_by',
       'decision_remarks',
       'valid_id_url',
+      'updated_at',
       'created_at',
     ];
 
@@ -269,6 +277,7 @@ export async function GET(request) {
       'requirements_checklist',
       'requirements_files',
       'request_source',
+      'released_at',
     ];
 
     const getMissingAssistanceColumn = (message) => {
@@ -289,7 +298,20 @@ export async function GET(request) {
     };
 
     const residentsJoin =
-      'residents:resident_id(id, control_number, first_name, middle_name, last_name, birthday, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, representative_name, representative_contact, is_pwd, is_senior_citizen, is_solo_parent, account_request_id)';
+      'residents:resident_id(id, control_number, first_name, middle_name, last_name, birthday, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, representative_name, representative_contact, primary_sector, secondary_sector, is_pwd, is_senior_citizen, is_solo_parent, account_request_id)';
+
+    const allowedResidentIds = staffAuth
+      ? await getAllowedResidentIds(db, staffAuth.profile)
+      : null;
+    if (Array.isArray(allowedResidentIds) && allowedResidentIds.length === 0) {
+      return NextResponse.json({
+        data: [],
+        error: null,
+        meta: hasPagination
+          ? { page, pageSize, total: 0, totalPages: 0 }
+          : undefined,
+      });
+    }
 
     const runQuery = async (fields) => {
       let query = db
@@ -299,6 +321,10 @@ export async function GET(request) {
 
       if (residentId) {
         query = query.eq('resident_id', residentId);
+      }
+
+      if (Array.isArray(allowedResidentIds)) {
+        query = query.in('resident_id', allowedResidentIds);
       }
 
       if (statusFilter) {
@@ -434,7 +460,7 @@ export async function POST(request) {
     if (requestSource === 'online' || staffAuth) {
       const { data: residentStatusRow, error: residentStatusError } = await db
         .from('residents')
-        .select('id, status, first_name, middle_name, last_name, contact_number, house_no, purok, street, barangay, city, is_pwd, is_senior_citizen, is_solo_parent')
+        .select('id, status, first_name, middle_name, last_name, contact_number, house_no, purok, street, barangay, city, primary_sector, secondary_sector, is_pwd, is_senior_citizen, is_solo_parent')
         .eq('id', residentId)
         .maybeSingle();
 
@@ -462,62 +488,11 @@ export async function POST(request) {
 
     }
 
-    const { data: activeRequest, error: activeRequestError } = await db
-      .from('assistance_requests')
-      .select('id, control_number, status, request_date, created_at, assistance_type')
-      .eq('resident_id', residentId)
-      .eq('assistance_type', assistanceType)
-      .in('status', ACTIVE_CATEGORY_STATUSES)
-      .order('request_date', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (activeRequestError) {
-      throw activeRequestError;
-    }
-
-    if (activeRequest) {
-      return NextResponse.json(
-        {
-          data: null,
-          error:
-            `This beneficiary already has a ${assistanceType} request under review. Please wait for the barangay office to finish processing it.`,
-          code: 'ACTIVE_CATEGORY_REQUEST_EXISTS',
-          activeRequest,
-        },
-        { status: 409 },
-      );
-    }
-
-    const { data: lastRequest, error: lastRequestError } = await db
-      .from('assistance_requests')
-      .select('request_date, created_at')
-      .eq('resident_id', residentId)
-      .eq('assistance_type', assistanceType)
-      .eq('status', 'Released')
-      .order('request_date', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (lastRequestError) {
-      throw lastRequestError;
-    }
-
-    const lastRequestDate = lastRequest?.request_date || lastRequest?.created_at || null;
-    const cooldownInfo = getCooldownInfo(lastRequestDate);
-
-    if (!cooldownInfo.isEligible) {
-      return NextResponse.json(
-        {
-          data: null,
-          error: `Please wait ${cooldownInfo.daysRemaining} day(s) before submitting another ${assistanceType} request. Next eligible on ${cooldownInfo.nextEligibleDate}.`,
-          code: 'CATEGORY_REQUEST_COOLDOWN',
-          cooldown: cooldownInfo,
-        },
-        { status: 429 },
-      );
+    const eligibility = await loadResidentAssistanceEligibility(db, residentId);
+    const eligibilityFailure = getAssistanceEligibilityFailure(eligibility);
+    if (eligibilityFailure) {
+      const { status, ...payload } = eligibilityFailure;
+      return NextResponse.json({ data: null, ...payload }, { status });
     }
 
     const amount = resolveAssistanceAmount(assistanceType, body.amount);
@@ -744,15 +719,16 @@ export async function POST(request) {
       const message = String(error?.message || '').toLowerCase();
       const isActiveRequestConflict =
         error?.code === '23505' &&
-        (message.includes('assistance_requests_one_active_per_category_uidx') ||
+        (message.includes('assistance_requests_one_active_per_resident_uidx') ||
+          message.includes('assistance_requests_one_active_per_category_uidx') ||
           (!message.includes('control_number') && message.includes('duplicate')));
 
       if (isActiveRequestConflict) {
         return NextResponse.json(
           {
             data: null,
-            error: `This beneficiary already has a ${assistanceType} request under review.`,
-            code: 'ACTIVE_CATEGORY_REQUEST_EXISTS',
+            error: 'This beneficiary already has an assistance request under review or approved.',
+            code: 'ACTIVE_REQUEST_EXISTS',
           },
           { status: 409 },
         );

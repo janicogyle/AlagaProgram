@@ -1,20 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabaseClient';
 
-function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-  const supabaseAnonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) return null;
-
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
+const PUBLIC_COUNT_THRESHOLD = 5;
 
 async function countRows(db, table, buildQuery = (q) => q) {
   const query = buildQuery(db.from(table).select('id', { count: 'exact', head: true }));
@@ -38,7 +25,7 @@ function isMissingColumn(error) {
 }
 
 export async function GET() {
-  const db = getSupabaseClient();
+  const db = supabaseAdmin;
   if (!db) {
     return NextResponse.json(
       { error: 'Server configuration error. Supabase env vars are missing.' },
@@ -79,17 +66,17 @@ export async function GET() {
   }
 
   const payload = {
-    totalResidents: total.count,
-    pwdCount: pwd.count,
-    seniorCount: senior.count,
-    soloParentCount: solo.count,
-    source: baseTable,
+    totalResidents: total.count >= PUBLIC_COUNT_THRESHOLD ? total.count : null,
+    pwdCount: pwd.count >= PUBLIC_COUNT_THRESHOLD ? pwd.count : null,
+    seniorCount: senior.count >= PUBLIC_COUNT_THRESHOLD ? senior.count : null,
+    soloParentCount: solo.count >= PUBLIC_COUNT_THRESHOLD ? solo.count : null,
+    minimumReportableCount: PUBLIC_COUNT_THRESHOLD,
     generatedAt: new Date().toISOString(),
   };
 
   return NextResponse.json(payload, {
     headers: {
-      // Cache aggregates to reduce DB load; safe because payload is non-sensitive.
+      // Cache aggregates to reduce DB load. Small cells are suppressed above.
       'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
     },
   });

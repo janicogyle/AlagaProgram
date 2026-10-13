@@ -75,12 +75,12 @@ export async function GET(request) {
     const residentQuery = db
       .from('residents')
       .select(
-        'id, created_at, last_name, first_name, is_pwd, is_senior_citizen, is_solo_parent, status, sex, age, birthday, purok, street',
+        'id, created_at, last_name, first_name, primary_sector, secondary_sector, is_pwd, is_senior_citizen, is_solo_parent, status, sex, age, birthday, purok, street',
       )
       .order('created_at', { ascending: false });
     const accountRequestQuery = db
       .from('account_requests')
-      .select('id, created_at, first_name, last_name, is_pwd, is_senior_citizen, is_solo_parent, purok, barangay, status')
+      .select('id, created_at, first_name, last_name, primary_sector, secondary_sector, is_pwd, is_senior_citizen, is_solo_parent, purok, barangay, status')
       .order('created_at', { ascending: false })
       .limit(5);
 
@@ -89,7 +89,7 @@ export async function GET(request) {
       runDirectSectorQuery(accountRequestQuery, auth.profile),
       db
         .from('assistance_requests')
-        .select('status, created_at, residents:resident_id(id, is_pwd, is_senior_citizen, is_solo_parent)'),
+        .select('status, created_at, residents:resident_id(id, primary_sector, secondary_sector, is_pwd, is_senior_citizen, is_solo_parent)'),
     ]);
 
     if (assistanceResult.error) throw assistanceResult.error;

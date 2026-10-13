@@ -36,6 +36,17 @@ export default function AdminLoginPage() {
     setAlertState((prev) => ({ ...prev, open: false }));
   };
 
+  const clearPreviousPortalSession = async () => {
+    await fetch('/api/admin/session', {
+      method: 'DELETE',
+      credentials: 'include',
+    }).catch(() => {});
+    await supabase?.auth.signOut({ scope: 'local' }).catch(() => {});
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('adminUser');
+    }
+  };
+
   useEffect(() => {
     const updateTime = () => setFloatingPhilippinesTime(new Date());
     updateTime();
@@ -50,6 +61,10 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
+      // Supabase persists one session per browser. Fully end the previous
+      // Admin/coordinator identity before authenticating the selected account.
+      await clearPreviousPortalSession();
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: username,
         password,
@@ -64,7 +79,7 @@ export default function AdminLoginPage() {
       const token = data?.session?.access_token;
       if (!token) {
         openAlert({ title: 'Login failed', message: 'Missing session. Please try again.' });
-        await supabase.auth.signOut();
+        await clearPreviousPortalSession();
         return;
       }
 
@@ -85,7 +100,7 @@ export default function AdminLoginPage() {
             ? (profileJson?.error || 'Please contact the administrator.')
             : (profileJson?.error || 'Unable to resolve staff/admin profile. Please try again.'),
         });
-        await supabase.auth.signOut();
+        await clearPreviousPortalSession();
         return;
       }
 
@@ -94,7 +109,7 @@ export default function AdminLoginPage() {
           title: 'Account inactive',
           message: 'Your account has been deactivated. Please contact the administrator.',
         });
-        await supabase.auth.signOut();
+        await clearPreviousPortalSession();
         return;
       }
 
@@ -112,7 +127,21 @@ export default function AdminLoginPage() {
           title: 'Login failed',
           message: sessionJson?.error || 'Unable to create admin session. Please try again.',
         });
-        await supabase.auth.signOut();
+        await clearPreviousPortalSession();
+        return;
+      }
+
+      const sessionUser = sessionJson?.data;
+      if (
+        String(sessionUser?.id || '') !== String(data.session.user.id)
+        || String(sessionUser?.id || '') !== String(userData.id)
+        || sessionUser?.role !== userData.role
+      ) {
+        await clearPreviousPortalSession();
+        openAlert({
+          title: 'Login failed',
+          message: 'The authenticated account did not match the selected staff profile. Please sign in again.',
+        });
         return;
       }
 
@@ -125,6 +154,7 @@ export default function AdminLoginPage() {
       router.push('/admin');
     } catch (error) {
       console.error('Login error:', error);
+      await clearPreviousPortalSession();
       openAlert({
         title: 'Login error',
         message: error?.message || 'An error occurred during login. Please try again.',

@@ -149,7 +149,10 @@ export default function AssistancePage() {
         rows.forEach((row) => {
           const residentId = row?.resident_id;
           if (!residentId) return;
-          const candidate = parseDateInput(row?.request_date || row?.created_at);
+          if (String(row?.status || '').toLowerCase() !== 'released') return;
+          const candidate = parseDateInput(
+            row?.released_at || row?.updated_at || row?.request_date || row?.created_at,
+          );
           if (!candidate) return;
           const existing = latestByResident.get(residentId);
           if (!existing || candidate > existing) {

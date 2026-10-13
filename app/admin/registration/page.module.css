@@ -756,217 +756,276 @@
   }
 }
 
-.mobileWizardProgress,
-.mobileWizardActions,
-.wizardReview {
+.formGridSingleStep .sideCards {
+  grid-column: 1 / -1;
+}
+
+.formGridSingleStep .mainCard {
+  grid-column: 1 / -1;
+}
+
+.photoStepCard {
+  width: min(100%, 760px);
+  margin-inline: auto;
+}
+
+.mobileWizardProgress {
+  grid-column: 1 / -1;
+  display: block;
+  scroll-margin-top: 88px;
+  padding: 18px 20px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 18%, var(--border-color));
+  border-radius: 16px;
+  background: var(--surface-bg);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.mobileWizardProgressHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mobileWizardProgressHeader > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mobileWizardProgressHeader span:first-child {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mobileWizardProgressHeader strong {
+  color: var(--foreground);
+  font-size: 16px;
+}
+
+.mobileWizardCount {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.mobileWizardTrack {
+  height: 6px;
+  margin: 12px 0 16px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-hover);
+}
+
+.mobileWizardTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1d4ed8, #60a5fa);
+  transition: width 0.25s ease;
+}
+
+.mobileWizardSteps {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mobileWizardSteps::before {
+  content: '';
+  position: absolute;
+  top: 17px;
+  left: 9%;
+  right: 9%;
+  height: 2px;
+  background: var(--border-color);
+}
+
+.mobileWizardStep {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  align-items: center;
+  flex-direction: column;
+  gap: 7px;
+  font: inherit;
+}
+
+.mobileWizardStep > span {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--border-color);
+  border-radius: 50%;
+  background: var(--surface-bg);
+  place-items: center;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.mobileWizardStep small {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobileWizardStepActive,
+.mobileWizardStepComplete {
+  color: #1d4ed8;
+}
+
+.mobileWizardStepActive > span,
+.mobileWizardStepComplete > span {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.mobileWizardStepComplete {
+  cursor: pointer;
+}
+
+.wizardPanel {
   display: none;
+}
+
+.wizardPanelActive {
+  display: block;
+}
+
+.wizardReviewGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.wizardReviewGrid > div {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--surface-muted);
+}
+
+.wizardReviewGrid dt,
+.wizardReviewGrid dd {
+  margin: 0;
+}
+
+.wizardReviewGrid dt {
+  margin-bottom: 3px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.wizardReviewGrid dd {
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.desktopActions {
+  display: none;
+}
+
+.mobileWizardActions {
+  display: flex;
+  position: static;
+  padding: 4px 0 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.mobileWizardActions button {
+  min-width: 132px;
+  padding-inline: 16px;
+  white-space: nowrap;
+}
+
+:global(html[data-theme='dark']) .mobileWizardCount,
+:global(html[data-theme='dark']) .mobileWizardStepActive > span,
+:global(html[data-theme='dark']) .mobileWizardStepComplete > span {
+  border-color: rgba(96, 165, 250, 0.55);
+  background: rgba(37, 99, 235, 0.18);
+  color: #93c5fd;
 }
 
 @media (max-width: 768px) {
   .mobileWizardProgress {
-    grid-column: 1 / -1;
-    display: block;
     padding: 14px;
-    border: 1px solid var(--border-color);
     border-radius: 14px;
-    background: var(--surface-bg);
-    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
-  }
-
-  .mobileWizardProgressHeader {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .mobileWizardProgressHeader > div {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .mobileWizardProgressHeader span:first-child {
-    color: var(--text-muted);
-    font-size: 10px;
-    font-weight: 750;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
   }
 
   .mobileWizardProgressHeader strong {
-    color: var(--foreground);
     font-size: 14px;
   }
 
   .mobileWizardCount {
-    flex: 0 0 auto;
     padding: 5px 9px;
-    border: 1px solid #bfdbfe;
-    border-radius: 999px;
-    background: #eff6ff;
-    color: #1d4ed8;
     font-size: 11px;
-    font-weight: 750;
   }
 
   .mobileWizardTrack {
     height: 4px;
     margin: 10px 0 12px;
-    overflow: hidden;
-    border-radius: 999px;
-    background: var(--surface-hover);
-  }
-
-  .mobileWizardTrack span {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: #2563eb;
-    transition: width 0.2s ease;
   }
 
   .mobileWizardSteps {
-    position: relative;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
   }
 
   .mobileWizardSteps::before {
-    content: '';
-    position: absolute;
     top: 14px;
-    left: 11%;
-    right: 11%;
-    height: 2px;
-    background: var(--border-color);
   }
 
   .mobileWizardStep {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    min-width: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--text-muted);
-    align-items: center;
-    flex-direction: column;
     gap: 5px;
-    font: inherit;
   }
 
   .mobileWizardStep > span {
-    display: grid;
     width: 30px;
     height: 30px;
-    border: 2px solid var(--border-color);
-    border-radius: 50%;
-    background: var(--surface-bg);
-    place-items: center;
     font-size: 12px;
-    font-weight: 750;
   }
 
   .mobileWizardStep small {
-    max-width: 100%;
-    overflow: hidden;
     font-size: 9px;
-    font-weight: 650;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .mobileWizardStepActive,
-  .mobileWizardStepComplete {
-    color: #1d4ed8;
-  }
-
-  .mobileWizardStepActive > span,
-  .mobileWizardStepComplete > span {
-    border-color: #2563eb;
-    background: #eff6ff;
-    color: #1d4ed8;
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
-  }
-
-  .mobileWizardStepComplete {
-    cursor: pointer;
-  }
-
-  .wizardPanel {
-    display: none;
-  }
-
-  .wizardPanelActive {
-    display: block;
   }
 
   .wizardReviewGrid {
-    display: grid;
     grid-template-columns: 1fr;
     gap: 10px;
-    margin: 0;
-  }
-
-  .wizardReviewGrid > div {
-    min-width: 0;
-    padding: 11px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    background: var(--surface-muted);
-  }
-
-  .wizardReviewGrid dt,
-  .wizardReviewGrid dd {
-    margin: 0;
-  }
-
-  .wizardReviewGrid dt {
-    margin-bottom: 3px;
-    color: var(--text-muted);
-    font-size: 10px;
-    font-weight: 750;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-  }
-
-  .wizardReviewGrid dd {
-    color: var(--foreground);
-    font-size: 13px;
-    font-weight: 650;
-    overflow-wrap: anywhere;
-  }
-
-  .desktopActions {
-    display: none;
-  }
-
-  .mobileWizardActions {
-    display: flex;
-    position: static;
-    padding: 2px 0 0;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
   }
 
   .mobileWizardActions button {
     flex: 1 1 104px;
     min-width: 0;
     padding-inline: 10px;
-    white-space: nowrap;
-  }
-
-  :global(html[data-theme='dark']) .mobileWizardCount,
-  :global(html[data-theme='dark']) .mobileWizardStepActive > span,
-  :global(html[data-theme='dark']) .mobileWizardStepComplete > span {
-    border-color: rgba(96, 165, 250, 0.55);
-    background: rgba(37, 99, 235, 0.18);
-    color: #93c5fd;
   }
 }
 
@@ -1014,4 +1073,10 @@
 
 .photoActions button {
   min-width: 0;
+}
+
+.cameraStatus {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
 }

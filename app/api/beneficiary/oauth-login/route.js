@@ -6,6 +6,7 @@ import {
   createBeneficiarySessionToken,
 } from '@/lib/beneficiarySession.server';
 import { BENEFICIARY_RESIDENT_STATUSES } from '@/lib/beneficiaryIdStatus.server';
+import { logBeneficiaryActivity } from '@/lib/activityLogger.server';
 
 export const runtime = 'nodejs';
 
@@ -51,7 +52,7 @@ export async function POST(request) {
 
     const { data: resident, error: residentError } = await supabaseAdmin
       .from('residents')
-      .select('id, first_name, last_name, contact_number, email, status')
+      .select('id, first_name, middle_name, last_name, contact_number, email, status')
       .eq('email', email)
       .limit(1)
       .maybeSingle();
@@ -139,6 +140,19 @@ export async function POST(request) {
       path: '/',
       maxAge: BENEFICIARY_SESSION_MAX_AGE_SECONDS,
     });
+
+    await logBeneficiaryActivity(
+      resident,
+      {
+        action: 'Logged in',
+        message: 'Signed in to the Alaga beneficiary portal using Gmail.',
+        entity_type: 'beneficiary_session',
+        entity_id: resident.id,
+        reference_number: resident.email || resident.contact_number || resident.id,
+        link: '/beneficiary/activity-logs',
+      },
+      supabaseAdmin,
+    );
 
     return response;
   } catch (error) {

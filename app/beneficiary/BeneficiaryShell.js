@@ -16,6 +16,7 @@ const beneficiaryMenuItems = [
       { name: 'Request Services', href: '/beneficiary/requests', icon: 'document' },
       { name: 'My Requests', href: '/beneficiary/history', icon: 'documents' },
       { name: 'My Profile', href: '/beneficiary/profile', icon: 'user' },
+      { name: 'Activity Logs', href: '/beneficiary/activity-logs', icon: 'activity' },
     ],
   },
 ];
@@ -28,6 +29,7 @@ const beneficiaryPrimaryItems = [
 
 const beneficiaryMoreItems = [
   { name: 'My Profile', href: '/beneficiary/profile', icon: 'users' },
+  { name: 'Activity Logs', href: '/beneficiary/activity-logs', icon: 'activity' },
 ];
 
 const RESTRICTED_ID_STATUSES = new Set(['Expired', 'Renewal Pending']);
@@ -164,6 +166,7 @@ export default function BeneficiaryShell({ children }) {
         ...section,
         items: section.items.filter((item) => (
           item.href === '/beneficiary/dashboard' || item.href === '/beneficiary/profile'
+          || item.href === '/beneficiary/activity-logs'
         )),
       }))
     : beneficiaryMenuItems;

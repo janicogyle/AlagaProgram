@@ -5,7 +5,6 @@ import PageHeader from '../../../components/PageHeader';
 import Card from '../../../components/Card';
 import { Badge, FileUpload, Modal, SectionHeader, HelperText, Button } from '@/components';
 import styles from './page.module.css';
-import { supabase } from '@/lib/supabaseClient';
 import {
   formatCardDate,
   renderBeneficiaryIdCard,
@@ -36,19 +35,17 @@ function formatContactForDisplay(value) {
   return value || '—';
 }
 
-const RESIDENT_PROFILE_SELECT =
-  'id, first_name, middle_name, last_name, birthday, age, birthplace, sex, citizenship, civil_status, contact_number, house_no, purok, street, barangay, city, is_pwd, is_senior_citizen, is_solo_parent, representative_name, representative_contact, representative_relationship, representative_valid_id_url, profile_photo_url, status';
-const RESIDENT_PROFILE_FALLBACK_SELECT = RESIDENT_PROFILE_SELECT.replace(', profile_photo_url', '');
-
-function isMissingProfilePhotoColumn(error) {
-  const msg = String(error?.message || error || '').toLowerCase();
-  return msg.includes('profile_photo_url') && (msg.includes('schema cache') || msg.includes('does not exist') || msg.includes('could not find'));
-}
-
-async function fetchResidentProfile(residentId) {
-  const result = await supabase.from('residents').select(RESIDENT_PROFILE_SELECT).eq('id', residentId).single();
-  if (!result.error || !isMissingProfilePhotoColumn(result.error)) return result;
-  return supabase.from('residents').select(RESIDENT_PROFILE_FALLBACK_SELECT).eq('id', residentId).single();
+async function fetchResidentProfile() {
+  const response = await fetch('/api/beneficiary/profile', {
+    method: 'GET',
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const payload = await response.json().catch(() => ({}));
+  return {
+    data: payload?.data || null,
+    error: response.ok ? null : new Error(payload?.error || 'Unable to load profile.'),
+  };
 }
 
 export default function ProfilePage() {
@@ -77,18 +74,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const load = async () => {
       try {
-        let residentId = null;
-        if (typeof window !== 'undefined') {
-          residentId = window.localStorage.getItem('beneficiaryResidentId');
-        }
-
-        if (!residentId) {
-          setResident(null);
-          setLoading(false);
-          return;
-        }
-
-        const { data, error } = await fetchResidentProfile(residentId);
+        const { data, error } = await fetchResidentProfile();
 
         if (error) throw error;
         setResident(data);

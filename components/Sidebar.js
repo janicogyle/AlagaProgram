@@ -18,6 +18,7 @@ const menuItems = [
       { name: 'Assistance Requests', href: '/admin/assistance/requests', icon: 'list' },
       { name: 'Assistance Tracking', href: '/admin/assistance', icon: 'assistance' },
       { name: 'Assistance Guidelines', href: '/admin/assistance/guidelines', icon: 'guidelines' },
+      { name: 'Activity Logs', href: '/admin/activity-logs', icon: 'activity' },
       { name: 'Reports', href: '/admin/reports', icon: 'reports' },
     ]
   },
@@ -111,6 +112,14 @@ const icons = {
   analytics: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <polyline points="22,12 18,12 15,21 9,3 6,12 2,12" />
+    </svg>
+  ),
+  activity: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+      <path d="M7 3.8 4.8 6" />
+      <path d="M17 3.8 19.2 6" />
     </svg>
   ),
   users: (

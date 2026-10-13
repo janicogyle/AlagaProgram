@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
-import { requireStaffOrAdmin } from '@/lib/apiAuth';
-import { logActivity, logStaffActivity } from '@/lib/activityLogger.server';
+import { requireAdmin } from '@/lib/apiAuth';
+import { logStaffActivity } from '@/lib/activityLogger.server';
 import { computeRenewedExpiration } from '@/lib/beneficiaryIdStatus.server';
 import {
   sendBeneficiaryIdRenewalApprovedSms,
@@ -25,7 +25,7 @@ function staffName(auth) {
 
 export async function PATCH(request, { params }) {
   try {
-    const auth = await requireStaffOrAdmin(request);
+    const auth = await requireAdmin(request);
     if (!auth.ok) return auth.response;
 
     if (!supabaseAdmin) {
@@ -63,7 +63,7 @@ export async function PATCH(request, { params }) {
 
     const { data: resident, error: residentError } = await supabaseAdmin
       .from('residents')
-      .select('id, control_number, first_name, middle_name, last_name, contact_number, email, verification_method, contact_verified, email_verified, status, is_pwd, is_senior_citizen, is_solo_parent')
+      .select('id, control_number, first_name, middle_name, last_name, contact_number, email, verification_method, contact_verified, email_verified, status, primary_sector, secondary_sector, is_pwd, is_senior_citizen, is_solo_parent')
       .eq('id', renewal.resident_id)
       .single();
     if (residentError || !resident) {
@@ -102,18 +102,6 @@ export async function PATCH(request, { params }) {
         audience_resident_id: renewal.resident_id,
       }, supabaseAdmin);
 
-      await logActivity({
-        actor_name: processedBy,
-        actor_role: 'Admin',
-        action: 'ID renewal incomplete',
-        message: adminRemarks || 'Your Beneficiary ID renewal needs more information.',
-        entity_type: 'beneficiary_id_renewal_request',
-        entity_id: renewal.id,
-        reference_number: resident.control_number || String(renewal.id).slice(0, 8).toUpperCase(),
-        link: '/beneficiary/profile',
-        audience_resident_id: renewal.resident_id,
-      }, supabaseAdmin);
-
       const notification =
         resident.verification_method === 'email' && resident.email_verified === true
           ? await sendRenewalStatusEmail({
@@ -135,8 +123,9 @@ export async function PATCH(request, { params }) {
 
     const { data: card, error: cardError } = await supabaseAdmin
       .from('beneficiary_cards')
-      .select('id, expires_at')
+      .select('id, resident_id, expires_at')
       .eq('id', renewal.card_id)
+      .eq('resident_id', renewal.resident_id)
       .single();
     if (cardError || !card) return NextResponse.json({ data: null, error: 'Beneficiary ID card not found.' }, { status: 404 });
 
@@ -147,7 +136,8 @@ export async function PATCH(request, { params }) {
     const { error: cardUpdateError } = await supabaseAdmin
       .from('beneficiary_cards')
       .update({ expires_at: newExpirationIso, status: 'Active', revoked_at: null })
-      .eq('id', card.id);
+      .eq('id', card.id)
+      .eq('resident_id', renewal.resident_id);
     if (cardUpdateError) throw cardUpdateError;
 
     const { error: residentUpdateError } = await supabaseAdmin
@@ -176,18 +166,6 @@ export async function PATCH(request, { params }) {
       entity_id: renewal.id,
       reference_number: resident.control_number || String(renewal.id).slice(0, 8).toUpperCase(),
       link: '/admin/renewal-requests',
-      audience_resident_id: renewal.resident_id,
-    }, supabaseAdmin);
-
-    await logActivity({
-      actor_name: processedBy,
-      actor_role: 'Admin',
-      action: 'ID renewal approved',
-      message: `Your Beneficiary ID is valid until ${formatDate(newExpirationIso)}.`,
-      entity_type: 'beneficiary_id_renewal_request',
-      entity_id: renewal.id,
-      reference_number: resident.control_number || String(renewal.id).slice(0, 8).toUpperCase(),
-      link: '/beneficiary/profile',
       audience_resident_id: renewal.resident_id,
     }, supabaseAdmin);
 
