@@ -10,7 +10,7 @@ import DocumentPreviewModal from '../../../components/DocumentPreviewModal';
 import styles from './page.module.css';
 import Modal from '../../../components/Modal';
 import { getCooldownInfo } from '@/lib/requestCooldown';
-import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
+import { buildEligibilityMaps, getResidentEligibility } from '@/lib/residentEligibility';
 import { resolveAssistanceAmount } from '@/lib/assistanceAmounts.mjs';
 
 const isEditableRequestStatus = (status) => status === 'Rejected' || status === 'Incomplete';
@@ -112,6 +112,10 @@ export default function BeneficiaryHistoryPage() {
   const [documentPreview, setDocumentPreview] = useState({ open: false, url: '', path: '' });
   const [autoOpenRequestRef, setAutoOpenRequestRef] = useState('');
   const [cooldownInfo, setCooldownInfo] = useState(() => getCooldownInfo(null));
+  const [requestEligibility, setRequestEligibility] = useState({
+    canCreateRequest: true,
+    blockReason: null,
+  });
   const [idStatus, setIdStatus] = useState('');
   const autoOpenHandledRef = useRef('');
 
@@ -153,6 +157,8 @@ export default function BeneficiaryHistoryPage() {
 
       if (!residentId) {
         setRequests([]);
+        setCooldownInfo(getCooldownInfo(null));
+        setRequestEligibility({ canCreateRequest: true, blockReason: null });
         setLoading(false);
         return;
       }
@@ -171,11 +177,9 @@ export default function BeneficiaryHistoryPage() {
       }));
 
       setRequests(mapped);
-      const lastReleased = mapped.find(
-        (row) => String(row?.status || '').toLowerCase() === 'released',
-      );
-      const lastDate = lastReleased?.request_date || lastReleased?.created_at || null;
-      setCooldownInfo(getCooldownInfo(lastDate));
+      const eligibility = getResidentEligibility(residentId, buildEligibilityMaps(mapped));
+      setRequestEligibility(eligibility);
+      setCooldownInfo(eligibility.cooldownInfo || getCooldownInfo(null));
     } catch (err) {
       console.error('Failed to load assistance history:', err);
       if (!silent) {
@@ -240,18 +244,17 @@ export default function BeneficiaryHistoryPage() {
   }, []);
 
   useEffect(() => {
-    if (!supabase || typeof window === 'undefined') return undefined;
+    if (typeof window === 'undefined') return undefined;
     const residentId = window.localStorage.getItem('beneficiaryResidentId');
     if (!residentId) return undefined;
 
-    const channel = realtimeHelpers.subscribeToTable(
-      'assistance_requests',
-      () => loadRequests({ silent: true }),
-      `resident_id=eq.${residentId}`,
-    );
+    const refresh = () => loadRequests({ silent: true });
+    const interval = window.setInterval(refresh, 60_000);
+    window.addEventListener('focus', refresh);
 
     return () => {
-      realtimeHelpers.unsubscribe(channel);
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refresh);
     };
   }, [loadRequests]);
 
@@ -264,6 +267,12 @@ export default function BeneficiaryHistoryPage() {
   const selectedAmount = selectedRequest
     ? resolveAssistanceAmount(selectedRequest.assistance_type, selectedRequest.amount)
     : 0;
+  const editableRequest = requestEligibility.editableRequest || null;
+  const newRequestHref = editableRequest?.id
+    ? `/beneficiary/requests?edit=${encodeURIComponent(editableRequest.id)}`
+    : '/beneficiary/requests';
+  const newRequestLabel = editableRequest ? 'Edit Incomplete Request' : 'New Request';
+  const requestCreationBlocked = !loading && !requestEligibility.canCreateRequest && !editableRequest;
   const columns = [
     { key: 'control_number', label: 'Control No.' },
     { key: 'assistance_type', label: 'Type of Assistance' },
@@ -316,7 +325,7 @@ export default function BeneficiaryHistoryPage() {
       <Card className={styles.historyCard}>
         <div className={styles.headerRow}>
           <h2>Requests</h2>
-          <Button href="/beneficiary/requests">New Request</Button>
+          <Button href={newRequestHref} disabled={requestCreationBlocked}>{newRequestLabel}</Button>
         </div>
         <div className={styles.cooldownRow}>
           <span className={styles.cooldownLabel}>Request Eligibility</span>
@@ -333,7 +342,13 @@ export default function BeneficiaryHistoryPage() {
           </Badge>
           {!cooldownInfo.isEligible && (
             <span className={styles.cooldownMeta}>
-              {cooldownInfo.daysRemaining} day(s) remaining
+              {cooldownInfo.nextEligibleDate
+                ? `${cooldownInfo.daysRemaining} day(s) remaining • Next eligible: ${cooldownInfo.nextEligibleDate}`
+                : cooldownInfo.status === 'Incomplete'
+                  ? 'Edit and resubmit the existing request.'
+                  : cooldownInfo.status === 'Approved'
+                    ? 'A new request is allowed only after this request is released and its cooldown ends.'
+                    : 'A request is currently under review.'}
             </span>
           )}
         </div>

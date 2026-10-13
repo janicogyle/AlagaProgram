@@ -7,6 +7,8 @@ import {
   createBeneficiarySessionToken,
 } from '@/lib/beneficiarySession.server';
 import { BENEFICIARY_RESIDENT_STATUSES } from '@/lib/beneficiaryIdStatus.server';
+import { createHash } from 'crypto';
+import { logBeneficiaryActivity } from '@/lib/activityLogger.server';
 
 export const runtime = 'nodejs';
 
@@ -69,7 +71,7 @@ function getAttemptKey(type, value) {
   return `${type}:${value || 'unknown'}`;
 }
 
-function getLoginLimitStatus(keys, nowMs = Date.now()) {
+function getMemoryLoginLimitStatus(keys, nowMs = Date.now()) {
   pruneLoginAttempts(nowMs);
 
   for (const key of keys) {
@@ -89,7 +91,7 @@ function getLoginLimitStatus(keys, nowMs = Date.now()) {
   return { allowed: true };
 }
 
-function recordFailedLoginAttempt(keys, nowMs = Date.now()) {
+function recordFailedLoginAttemptInMemory(keys, nowMs = Date.now()) {
   pruneLoginAttempts(nowMs);
 
   for (const { key, maxAttempts } of keys) {
@@ -107,8 +109,88 @@ function recordFailedLoginAttempt(keys, nowMs = Date.now()) {
   }
 }
 
-function clearContactLoginAttempts(contactNumber) {
+function clearContactLoginAttemptsInMemory(contactNumber) {
   loginAttempts.delete(getAttemptKey('contact', contactNumber));
+}
+
+function hashAttemptKey(key) {
+  const pepper =
+    process.env.LOGIN_RATE_LIMIT_SECRET ||
+    process.env.BENEFICIARY_SESSION_SECRET ||
+    process.env.SMS_OTP_SECRET ||
+    'alaga-login-rate-limit';
+  return createHash('sha256').update(`${pepper}:${key}`).digest('hex');
+}
+
+function isMissingRateLimitStore(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    error?.code === '42P01' ||
+    error?.code === 'PGRST202' ||
+    message.includes('beneficiary_login_rate_limits') ||
+    message.includes('record_beneficiary_login_failure')
+  );
+}
+
+async function getLoginLimitStatus(db, keys, nowMs = Date.now()) {
+  const hashedKeys = keys.map(hashAttemptKey);
+  const { data, error } = await db
+    .from('beneficiary_login_rate_limits')
+    .select('locked_until')
+    .in('key_hash', hashedKeys);
+
+  if (error) {
+    if (isMissingRateLimitStore(error)) return getMemoryLoginLimitStatus(keys, nowMs);
+    throw error;
+  }
+
+  const latestLock = (data || [])
+    .map((row) => new Date(row.locked_until || 0).getTime())
+    .filter((lockedUntil) => Number.isFinite(lockedUntil) && lockedUntil > nowMs)
+    .sort((a, b) => b - a)[0];
+
+  if (!latestLock) return { allowed: true };
+  const retryAfterSeconds = Math.ceil((latestLock - nowMs) / 1000);
+  return {
+    allowed: false,
+    retryAfterSeconds,
+    error: `Too many failed login attempts. Please wait ${Math.ceil(retryAfterSeconds / 60)} minute(s) before trying again.`,
+  };
+}
+
+async function recordFailedLoginAttempt(db, keys) {
+  const results = await Promise.all(
+    keys.map(({ key, maxAttempts }) =>
+      db.rpc('record_beneficiary_login_failure', {
+        p_key_hash: hashAttemptKey(key),
+        p_max_attempts: maxAttempts,
+        p_window_seconds: Math.floor(LOGIN_ATTEMPT_WINDOW_MS / 1000),
+        p_lockout_seconds: Math.floor(LOGIN_LOCKOUT_MS / 1000),
+      }),
+    ),
+  );
+  const firstError = results.find((result) => result.error)?.error;
+  if (!firstError) return;
+  if (isMissingRateLimitStore(firstError)) {
+    recordFailedLoginAttemptInMemory(keys);
+    return;
+  }
+  throw firstError;
+}
+
+async function clearContactLoginAttempts(db, contactNumber) {
+  const key = getAttemptKey('contact', contactNumber);
+  const { error } = await db
+    .from('beneficiary_login_rate_limits')
+    .delete()
+    .eq('key_hash', hashAttemptKey(key));
+  if (error) {
+    if (isMissingRateLimitStore(error)) {
+      clearContactLoginAttemptsInMemory(contactNumber);
+      return;
+    }
+    throw error;
+  }
 }
 
 function rateLimitedResponse(limitStatus) {
@@ -154,24 +236,24 @@ export async function POST(request) {
 
     const contactAttemptKey = getAttemptKey('contact', contactNumber);
     const ipAttemptKey = getAttemptKey('ip', ipAddress);
-    const limitStatus = getLoginLimitStatus([contactAttemptKey, ipAttemptKey]);
+    const limitStatus = await getLoginLimitStatus(db, [contactAttemptKey, ipAttemptKey]);
     if (!limitStatus.allowed) {
       return rateLimitedResponse(limitStatus);
     }
     const recordFailedAttempt = () =>
-      recordFailedLoginAttempt([
+      recordFailedLoginAttempt(db, [
         { key: contactAttemptKey, maxAttempts: LOGIN_MAX_CONTACT_ATTEMPTS },
         { key: ipAttemptKey, maxAttempts: LOGIN_MAX_IP_ATTEMPTS },
       ]);
 
     if (typeof password !== 'string' || !password) {
-      recordFailedAttempt();
-      return NextResponse.json({ data: null, error: 'Incorrect password.' }, { status: 401 });
+      await recordFailedAttempt();
+      return NextResponse.json({ data: null, error: 'Incorrect contact number or password.' }, { status: 401 });
     }
 
     const { data: resident, error } = await db
       .from('residents')
-      .select('id, first_name, last_name, contact_number, status, password_hash')
+      .select('id, first_name, middle_name, last_name, contact_number, status, password_hash')
       .eq('contact_number', contactNumber)
       .limit(1)
       .maybeSingle();
@@ -179,52 +261,19 @@ export async function POST(request) {
     if (error) throw error;
 
     if (!resident) {
-      // If they already signed up, show a clearer status instead of "not found".
-      try {
-        const { data: requestRow, error: requestError } = await db
-          .from('account_requests')
-          .select('id, status')
-          .eq('contact_number', contactNumber)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+      await recordFailedAttempt();
+      return NextResponse.json({ data: null, error: 'Incorrect contact number or password.' }, { status: 401 });
+    }
 
-        if (!requestError && requestRow) {
-          if (requestRow.status === 'Pending' || requestRow.status === 'Resubmitted') {
-            return NextResponse.json(
-              {
-                data: null,
-                error:
-                  'PENDING APPROVAL: Your sign-up request is still under admin review. Please wait for approval before logging in.',
-              },
-              { status: 403 },
-            );
-          }
+    if (!resident.password_hash) {
+      await recordFailedAttempt();
+      return NextResponse.json({ data: null, error: 'Incorrect contact number or password.' }, { status: 401 });
+    }
 
-          if (requestRow.status === 'Incomplete' || requestRow.status === 'Archived' || requestRow.status === 'Rejected') {
-            return NextResponse.json(
-              { data: null, error: 'Your sign-up request is incomplete. Please use the resubmission code sent by SMS.' },
-              { status: 403 },
-            );
-          }
-
-          if (requestRow.status === 'Approved') {
-            return NextResponse.json(
-              {
-                data: null,
-                error:
-                  'Your account was approved but is not available for login yet. Please try again later or contact the administrator.',
-              },
-              { status: 403 },
-            );
-          }
-        }
-      } catch {
-        // Ignore lookup errors; fall back to the generic message
-      }
-
-      recordFailedAttempt();
-      return NextResponse.json({ data: null, error: 'No beneficiary found with that contact number.' }, { status: 404 });
+    const ok = await verifyPassword(password, resident.password_hash);
+    if (!ok) {
+      await recordFailedAttempt();
+      return NextResponse.json({ data: null, error: 'Incorrect contact number or password.' }, { status: 401 });
     }
 
     if (resident.status && !BENEFICIARY_RESIDENT_STATUSES.includes(resident.status)) {
@@ -234,23 +283,7 @@ export async function POST(request) {
       );
     }
 
-    if (!resident.password_hash) {
-      return NextResponse.json(
-        {
-          data: null,
-          error: 'Your account does not have a password yet. Please sign up and wait for approval, or contact the administrator.',
-        },
-        { status: 403 },
-      );
-    }
-
-    const ok = await verifyPassword(password, resident.password_hash);
-    if (!ok) {
-      recordFailedAttempt();
-      return NextResponse.json({ data: null, error: 'Incorrect password.' }, { status: 401 });
-    }
-
-    clearContactLoginAttempts(contactNumber);
+    await clearContactLoginAttempts(db, contactNumber);
 
     let sessionToken;
     try {
@@ -280,6 +313,19 @@ export async function POST(request) {
       path: '/',
       maxAge: BENEFICIARY_SESSION_MAX_AGE_SECONDS,
     });
+
+    await logBeneficiaryActivity(
+      resident,
+      {
+        action: 'Logged in',
+        message: 'Signed in to the Alaga beneficiary portal.',
+        entity_type: 'beneficiary_session',
+        entity_id: resident.id,
+        reference_number: resident.contact_number || resident.id,
+        link: '/beneficiary/activity-logs',
+      },
+      supabaseAdmin ?? db,
+    );
 
     return res;
   } catch (err) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   Badge,
@@ -187,6 +188,15 @@ function buildFullName(resident) {
   return name || "-";
 }
 
+function getResidentInitials(resident) {
+  const initials = [resident?.first_name, resident?.last_name]
+    .map((value) => String(value || '').trim().charAt(0))
+    .filter(Boolean)
+    .join('')
+    .toUpperCase();
+  return initials || 'B';
+}
+
 function displayValue(v) {
   const s = String(v ?? '').trim();
   return s || '-';
@@ -234,6 +244,14 @@ function getSectorBadges(resident) {
   return sectors;
 }
 
+function getSectorClassificationLabels(resident) {
+  const pair = buildSectorPairFromSource(resident || {});
+  return {
+    primary: getSectorLabel(pair.primarySector) || 'Not assigned',
+    secondary: getSectorLabel(pair.secondarySector) || 'None',
+  };
+}
+
 function asArray(value) {
   return Array.isArray(value) ? value.filter((item) => item && typeof item === 'object') : [];
 }
@@ -256,6 +274,7 @@ function getApiError(payload, fallback) {
 }
 
 export default function ResidentsPage() {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [registrationTypeFilter, setRegistrationTypeFilter] = useState("");
@@ -414,7 +433,12 @@ export default function ResidentsPage() {
   const getCooldownHint = (eligibility) => {
     if (!eligibility || eligibility.canCreateRequest) return null;
     if (eligibility.blockReason === 'active') {
-      return 'A request is still under review.';
+      return eligibility.activeRequest?.status === 'Approved'
+        ? 'An approved request is waiting to be released.'
+        : 'A request is still under review.';
+    }
+    if (eligibility.blockReason === 'incomplete') {
+      return 'Edit and resubmit the existing incomplete request.';
     }
     const info = eligibility.cooldownInfo;
     if (info?.nextEligibleDate) {
@@ -1081,17 +1105,13 @@ export default function ResidentsPage() {
     },
     {
       key: "sector",
-      label: "Sector",
+      label: "Sector Classification",
       render: (_, row) => {
-        const sectors = getSectorBadges(row);
-        if (!sectors.length) return <span className={styles.tableMutedText}>General</span>;
+        const sectors = getSectorClassificationLabels(row);
         return (
           <div className={styles.badges}>
-            {sectors.map((sector) => (
-              <Badge key={sector} variant="secondary">
-                {sector}
-              </Badge>
-            ))}
+            <Badge variant="secondary">Primary: {sectors.primary}</Badge>
+            <Badge variant="secondary">Secondary: {sectors.secondary}</Badge>
           </div>
         );
       },
@@ -1336,87 +1356,35 @@ export default function ResidentsPage() {
     resetPassword === resetPasswordConfirm &&
     !processing;
 
-  const handleIssueCard = async () => {
-    if (!selectedResident || issuingCard) return;
-
-    setIssuingCard(true);
-    try {
-      const headers = await getAuthHeaders();
-      const response = await fetch('/api/beneficiary-cards/issue', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({
-          residentId: selectedResident.id,
-          expiresInDays: 365,
-          action: idCardAction,
-        }),
-      });
-
-      const payload = await readJsonSafe(response);
-      if (!response.ok || payload?.error) {
-        const msg = getApiError(payload, idCardAction === 'renew' ? 'Failed to renew ID card.' : 'Failed to issue ID card.');
-        openAlert({ title: idCardAction === 'renew' ? 'Renewal failed' : 'Issue failed', message: msg });
-        return;
-      }
-
-      const token = payload?.data?.token;
-      const card = payload?.data?.card;
-      const action = payload?.data?.action || (idCardAction === 'renew' ? 'renewed' : 'issued');
-      if (!token || !card) {
-        openAlert({ title: idCardAction === 'renew' ? 'Renewal failed' : 'Issue failed', message: 'Card saved but token missing.' });
-        return;
-      }
-
-      const cardReference = String(card.id || '').slice(0, 8).toUpperCase();
-      const qrcodeMod = await import('qrcode');
-      const QRCode = qrcodeMod.default ?? qrcodeMod;
-      const qrUrl = await QRCode.toDataURL(cardReference, { margin: 1, width: 420 });
-      const residentForCard = residentDetails?.resident || selectedResident;
-      const sectorLabel = getSectorBadges(residentForCard).join(' / ') || 'General';
-      const cardImageUrl = await renderBeneficiaryIdCard({
-        qrUrl,
-        fullName: buildFullName(residentForCard),
-        sectorLabel,
-        cardReference,
-        contactNumber: residentForCard?.contact_number || '-',
-        address: formatAddressLine(residentForCard),
-        issuedAt: card?.issued_at,
-        expiresAt: card?.expires_at,
-        profilePhotoUrl: residentForCard?.profile_photo_url || null,
-      });
-
-      setIssuedCard({ token, card, cardReference, qrUrl, cardImageUrl, action });
-      clearClientCachePrefix('admin-');
-      setResidents((prev) =>
-        asArray(prev).map((resident) =>
-          resident.id === selectedResident.id
-            ? { ...resident, status: 'Active', qr_validity: 'Valid', qr_card: card }
-            : resident,
-        ),
-      );
-      setSelectedResident((prev) =>
-        prev?.id === selectedResident.id
-          ? { ...prev, status: 'Active', qr_validity: 'Valid', qr_card: card }
-          : prev,
-      );
-      setResidentDetails((prev) =>
-        prev?.resident?.id === selectedResident.id
-          ? { ...prev, resident: { ...prev.resident, status: 'Active', qr_card: card } }
-          : prev,
-      );
-      setCardModalOpen(true);
-    } catch (error) {
-      const msg = String(error?.message || error || 'Unknown error');
-      // Avoid console.error in dev overlay; we already show the message to the user.
-      console.warn('Issue card failed:', msg);
-      openAlert({ title: idCardAction === 'renew' ? 'Renewal failed' : 'Issue failed', message: msg });
-    } finally {
-      setIssuingCard(false);
-    }
+  const handleOpenRenewalRequests = () => {
+    if (!selectedResident?.id) return;
+    router.push(
+      `/admin/renewal-requests?residentId=${encodeURIComponent(selectedResident.id)}`,
+    );
   };
 
-  const handleViewExistingCard = async () => {
+  const handlePrintIdCard = async () => {
     if (!effectiveResident?.qr_card || issuingCard) return;
+
+    const printWindow = window.open('', '_blank', 'width=520,height=760');
+    if (!printWindow) {
+      openAlert({
+        title: 'Print preview blocked',
+        message: 'Allow pop-ups for this site, then try printing the ID card again.',
+      });
+      return;
+    }
+
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head><title>Preparing Beneficiary ID</title></head>
+        <body style="font-family: Arial, sans-serif; padding: 24px; color: #334155;">
+          Preparing the beneficiary ID card…
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
 
     setIssuingCard(true);
     try {
@@ -1438,29 +1406,36 @@ export default function ResidentsPage() {
         profilePhotoUrl: effectiveResident?.profile_photo_url || null,
       });
 
-      setIssuedCard({ token: null, card, cardReference, qrUrl, cardImageUrl, action: 'viewed' });
-      setCardModalOpen(true);
+      const opened = openBeneficiaryIdPrintWindow(cardImageUrl, printWindow);
+      if (!opened) throw new Error('Unable to open the ID card print preview.');
     } catch (error) {
+      if (!printWindow.closed) printWindow.close();
       const msg = String(error?.message || error || 'Unknown error');
-      console.warn('View ID card failed:', msg);
-      openAlert({ title: 'Preview failed', message: msg });
+      console.warn('Print ID card failed:', msg);
+      openAlert({ title: 'Print failed', message: msg });
     } finally {
       setIssuingCard(false);
     }
   };
 
-  const effectiveResident = residentDetails?.resident || selectedResident;
-  const idCardExpiry = effectiveResident?.qr_card?.expires_at || selectedResident?.qr_card?.expires_at;
+  const effectiveResident = selectedResident
+    ? { ...selectedResident, ...(residentDetails?.resident || {}) }
+    : residentDetails?.resident || null;
+  const idCardExpiry = effectiveResident?.qr_card?.expires_at;
   const hasExistingIdCard = !!effectiveResident?.qr_card?.id;
-  const isWalkInResident = effectiveResident?.registration_type === 'Walk-In';
-  const canIssueNewIdCard = isAdmin && !hasExistingIdCard && effectiveResident?.status === 'Active';
-  const canRenewWalkInIdCard = isAdmin && hasExistingIdCard && isWalkInResident;
-  const canViewExistingIdCard = isAdmin && hasExistingIdCard && !isWalkInResident;
-  const canIssueIdQr = canIssueNewIdCard || canRenewWalkInIdCard;
-  const idCardAction = hasExistingIdCard ? 'renew' : 'issue';
-  const idCardButtonLabel = idCardAction === 'renew' ? 'Renew ID Card' : 'Issue ID Card';
-  const idCardLoadingLabel = idCardAction === 'renew' ? 'Renewing...' : 'Issuing...';
+  const canRenewIdCard = isAdmin && hasExistingIdCard;
   const signupInfo = residentDetails?.signup || null;
+  const isOnlineRegistration = effectiveResident?.registration_type === 'Online';
+  const isResidentActionModalOpen =
+    historyOpen ||
+    editVerifyOpen ||
+    editProfileOpen ||
+    verifyResetOpen ||
+    resetModalOpen ||
+    cardModalOpen ||
+    documentPreview.open ||
+    alertState.open;
+  const isResidentDetailsOpen = !!selectedResident && !isResidentActionModalOpen;
   const residentControlNo = effectiveResident?.control_number || '-';
   const historyTableData = historyRequests.map((row) => ({
     id: row?.id || row?.control_number,
@@ -1634,11 +1609,19 @@ export default function ResidentsPage() {
                           {row.contact_number || '-'}
                         </div>
                         <div className={styles.cardBadges}>
-                          {getSectorBadges(row).map((sector) => (
-                            <span key={sector} className={styles.cardBadgeItem}>
-                              <Badge>{sector}</Badge>
-                            </span>
-                          ))}
+                          {(() => {
+                            const sectors = getSectorClassificationLabels(row);
+                            return (
+                              <>
+                                <span className={styles.cardBadgeItem}>
+                                  <Badge>Primary: {sectors.primary}</Badge>
+                                </span>
+                                <span className={styles.cardBadgeItem}>
+                                  <Badge variant="secondary">Secondary: {sectors.secondary}</Badge>
+                                </span>
+                              </>
+                            );
+                          })()}
                           <span className={styles.cardBadgeItem}>
                             <Badge variant={row.registration_type === 'Online' ? 'success' : 'secondary'}>
                               {row.registration_type || 'Walk-In'}
@@ -1722,7 +1705,7 @@ export default function ResidentsPage() {
       </Card>
 
       <Modal
-        isOpen={!!selectedResident}
+        isOpen={isResidentDetailsOpen}
         onClose={() => {
           setSelectedResident(null);
           setResidentDetails(null);
@@ -1764,14 +1747,24 @@ export default function ResidentsPage() {
                   >
                     Reset Password
                   </Button>
-                  {canIssueIdQr ? (
+                  {hasExistingIdCard ? (
                     <Button
                       variant="secondary"
                       size="small"
-                      onClick={handleIssueCard}
+                      onClick={handlePrintIdCard}
+                      disabled={processing || issuingCard || detailsLoading}
+                    >
+                      {issuingCard ? 'Preparing ID…' : 'Print ID Card'}
+                    </Button>
+                  ) : null}
+                  {canRenewIdCard ? (
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onClick={handleOpenRenewalRequests}
                       disabled={processing || issuingCard}
                     >
-                      {issuingCard ? idCardLoadingLabel : idCardButtonLabel}
+                      Renew ID Card
                     </Button>
                   ) : null}
                 </>
@@ -1786,7 +1779,22 @@ export default function ResidentsPage() {
               <p className={styles.residentMutedText}>Loading full details…</p>
             ) : null}
 
-            <div className={styles.assistanceResidentInfo}>
+            <div className={`${styles.assistanceResidentInfo} ${styles.residentDetailsHero}`}>
+              <div className={styles.residentPhotoFrame}>
+                {effectiveResident?.profile_photo_url ? (
+                  // The saved Cloudinary URL is already transformed for this fixed-size administrative preview.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={effectiveResident.profile_photo_url}
+                    alt={`${buildFullName(effectiveResident)} registered photo`}
+                    className={styles.residentPhoto}
+                  />
+                ) : (
+                  <span className={styles.residentPhotoFallback} aria-label="No registered photo">
+                    {getResidentInitials(effectiveResident)}
+                  </span>
+                )}
+              </div>
               <div className={styles.assistanceResidentHeader}>
                 <div>
                   <p className={styles.assistanceResidentName}>{buildFullName(effectiveResident)}</p>
@@ -1796,6 +1804,12 @@ export default function ResidentsPage() {
                     </span>
                     <span className={styles.assistanceResidentDetail}>
                       Control: {effectiveResident?.control_number || "-"}
+                    </span>
+                    <span className={styles.assistanceResidentDetail}>
+                      Gmail: {effectiveResident?.email || "Not provided"}
+                    </span>
+                    <span className={styles.assistanceResidentDetail}>
+                      Registration: {effectiveResident?.registration_type || "Walk-In"}
                     </span>
                     <span
                       className={`${styles.assistanceResidentDetail} ${styles.assistanceResidentDetailBreak}`}
@@ -1813,6 +1827,9 @@ export default function ResidentsPage() {
                       <Badge variant={effectiveResident?.status === "Active" ? "success" : "secondary"}>
                         {effectiveResident?.status || "-"}
                       </Badge>
+                    </span>
+                    <span className={styles.assistanceResidentDetail}>
+                      Registered: {formatDate(effectiveResident?.created_at)}
                     </span>
                   </div>
                 </div>
@@ -1834,6 +1851,10 @@ export default function ResidentsPage() {
                   <div className={styles.residentInfoRow}>
                     <span className={styles.residentInfoLabel}>Purok</span>
                     <strong className={styles.residentInfoValue}>{displayValue(effectiveResident?.purok)}</strong>
+                  </div>
+                  <div className={styles.residentInfoRow}>
+                    <span className={styles.residentInfoLabel}>Street</span>
+                    <strong className={styles.residentInfoValue}>{displayValue(effectiveResident?.street)}</strong>
                   </div>
                   <div className={styles.residentInfoRow}>
                     <span className={styles.residentInfoLabel}>Barangay</span>
@@ -1893,17 +1914,21 @@ export default function ResidentsPage() {
 
               <section className={styles.residentInfoCard}>
                 <h3 className={styles.residentInfoTitle}>Sector Classification</h3>
-                {getSectorBadges(effectiveResident).length ? (
-                  <div className={styles.badges}>
-                    {getSectorBadges(effectiveResident).map((s) => (
-                      <Badge key={s} variant="secondary">
-                        {s}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <p className={styles.residentInfoEmpty}>General</p>
-                )}
+                {(() => {
+                  const sectors = getSectorClassificationLabels(effectiveResident);
+                  return (
+                    <div className={styles.residentInfoGrid}>
+                      <div className={styles.residentInfoRow}>
+                        <span className={styles.residentInfoLabel}>Primary Sector</span>
+                        <strong className={styles.residentInfoValue}>{sectors.primary}</strong>
+                      </div>
+                      <div className={styles.residentInfoRow}>
+                        <span className={styles.residentInfoLabel}>Secondary Sector</span>
+                        <strong className={styles.residentInfoValue}>{sectors.secondary}</strong>
+                      </div>
+                    </div>
+                  );
+                })()}
               </section>
 
               <section className={styles.residentInfoCard}>
@@ -1947,7 +1972,7 @@ export default function ResidentsPage() {
               </section>
             </div>
 
-            {isAdmin ? (
+            {isAdmin && isOnlineRegistration ? (
               <section className={styles.residentInfoCard}>
                 <h3 className={styles.residentInfoTitle}>Sign-up Submission</h3>
                 {signupInfo ? (
@@ -1997,8 +2022,7 @@ export default function ResidentsPage() {
                   </div>
                 ) : (
                   <p className={styles.residentInfoHint}>
-                    No sign-up record was found for this beneficiary. This usually means the beneficiary was registered
-                    manually or was created before sign-up tracking was enabled.
+                    The online sign-up record is unavailable. The beneficiary information above is from the resident profile.
                   </p>
                 )}
               </section>

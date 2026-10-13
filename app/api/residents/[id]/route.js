@@ -269,6 +269,7 @@ export async function GET(request, { params }) {
       'citizenship',
       'civil_status',
       'contact_number',
+      'email',
       'house_no',
       'purok',
       'street',

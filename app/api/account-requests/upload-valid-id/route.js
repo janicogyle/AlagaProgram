@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { uploadDocumentFile } from '@/lib/uploadDocument.server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { logActivity } from '@/lib/activityLogger.server';
+import { requireStaffOrAdmin } from '@/lib/apiAuth';
+import { verifyEmailVerificationToken } from '@/lib/emailVerification.server';
+import { verifySignupUploadToken } from '@/lib/signupUploadAuthorization.server';
 
 export const runtime = 'nodejs';
 
@@ -63,6 +66,26 @@ export async function POST(request) {
     const documentType = String(form.get('documentType') || form.get('document_type') || 'validId').trim();
     const contactNumber = normalizeContactNumber(contactNumberRaw);
 
+    const hasBearerToken = /^Bearer\s+\S+/i.test(request.headers.get('authorization') || '');
+    if (hasBearerToken) {
+      const auth = await requireStaffOrAdmin(request);
+      if (!auth.ok) return auth.response;
+    } else {
+      const verificationMethod = String(form.get('verificationMethod') || '').trim().toLowerCase();
+      const verificationToken = String(form.get('verificationToken') || '').trim();
+      const email = String(form.get('email') || '').trim().toLowerCase();
+      const authorization = verificationMethod === 'email'
+        ? verifyEmailVerificationToken(verificationToken, email)
+        : verifySignupUploadToken(verificationToken, contactNumber);
+
+      if (!authorization.ok) {
+        return NextResponse.json(
+          { data: null, error: authorization.error || 'Verify your phone or email before uploading.' },
+          { status: 403 },
+        );
+      }
+    }
+
     if (!contactNumber) {
       return NextResponse.json({ data: null, error: 'Missing contact number.' }, { status: 400 });
     }
@@ -81,7 +104,10 @@ export async function POST(request) {
       };
     }
 
-    if (!upload.ok && LOCAL_UPLOAD_BYPASS) {
+    // Keep the public-signup development fallback for offline form work, but never
+    // let an authenticated admin registration succeed with a fake photo URL. The
+    // Actual ID must point to a real Cloudinary asset.
+    if (!upload.ok && LOCAL_UPLOAD_BYPASS && !hasBearerToken) {
       console.warn(
         `[LOCAL UPLOAD BYPASS] Cloudinary upload failed for ${documentType}: ${upload.error}. Using placeholder URL.`,
       );

@@ -200,8 +200,14 @@ export default function UsersPage() {
   ).length;
 
   const endCurrentAdminSession = async () => {
-    await fetch('/api/admin/session', { method: 'DELETE' }).catch(() => {});
-    await supabase?.auth.signOut().catch(() => {});
+    const { data } = await supabase?.auth.getSession() || {};
+    const token = data?.session?.access_token || '';
+    await fetch('/api/admin/session', {
+      method: 'DELETE',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      credentials: 'include',
+    }).catch(() => {});
+    await supabase?.auth.signOut({ scope: 'local' }).catch(() => {});
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem('adminUser');
       window.location.replace('/admin-login');

@@ -11,6 +11,7 @@ import { isAdminRole } from '@/lib/userRoles';
 export const runtime = 'nodejs';
 
 const ALLOWED_STATUSES = new Set(['Pending', 'Resubmitted', 'Approved', 'Released', 'Rejected']);
+const ACTIVE_STATUSES = new Set(['Pending', 'Resubmitted', 'Approved']);
 
 async function resolveAssistanceContact(db, data) {
   const primary = data?.beneficiary_contact || data?.requester_contact;
@@ -185,7 +186,7 @@ export async function PATCH(request, { params }) {
 
     let accessLookup = db
       .from('assistance_requests')
-      .select('id, resident_id, status, residents:resident_id(id, is_pwd, is_senior_citizen, is_solo_parent)');
+      .select('id, resident_id, status, residents:resident_id(id, primary_sector, secondary_sector, is_pwd, is_senior_citizen, is_solo_parent)');
     accessLookup = isUuid ? accessLookup.eq('id', String(id)) : accessLookup.eq('control_number', String(id));
     const { data: accessRow, error: accessError } = await accessLookup.maybeSingle();
     if (accessError) throw accessError;
@@ -223,6 +224,31 @@ export async function PATCH(request, { params }) {
 
     // Ensure updated_at changes even on DBs without an updated_at trigger
     update.updated_at = new Date().toISOString();
+    if (status === 'Released' && accessRow.status !== 'Released') {
+      update.released_at = update.updated_at;
+    }
+
+    if (status && ACTIVE_STATUSES.has(status) && !ACTIVE_STATUSES.has(accessRow.status)) {
+      const { data: conflictingRows, error: conflictError } = await db
+        .from('assistance_requests')
+        .select('id, control_number, status')
+        .eq('resident_id', accessRow.resident_id)
+        .in('status', Array.from(ACTIVE_STATUSES))
+        .neq('id', accessRow.id)
+        .limit(1);
+      if (conflictError) throw conflictError;
+      if (conflictingRows?.length) {
+        return NextResponse.json(
+          {
+            data: null,
+            error: 'This beneficiary already has another assistance request under review or approved.',
+            code: 'ACTIVE_REQUEST_EXISTS',
+            activeRequest: conflictingRows[0],
+          },
+          { status: 409 },
+        );
+      }
+    }
 
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ data: null, error: 'No fields to update.' }, { status: 400 });
@@ -230,7 +256,7 @@ export async function PATCH(request, { params }) {
 
     let updatePayload = { ...update };
     let selectCols =
-      'id, control_number, resident_id, requester_name, requester_contact, requester_address, beneficiary_name, beneficiary_contact, beneficiary_address, assistance_type, amount, status, request_date, request_source, processed_by, decision_remarks, valid_id_url, requirements_urls, requirements_files, requirements_checklist, requirements_completed, created_at'
+      'id, control_number, resident_id, requester_name, requester_contact, requester_address, beneficiary_name, beneficiary_contact, beneficiary_address, assistance_type, amount, status, request_date, request_source, processed_by, decision_remarks, valid_id_url, requirements_urls, requirements_files, requirements_checklist, requirements_completed, released_at, created_at, updated_at'
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
@@ -374,6 +400,16 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ data, error: null, sms, notification });
   } catch (error) {
     console.error('Update assistance request error:', error);
+    if (error?.code === '23505' && /assistance_requests_one_active_per_(resident|category)_uidx/i.test(String(error?.message || ''))) {
+      return NextResponse.json(
+        {
+          data: null,
+          error: 'This beneficiary already has another assistance request under review or approved.',
+          code: 'ACTIVE_REQUEST_EXISTS',
+        },
+        { status: 409 },
+      );
+    }
     return NextResponse.json(
       { data: null, error: error.message || 'Failed to update assistance request.' },
       { status: 500 },
@@ -405,7 +441,7 @@ export async function DELETE(request, { params }) {
 
     let lookup = db
       .from('assistance_requests')
-      .select('id, status, control_number, resident_id, residents:resident_id(id, is_pwd, is_senior_citizen, is_solo_parent)');
+      .select('id, status, control_number, resident_id, residents:resident_id(id, primary_sector, secondary_sector, is_pwd, is_senior_citizen, is_solo_parent)');
     lookup = isUuid ? lookup.eq('id', String(id)) : lookup.eq('control_number', String(id));
 
     const { data: row, error: lookupError } = await lookup.maybeSingle();

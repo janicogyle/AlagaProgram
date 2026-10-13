@@ -32,6 +32,8 @@ const RESIDENT_FIELDS = [
   'purok',
   'barangay',
   'city',
+  'primary_sector',
+  'secondary_sector',
   'is_pwd',
   'is_senior_citizen',
   'is_solo_parent',

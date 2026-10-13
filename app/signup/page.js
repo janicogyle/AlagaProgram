@@ -340,6 +340,7 @@ export default function BeneficiarySignupPage() {
   const [otpCooldown, setOtpCooldown] = useState(0);
   const [otpExpiresAt, setOtpExpiresAt] = useState(null);
   const [otpVerifiedContact, setOtpVerifiedContact] = useState('');
+  const [otpUploadToken, setOtpUploadToken] = useState('');
   const [contactChecking, setContactChecking] = useState(false);
   const [contactUnavailable, setContactUnavailable] = useState('');
   const [emailChecking, setEmailChecking] = useState(false);
@@ -501,6 +502,7 @@ export default function BeneficiarySignupPage() {
     setOtpCooldown(0);
     setOtpExpiresAt(null);
     setOtpVerifiedContact('');
+    setOtpUploadToken('');
   };
 
   const formatContactForDisplay = (num) => {
@@ -1017,6 +1019,7 @@ export default function BeneficiarySignupPage() {
 
       setOtpVerified(false);
       setOtpVerifiedContact('');
+      setOtpUploadToken('');
       setOtpExpiresAt(data?.expiresAt || null);
 
       const sendsRemaining = Number(data?.sendsRemaining);
@@ -1064,16 +1067,24 @@ export default function BeneficiarySignupPage() {
       const { data, error } = await response.json().catch(() => ({}));
       if (!response.ok) {
         setOtpVerified(false);
+        setOtpUploadToken('');
         setOtpStatus({ type: 'error', message: error || 'OTP verification failed.' });
         return;
       }
 
       if (data?.verified) {
+        if (!data?.uploadToken) {
+          setOtpVerified(false);
+          setOtpStatus({ type: 'error', message: 'Upload authorization was not issued. Please verify again.' });
+          return;
+        }
         setOtpVerified(true);
         setOtpVerifiedContact(contactNumber);
+        setOtpUploadToken(data.uploadToken);
         setOtpStatus({ type: 'success', message: 'Contact number verified successfully.' });
       } else {
         setOtpVerified(false);
+        setOtpUploadToken('');
         setOtpStatus({ type: 'error', message: 'OTP verification failed.' });
       }
     } catch (err) {
@@ -1103,6 +1114,12 @@ export default function BeneficiarySignupPage() {
     uploadForm.append('file', file);
     uploadForm.append('contactNumber', getIdentityUploadReference());
     uploadForm.append('documentType', documentType);
+    uploadForm.append('verificationMethod', verificationMethod);
+    uploadForm.append(
+      'verificationToken',
+      verificationMethod === 'email' ? emailVerification.token : otpUploadToken,
+    );
+    if (verificationMethod === 'email') uploadForm.append('email', normalizedEmail);
 
     const uploadResponse = await fetch('/api/account-requests/upload-valid-id', {
       method: 'POST',
@@ -1534,6 +1551,12 @@ export default function BeneficiarySignupPage() {
         uploadForm.append('file', representativeValidIdFiles[0]);
         uploadForm.append('contactNumber', form.contactNumber);
         uploadForm.append('documentType', 'representativeValidId');
+        uploadForm.append('verificationMethod', verificationMethod);
+        uploadForm.append(
+          'verificationToken',
+          verificationMethod === 'email' ? emailVerification.token : otpUploadToken,
+        );
+        if (verificationMethod === 'email') uploadForm.append('email', normalizedEmail);
 
         const uploadResponse = await fetch('/api/account-requests/upload-valid-id', {
           method: 'POST',
@@ -1576,6 +1599,7 @@ export default function BeneficiarySignupPage() {
           email: verificationMethod === 'email' ? form.email : '',
           verificationMethod,
           emailVerificationToken: emailVerification.token,
+          hasAgreed,
           password: form.password,
           primarySector: form.primarySector,
           secondarySector: form.secondarySector,
@@ -1843,7 +1867,10 @@ export default function BeneficiarySignupPage() {
           name="civilStatus"
           value={form.civilStatus}
           onChange={handleChange}
-          options={getCivilStatusOptions(form.isSoloParent, ageValue !== '' && Number(ageValue) < 18)}
+          options={getCivilStatusOptions(
+            deriveSectorFlags(form.primarySector, form.secondarySector).is_solo_parent,
+            ageValue !== '' && Number(ageValue) < 18,
+          )}
           placeholder="Select civil status"
           required
         />

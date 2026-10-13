@@ -8,6 +8,10 @@ import { hashPassword } from '@/lib/passwords.server';
 import { issueBeneficiaryCard } from '@/lib/beneficiaryCards.server';
 import { queryNextAssistanceControlNumber, queryNextBeneficiaryControlNumber } from '@/lib/controlNumbers';
 import { logStaffActivity } from '@/lib/activityLogger.server';
+import {
+  getAssistanceEligibilityFailure,
+  loadResidentAssistanceEligibility,
+} from '@/lib/assistanceEligibility.server';
 
 export const runtime = 'nodejs';
 
@@ -22,6 +26,15 @@ function normalizeContactNumber(value) {
   if (digits.length === 12 && digits.startsWith('63')) return `0${digits.slice(2)}`;
   if (digits.length === 10) return `0${digits}`;
   return digits.length > 11 ? digits.slice(-11) : digits;
+}
+
+function normalizeOptionalGmail(value) {
+  const email = clean(value).toLowerCase();
+  if (!email) return { ok: true, value: null };
+  if (!/^[^\s@]+@gmail\.com$/i.test(email)) {
+    return { ok: false, value: null, error: 'Enter a valid Gmail address ending in @gmail.com.' };
+  }
+  return { ok: true, value: email };
 }
 
 function calculateAge(birthday) {
@@ -78,6 +91,8 @@ export async function POST(request) {
     const password = String(body.accountPassword || '');
     const existingResidentId = clean(body.existingResidentId);
     const photoUrl = clean(body.profilePhotoUrl);
+    const assistanceType = clean(body.assistanceType);
+    const gmail = normalizeOptionalGmail(body.email);
     const sector = validateSectorPair({ primarySector: body.primarySector, secondarySector: body.secondarySector });
 
     if (!firstName || !lastName || !clean(body.houseNo) || !clean(body.purok) || !body.birthday || !clean(body.birthplace) || !clean(body.sex) || !clean(body.civilStatus)) {
@@ -86,6 +101,9 @@ export async function POST(request) {
     if (contactNumber.length !== 11) {
       return NextResponse.json({ data: null, error: 'Contact number must be exactly 11 digits.' }, { status: 400 });
     }
+    if (!gmail.ok) {
+      return NextResponse.json({ data: null, error: gmail.error }, { status: 400 });
+    }
     if (!existingResidentId && password.length < 8) {
       return NextResponse.json({ data: null, error: 'Beneficiary account password must be at least 8 characters.' }, { status: 400 });
     }
@@ -93,6 +111,9 @@ export async function POST(request) {
       return NextResponse.json({ data: null, error: 'A captured or uploaded beneficiary photo is required.' }, { status: 400 });
     }
     if (!sector.ok) return NextResponse.json({ data: null, error: sector.error }, { status: 400 });
+    if (assistanceType && !ALLOWED_ASSISTANCE_TYPES.has(assistanceType)) {
+      return NextResponse.json({ data: null, error: 'Unsupported assistance type.' }, { status: 400 });
+    }
 
     const allowedSectors = getAllowedSectorKeys(auth.profile);
     const requestedSectors = [sector.primarySector, sector.secondarySector].filter(Boolean);
@@ -106,12 +127,20 @@ export async function POST(request) {
     if (existingResidentId) {
       const { data: existingResident, error: existingError } = await supabaseAdmin
         .from('residents')
-        .select('id, is_pwd, is_senior_citizen, is_solo_parent')
+        .select('id, primary_sector, secondary_sector, is_pwd, is_senior_citizen, is_solo_parent')
         .eq('id', existingResidentId)
         .maybeSingle();
       if (existingError || !existingResident) return NextResponse.json({ data: null, error: 'Beneficiary not found.' }, { status: 404 });
       if (!rowMatchesSectorAccess(existingResident, auth.profile)) {
         return forbiddenSectorResponse(NextResponse, 'Beneficiary is outside your assigned sector access.');
+      }
+      if (assistanceType) {
+        const eligibility = await loadResidentAssistanceEligibility(supabaseAdmin, existingResidentId);
+        const eligibilityFailure = getAssistanceEligibilityFailure(eligibility);
+        if (eligibilityFailure) {
+          const { status, ...payload } = eligibilityFailure;
+          return NextResponse.json({ data: null, ...payload }, { status });
+        }
       }
     } else {
       const { data: existingResident, error: residentLookupError } = await supabaseAdmin
@@ -134,6 +163,20 @@ export async function POST(request) {
       if (requestLookupError && requestLookupError.code !== 'PGRST116') throw requestLookupError;
       if (existingRequest) {
         return NextResponse.json({ data: null, error: 'A beneficiary registration already exists for this contact number.' }, { status: 409 });
+      }
+    }
+
+    if (gmail.value) {
+      let duplicateEmailQuery = supabaseAdmin
+        .from('residents')
+        .select('id')
+        .ilike('email', gmail.value)
+        .limit(1);
+      if (existingResidentId) duplicateEmailQuery = duplicateEmailQuery.neq('id', existingResidentId);
+      const { data: duplicateEmailRows, error: duplicateEmailError } = await duplicateEmailQuery;
+      if (duplicateEmailError) throw duplicateEmailError;
+      if (duplicateEmailRows?.length) {
+        return NextResponse.json({ data: null, error: 'This Gmail address is already registered.' }, { status: 409 });
       }
     }
 
@@ -169,6 +212,7 @@ export async function POST(request) {
         citizenship: 'Filipino',
         civil_status: clean(body.civilStatus),
         contact_number: contactNumber,
+        email: gmail.value,
         primary_sector: sector.primarySector,
         secondary_sector: sector.secondarySector || null,
         ...sector.flags,
@@ -183,14 +227,34 @@ export async function POST(request) {
       const residentId = resident?.id;
       if (!residentId) throw new Error('Beneficiary record was created but its ID could not be resolved.');
 
+      if (photoUrl) {
+        const { data: savedPhoto, error: savedPhotoError } = await supabaseAdmin
+          .from('residents')
+          .select('profile_photo_url')
+          .eq('id', residentId)
+          .single();
+
+        if (savedPhotoError) {
+          const missingColumn = String(savedPhotoError.message || '').toLowerCase().includes('profile_photo_url');
+          if (missingColumn) {
+            throw new Error(
+              'The database is missing residents.profile_photo_url. Run setup-step22-account-request-face-verification.sql, then register again.',
+            );
+          }
+          throw savedPhotoError;
+        }
+
+        if (clean(savedPhoto?.profile_photo_url) !== photoUrl) {
+          throw new Error('The beneficiary photo was uploaded but could not be linked to the resident profile.');
+        }
+      }
+
       if (!existingResidentId) {
         const issued = await issueBeneficiaryCard(supabaseAdmin, residentId, { expiresInDays: 365 });
         card = issued.card;
       }
 
-      const assistanceType = clean(body.assistanceType);
       if (assistanceType) {
-        if (!ALLOWED_ASSISTANCE_TYPES.has(assistanceType)) throw new Error('Unsupported assistance type.');
         const assistanceControlNumber = await queryNextAssistanceControlNumber(supabaseAdmin, assistanceType);
         const checklist = Array.isArray(body.requirementsChecklist) ? body.requirementsChecklist : [];
         const requirementsCompleted = checklist.length ? checklist.every((item) => item?.checked === true) : body.requirementsCompleted === true;
@@ -252,6 +316,18 @@ export async function POST(request) {
     console.error('Admin registration error:', error);
     const message = String(error?.message || 'Failed to register beneficiary.');
     const duplicate = error?.code === '23505' || /duplicate|already exists/i.test(message);
-    return NextResponse.json({ data: null, error: duplicate ? 'A matching beneficiary or request already exists.' : message }, { status: duplicate ? 409 : 500 });
+    const activeRequestConflict = error?.code === '23505' && /assistance_requests_one_active_per_resident_uidx/i.test(message);
+    return NextResponse.json(
+      {
+        data: null,
+        error: activeRequestConflict
+          ? 'This beneficiary already has an assistance request under review or approved.'
+          : duplicate
+            ? 'A matching beneficiary or request already exists.'
+            : message,
+        ...(activeRequestConflict ? { code: 'ACTIVE_REQUEST_EXISTS' } : {}),
+      },
+      { status: duplicate ? 409 : 500 },
+    );
   }
 }

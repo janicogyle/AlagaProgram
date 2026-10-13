@@ -10,6 +10,7 @@ export const runtime = 'nodejs';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BENEFICIARY_EDITABLE_STATUSES = new Set(['Incomplete', 'Rejected']);
+const ACTIVE_REQUEST_STATUSES = ['Pending', 'Resubmitted', 'Approved'];
 const ALLOWED_ASSISTANCE_TYPES = new Set([
   'Medicine Assistance',
   'Confinement Assistance',
@@ -86,6 +87,26 @@ export async function PATCH(request, { params }) {
       return NextResponse.json(
         { data: null, error: 'Only incomplete requests can be edited.' },
         { status: 400 },
+      );
+    }
+
+    const { data: conflictingRows, error: conflictError } = await db
+      .from('assistance_requests')
+      .select('id, control_number, status')
+      .eq('resident_id', resident.residentId)
+      .in('status', ACTIVE_REQUEST_STATUSES)
+      .neq('id', existing.id)
+      .limit(1);
+    if (conflictError) throw conflictError;
+    if (conflictingRows?.length) {
+      return NextResponse.json(
+        {
+          data: null,
+          error: 'You already have another assistance request under review or approved.',
+          code: 'ACTIVE_REQUEST_EXISTS',
+          activeRequest: conflictingRows[0],
+        },
+        { status: 409 },
       );
     }
 
@@ -401,6 +422,16 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ data: updated, error: null, meta: { residentSource: resident.source } });
   } catch (err) {
     console.error('Beneficiary update assistance request error:', err);
+    if (err?.code === '23505' && /assistance_requests_one_active_per_(resident|category)_uidx/i.test(String(err?.message || ''))) {
+      return NextResponse.json(
+        {
+          data: null,
+          error: 'You already have another assistance request under review or approved.',
+          code: 'ACTIVE_REQUEST_EXISTS',
+        },
+        { status: 409 },
+      );
+    }
     return NextResponse.json(
       { data: null, error: err?.message || 'Failed to update assistance request.' },
       { status: 500 },

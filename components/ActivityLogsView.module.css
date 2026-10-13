@@ -1,0 +1,301 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.eyebrow {
+  margin-bottom: 7px;
+  color: var(--primary-color);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.header h1,
+.tableHeading h2 {
+  margin: 0;
+  color: var(--foreground);
+  letter-spacing: -0.025em;
+}
+
+.header h1 {
+  font-size: 24px;
+}
+
+.header p,
+.tableHeading p {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.headerActions,
+.filterActions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.scopeNotice,
+.errorBanner {
+  margin-top: 18px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.scopeNotice {
+  border: 1px solid color-mix(in srgb, var(--primary-color) 26%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-color) 6%, var(--surface-bg));
+  color: var(--text-muted);
+}
+
+.errorBanner {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+  align-items: end;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-color);
+}
+
+.filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.filters input,
+.filters select {
+  width: 100%;
+  height: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: var(--surface-bg);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 450;
+}
+
+.filters input:focus,
+.filters select:focus {
+  outline: 2px solid color-mix(in srgb, var(--primary-color) 30%, transparent);
+  border-color: var(--primary-color);
+}
+
+.fieldWide {
+  grid-column: span 2;
+}
+
+.logsCard {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tableHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  padding-bottom: 15px;
+}
+
+.tableHeading h2 {
+  font-size: 17px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 11px;
+}
+
+.table {
+  width: 100%;
+  min-width: 1030px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.table th {
+  padding: 11px 12px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.035em;
+}
+
+.table td {
+  padding: 12px;
+  border-top: 1px solid var(--border-color);
+  color: var(--foreground);
+  font-size: 12px;
+  line-height: 1.45;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.table th:nth-child(1) { width: 145px; }
+.table th:nth-child(2) { width: 140px; }
+.table th:nth-child(3) { width: 135px; }
+.table th:nth-child(4) { width: 170px; }
+.table th:nth-child(5) { width: 260px; }
+.table th:nth-child(6) { width: 180px; }
+
+.timestamp,
+.record {
+  color: var(--text-muted) !important;
+}
+
+.userName,
+.action {
+  font-weight: 650;
+}
+
+.description {
+  color: var(--text-muted) !important;
+}
+
+.empty {
+  padding: 34px 18px !important;
+  color: var(--text-muted) !important;
+  text-align: center !important;
+}
+
+.mobileList {
+  display: none;
+}
+
+.logCard {
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 11px;
+  background: var(--surface-bg);
+}
+
+.logCardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.logCardTop strong {
+  color: var(--foreground);
+  font-size: 14px;
+}
+
+.logCard p {
+  margin: 9px 0 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.logCard dl {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.logCard dl div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.logCard dt,
+.logCard dd {
+  margin: 0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.logCard dt {
+  color: var(--text-muted);
+  font-weight: 650;
+}
+
+.logCard dd {
+  color: var(--foreground);
+}
+
+:global(html[data-theme='dark']) .errorBanner {
+  border-color: rgba(248, 113, 113, 0.35);
+  background: rgba(239, 68, 68, 0.14);
+  color: #fecaca;
+}
+
+@media (max-width: 1100px) {
+  .filters {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+
+  .fieldWide {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 760px) {
+  .header {
+    flex-direction: column;
+  }
+
+  .headerActions {
+    width: 100%;
+  }
+
+  .headerActions > * {
+    flex: 1;
+  }
+
+  .filters {
+    grid-template-columns: 1fr;
+  }
+
+  .fieldWide {
+    grid-column: span 1;
+  }
+
+  .filterActions > * {
+    flex: 1;
+  }
+
+  .tableWrap {
+    display: none;
+  }
+
+  .mobileList {
+    display: grid;
+    gap: 10px;
+  }
+}
+
