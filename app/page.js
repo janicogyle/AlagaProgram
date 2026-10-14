@@ -652,7 +652,7 @@ export default function HomePage() {
               <iframe
                 className={styles.aboutMap}
                 title="Interactive Google Map of Barangay Sta. Rita, Olongapo City"
-                src="https://www.google.com/maps?q=14.84892%2C120.29093&z=16&output=embed"
+                src="https://maps.google.com/maps?q=14.84892%2C120.29093&z=16&output=embed"
                 loading="lazy"
                 allowFullScreen
                 referrerPolicy="no-referrer-when-downgrade"
