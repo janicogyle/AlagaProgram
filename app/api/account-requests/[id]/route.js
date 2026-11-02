@@ -3,7 +3,6 @@ import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { requireAdmin } from '@/lib/apiAuth';
 import { createOrUpdateResident } from '@/lib/residents';
 import {
-  getAccountResubmissionSmsSetupError,
   sendAccountResubmissionSms,
   sendAccountStatusSms,
 } from '@/lib/smsNotify.server';
@@ -72,6 +71,9 @@ async function fetchAccountRequestWithRetry(db, requestId) {
     'middle_name',
     'last_name',
     'email',
+    'verification_method',
+    'contact_verified',
+    'email_verified',
     'birthday',
     'age',
     'birthplace',
@@ -240,12 +242,6 @@ async function createAndSendResubmissionLink({
     accountRequest?.verification_method === 'email' &&
     accountRequest?.email_verified === true &&
     accountRequest?.email;
-  const smsSetupError = useEmail ? null : getAccountResubmissionSmsSetupError();
-  if (smsSetupError) {
-    const error = new Error(smsSetupError);
-    error.code = 'RESUBMISSION_SMS_NOT_CONFIGURED';
-    throw error;
-  }
 
   const resubmissionCode = createAccountResubmissionCode();
   const now = new Date().toISOString();
@@ -277,15 +273,17 @@ async function createAndSendResubmissionLink({
         notes: data?.notes || notes || accountRequest?.notes,
         resubmissionCode,
       })
-    : await sendAccountResubmissionSms({
+    : accountRequest?.contact_verified === true
+    ? await sendAccountResubmissionSms({
         contactNumber: accountRequest?.contact_number,
         notes: data?.notes || notes || accountRequest?.notes,
         requestId,
         resubmissionCode,
-      });
+      })
+    : { ok: false, skipped: true, error: 'No verified notification channel is available.' };
 
   let responseData = data;
-  if (notification?.ok) {
+  if (notification?.ok && !notification.devMode) {
     const { data: sentData, error: sentError } = await db
       .from('account_requests')
       .update({ resubmission_sent_at: now })
@@ -578,7 +576,9 @@ export async function POST(request, { params }) {
       if (!accountRequest.valid_id_front_url || !accountRequest.valid_id_back_url) {
         return NextResponse.json({ data: null, error: VALID_ID_BOTH_SIDES_ERROR }, { status: 409 });
       }
-      if (!accountRequest.selfie_url || accountRequest.face_verification_status !== 'passed') {
+      // Manual-review submissions are resolved by the authorized staff approval.
+      // Keep the original automated result for the audit trail.
+      if (!accountRequest.selfie_url || !['passed', 'manual_review'].includes(accountRequest.face_verification_status)) {
         return NextResponse.json({ data: null, error: FACE_VERIFICATION_FAILED_ERROR }, { status: 409 });
       }
 
@@ -777,7 +777,9 @@ export async function POST(request, { params }) {
         auth,
         {
           action: 'Approved account request',
-          message: 'Signup request approved and beneficiary account activated.',
+          message: accountRequest.face_verification_status === 'manual_review'
+            ? 'Signup request approved after manual identity review and beneficiary account activated.'
+            : 'Signup request approved and beneficiary account activated.',
           entity_type: 'account_request',
           entity_id: data?.id || requestId,
           reference_number: accountRequest?.contact_number || requestId,

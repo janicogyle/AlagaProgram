@@ -48,7 +48,7 @@ DECLARE
   current_row public.beneficiary_login_rate_limits%ROWTYPE;
   inserted_count integer := 0;
   next_attempts integer;
-  current_time timestamptz := now();
+  v_now timestamptz := now();
 BEGIN
   INSERT INTO public.beneficiary_login_rate_limits (
     key_hash,
@@ -56,7 +56,7 @@ BEGIN
     window_started_at,
     locked_until,
     updated_at
-  ) VALUES (p_key_hash, 1, current_time, NULL, current_time)
+  ) VALUES (p_key_hash, 1, v_now, NULL, v_now)
   ON CONFLICT (key_hash) DO NOTHING;
   GET DIAGNOSTICS inserted_count = ROW_COUNT;
 
@@ -69,12 +69,12 @@ BEGIN
   WHERE key_hash = p_key_hash
   FOR UPDATE;
 
-  IF current_row.window_started_at + make_interval(secs => p_window_seconds) <= current_time THEN
+  IF current_row.window_started_at + make_interval(secs => p_window_seconds) <= v_now THEN
     UPDATE public.beneficiary_login_rate_limits
     SET attempts = 1,
-        window_started_at = current_time,
+        window_started_at = v_now,
         locked_until = NULL,
-        updated_at = current_time
+        updated_at = v_now
     WHERE key_hash = p_key_hash;
     RETURN;
   END IF;
@@ -84,10 +84,10 @@ BEGIN
   SET attempts = next_attempts,
       locked_until = CASE
         WHEN next_attempts >= p_max_attempts
-          THEN current_time + make_interval(secs => p_lockout_seconds)
+          THEN v_now + make_interval(secs => p_lockout_seconds)
         ELSE current_row.locked_until
       END,
-      updated_at = current_time
+      updated_at = v_now
   WHERE key_hash = p_key_hash;
 END;
 $$;

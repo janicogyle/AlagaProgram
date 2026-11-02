@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Card, DocumentPreviewModal, Modal, PageHeader, Table } from '@/components';
+import { formatDeliveryResult } from '@/lib/smsTemplates';
 import { supabase } from '@/lib/supabaseClient';
 import styles from './page.module.css';
 
@@ -121,9 +122,9 @@ export default function RenewalRequestsPage() {
       setAlert({
         open: true,
         title: 'Request updated',
-        message: decision === 'approve'
+        message: (decision === 'approve'
           ? `Renewal request approved. New expiration: ${formatDate(json?.data?.new_expires_at)}.`
-          : 'Renewal request marked incomplete.',
+          : 'Renewal request marked incomplete.') + formatDeliveryResult(json.notification),
       });
     } catch (error) {
       setAlert({ open: true, title: 'Update failed', message: error?.message || 'Failed to update renewal request.' });

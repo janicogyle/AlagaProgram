@@ -104,18 +104,6 @@ function parseValidIdUrls(value, fallbackValue) {
   return list.map((item) => String(item || "").trim()).filter(Boolean);
 }
 
-function getFaceVerificationLabel(status) {
-  if (status === 'passed') return 'Face Match Passed';
-  if (status === 'failed') return 'Face Match Failed';
-  return 'Manual Review Required';
-}
-
-function getFaceVerificationBadgeVariant(status) {
-  if (status === 'passed') return 'success';
-  if (status === 'failed') return 'danger';
-  return 'warning';
-}
-
 export default function AccountRequestsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
@@ -864,42 +852,7 @@ export default function AccountRequestsPage() {
                     )}
                   </div>
                 </div>
-                <div>
-                  <span className={styles.label}>OCR Identity Verification</span>
-                  <div className={styles.value}>
-                    <Badge variant={detailsRequest.ocr_verification_status === 'passed' ? 'success' : 'warning'}>
-                      {detailsRequest.ocr_verification_status === 'passed' ? 'OCR Verified' : 'Not OCR Verified'}
-                    </Badge>
-                    {detailsRequest.ocr_id_type && (
-                      <span className={styles.subtleText}>Type: {String(detailsRequest.ocr_id_type).replaceAll('_', ' ')}</span>
-                    )}
-                    {detailsRequest.ocr_extracted_name && (
-                      <span className={styles.subtleText}>Name: {detailsRequest.ocr_extracted_name}</span>
-                    )}
-                    {detailsRequest.ocr_extracted_birth_date && (
-                      <span className={styles.subtleText}>Birth date: {formatDateOnly(detailsRequest.ocr_extracted_birth_date)}</span>
-                    )}
-                    {detailsRequest.ocr_id_number_masked && (
-                      <span className={styles.subtleText}>ID: {detailsRequest.ocr_id_number_masked}</span>
-                    )}
-                    {detailsRequest.ocr_verified_at && (
-                      <span className={styles.subtleText}>Verified: {formatDate(detailsRequest.ocr_verified_at)}</span>
-                    )}
-                  </div>
-                <div>
-                </div>
-                  <span className={styles.label}>Face Verification</span>
-                  <div className={styles.value}>
-                    <Badge variant={getFaceVerificationBadgeVariant(detailsRequest.face_verification_status)}>
-                      {getFaceVerificationLabel(detailsRequest.face_verification_status)}
-                    </Badge>
-                    {detailsRequest.face_verification_score != null && (
-                      <span className={styles.subtleText}>
-                        Score: {Number(detailsRequest.face_verification_score).toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-                </div>
+
               </div>
             </div>
 

@@ -9,6 +9,7 @@ const contentSecurityPolicy = [
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
+  "frame-src 'self' https://maps.google.com https://www.google.com",
   "form-action 'self'",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
@@ -50,6 +51,9 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    agentUpgrade: 'security',
+  },
   serverExternalPackages: [
     '@napi-rs/canvas',
     '@tensorflow/tfjs',

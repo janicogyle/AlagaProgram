@@ -1,3 +1,4 @@
+import { getNotificationDestination, skippedNotification } from '@/lib/notificationDestination';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { requireAdmin } from '@/lib/apiAuth';
@@ -103,19 +104,19 @@ export async function PATCH(request, { params }) {
       }, supabaseAdmin);
 
       const notification =
-        resident.verification_method === 'email' && resident.email_verified === true
+        getNotificationDestination(resident).channel === 'email'
           ? await sendRenewalStatusEmail({
               email: resident.email,
               status: 'Incomplete',
               remarks: adminRemarks,
             })
-          : resident.contact_verified === true
+          : getNotificationDestination(resident).channel === 'sms'
             ? await sendBeneficiaryIdRenewalIncompleteSms({
                 contactNumber: resident.contact_number,
                 remarks: adminRemarks,
                 requestId: renewal.id,
               })
-            : null;
+            : skippedNotification();
       const sms = notification?.channel === 'sms' ? notification : null;
 
       return NextResponse.json({ data: updated, error: null, sms, notification });
@@ -170,19 +171,19 @@ export async function PATCH(request, { params }) {
     }, supabaseAdmin);
 
     const notification =
-      resident.verification_method === 'email' && resident.email_verified === true
+      getNotificationDestination(resident).channel === 'email'
         ? await sendRenewalStatusEmail({
             email: resident.email,
             status: 'Approved',
             expirationDate: formatDate(newExpirationIso),
           })
-        : resident.contact_verified === true
+        : getNotificationDestination(resident).channel === 'sms'
           ? await sendBeneficiaryIdRenewalApprovedSms({
               contactNumber: resident.contact_number,
               expirationDate: formatDate(newExpirationIso),
               requestId: renewal.id,
             })
-          : null;
+          : skippedNotification();
     const sms = notification?.channel === 'sms' ? notification : null;
 
     return NextResponse.json({

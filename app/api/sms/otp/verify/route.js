@@ -67,17 +67,6 @@ export async function POST(request) {
       return NextResponse.json({ data: null, error: 'OTP already used. Please request a new code.' }, { status: 409 });
     }
 
-    if (otpRow.verified_at) {
-      return NextResponse.json({
-        data: {
-          verified: true,
-          verifiedAt: otpRow.verified_at,
-          uploadToken: purpose === 'signup' ? createSignupUploadToken(contactNumber) : null,
-        },
-        error: null,
-      });
-    }
-
     if (otpRow.expires_at && new Date(otpRow.expires_at).getTime() < Date.now()) {
       return NextResponse.json({ data: null, error: 'OTP expired. Please request a new code.' }, { status: 410 });
     }
@@ -91,6 +80,17 @@ export async function POST(request) {
       const attempts = Number(otpRow.attempts || 0) + 1;
       await supabaseAdmin.from('sms_otps').update({ attempts }).eq('id', otpRow.id);
       return NextResponse.json({ data: null, error: 'Invalid OTP. Please try again.' }, { status: 401 });
+    }
+
+    if (otpRow.verified_at) {
+      return NextResponse.json({
+        data: {
+          verified: true,
+          verifiedAt: otpRow.verified_at,
+          uploadToken: purpose === 'signup' ? createSignupUploadToken(contactNumber) : null,
+        },
+        error: null,
+      });
     }
 
     const verifiedAt = new Date().toISOString();

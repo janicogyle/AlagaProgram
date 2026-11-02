@@ -133,6 +133,8 @@ function isMissingRateLimitStore(error) {
 }
 
 async function getLoginLimitStatus(db, keys, nowMs = Date.now()) {
+  const memoryStatus = getMemoryLoginLimitStatus(keys, nowMs);
+  if (!memoryStatus.allowed) return memoryStatus;
   const hashedKeys = keys.map(hashAttemptKey);
   const { data, error } = await db
     .from('beneficiary_login_rate_limits')
@@ -159,26 +161,32 @@ async function getLoginLimitStatus(db, keys, nowMs = Date.now()) {
 }
 
 async function recordFailedLoginAttempt(db, keys) {
-  const results = await Promise.all(
-    keys.map(({ key, maxAttempts }) =>
-      db.rpc('record_beneficiary_login_failure', {
-        p_key_hash: hashAttemptKey(key),
-        p_max_attempts: maxAttempts,
-        p_window_seconds: Math.floor(LOGIN_ATTEMPT_WINDOW_MS / 1000),
-        p_lockout_seconds: Math.floor(LOGIN_LOCKOUT_MS / 1000),
-      }),
-    ),
-  );
-  const firstError = results.find((result) => result.error)?.error;
-  if (!firstError) return;
-  if (isMissingRateLimitStore(firstError)) {
-    recordFailedLoginAttemptInMemory(keys);
-    return;
+  // Preserve the credentials response even if the database counter is broken.
+  // Always enforce a local counter as well as the persistent database counter.
+  recordFailedLoginAttemptInMemory(keys);
+  try {
+    const results = await Promise.all(
+      keys.map(({ key, maxAttempts }) =>
+        db.rpc('record_beneficiary_login_failure', {
+          p_key_hash: hashAttemptKey(key),
+          p_max_attempts: maxAttempts,
+          p_window_seconds: Math.floor(LOGIN_ATTEMPT_WINDOW_MS / 1000),
+          p_lockout_seconds: Math.floor(LOGIN_LOCKOUT_MS / 1000),
+        }),
+      ),
+    );
+    const firstError = results.find((result) => result.error)?.error;
+    if (!firstError) return;
+    if (!isMissingRateLimitStore(firstError)) {
+      console.error('Failed to persist beneficiary login attempt:', firstError);
+    }
+  } catch (error) {
+    console.error('Failed to persist beneficiary login attempt:', error);
   }
-  throw firstError;
 }
 
 async function clearContactLoginAttempts(db, contactNumber) {
+  clearContactLoginAttemptsInMemory(contactNumber);
   const key = getAttemptKey('contact', contactNumber);
   const { error } = await db
     .from('beneficiary_login_rate_limits')
@@ -261,6 +269,29 @@ export async function POST(request) {
     if (error) throw error;
 
     if (!resident) {
+      const { data: application, error: applicationError } = await db
+        .from('account_requests')
+        .select('status, password_hash')
+        .eq('contact_number', contactNumber)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (applicationError) throw applicationError;
+
+      // Reveal application status only after checking the signup password.
+      if (application?.password_hash && await verifyPassword(password, application.password_hash)) {
+        const messages = {
+          Pending: 'Your account is awaiting admin approval. You can sign in once it is approved.',
+          Resubmitted: 'Your resubmitted application is awaiting admin approval. You can sign in once it is approved.',
+          Incomplete: 'Your application is incomplete. Please use the resubmission code sent to you to update your application.',
+          Rejected: 'Your application was not approved. Please contact the barangay office.',
+          Archived: 'Your application is archived. Please contact the barangay office.',
+        };
+        const message = messages[application.status];
+        if (message) {
+          return NextResponse.json({ data: null, error: message }, { status: 403 });
+        }
+      }
       await recordFailedAttempt();
       return NextResponse.json({ data: null, error: 'Incorrect contact number or password.' }, { status: 401 });
     }
@@ -330,6 +361,9 @@ export async function POST(request) {
     return res;
   } catch (err) {
     console.error('Beneficiary login error:', err);
-    return NextResponse.json({ data: null, error: err.message || 'Login failed.' }, { status: 500 });
+    return NextResponse.json(
+      { data: null, error: 'Sign in is temporarily unavailable. Please try again later.' },
+      { status: 500 },
+    );
   }
 }

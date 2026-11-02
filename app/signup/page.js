@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Card from '../../components/Card';
@@ -12,7 +12,7 @@ import FileUpload from '../../components/FileUpload';
 import ConstellationBackground from '../../components/ConstellationBackground';
 import LegalContent from '@/components/LegalContent';
 import SectionHeader from '@/components/SectionHeader';
-import { analyzeImageQualityPixels, getImageQualityIssue } from '@/lib/imageQuality.mjs';
+import FaceRecognitionCapture from '@/components/FaceRecognitionCapture';
 import {
   BENEFICIARY_SECTOR_OPTIONS,
   deriveSectorFlags,
@@ -94,8 +94,8 @@ const STEPS = [
   { number: 1, label: 'Beneficiary Type' },
   { number: 2, label: 'Personal Details' },
   { number: 3, label: 'Address' },
-  { number: 4, label: 'Identity Verification' },
-  { number: 5, label: 'Account Setup' },
+  { number: 4, label: 'Account Setup' },
+  { number: 5, label: 'Identity Verification' },
   { number: 6, label: 'Review & Submit' },
 ];
 const TOTAL_STEPS = STEPS.length;
@@ -148,150 +148,6 @@ const CheckIcon = () => (
   </svg>
 );
 
-function FaceRecognitionCapture({ onCapture, onRetake, disabled = false, status, verifying = false, error = '' }) {
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const previewUrlRef = useRef('');
-  const [cameraReady, setCameraReady] = useState(false);
-  const [cameraError, setCameraError] = useState('');
-  const [capturedPreviewUrl, setCapturedPreviewUrl] = useState('');
-
-  const clearPreview = useCallback(() => {
-    if (previewUrlRef.current) {
-      URL.revokeObjectURL(previewUrlRef.current);
-      previewUrlRef.current = '';
-    }
-    setCapturedPreviewUrl('');
-  }, []);
-
-  const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks?.().forEach((track) => track.stop());
-    streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
-    setCameraReady(false);
-  }, []);
-
-  const openCamera = useCallback(async () => {
-    setCameraError('');
-    clearPreview();
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-      streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
-      setCameraReady(true);
-    } catch {
-      setCameraError('Camera access is required to capture a live face selfie.');
-    }
-  }, [clearPreview]);
-
-  const captureSelfie = () => {
-    const video = videoRef.current;
-    if (!video?.videoWidth || !video?.videoHeight || disabled || verifying) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const context = canvas.getContext('2d');
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const sampleScale = Math.min(1, 720 / Math.max(canvas.width, canvas.height));
-    const sampleCanvas = document.createElement('canvas');
-    sampleCanvas.width = Math.max(2, Math.round(canvas.width * sampleScale));
-    sampleCanvas.height = Math.max(2, Math.round(canvas.height * sampleScale));
-    const sampleContext = sampleCanvas.getContext('2d', { willReadFrequently: true });
-    sampleContext.drawImage(canvas, 0, 0, sampleCanvas.width, sampleCanvas.height);
-    const imageData = sampleContext.getImageData(0, 0, sampleCanvas.width, sampleCanvas.height);
-    const quality = analyzeImageQualityPixels({
-      data: imageData.data,
-      width: sampleCanvas.width,
-      height: sampleCanvas.height,
-      step: 2,
-    });
-    const qualityIssue = getImageQualityIssue(quality, {
-      label: 'Selfie camera',
-      minSharpness: 28,
-      minBrightness: 58,
-      maxBrightness: 220,
-      minContrast: 16,
-    });
-    if (qualityIssue) {
-      setCameraError(qualityIssue);
-      return;
-    }
-    setCameraError('');
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const file = new File([blob], `live-selfie-${Date.now()}.jpg`, { type: 'image/jpeg' });
-      clearPreview();
-      const previewUrl = URL.createObjectURL(file);
-      previewUrlRef.current = previewUrl;
-      setCapturedPreviewUrl(previewUrl);
-      stopCamera();
-      onCapture(file);
-    }, 'image/jpeg', 0.92);
-  };
-
-  const retakeSelfie = () => {
-    if (disabled || verifying) return;
-    clearPreview();
-    onRetake?.();
-    openCamera();
-  };
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(openCamera, 0);
-    return () => {
-      window.clearTimeout(timeoutId);
-      stopCamera();
-      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-    };
-  }, [openCamera, stopCamera]);
-
-  const canRetake = !verifying && !!capturedPreviewUrl;
-
-  return (
-    <div className={styles.faceRecognitionPanel}>
-      <div className={styles.faceRecognitionHeader}>
-        <div>
-          <h4 className={styles.faceRecognitionTitle}>Face Selfie</h4>
-          <p className={styles.faceRecognitionHint}>Capture a live selfie to verify your identity.</p>
-        </div>
-          {verifying && <span className={styles.faceRecognitionLoading}>Verifying details...</span>}
-      </div>
-
-      <div className={styles.faceRecognitionBody}>
-        <div className={styles.faceCameraFrame}>
-          {capturedPreviewUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- object URLs cannot be optimized by next/image.
-            <img src={capturedPreviewUrl} alt="Captured live selfie" className={styles.selfieVideo} />
-          ) : (
-            <video ref={videoRef} autoPlay playsInline muted className={styles.selfieVideo} />
-          )}
-          <span className={styles.faceFrameLabel}>{capturedPreviewUrl ? 'Selfie captured' : 'Frame your face'}</span>
-          <span className={styles.faceFrameOval} aria-hidden="true" />
-        </div>
-        <div className={styles.faceRecognitionActions}>
-          <div className={styles.faceActionButtons}>
-            {!capturedPreviewUrl && (
-              <Button type="button" onClick={captureSelfie} disabled={disabled || verifying || !cameraReady}>
-                Capture Live Selfie
-              </Button>
-            )}
-            {canRetake && (
-              <Button type="button" variant="secondary" onClick={retakeSelfie} disabled={disabled || verifying}>
-                Retake Selfie
-              </Button>
-            )}
-          </div>
-          {verifying && <span className={styles.faceStatusText}>Checking selfie...</span>}
-          {status === 'passed' && <span className={styles.verifiedBadge}>Face Selfie Verified</span>}
-          {status === 'manual_review' && !verifying && <span className={styles.faceStatusText}>Admin will review your ID and selfie</span>}
-          {status === 'failed' && !verifying && <p className={styles.fieldError}>Please retake your selfie</p>}
-          {(error || cameraError) && <p className={styles.fieldError}>{error || cameraError}</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function BeneficiarySignupPage() {
   const router = useRouter();
   const stepContainerRef = useRef(null);
@@ -314,6 +170,7 @@ export default function BeneficiarySignupPage() {
   const [ocrVerification, setOcrVerification] = useState(null);
   const [ocrVerifying, setOcrVerifying] = useState(false);
   const [ocrConfirmed, setOcrConfirmed] = useState(false);
+  const [ocrError, setOcrError] = useState('');
   const [identityVerifying, setIdentityVerifying] = useState(false);
   const [representativeValidIdFiles, setRepresentativeValidIdFiles] = useState([]);
   const [validIdError, setValidIdError] = useState('');
@@ -391,7 +248,11 @@ export default function BeneficiarySignupPage() {
           setIdentityUrls((prev) => ({ ...prev, ...draft.identityUrls }));
         }
         if (draft?.faceVerification) setFaceVerification(draft.faceVerification);
-        if (typeof draft?.otpVerified === 'boolean') setOtpVerified(draft.otpVerified);
+        if (draft?.verificationMethod === 'email' || draft?.verificationMethod === 'sms') {
+          setVerificationMethod(draft.verificationMethod);
+        }
+        setOtpVerified(draft?.otpVerified === true && !!draft?.otpUploadToken);
+        setOtpUploadToken(typeof draft?.otpUploadToken === 'string' ? draft.otpUploadToken : '');
         if (draft?.otpVerifiedContact) setOtpVerifiedContact(draft.otpVerifiedContact);
         window.sessionStorage.removeItem(SIGNUP_DRAFT_STORAGE_KEY);
       }
@@ -400,6 +261,7 @@ export default function BeneficiarySignupPage() {
       const verificationToken = window.sessionStorage.getItem(SIGNUP_EMAIL_TOKEN_KEY) || '';
       if (verifiedEmail && verificationToken) {
         setEmailVerification({ email: verifiedEmail, token: verificationToken });
+        setVerificationMethod('email');
         setForm((prev) => ({ ...prev, email: verifiedEmail }));
       }
 
@@ -415,7 +277,7 @@ export default function BeneficiarySignupPage() {
 
   // Computed values
   const hasSectorSelected = !!form.primarySector;
-  const isOtpVerified = otpVerified && otpVerifiedContact === form.contactNumber;
+  const isOtpVerified = otpVerified && !!otpUploadToken && otpVerifiedContact === form.contactNumber;
   const isContactValid = /^0\d{10}$/.test(String(form.contactNumber || '').trim());
   const isContactBlocked = !!contactUnavailable;
   const normalizedEmail = String(form.email || '').trim().toLowerCase();
@@ -562,6 +424,8 @@ export default function BeneficiarySignupPage() {
           faceVerification,
           otpVerified,
           otpVerifiedContact,
+          otpUploadToken,
+          verificationMethod,
         }),
       );
     } catch (error) {
@@ -796,6 +660,7 @@ export default function BeneficiarySignupPage() {
   };
 
   const resetOcrVerification = () => {
+    setOcrError('');
     resetFaceVerification();
     setOcrVerification(null);
     setOcrConfirmed(false);
@@ -1110,6 +975,10 @@ export default function BeneficiarySignupPage() {
   };
 
   const uploadIdentityFile = async (file, documentType) => {
+    if (!isSelectedVerificationComplete) {
+      setCurrentStep(4);
+      throw new Error('Please verify your phone number or email in Step 4 before uploading your identity documents.');
+    }
     const uploadForm = new FormData();
     uploadForm.append('file', file);
     uploadForm.append('contactNumber', getIdentityUploadReference());
@@ -1127,6 +996,17 @@ export default function BeneficiarySignupPage() {
     });
     const uploadJson = await uploadResponse.json().catch(() => ({}));
     if (!uploadResponse.ok) {
+      if (uploadResponse.status === 403) {
+        if (verificationMethod === 'email') {
+          setEmailVerification({ email: '', token: '' });
+          window.sessionStorage.removeItem(SIGNUP_VERIFIED_EMAIL_KEY);
+          window.sessionStorage.removeItem(SIGNUP_EMAIL_TOKEN_KEY);
+        } else {
+          resetOtpState();
+        }
+        setCurrentStep(4);
+        throw new Error('Your contact verification has expired or is unavailable. Please verify again in Step 4, then retry your selfie.');
+      }
       throw new Error(uploadJson.error || 'Identity document upload failed.');
     }
     const path = uploadJson?.data?.path || null;
@@ -1137,6 +1017,7 @@ export default function BeneficiarySignupPage() {
   const verifyIdentityOcr = async (primaryFile = validIdFrontFiles[0], reverseFile = validIdBackFiles[0]) => {
     if (!primaryFile || !reverseFile || ocrVerifying) return;
     setOcrVerifying(true);
+    setOcrError('');
     setValidIdError('');
     setOcrVerification(null);
     setOcrConfirmed(false);
@@ -1162,6 +1043,7 @@ export default function BeneficiarySignupPage() {
       window.setTimeout(() => selfieSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
     } catch (error) {
       const message = error?.message || 'We could not verify this ID. Retake clearer front and back images.';
+      setOcrError(message);
       setValidIdError(message);
       setStatus({ type: 'error', message });
     } finally {
@@ -1175,8 +1057,8 @@ export default function BeneficiarySignupPage() {
     setFaceVerification(null);
 
     if (!validIdFrontFiles.length || !validIdBackFiles.length || !ocrConfirmed || !ocrVerification?.token) {
-      setValidIdError(OCR_ID_REQUIRED_ERROR);
-      setStatus({ type: 'error', message: OCR_ID_REQUIRED_ERROR });
+      setValidIdError(ocrError || OCR_ID_REQUIRED_ERROR);
+      setStatus({ type: 'error', message: ocrError || OCR_ID_REQUIRED_ERROR });
       return { ok: false };
     }
     if (!selfieFile) {
@@ -1337,10 +1219,10 @@ export default function BeneficiarySignupPage() {
         }
         return true;
       }
-      case 4: {
+      case 5: {
         if (!validIdFrontFiles.length || !validIdBackFiles.length || !ocrConfirmed || !ocrVerification?.token) {
-          setValidIdError(OCR_ID_REQUIRED_ERROR);
-          setStatus({ type: 'error', message: OCR_ID_REQUIRED_ERROR });
+          setValidIdError(ocrError || OCR_ID_REQUIRED_ERROR);
+          setStatus({ type: 'error', message: ocrError || OCR_ID_REQUIRED_ERROR });
           return false;
         }
         if (!selfieFiles.length) {
@@ -1354,14 +1236,14 @@ export default function BeneficiarySignupPage() {
           setStatus({ type: 'error', message: SELFIE_CAPTURE_ERROR });
           return false;
         }
-        if (shouldShowRepresentativeId && representativeValidIdFiles.length === 0) {
+        if (requiresRepresentative && representativeValidIdFiles.length === 0) {
           setRepresentativeValidIdError(REPRESENTATIVE_VALID_ID_REQUIRED_ERROR);
           setStatus({ type: 'error', message: REPRESENTATIVE_VALID_ID_REQUIRED_ERROR });
           return false;
         }
         return true;
       }
-      case 5: {
+      case 4: {
         const cn = String(form.contactNumber || '').trim();
         const email = String(form.email || '').trim();
         if (!/^0\d{10}$/.test(cn)) {
@@ -1420,16 +1302,16 @@ export default function BeneficiarySignupPage() {
         return hasStep2RequiredFields();
       case 3:
         return !!form.houseNo.trim() && !!form.purok;
-      case 4:
+      case 5:
         return (
           validIdFrontFiles.length > 0 &&
           validIdBackFiles.length > 0 &&
           ocrConfirmed && !!ocrVerification?.token &&
           selfieFiles.length > 0 &&
           isFaceVerificationAccepted(faceVerification?.status) &&
-          (!shouldShowRepresentativeId || representativeValidIdFiles.length > 0)
+          (!requiresRepresentative || representativeValidIdFiles.length > 0)
         );
-      case 5: {
+      case 4: {
         const cn = String(form.contactNumber || '').trim();
         const email = String(form.email || '').trim();
         return (
@@ -1580,7 +1462,7 @@ export default function BeneficiarySignupPage() {
         }
       }
 
-      if (shouldShowRepresentativeId && !representativeValidIdPath) {
+      if (requiresRepresentative && !representativeValidIdPath) {
         setRepresentativeValidIdError(REPRESENTATIVE_VALID_ID_REQUIRED_ERROR);
         setStatus({ type: 'error', message: REPRESENTATIVE_VALID_ID_REQUIRED_ERROR });
         return;
@@ -2275,6 +2157,11 @@ export default function BeneficiarySignupPage() {
         </div>
       )}
       {!ocrVerifying && validIdError && <p className={styles.fieldError}>{validIdError}</p>}
+      {!ocrVerifying && !ocrConfirmed && validIdFrontFiles.length > 0 && validIdBackFiles.length > 0 && (
+        <Button type="button" onClick={() => verifyIdentityOcr()} disabled={identityVerifying}>
+          Retry ID verification
+        </Button>
+      )}
       {hasVerifiedIdentityImage && (
         <div ref={selfieSectionRef} className={styles.selfieVerificationSection}>
           <FaceRecognitionCapture
@@ -2300,12 +2187,12 @@ export default function BeneficiarySignupPage() {
           </div>
           <div className={styles.validIdRow}>
             <FileUpload
-              label="Guardian / Representative Valid ID"
+              label={requiresRepresentative ? 'Guardian / Representative Valid ID' : 'Guardian / Representative Valid ID (optional)'}
               documentType="validId"
               multiple={false}
               files={representativeValidIdFiles}
               onChange={handleRepresentativeValidIdChange}
-              required={shouldShowRepresentativeId}
+              required={requiresRepresentative}
             />
             {representativeValidIdError && <p className={styles.fieldError}>{representativeValidIdError}</p>}
           </div>
@@ -2579,8 +2466,8 @@ export default function BeneficiarySignupPage() {
       case 1: return renderStep1();
       case 2: return renderStep2();
       case 3: return renderStep3();
-      case 4: return renderStep5();
-      case 5: return renderStep4();
+      case 5: return renderStep5();
+      case 4: return renderStep4();
       case 6: return renderReviewStep();
       default: return null;
     }

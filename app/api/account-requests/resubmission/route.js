@@ -1,3 +1,4 @@
+import { verifyIdentityOcrToken, hashRemoteIdentityImage } from '@/lib/identityOcr.server';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import {
@@ -206,6 +207,14 @@ export async function POST(request) {
     if (!selfieUrl) {
       return NextResponse.json({ data: null, error: 'Selfie/face capture is required.' }, { status: 400 });
     }
+    const ocrTokenCheck = verifyIdentityOcrToken(body.ocrVerificationToken, {
+      firstName: body.firstName,
+      lastName: body.lastName,
+      birthDate: body.birthday,
+    });
+    if (!ocrTokenCheck.ok) {
+      return NextResponse.json({ data: null, error: ocrTokenCheck.error }, { status: 403 });
+    }
     const identityDocCheck = validateCloudinaryDocumentUrls([validIdFrontUrl, validIdBackUrl, selfieUrl], {
       label: 'Identity document',
     });
@@ -216,8 +225,29 @@ export async function POST(request) {
     if (cloudinaryIdentityUrls.length !== 3) {
       return NextResponse.json({ data: null, error: 'Identity documents must be uploaded to Cloudinary.' }, { status: 400 });
     }
-    const verifiedFace = await verifyFaceMatch({ idImageUrl: validIdFrontUrl, selfieUrl });
-    if (verifiedFace.status !== 'passed') {
+    let uploadedIdHashes;
+    try {
+      uploadedIdHashes = await Promise.all(
+        [validIdFrontUrl, validIdBackUrl].filter(Boolean).map((url) => hashRemoteIdentityImage(url)),
+      );
+    } catch (error) {
+      return NextResponse.json(
+        { data: null, error: error?.message || 'Unable to validate the OCR-verified ID image.' },
+        { status: 400 },
+      );
+    }
+    const expectedIdHashes = ocrTokenCheck.payload.imageHashes || [];
+    if (
+      uploadedIdHashes.length !== expectedIdHashes.length ||
+      uploadedIdHashes.some((hash, index) => hash !== expectedIdHashes[index])
+    ) {
+      return NextResponse.json(
+        { data: null, error: 'The uploaded ID does not match the OCR-verified image. Please verify it again.' },
+        { status: 400 },
+      );
+    }
+    const verifiedFace = await verifyFaceMatch({ idImageUrl: validIdFrontUrl, alternateIdImageUrl: validIdBackUrl, selfieUrl });
+    if (!['passed', 'manual_review'].includes(verifiedFace.status)) {
       return NextResponse.json(
         { data: null, error: verifiedFace.error || FACE_VERIFICATION_FAILED_ERROR },
         { status: 400 },
@@ -297,6 +327,14 @@ export async function POST(request) {
       valid_id_front_url: validIdFrontUrl,
       valid_id_back_url: validIdBackUrl,
       selfie_url: selfieUrl,
+      ocr_verification_status: 'passed',
+      ocr_id_type: ocrTokenCheck.payload.idType,
+      ocr_id_number_masked: ocrTokenCheck.payload.maskedIdNumber,
+      ocr_extracted_name: ocrTokenCheck.payload.fullName,
+      ocr_extracted_birth_date: ocrTokenCheck.payload.birthDate,
+      ocr_provider: 'ocr.space',
+      ocr_verified_at: new Date(ocrTokenCheck.payload.iat * 1000).toISOString(),
+
       face_verification_status: verifiedFace.status,
       face_verification_score: verifiedFace.score ?? null,
       face_verification_provider: verifiedFace.provider || null,

@@ -1,13 +1,14 @@
+import { getNotificationDestination } from '@/lib/notificationDestination';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
-import { getCooldownInfo } from '@/lib/requestCooldown';
+import { buildEligibilityMaps, getResidentEligibility } from '@/lib/residentEligibility';
 import { sendSms, normalizeSmsContactNumber } from '@/lib/sms.server';
 import { buildEligibilityReminderMessage } from '@/lib/smsTemplates';
 
 export const runtime = 'nodejs';
 
 function authorize(request) {
-  const secret = process.env.SMS_CRON_SECRET || process.env.CRON_SECRET;
+  const secret = process.env.CRON_SECRET || process.env.SMS_CRON_SECRET;
   if (!secret) {
     return { ok: false, response: NextResponse.json({ data: null, error: 'Missing SMS_CRON_SECRET.' }, { status: 500 }) };
   }
@@ -33,21 +34,22 @@ export async function POST(request) {
 
     let { data: releasedRows, error: releasedError } = await supabaseAdmin
       .from('assistance_requests')
-      .select('resident_id, request_date, released_at, created_at, updated_at')
-      .eq('status', 'Released');
+      .select('resident_id, status, request_date, released_at, created_at, updated_at')
+      .in('status', ['Released', 'Pending', 'Approved', 'Resubmitted', 'Rejected', 'Incomplete']);
 
     if (releasedError && String(releasedError.message || '').toLowerCase().includes('released_at')) {
       ({ data: releasedRows, error: releasedError } = await supabaseAdmin
         .from('assistance_requests')
-        .select('resident_id, request_date, created_at, updated_at')
-        .eq('status', 'Released'));
+        .select('resident_id, status, request_date, created_at, updated_at')
+        .in('status', ['Released', 'Pending', 'Approved', 'Resubmitted', 'Rejected', 'Incomplete']));
     }
 
     if (releasedError) throw releasedError;
 
+    const eligibilityMaps = buildEligibilityMaps(releasedRows || []);
     const latestByResident = new Map();
     (releasedRows || []).forEach((row) => {
-      if (!row?.resident_id) return;
+      if (!row?.resident_id || row.status !== 'Released') return;
       const rowDate = new Date(row.released_at || row.updated_at || row.request_date || row.created_at || 0);
       const existing = latestByResident.get(row.resident_id);
       const existingDate = existing
@@ -63,16 +65,16 @@ export async function POST(request) {
 
     const { data: residents, error: residentsError } = await supabaseAdmin
       .from('residents')
-      .select('id, contact_number, first_name, last_name')
+      .select('id, contact_number, contact_verified, verification_method, email_verified, email, status')
       .in('id', residentIds);
 
     if (residentsError) throw residentsError;
 
     const reminders = [];
     (residents || []).forEach((resident) => {
-      const last = latestByResident.get(resident.id);
-      const lastRequestDate = last?.released_at || last?.updated_at || last?.request_date || last?.created_at || null;
-      const cooldown = getCooldownInfo(lastRequestDate);
+      const { cooldownInfo: cooldown, canCreateRequest } = getResidentEligibility(resident.id, eligibilityMaps);
+      if (!canCreateRequest || ['Expired', 'Renewal Pending'].includes(resident.status)) return;
+      if (getNotificationDestination(resident).channel !== 'sms') return;
       if (!cooldown?.nextEligibleDate || !cooldown.isEligible) return;
 
       reminders.push({
@@ -91,6 +93,7 @@ export async function POST(request) {
     const { data: existingLogs, error: logsError } = await supabaseAdmin
       .from('sms_logs')
       .select('reference_key')
+      .eq('status', 'sent')
       .eq('reference_type', 'eligibility_reminder')
       .in('reference_key', reminderKeys);
 
@@ -102,6 +105,7 @@ export async function POST(request) {
 
     let sentCount = 0;
     let skippedCount = 0;
+    let failedCount = 0;
 
     for (const reminder of reminders) {
       const referenceKey = `${reminder.residentId}:${reminder.nextEligibleDate}`;
@@ -117,6 +121,7 @@ export async function POST(request) {
       }
 
       const message = buildEligibilityReminderMessage({ nextEligibleDate: reminder.nextEligibleDate });
+      try {
       await sendSms({
         to: contactNumber,
         message,
@@ -124,11 +129,16 @@ export async function POST(request) {
         referenceId: reminder.residentId,
         referenceKey,
       });
+      } catch (error) {
+        failedCount += 1;
+        console.warn("Reminder SMS failed:", error?.message);
+        continue;
+      }
       sentCount += 1;
     }
 
     return NextResponse.json({
-      data: { evaluated: reminders.length, sent: sentCount, skipped: skippedCount },
+      data: { evaluated: reminders.length, sent: sentCount, skipped: skippedCount, failed: failedCount },
       error: null,
     });
   } catch (error) {
@@ -139,3 +149,6 @@ export async function POST(request) {
     );
   }
 }
+
+// Vercel Cron invokes GET; POST remains available for authorized manual runs.
+export const GET = POST;

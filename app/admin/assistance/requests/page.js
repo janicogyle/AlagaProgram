@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { realtimeHelpers, supabase } from '@/lib/supabaseClient';
 import { clearClientCachePrefix, getClientCache, setClientCache } from '@/lib/clientCache';
-import { formatSmsNotificationResult } from '@/lib/smsTemplates';
+import { formatDeliveryResult } from '@/lib/smsTemplates';
 import {
   buildRequirementsMap,
   getLocalRequirementsMap,
@@ -873,10 +873,10 @@ export default function RequestsPage() {
                 : 'marked as released';
 
       setStatus({
-        type: result.sms?.ok === false && !result.sms?.skipped ? 'error' : 'success',
+        type: result.notification?.ok === false ? 'error' : 'success',
         message:
           `Request ${selectedRequest.requestControlNo || selectedRequest.controlNo} has been ${actionLabel}.` +
-          formatSmsNotificationResult(result.sms),
+          formatDeliveryResult(result.notification || (result.sms ? { ...result.sms, channel: 'sms' } : null)),
       });
 
       if (result.sms?.ok === false && !result.sms?.skipped) {

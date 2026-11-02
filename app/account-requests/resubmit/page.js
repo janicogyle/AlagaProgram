@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Card from '@/components/Card';
 import Input from '@/components/Input';
@@ -15,7 +15,7 @@ import {
   getSecondarySectorOptions,
 } from '@/lib/beneficiarySectors';
 import styles from './page.module.css';
-import { verifyFaceMatchWithFaceApi } from '@/lib/faceVerification.client';
+import FaceRecognitionCapture from '@/components/FaceRecognitionCapture';
 
 const purokOptions = [
   '1A',
@@ -113,77 +113,6 @@ function calculateAge(dob) {
   return age;
 }
 
-function SelfieCapture({ files, onChange, disabled = false }) {
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const [cameraActive, setCameraActive] = useState(false);
-  const [cameraError, setCameraError] = useState('');
-
-  const stopCamera = () => {
-    streamRef.current?.getTracks?.().forEach((track) => track.stop());
-    streamRef.current = null;
-    setCameraActive(false);
-  };
-
-  const startCamera = async () => {
-    setCameraError('');
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-      streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
-      setCameraActive(true);
-    } catch {
-      setCameraError('Camera is unavailable. You can upload a selfie image instead.');
-    }
-  };
-
-  const captureSelfie = () => {
-    const video = videoRef.current;
-    if (!video?.videoWidth || !video?.videoHeight) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      onChange([new File([blob], `selfie-${Date.now()}.jpg`, { type: 'image/jpeg' })]);
-      stopCamera();
-    }, 'image/jpeg', 0.92);
-  };
-
-  useEffect(() => () => stopCamera(), []);
-
-  return (
-    <div className={styles.selfieBlock}>
-      <div className={styles.selfieActions}>
-        <Button type="button" variant="secondary" onClick={startCamera} disabled={disabled || cameraActive}>
-          Start Camera
-        </Button>
-        {cameraActive && (
-          <>
-            <Button type="button" onClick={captureSelfie} disabled={disabled}>
-              Capture Selfie
-            </Button>
-            <Button type="button" variant="outline" onClick={stopCamera}>
-              Stop
-            </Button>
-          </>
-        )}
-      </div>
-      {cameraActive && <video ref={videoRef} autoPlay playsInline muted className={styles.selfieVideo} />}
-      {cameraError && <p className={styles.fieldError}>{cameraError}</p>}
-      <FileUpload
-        label="Selfie / Face Capture"
-        documentType="selfie"
-        files={files}
-        onChange={onChange}
-        multiple={false}
-        required
-      />
-    </div>
-  );
-}
-
 function ResubmitAccountRequestPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -199,6 +128,9 @@ function ResubmitAccountRequestPageContent() {
   const [validIdFrontFiles, setValidIdFrontFiles] = useState([]);
   const [validIdBackFiles, setValidIdBackFiles] = useState([]);
   const [selfieFiles, setSelfieFiles] = useState([]);
+  const [ocrVerification, setOcrVerification] = useState(null);
+  const [ocrVerifying, setOcrVerifying] = useState(false);
+  const [resubmissionComplete, setResubmissionComplete] = useState(false);
   const [identityUrls, setIdentityUrls] = useState({ front: '', back: '', selfie: '' });
   const [faceVerification, setFaceVerification] = useState(null);
   const [identityVerifying, setIdentityVerifying] = useState(false);
@@ -213,6 +145,9 @@ function ResubmitAccountRequestPageContent() {
   const hasSectorSelected = !!form.primarySector;
   const age = useMemo(() => calculateAge(form.birthday), [form.birthday]);
   const requiresRepresentative = age !== '' && Number(age) < 18 && !!form.isPwd;
+  const hasRepresentativeInfo = [form.representativeName, form.representativeContact, form.representativeRelationship]
+    .some(value => String(value || '').trim());
+  const shouldShowRepresentativeId = requiresRepresentative || hasRepresentativeInfo;
 
   useEffect(() => {
     if (urlToken) {
@@ -317,6 +252,7 @@ function ResubmitAccountRequestPageContent() {
 
   const handleChange = (event) => {
     const { name, type, checked, value } = event.target;
+    if (['firstName', 'lastName', 'birthday'].includes(name)) resetFaceVerification();
     if (name === 'representativeContact') {
       setForm((prev) => ({ ...prev, [name]: String(value || '').replace(/\D/g, '').slice(0, 11) }));
       return;
@@ -349,7 +285,10 @@ function ResubmitAccountRequestPageContent() {
   };
 
   const resetFaceVerification = () => {
-    setIdentityUrls({ front: existingValidIdFront, back: existingValidIdBack, selfie: existingSelfie });
+    setOcrVerification(null);
+    setSelfieFiles([]);
+    setExistingSelfie('');
+    setIdentityUrls({ front: existingValidIdFront, back: existingValidIdBack, selfie: '' });
     setFaceVerification(null);
   };
 
@@ -370,69 +309,76 @@ function ResubmitAccountRequestPageContent() {
     return path;
   };
 
-  const handleVerifyIdentity = async () => {
-    if (identityVerifying) return { ok: false };
+  const verifyIdentityOcr = async () => {
+    if (ocrVerifying) return;
+    setOcrVerifying(true);
+    setOcrVerification(null);
+    setFaceVerification(null);
+    setSelfieFiles([]);
+    setExistingSelfie('');
     setValidIdError('');
-
-    const hasFront = existingValidIdFront || validIdFrontFiles.length > 0;
-    const hasBack = existingValidIdBack || validIdBackFiles.length > 0;
-    const hasSelfie = existingSelfie || selfieFiles.length > 0;
-    if (!hasFront || !hasBack) {
-      setValidIdError(VALID_ID_BOTH_SIDES_ERROR);
-      setStatus({ type: 'error', message: VALID_ID_BOTH_SIDES_ERROR });
-      return { ok: false };
-    }
-    if (!hasSelfie) {
-      const msg = 'Selfie/face capture is required.';
-      setValidIdError(msg);
-      setStatus({ type: 'error', message: msg });
-      return { ok: false };
-    }
-
-    setIdentityVerifying(true);
     try {
-      const frontSource = validIdFrontFiles[0] || existingValidIdFront;
-      const selfieSource = selfieFiles[0] || existingSelfie;
-      const verification = await verifyFaceMatchWithFaceApi({
-        validIdFrontImage: frontSource,
-        selfieImage: selfieSource,
-      });
-      setFaceVerification(verification);
-      if (verification.status !== 'passed') {
-        const msg = verification.error || FACE_VERIFICATION_FAILED_ERROR;
-        setValidIdError(msg);
-        setStatus({ type: 'error', message: msg });
-        return { ok: false, verification };
-      }
-
-      const frontUrl = validIdFrontFiles[0]
-        ? await uploadIdentityFile(validIdFrontFiles[0], 'validIdFront')
-        : existingValidIdFront;
-      const backUrl = validIdBackFiles[0]
-        ? await uploadIdentityFile(validIdBackFiles[0], 'validIdBack')
-        : existingValidIdBack;
-      const selfieUrl = selfieFiles[0]
-        ? await uploadIdentityFile(selfieFiles[0], 'selfie')
-        : existingSelfie;
-      const urls = { front: frontUrl, back: backUrl, selfie: selfieUrl };
-      setIdentityUrls(urls);
-      setExistingValidIdFront(frontUrl);
-      setExistingValidIdBack(backUrl);
-      setExistingSelfie(selfieUrl);
-      setStatus({ type: 'success', message: 'Identity details verified.' });
-      return { ok: true, urls, verification };
+      const toFile = async (file, url, name) => {
+        if (file) return file;
+        if (!url) throw new Error(VALID_ID_BOTH_SIDES_ERROR);
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Unable to load the attached ID. Please upload it again.');
+        const blob = await response.blob();
+        return new File([blob], name, { type: blob.type });
+      };
+      const [front, back] = await Promise.all([
+        toFile(validIdFrontFiles[0], existingValidIdFront, 'front.jpg'),
+        toFile(validIdBackFiles[0], existingValidIdBack, 'back.jpg'),
+      ]);
+      const data = new FormData();
+      data.append('primaryId', front); data.append('reverseId', back);
+      data.append('firstName', form.firstName); data.append('lastName', form.lastName); data.append('birthDate', form.birthday);
+      const response = await fetch('/api/account-requests/verify-id-ocr', { method: 'POST', body: data });
+      const result = await response.json();
+      if (!response.ok || !result.data?.token) throw new Error(result.error || 'Unable to verify ID details.');
+      setOcrVerification(result.data);
+      setStatus({ type: 'success', message: 'ID details verified. Capture a live selfie below.' });
     } catch (error) {
-      const message = error?.message || FACE_VERIFICATION_FAILED_ERROR;
-      setValidIdError(message);
-      setStatus({ type: 'error', message });
+      setValidIdError(error.message);
+      setStatus({ type: 'error', message: error.message });
+    } finally { setOcrVerifying(false); }
+  };
+
+  const handleVerifyIdentity = async (capturedFile = null) => {
+    if (identityVerifying) return { ok: false };
+    const selfieFile = capturedFile || selfieFiles[0];
+    if (!ocrVerification?.token || !selfieFile) {
+      setValidIdError('Verify both ID sides first, then capture a live selfie.');
       return { ok: false };
-    } finally {
-      setIdentityVerifying(false);
     }
+    setIdentityVerifying(true);
+    setValidIdError('');
+    setFaceVerification(null);
+    try {
+      const [frontUrl, backUrl, selfieUrl] = await Promise.all([
+        validIdFrontFiles[0] ? uploadIdentityFile(validIdFrontFiles[0], 'validIdFront') : existingValidIdFront,
+        validIdBackFiles[0] ? uploadIdentityFile(validIdBackFiles[0], 'validIdBack') : existingValidIdBack,
+        uploadIdentityFile(selfieFile, 'selfie'),
+      ]);
+      const response = await fetch('/api/account-requests/verify-face', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, validIdFrontUrl: frontUrl, validIdBackUrl: backUrl, selfieUrl }),
+      });
+      const result = await response.json();
+      if (!response.ok || !['passed', 'manual_review'].includes(result.data?.status)) throw new Error(result.error || result.data?.error || FACE_VERIFICATION_FAILED_ERROR);
+      const urls = { front: frontUrl, back: backUrl, selfie: selfieUrl };
+      setIdentityUrls(urls); setFaceVerification(result.data); setExistingSelfie(selfieUrl);
+      setStatus({ type: 'success', message: result.data.status === 'passed' ? 'Identity verified.' : 'Selfie saved for admin review.' });
+      return { ok: true, urls, verification: result.data };
+    } catch (error) {
+      setValidIdError(error.message); setStatus({ type: 'error', message: error.message });
+      return { ok: false };
+    } finally { setIdentityVerifying(false); }
   };
 
   const validateForm = () => {
     setValidIdError('');
+    if (!ocrVerification?.token) return 'Please verify your ID details before resubmitting.';
     if (!hasSectorSelected) return 'Please select a sector classification.';
     if (!form.firstName.trim() || !form.lastName.trim()) return 'Please complete your name.';
     if (!form.birthday || age === '' || age < 0) return 'Please provide a valid birthday.';
@@ -471,7 +417,7 @@ function ResubmitAccountRequestPageContent() {
     if (!existingSelfie && selfieFiles.length === 0) {
       return 'Selfie/face capture is required.';
     }
-    if (faceVerification?.status !== 'passed') {
+    if (!['passed', 'manual_review'].includes(faceVerification?.status)) {
       setValidIdError(FACE_VERIFICATION_FAILED_ERROR);
       return FACE_VERIFICATION_FAILED_ERROR;
     }
@@ -499,7 +445,7 @@ function ResubmitAccountRequestPageContent() {
         !verifiedIdentityUrls.front ||
         !verifiedIdentityUrls.back ||
         !verifiedIdentityUrls.selfie ||
-        verifiedFace?.status !== 'passed'
+        !['passed', 'manual_review'].includes(verifiedFace?.status)
       ) {
         const verified = await handleVerifyIdentity();
         if (!verified?.ok) return;
@@ -539,6 +485,7 @@ function ResubmitAccountRequestPageContent() {
           validIdFrontUrl: verifiedIdentityUrls.front,
           validIdBackUrl: verifiedIdentityUrls.back,
           selfieUrl: verifiedIdentityUrls.selfie,
+          ocrVerificationToken: ocrVerification.token,
           faceVerificationStatus: verifiedFace?.status,
           faceVerificationScore: verifiedFace?.score ?? null,
           faceVerificationProvider: verifiedFace?.provider || null,
@@ -552,6 +499,7 @@ function ResubmitAccountRequestPageContent() {
         throw new Error(error || 'Failed to submit corrected details.');
       }
 
+      setResubmissionComplete(true);
       setStatus({
         type: 'success',
         message: 'Your corrected signup details were submitted for review.',
@@ -645,8 +593,9 @@ function ResubmitAccountRequestPageContent() {
                 </div>
               )}
 
-              {requestLoaded && status?.type !== 'success' && (
+              {requestLoaded && !resubmissionComplete && (
                 <form onSubmit={handleSubmit} className={styles.form}>
+                  <fieldset disabled={submitting || ocrVerifying || identityVerifying} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
                   <div className={styles.formIntro}>
                     <span className={styles.codeBadge}>Protected request</span>
                     <h2>Correct your signup details</h2>
@@ -805,33 +754,24 @@ function ResubmitAccountRequestPageContent() {
                       }}
                       required={!existingValidIdBack}
                     />
-                    {existingSelfie && (
-                      <div className={styles.existingDocs}>
-                        <span>Selfie already captured.</span>
-                        <button type="button" onClick={() => {
-                          setExistingSelfie('');
-                          resetFaceVerification();
-                        }}>
-                          Replace
-                        </button>
-                      </div>
-                    )}
-                    <SelfieCapture
-                      files={selfieFiles}
-                      onChange={(files) => {
-                        setSelfieFiles(files);
-                        resetFaceVerification();
-                        setValidIdError('');
-                      }}
-                      disabled={identityVerifying}
-                    />
-                    <Button type="button" onClick={handleVerifyIdentity} disabled={identityVerifying}>
-                      {identityVerifying ? 'Verifying details...' : 'Verify identity'}
+                    <Button type="button" onClick={verifyIdentityOcr} disabled={ocrVerifying || identityVerifying || !(existingValidIdFront || validIdFrontFiles.length) || !(existingValidIdBack || validIdBackFiles.length)}>
+                      {ocrVerifying ? 'Verifying ID details...' : ocrVerification ? 'Verify ID again' : 'Verify ID details'}
                     </Button>
-                    {faceVerification?.status === 'passed' && (
-                      <span className={styles.faceStatus}>Identity verified</span>
+                    {ocrVerification?.token && (
+                      <>
+                        <p className={styles.faceStatus}>ID details verified</p>
+                        <FaceRecognitionCapture
+                          onCapture={(file) => { setSelfieFiles([file]); void handleVerifyIdentity(file); }}
+                          onRetake={() => { setSelfieFiles([]); setExistingSelfie(''); setFaceVerification(null); setValidIdError(''); }}
+                          disabled={identityVerifying || submitting}
+                          verifying={identityVerifying}
+                          status={faceVerification?.status || ''}
+                          error={validIdError}
+                        />
+                      </>
                     )}
-                    {validIdError && <p className={styles.fieldError}>{validIdError}</p>}
+                    {!ocrVerification && validIdError && <p className={styles.fieldError}>{validIdError}</p>}
+                    {shouldShowRepresentativeId && <>
                     {existingRepresentativeValidId && (
                       <div className={styles.existingDocs}>
                         <span>Guardian/Representative valid ID already attached.</span>
@@ -841,23 +781,25 @@ function ResubmitAccountRequestPageContent() {
                       </div>
                     )}
                     <FileUpload
-                      label="Guardian/Representative Valid ID"
+                      label={requiresRepresentative ? 'Guardian/Representative Valid ID' : 'Guardian/Representative Valid ID (optional)'}
                       documentType="validId"
                       files={representativeValidIdFiles}
                       onChange={(files) => setRepresentativeValidIdFiles(files)}
                       required={requiresRepresentative && !existingRepresentativeValidId}
                     />
+                    </>}
                   </section>
 
                   <div className={styles.actions}>
                     <Button type="button" variant="secondary" onClick={() => router.push('/login')} disabled={submitting}>
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={submitting}>
+                    <Button type="submit" disabled={submitting || ocrVerifying || identityVerifying || !ocrVerification?.token || !['passed', 'manual_review'].includes(faceVerification?.status)}>
                       {submitting ? 'Submitting...' : 'Resubmit Details'}
                     </Button>
                   </div>
-                </form>
+                </fieldset>
+</form>
               )}
             </>
           )}

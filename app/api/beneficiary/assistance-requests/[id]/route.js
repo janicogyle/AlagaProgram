@@ -1,3 +1,4 @@
+import { notifyAssistanceStatus } from '@/lib/assistanceNotification.server';
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { readBeneficiarySession } from '@/lib/beneficiarySession.server';
@@ -45,7 +46,7 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ data: null, error: 'Invalid request body.' }, { status: 400 });
     }
 
-    const idParam = params?.id;
+    const idParam = (await params)?.id;
     const bodyKey = body?.control_number || body?.controlNo || body?.request_id || body?.requestId || body?.id;
 
     const clean = (v) => {
@@ -419,7 +420,10 @@ export async function PATCH(request, { params }) {
       supabaseAdmin ?? db,
     );
 
-    return NextResponse.json({ data: updated, error: null, meta: { residentSource: resident.source } });
+    const notification = nextStatus === 'Resubmitted' && existing.status !== nextStatus
+      ? await notifyAssistanceStatus(db, { ...updated, resident_id: resident.residentId, status: nextStatus })
+      : null;
+    return NextResponse.json({ data: updated, error: null, notification, meta: { residentSource: resident.source } });
   } catch (err) {
     console.error('Beneficiary update assistance request error:', err);
     if (err?.code === '23505' && /assistance_requests_one_active_per_(resident|category)_uidx/i.test(String(err?.message || ''))) {

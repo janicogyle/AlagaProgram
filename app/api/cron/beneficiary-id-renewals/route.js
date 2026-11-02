@@ -1,3 +1,5 @@
+import { getNotificationDestination } from '@/lib/notificationDestination';
+import { getRenewalReminderStage } from '@/lib/smsReminderSchedule';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { computeBeneficiaryIdStatus } from '@/lib/beneficiaryIdStatus.server';
@@ -7,11 +9,9 @@ import { buildBeneficiaryIdRenewalReminderMessage } from '@/lib/smsTemplates';
 
 export const runtime = 'nodejs';
 
-const REMINDER_DAYS = new Set([30, 7, 0]);
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function authorize(request) {
-  const secret = process.env.SMS_CRON_SECRET || process.env.CRON_SECRET;
+  const secret = process.env.CRON_SECRET || process.env.SMS_CRON_SECRET;
   if (!secret) {
     return { ok: false, response: NextResponse.json({ data: null, error: 'Missing SMS_CRON_SECRET.' }, { status: 500 }) };
   }
@@ -23,21 +23,10 @@ function authorize(request) {
   return { ok: false, response: NextResponse.json({ data: null, error: 'Unauthorized.' }, { status: 401 }) };
 }
 
-function dateOnly(date) {
-  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-}
-
-function daysUntil(value, nowInput = new Date()) {
-  const expires = new Date(value);
-  if (Number.isNaN(expires.getTime())) return null;
-  const diff = dateOnly(expires).getTime() - dateOnly(new Date(nowInput)).getTime();
-  return Math.ceil(diff / MS_PER_DAY);
-}
-
 function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: '2-digit' });
+  return date.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', year: 'numeric', month: 'short', day: '2-digit' });
 }
 
 export async function POST(request) {
@@ -69,7 +58,7 @@ export async function POST(request) {
 
     const { data: residents, error: residentsError } = await supabaseAdmin
       .from('residents')
-      .select('id, first_name, last_name, contact_number, status')
+      .select('id, first_name, last_name, contact_number, contact_verified, verification_method, email_verified, email, status')
       .in('id', residentIds);
     if (residentsError) throw residentsError;
 
@@ -92,8 +81,8 @@ export async function POST(request) {
         if (error) throw error;
       }
 
-      const days = daysUntil(card.expires_at);
-      if (days == null || !REMINDER_DAYS.has(days)) continue;
+      const days = getRenewalReminderStage(card.expires_at);
+      if (days == null) continue;
 
       reminders.push({
         resident,
@@ -111,6 +100,7 @@ export async function POST(request) {
     const { data: existingLogs, error: logsError } = await supabaseAdmin
       .from('sms_logs')
       .select('reference_key')
+      .eq('status', 'sent')
       .eq('reference_type', 'beneficiary_id_renewal_reminder')
       .in('reference_key', reminders.map((row) => row.referenceKey));
     if (logsError && logsError.code !== 'PGRST116') throw logsError;
@@ -118,6 +108,7 @@ export async function POST(request) {
     const sentKeys = new Set((existingLogs || []).map((row) => row.reference_key));
     let sentCount = 0;
     let skippedCount = 0;
+    let failedCount = 0;
 
     for (const reminder of reminders) {
       if (sentKeys.has(reminder.referenceKey)) {
@@ -125,7 +116,8 @@ export async function POST(request) {
         continue;
       }
 
-      const contactNumber = normalizeSmsContactNumber(reminder.resident.contact_number);
+      const destination = getNotificationDestination(reminder.resident);
+      const contactNumber = destination.channel === 'sms' ? normalizeSmsContactNumber(destination.contactNumber) : null;
       if (!contactNumber) {
         skippedCount += 1;
         continue;
@@ -136,6 +128,7 @@ export async function POST(request) {
         expirationDate: reminder.expirationDate,
       });
 
+      try {
       await sendSms({
         to: contactNumber,
         message,
@@ -143,6 +136,11 @@ export async function POST(request) {
         referenceId: reminder.resident.id,
         referenceKey: reminder.referenceKey,
       });
+      } catch (error) {
+        failedCount += 1;
+        console.warn("Reminder SMS failed:", error?.message);
+        continue;
+      }
 
       await logActivity({
         actor_name: 'System',
@@ -160,7 +158,7 @@ export async function POST(request) {
     }
 
     return NextResponse.json({
-      data: { evaluated: residentIds.length, updated: updatedCount, sent: sentCount, skipped: skippedCount },
+      data: { evaluated: residentIds.length, updated: updatedCount, sent: sentCount, skipped: skippedCount, failed: failedCount },
       error: null,
     });
   } catch (error) {
@@ -168,3 +166,6 @@ export async function POST(request) {
     return NextResponse.json({ data: null, error: error?.message || 'Failed to process Beneficiary ID renewals.' }, { status: 500 });
   }
 }
+
+// Vercel Cron invokes GET; POST remains available for authorized manual runs.
+export const GET = POST;
